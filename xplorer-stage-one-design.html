@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xplorer — Stage One visual direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Instrument+Sans:wght@400..700&family=Martian+Mono:wght@300..700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* inks */
+  --paper:#E7E8E1;
+  --card:#F3F3ED;
+  --ink:#16181C;
+  --ink-soft:#63686F;
+  --hair:#C9CBC2;
+  --water:#BFD1CF;
+  --park:#C2CFAF;
+  --pink:#FF3D6E;
+  --blue:#2B4BE8;
+  --yellow:#FFC61A;
+  --board:#0E1120;
+
+  --f-display:"Archivo",system-ui,sans-serif;
+  --f-body:"Instrument Sans",system-ui,sans-serif;
+  --f-data:"Martian Mono",ui-monospace,monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--board);
+  background-image:radial-gradient(rgba(255,255,255,.055) 1px, transparent 1.1px);
+  background-size:7px 7px;
+  color:var(--paper);
+  font-family:var(--f-body);
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 90px;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* ---------- board header ---------- */
+.masthead{padding:64px 0 44px;position:relative}
+.reg{position:absolute;top:26px;right:22px;width:22px;height:22px;opacity:.5}
+.reg::before,.reg::after{content:"";position:absolute;background:var(--pink)}
+.reg::before{left:10px;top:0;width:1.5px;height:22px}
+.reg::after{top:10px;left:0;height:1.5px;width:22px}
+
+.eyebrow{
+  font-family:var(--f-data);font-size:10px;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:#8D93A5;
+}
+.masthead h1{
+  font-family:var(--f-display);
+  font-variation-settings:"wdth" 118,"wght" 850;
+  font-size:clamp(42px,9vw,88px);
+  line-height:.92;margin:14px 0 0;letter-spacing:-.02em;
+}
+.masthead h1 em{font-style:normal;color:var(--pink)}
+.thesis{
+  max-width:52ch;margin:22px 0 0;font-size:16px;line-height:1.55;color:#C4C8D4;
+}
+.thesis strong{color:var(--paper);font-weight:600}
+
+.inkbar{display:flex;gap:0;margin:34px 0 0;height:8px;max-width:420px;border-radius:99px;overflow:hidden}
+.inkbar span{flex:1}
+
+/* ---------- gallery ---------- */
+.gallery{
+  display:grid;gap:56px 40px;
+  grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+  align-items:start;padding:26px 0 0;
+}
+.slot{display:flex;flex-direction:column;align-items:center}
+.cap{max-width:390px;width:100%;margin:20px auto 0}
+.cap .step{
+  display:inline-block;font-family:var(--f-data);font-size:9.5px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--board);
+  background:var(--yellow);padding:4px 8px 3px;border-radius:3px;
+}
+.cap h3{
+  font-family:var(--f-display);font-variation-settings:"wdth" 108,"wght" 750;
+  font-size:19px;margin:12px 0 6px;letter-spacing:-.01em;
+}
+.cap p{margin:0;font-size:13.5px;line-height:1.5;color:#A8AEBD}
+.cap .omit{
+  margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);
+  font-family:var(--f-data);font-size:10px;line-height:1.7;color:#767D90;
+  letter-spacing:.01em;
+}
+
+/* ---------- phone ---------- */
+.phone{
+  width:390px;max-width:100%;height:760px;background:#000;
+  border-radius:40px;padding:7px;position:relative;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.09);
+}
+.screen{
+  width:100%;height:100%;background:var(--paper);border-radius:33px;
+  overflow:hidden;position:relative;color:var(--ink);display:flex;flex-direction:column;
+}
+.statusbar{
+  height:38px;flex:0 0 38px;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 24px 4px;font-family:var(--f-data);font-size:10px;font-weight:600;letter-spacing:.02em;
+  position:relative;z-index:6;
+}
+.statusbar .dots{display:flex;gap:3px;align-items:center}
+.statusbar .dots i{display:block;width:3px;height:9px;background:var(--ink);border-radius:1px}
+.statusbar .dots i:nth-child(1){height:4px}
+.statusbar .dots i:nth-child(2){height:6px}
+
+/* ---------- map screen ---------- */
+.mapstage{position:absolute;inset:0;z-index:0}
+.mapstage svg{width:100%;height:100%;display:block}
+
+.topbar{position:relative;z-index:5;padding:6px 14px 0}
+.search{
+  display:flex;align-items:center;gap:9px;background:var(--card);
+  border:1.5px solid var(--ink);border-radius:12px;padding:11px 13px;
+  box-shadow:3px 3px 0 rgba(22,24,28,.9);
+}
+.search span{font-size:14px;color:var(--ink-soft);font-weight:500}
+.chips{display:flex;gap:6px;margin-top:10px;overflow:hidden}
+.chip{
+  font-family:var(--f-data);font-size:9.5px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;padding:6px 9px;border-radius:99px;
+  background:var(--card);border:1.5px solid var(--ink);white-space:nowrap;
+}
+.chip.on{background:var(--ink);color:var(--paper)}
+
+.pins{position:absolute;inset:0;z-index:3}
+.pin{
+  position:absolute;transform:translate(-50%,-50%);
+  border:0;background:none;padding:0;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+.disc{
+  width:34px;height:34px;border-radius:50%;position:relative;
+  border:2px solid var(--ink);display:grid;place-items:center;
+  transition:transform .18s cubic-bezier(.2,.9,.3,1.3);
+}
+.pin:hover .disc,.pin.sel .disc{transform:scale(1.16)}
+.disc svg{width:16px;height:16px;display:block}
+/* SIGNATURE: overprint misregistration — a second ink layer means
+   something is scheduled here, not just located here */
+.disc.over::before{
+  content:"";position:absolute;inset:-2px;border-radius:50%;
+  background:var(--pink);border:2px solid var(--ink);
+  transform:translate(4px,-4px);mix-blend-mode:multiply;z-index:-1;
+}
+.disc.blue{background:var(--blue)}
+.disc.blue svg{stroke:#fff}
+.disc.pink{background:var(--pink)}
+.disc.pink svg{stroke:var(--ink)}
+.disc.yellow{background:var(--yellow)}
+.disc.yellow svg{stroke:var(--ink)}
+.disc.ghost{background:var(--card);border-style:dashed}
+.disc.ghost svg{stroke:var(--ink-soft)}
+.plabel{
+  font-family:var(--f-data);font-size:8.5px;font-weight:600;letter-spacing:.02em;
+  background:var(--card);border:1.5px solid var(--ink);border-radius:4px;
+  padding:2.5px 5px;white-space:nowrap;
+}
+.me{position:absolute;transform:translate(-50%,-50%);z-index:2}
+.me i{display:block;width:14px;height:14px;border-radius:50%;background:var(--blue);border:2.5px solid var(--card)}
+.me::after{
+  content:"";position:absolute;inset:-13px;border-radius:50%;
+  background:rgba(43,75,232,.16);
+}
+
+.sheet{
+  margin-top:auto;position:relative;z-index:5;
+  background:var(--card);border-top:2px solid var(--ink);
+  border-radius:20px 20px 0 0;padding:9px 16px 12px;
+  box-shadow:0 -8px 24px rgba(22,24,28,.14);
+}
+.grab{width:38px;height:4px;border-radius:9px;background:var(--hair);margin:0 auto 12px}
+.tally{
+  font-family:var(--f-data);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-soft);display:flex;gap:10px;margin-bottom:11px;flex-wrap:wrap;
+}
+.tally b{color:var(--ink);font-weight:700}
+
+.rescard{display:flex;gap:12px;align-items:stretch}
+.thumb{
+  width:66px;height:66px;flex:0 0 66px;border-radius:10px;border:1.5px solid var(--ink);
+  background:var(--park);position:relative;overflow:hidden;
+}
+.thumb::after{
+  content:"";position:absolute;inset:0;
+  background-image:radial-gradient(rgba(22,24,28,.22) 1px,transparent 1.2px);
+  background-size:5px 5px;
+}
+.rescard .body{min-width:0;flex:1}
+.state{
+  display:inline-flex;align-items:center;gap:5px;font-family:var(--f-data);
+  font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:3px 7px;border-radius:99px;border:1.5px solid var(--ink);
+}
+.state i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block}
+.state.s-open{background:var(--card)}
+.state.s-on{background:var(--pink)}
+.state.s-offer{background:var(--yellow)}
+.state.s-unclaimed{background:transparent;border-style:dashed;color:var(--ink-soft)}
+.rescard h4{
+  font-family:var(--f-display);font-variation-settings:"wdth" 106,"wght" 780;
+  font-size:18px;margin:7px 0 3px;letter-spacing:-.01em;
+}
+.meta{font-family:var(--f-data);font-size:10px;color:var(--ink-soft);letter-spacing:.01em}
+.subline{font-size:12.5px;color:var(--ink-soft);margin:6px 0 0;line-height:1.4}
+
+.nav{
+  display:flex;justify-content:space-around;align-items:center;
+  background:var(--card);border-top:1.5px solid var(--ink);
+  padding:9px 0 20px;position:relative;z-index:5;
+}
+.nav a{
+  display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;
+  font-family:var(--f-data);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:600;
+}
+.nav a.on{color:var(--ink)}
+.nav a.on svg{stroke:var(--ink)}
+.nav svg{width:19px;height:19px;stroke:var(--ink-soft);fill:none;stroke-width:1.9}
+
+/* ---------- scrolling detail screens ---------- */
+.scroll{flex:1;overflow-y:auto;overscroll-behavior:contain}
+.scroll::-webkit-scrollbar{width:0}
+
+.hero{
+  height:172px;position:relative;border-bottom:2px solid var(--ink);
+  display:flex;align-items:flex-end;padding:14px;
+}
+.hero.h-cafe{background:linear-gradient(160deg,#D8C9B4,#C7B49A)}
+.hero.h-club{background:var(--pink)}
+.hero::after{
+  content:"";position:absolute;inset:0;
+  background-image:radial-gradient(rgba(22,24,28,.2) 1px,transparent 1.2px);
+  background-size:6px 6px;pointer-events:none;
+}
+.hero .back{
+  position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:50%;
+  background:var(--card);border:1.5px solid var(--ink);display:grid;place-items:center;z-index:2;
+}
+.hero .back svg{width:16px;height:16px;stroke:var(--ink);fill:none;stroke-width:2}
+.hero .shots{
+  position:absolute;bottom:10px;right:12px;z-index:2;
+  font-family:var(--f-data);font-size:9px;font-weight:600;letter-spacing:.06em;
+  background:var(--card);border:1.5px solid var(--ink);border-radius:99px;padding:4px 9px;
+}
+
+.pad{padding:16px}
+.titleblock h2{
+  font-family:var(--f-display);font-variation-settings:"wdth" 112,"wght" 830;
+  font-size:29px;line-height:1;margin:10px 0 8px;letter-spacing:-.025em;
+}
+.titleblock .cat{
+  font-family:var(--f-data);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);
+}
+.statrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+
+.rule{height:1.5px;background:var(--hair);margin:16px 0}
+.sechead{
+  font-family:var(--f-data);font-size:9.5px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-soft);margin:0 0 10px;
+}
+
+.claimstrip{
+  border:1.5px dashed var(--ink);border-radius:12px;padding:12px;background:rgba(255,198,26,.16);
+}
+.claimstrip p{margin:0 0 10px;font-size:13px;line-height:1.45}
+.claimstrip p b{font-weight:700}
+.btn{
+  display:inline-flex;align-items:center;gap:7px;background:var(--ink);color:var(--paper);
+  font-family:var(--f-display);font-variation-settings:"wdth" 104,"wght" 700;
+  font-size:13.5px;padding:10px 15px;border-radius:9px;border:0;
+}
+.btn.alt{background:var(--card);color:var(--ink);border:1.5px solid var(--ink)}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+
+.onhere{
+  border:1.5px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--card);
+}
+.onhere .row{display:flex;gap:11px;padding:12px;align-items:center;border-bottom:1.5px solid var(--hair)}
+.onhere .row:last-child{border-bottom:0}
+.datechip{
+  flex:0 0 42px;text-align:center;border:1.5px solid var(--ink);border-radius:8px;padding:5px 0;
+  background:var(--pink);font-family:var(--f-data);line-height:1.15;
+}
+.datechip b{display:block;font-size:15px;font-weight:700}
+.datechip span{font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+.onhere h5{font-family:var(--f-display);font-variation-settings:"wdth" 104,"wght" 720;font-size:14.5px;margin:0 0 3px}
+.onhere .meta{font-size:9.5px}
+
+.review{display:flex;gap:11px;margin-bottom:14px}
+.av{
+  width:34px;height:34px;flex:0 0 34px;border-radius:50%;border:1.5px solid var(--ink);
+  display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:13px;
+}
+.av.a1{background:var(--yellow)}
+.av.a2{background:var(--water)}
+.av.a3{background:var(--park)}
+.review .who{font-weight:600;font-size:13.5px}
+.verified{
+  font-family:var(--f-data);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--blue);font-weight:700;display:inline-flex;align-items:center;gap:4px;
+}
+.review p{margin:5px 0 0;font-size:13px;line-height:1.45;color:#3B3F46}
+.stars{font-family:var(--f-data);font-size:11px;letter-spacing:.14em;margin-top:3px}
+
+/* club specifics */
+.hero.h-club h2{
+  font-family:var(--f-display);font-variation-settings:"wdth" 122,"wght" 880;
+  font-size:38px;line-height:.9;margin:0;color:var(--ink);letter-spacing:-.03em;
+  position:relative;z-index:2;text-transform:uppercase;
+}
+.nextsession{
+  border:2px solid var(--ink);border-radius:14px;padding:14px;background:var(--card);
+  box-shadow:4px 4px 0 var(--pink);
+}
+.nextsession .when{
+  font-family:var(--f-display);font-variation-settings:"wdth" 110,"wght" 800;
+  font-size:22px;margin:6px 0 4px;letter-spacing:-.02em;
+}
+.minimap{
+  height:92px;border:1.5px solid var(--ink);border-radius:10px;margin-top:12px;
+  position:relative;overflow:hidden;background:var(--paper);
+}
+.minimap svg{width:100%;height:100%;display:block}
+.minimap .mk{
+  position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
+  width:26px;height:26px;border-radius:50%;background:var(--pink);border:2px solid var(--ink);
+}
+.sched{list-style:none;margin:0;padding:0}
+.sched li{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:11px 0;border-bottom:1.5px solid var(--hair);font-size:13.5px;
+}
+.sched li:last-child{border-bottom:0}
+.sched .day{font-family:var(--f-display);font-variation-settings:"wdth" 104,"wght" 720;font-size:14px}
+.sched .t{font-family:var(--f-data);font-size:10.5px;color:var(--ink-soft)}
+
+/* profile */
+.profhead{padding:18px 16px 0;display:flex;gap:14px;align-items:flex-start}
+.bigav{
+  width:74px;height:74px;flex:0 0 74px;border-radius:50%;background:var(--yellow);
+  border:2px solid var(--ink);display:grid;place-items:center;
+  font-family:var(--f-display);font-variation-settings:"wdth" 110,"wght" 850;font-size:28px;
+  position:relative;
+}
+.bigav::after{
+  content:"";position:absolute;inset:0;border-radius:50%;background:var(--pink);
+  transform:translate(5px,-5px);mix-blend-mode:multiply;z-index:-1;border:2px solid var(--ink);
+}
+.profhead h2{
+  font-family:var(--f-display);font-variation-settings:"wdth" 112,"wght" 830;
+  font-size:25px;margin:2px 0 3px;letter-spacing:-.02em;
+}
+.handle{font-family:var(--f-data);font-size:10.5px;color:var(--ink-soft)}
+.counts{display:flex;gap:0;margin:16px 0 0;border:1.5px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--card)}
+.counts div{flex:1;padding:11px 6px;text-align:center;border-right:1.5px solid var(--hair)}
+.counts div:last-child{border-right:0}
+.counts b{
+  display:block;font-family:var(--f-display);font-variation-settings:"wdth" 108,"wght" 800;font-size:20px;
+}
+.counts span{font-family:var(--f-data);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+
+.manages{display:flex;flex-direction:column;gap:9px}
+.mcard{
+  display:flex;gap:11px;align-items:center;border:1.5px solid var(--ink);border-radius:12px;
+  padding:10px;background:var(--card);
+}
+.mkey{
+  width:38px;height:38px;flex:0 0 38px;border-radius:9px;border:1.5px solid var(--ink);
+  display:grid;place-items:center;
+}
+.mkey.k1{background:var(--blue)}
+.mkey.k2{background:var(--pink)}
+.mkey svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2}
+.mkey.k2 svg{stroke:var(--ink)}
+.mcard h5{font-family:var(--f-display);font-variation-settings:"wdth" 104,"wght" 720;font-size:14.5px;margin:0 0 2px}
+.mcard .meta{font-size:9.5px}
+.toggle{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:13px 0;border-bottom:1.5px solid var(--hair);
+}
+.toggle:last-of-type{border-bottom:0}
+.toggle .lab{font-size:13.5px;font-weight:500}
+.toggle .sub{font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4}
+.sw{width:44px;height:26px;flex:0 0 44px;border-radius:99px;border:1.5px solid var(--ink);background:var(--card);position:relative}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--ink)}
+.sw.on{background:var(--blue)}
+.sw.on::after{left:auto;right:2px;background:var(--card)}
+.hiddenpill{
+  display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--ink);border-radius:99px;
+  padding:5px 11px;font-family:var(--f-data);font-size:9.5px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:var(--paper);
+}
+
+/* ---------- system panel ---------- */
+.system{margin-top:76px;border-top:1px solid rgba(255,255,255,.14);padding-top:44px}
+.system h2{
+  font-family:var(--f-display);font-variation-settings:"wdth" 116,"wght" 820;
+  font-size:clamp(26px,5vw,40px);margin:12px 0 30px;letter-spacing:-.02em;
+}
+.sysgrid{display:grid;gap:34px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.panel h4{
+  font-family:var(--f-data);font-size:10px;font-weight:700;letter-spacing:.15em;
+  text-transform:uppercase;color:#8D93A5;margin:0 0 14px;
+}
+.swatches{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sw2{border-radius:9px;padding:44px 9px 9px;border:1px solid rgba(255,255,255,.16)}
+.sw2 b{display:block;font-family:var(--f-display);font-weight:750;font-size:12px}
+.sw2 span{font-family:var(--f-data);font-size:8.5px;opacity:.75}
+.dark{color:var(--ink)}
+.light{color:var(--paper)}
+
+.specimen p{margin:0 0 16px}
+.sp1{font-family:var(--f-display);font-variation-settings:"wdth" 120,"wght" 860;font-size:32px;line-height:.95;letter-spacing:-.025em}
+.sp2{font-family:var(--f-body);font-size:14.5px;line-height:1.5;color:#C4C8D4}
+.sp3{font-family:var(--f-data);font-size:11px;letter-spacing:.06em;color:#8D93A5}
+.spnote{font-family:var(--f-data);font-size:9.5px;color:#767D90;line-height:1.7;margin-top:-6px}
+
+.key{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13px}
+.key li{display:flex;gap:12px;align-items:flex-start}
+.keydisc{
+  width:28px;height:28px;flex:0 0 28px;border-radius:50%;border:2px solid var(--ink);position:relative;
+}
+.keydisc.over::before{
+  content:"";position:absolute;inset:-2px;border-radius:50%;background:var(--pink);
+  border:2px solid var(--ink);transform:translate(4px,-4px);mix-blend-mode:multiply;z-index:-1;
+}
+.key b{display:block;font-size:13.5px;font-weight:600;margin-bottom:2px}
+.key span{font-size:12px;color:#A8AEBD;line-height:1.45}
+
+.scoped{
+  margin-top:48px;border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:24px;
+  background:rgba(255,255,255,.03);
+}
+.scoped h4{margin-bottom:16px}
+.scoped ul{margin:0;padding:0;list-style:none;display:grid;gap:11px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.scoped li{font-size:13px;line-height:1.5;color:#A8AEBD;padding-left:20px;position:relative}
+.scoped li::before{content:"—";position:absolute;left:0;color:var(--pink)}
+.scoped li b{color:var(--paper);font-weight:600}
+
+@media (max-width:520px){
+  .phone{height:700px;border-radius:34px;padding:6px}
+  .screen{border-radius:28px}
+  .masthead{padding:40px 0 30px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:3px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="reg" aria-hidden="true"></div>
+  <div class="eyebrow">Xplorer · Stage One · Visual direction</div>
+  <h1>What exists<br>around <em>me?</em></h1>
+  <p class="thesis">
+    Stage One can't show a live city yet — check-ins and happening-now states are Stage Two.
+    So this direction answers the question Stage One <strong>can</strong> answer honestly, and
+    borrows its look from where local life is actually advertised: <strong>riso-printed flyers,
+    gig posters and taped-up notice boards.</strong> The map base is quiet newsprint. The ink is
+    spent entirely on the pins, because on this map a pin is not a dot — it's a state.
+  </p>
+  <div class="inkbar" aria-hidden="true">
+    <span style="background:#E7E8E1"></span>
+    <span style="background:#2B4BE8"></span>
+    <span style="background:#FF3D6E"></span>
+    <span style="background:#FFC61A"></span>
+    <span style="background:#16181C"></span>
+  </div>
+</header>
+
+<div class="gallery">
+
+  <!-- ================= SCREEN 1 : MAP ================= -->
+  <div class="slot">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>
+
+        <div class="mapstage" aria-hidden="true">
+          <svg viewBox="0 0 390 700" preserveAspectRatio="xMidYMid slice">
+            <rect width="390" height="700" fill="#E7E8E1"/>
+            <path d="M255 700 L390 700 L390 300 C330 340 300 470 255 700 Z" fill="#BFD1CF"/>
+            <path d="M14 78 C60 46 148 52 168 106 C190 166 128 214 70 202 C18 191 -6 122 14 78 Z" fill="#C2CFAF"/>
+            <g fill="#DEDFD8">
+              <rect x="196" y="120" width="70" height="54" rx="3"/>
+              <rect x="284" y="112" width="58" height="42" rx="3"/>
+              <rect x="40" y="290" width="76" height="60" rx="3"/>
+              <rect x="160" y="300" width="52" height="48" rx="3"/>
+              <rect x="46" y="420" width="64" height="88" rx="3"/>
+              <rect x="176" y="430" width="80" height="56" rx="3"/>
+              <rect x="204" y="560" width="52" height="60" rx="3"/>
+              <rect x="60" y="580" width="70" height="46" rx="3"/>
+            </g>
+            <g stroke="#F4F4EE" fill="none" stroke-linecap="round">
+              <path d="M-10 232 C90 218 150 268 226 252 S348 208 400 236" stroke-width="15"/>
+              <path d="M132 -10 L152 262 L128 710" stroke-width="15"/>
+              <path d="M292 -10 L276 236 L322 710" stroke-width="12"/>
+              <path d="M-10 388 C110 372 250 402 400 376" stroke-width="9"/>
+              <path d="M-10 540 C120 526 230 556 400 528" stroke-width="9"/>
+              <path d="M226 252 L246 700" stroke-width="7"/>
+              <path d="M60 262 L44 700" stroke-width="7"/>
+            </g>
+            <g stroke="#CFD1C8" fill="none" stroke-width="1" opacity=".9">
+              <path d="M-10 232 C90 218 150 268 226 252 S348 208 400 236"/>
+              <path d="M132 -10 L152 262 L128 710"/>
+              <path d="M-10 388 C110 372 250 402 400 376"/>
+              <path d="M-10 540 C120 526 230 556 400 528"/>
+            </g>
+          </svg>
+        </div>
+
+        <div class="topbar">
+          <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+            <span>Search this area</span>
+          </div>
+          <div class="chips">
+            <div class="chip on">Everything</div>
+            <div class="chip">Places</div>
+            <div class="chip">Parks</div>
+            <div class="chip">Clubs</div>
+            <div class="chip">Events</div>
+          </div>
+        </div>
+
+        <div class="pins">
+          <button class="pin sel" data-k="pennyroyal" style="left:42%;top:41%">
+            <span class="disc blue over"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M17 10h2a2 2 0 0 1 0 5h-2"/></svg></span>
+            <span class="plabel">Pennyroyal</span>
+          </button>
+          <button class="pin" data-k="kestrel" style="left:20%;top:20%">
+            <span class="disc blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 20v-7"/><path d="M12 13 6 8l6-5 6 5-6 5z"/></svg></span>
+            <span class="plabel">Kestrel Fields</span>
+          </button>
+          <button class="pin" data-k="runclub" style="left:66%;top:26%">
+            <span class="disc pink"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="14" cy="5" r="2"/><path d="M6 21l3-6 4-2-1-5 4 3 3 1"/><path d="M9 15l-3-4 4-3"/></svg></span>
+          </button>
+          <button class="pin" data-k="market" style="left:72%;top:68%">
+            <span class="disc pink"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 8h16l-1 3H5L4 8z"/><path d="M5 11v8h14v-8"/><path d="M7 4h10l3 4H4l3-4z"/></svg></span>
+            <span class="plabel">Night Market</span>
+          </button>
+          <button class="pin" data-k="fenn" style="left:26%;top:70%">
+            <span class="disc blue"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/></svg></span>
+          </button>
+          <button class="pin" data-k="sable" style="left:82%;top:46%">
+            <span class="disc yellow"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M13 3 5 13h6l-1 8 8-10h-6l1-8z"/></svg></span>
+          </button>
+          <button class="pin" data-k="unclaimed" style="left:50%;top:60%">
+            <span class="disc ghost"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 17h.01"/><path d="M9.5 9a2.6 2.6 0 1 1 3.4 2.5c-.6.3-.9.8-.9 1.5"/></svg></span>
+          </button>
+          <div class="me" style="left:47%;top:53%"><i></i></div>
+        </div>
+
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="tally">
+            <span><b>34</b> places</span><span><b>3</b> clubs</span><span><b>6</b> events this week</span>
+          </div>
+          <div class="rescard">
+            <div class="thumb" id="rThumb" style="background:#D8C9B4"></div>
+            <div class="body">
+              <span class="state s-open" id="rState"><i></i> Open · hosting</span>
+              <h4 id="rName">Pennyroyal Coffee</h4>
+              <div class="meta" id="rMeta">CAFÉ · 250 M · CLAIMED</div>
+              <p class="subline" id="rSub">Cupping session here Thursday, 7pm.</p>
+            </div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <a href="#" class="on"><svg viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>Map</a>
+          <a href="#"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>Saved</a>
+          <a href="#"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add</a>
+          <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>You</a>
+        </nav>
+      </div>
+    </div>
+    <div class="cap">
+      <span class="step">Loop step: See</span>
+      <h3>Map discovery</h3>
+      <p>Tap any pin — the sheet below re-reads. Ink colour is the category of aliveness: blue is a place that exists, pink is something scheduled, yellow is an offer running, dashed grey is unclaimed and waiting for someone to own it.</p>
+      <p class="omit">Not here on purpose: Now / Tonight / Weekend filters, attendance counts, other people's dots. All Stage Two.</p>
+    </div>
+  </div>
+
+  <!-- ================= SCREEN 2 : PLACE ================= -->
+  <div class="slot">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="scroll">
+          <div class="hero h-cafe">
+            <div class="back"><svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg></div>
+            <div class="shots">12 photos</div>
+          </div>
+          <div class="pad">
+            <div class="titleblock">
+              <div class="cat">Café · Bakery</div>
+              <h2>Pennyroyal Coffee</h2>
+              <div class="statrow">
+                <span class="state s-open"><i></i> Open until 6</span>
+                <span class="state s-on"><i></i> Hosting Thu</span>
+              </div>
+              <div class="meta" style="margin-top:11px">250 M AWAY · 41 EXPLORERS HAVE BEEN</div>
+            </div>
+
+            <div class="rule"></div>
+
+            <div class="sechead">What's on here</div>
+            <div class="onhere">
+              <div class="row">
+                <div class="datechip"><b>07</b><span>Aug</span></div>
+                <div>
+                  <h5>Ethiopia cupping session</h5>
+                  <div class="meta">THU · 7:00 PM · 12 SEATS</div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="datechip" style="background:#FFC61A"><b>16</b><span>Aug</span></div>
+                <div>
+                  <h5>Latte art throwdown</h5>
+                  <div class="meta">SAT · 4:00 PM · FREE ENTRY</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule"></div>
+
+            <div class="sechead">Managed by</div>
+            <div class="review" style="margin-bottom:0">
+              <div class="av a1">A</div>
+              <div>
+                <div class="who">Ada Kerrigan</div>
+                <span class="verified">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2B4BE8" stroke-width="3" stroke-linecap="round"><path d="m4 12 5 5L20 6"/></svg>
+                  Verified by QR at the counter
+                </span>
+                <p style="margin-top:6px">Explorer since 2023 · 88 reviews of her own</p>
+              </div>
+            </div>
+
+            <div class="rule"></div>
+
+            <div class="sechead">Reviews · 4.6 from 63 explorers</div>
+            <div class="review">
+              <div class="av a2">M</div>
+              <div>
+                <div class="who">Marisol T.</div>
+                <div class="stars">★★★★★</div>
+                <span class="verified">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2B4BE8" stroke-width="3" stroke-linecap="round"><path d="m4 12 5 5L20 6"/></svg>
+                  Reviewed after a visit
+                </span>
+                <p>Scanned in on a Tuesday morning and ended up staying three hours. The cardamom bun is the whole argument.</p>
+              </div>
+            </div>
+            <div class="review">
+              <div class="av a3">J</div>
+              <div>
+                <div class="who">Joel R.</div>
+                <div class="stars">★★★★☆</div>
+                <p>Small inside. Go before 9 or take it to Kestrel Fields, five minutes up the road.</p>
+              </div>
+            </div>
+
+            <div class="rule"></div>
+            <button class="btn alt"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add a photo or review</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">
+      <span class="step">Loop step: Decide</span>
+      <h3>Place page</h3>
+      <p>A pin's full state. "What's on here" is what stops this being a directory entry — the place is a container for scheduled things, and those things are what pull the pin into pink on the map.</p>
+      <p class="omit">Not here on purpose: Directions (Stage Four), booking a seat (Stage Three), ordering (Stage Five). The cupping session row leads to an event page, nothing further.</p>
+    </div>
+  </div>
+
+  <!-- ================= SCREEN 3 : CLUB ================= -->
+  <div class="slot">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="scroll">
+          <div class="hero h-club">
+            <div class="back"><svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg></div>
+            <h2>Northside<br>Run Club</h2>
+          </div>
+          <div class="pad">
+            <div class="cat" style="margin-bottom:14px">Activity club · Running · All paces</div>
+
+            <div class="nextsession">
+              <div class="sechead" style="margin:0">Next session</div>
+              <div class="when">Thursday, 6:30 pm</div>
+              <div class="meta">5 KM LOOP · MEET AT THE KESTREL FIELDS GATE</div>
+              <div class="minimap">
+                <svg viewBox="0 0 300 92" preserveAspectRatio="none" aria-hidden="true">
+                  <rect width="300" height="92" fill="#E7E8E1"/>
+                  <path d="M0 20 C60 10 90 40 150 34 S250 8 300 26" stroke="#F4F4EE" stroke-width="11" fill="none"/>
+                  <path d="M110 -5 L124 100" stroke="#F4F4EE" stroke-width="11" fill="none"/>
+                  <path d="M186 -5 L176 100" stroke="#F4F4EE" stroke-width="8" fill="none"/>
+                  <ellipse cx="212" cy="66" rx="52" ry="26" fill="#C2CFAF"/>
+                </svg>
+                <div class="mk"></div>
+              </div>
+            </div>
+
+            <div class="rule"></div>
+
+            <div class="sechead">Regular schedule</div>
+            <ul class="sched">
+              <li><span class="day">Tuesday</span><span class="t">6:30 PM · INTERVALS</span></li>
+              <li><span class="day">Thursday</span><span class="t">6:30 PM · EASY 5K</span></li>
+              <li><span class="day">Sunday</span><span class="t">8:00 AM · LONG RUN</span></li>
+            </ul>
+
+            <div class="rule"></div>
+
+            <div class="sechead">Run by</div>
+            <div class="mcard">
+              <div class="mkey k2"><svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4"/></svg></div>
+              <div>
+                <h5>Devi Raman</h5>
+                <div class="meta">EXPLORER · CLUB MANAGER SINCE 2024</div>
+              </div>
+            </div>
+
+            <div class="rule"></div>
+            <div class="claimstrip" style="background:rgba(43,75,232,.1);border-style:solid">
+              <p><b>Turn up, that's it.</b> No sign-up yet — sessions are open and the meeting point is on the map above.</p>
+              <button class="btn alt">Save this club</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">
+      <span class="step">Loop step: Decide</span>
+      <h3>Club page</h3>
+      <p>A club is a schedule with a meeting point, not a group chat. The recurring sessions are what let the club's pin turn pink on the right evenings without anyone checking in.</p>
+      <p class="omit">Not here on purpose: Membership, attendance counts, club chat, RSVPs. Stage Three. Until then the honest call to action is "turn up" — so that's what it says.</p>
+    </div>
+  </div>
+
+  <!-- ================= SCREEN 4 : PROFILE ================= -->
+  <div class="slot">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="scroll">
+          <div class="profhead">
+            <div class="bigav">A</div>
+            <div>
+              <h2>Ada Kerrigan</h2>
+              <div class="handle">@adak · EXPLORER SINCE 2023</div>
+              <div style="margin-top:9px"><span class="hiddenpill">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A9 9 0 0 1 21 12a17 17 0 0 1-3 3.6M6.2 6.4A17 17 0 0 0 3 12a9 9 0 0 0 12 5.6"/></svg>
+                Hidden on the map
+              </span></div>
+            </div>
+          </div>
+
+          <div class="pad" style="padding-top:14px">
+            <div class="counts">
+              <div><b>88</b><span>Reviews</span></div>
+              <div><b>214</b><span>Photos</span></div>
+              <div><b>41</b><span>Places been</span></div>
+            </div>
+
+            <div class="rule"></div>
+
+            <div class="sechead">You manage</div>
+            <div class="manages">
+              <div class="mcard">
+                <div class="mkey k1"><svg viewBox="0 0 24 24"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M17 10h2a2 2 0 0 1 0 5h-2"/></svg></div>
+                <div>
+                  <h5>Pennyroyal Coffee</h5>
+                  <div class="meta">BUSINESS · VERIFIED BY QR · 2 EVENTS UP</div>
+                </div>
+              </div>
+              <div class="mcard">
+                <div class="mkey k2"><svg viewBox="0 0 24 24"><path d="M4 8h16l-1 3H5L4 8z"/><path d="M5 11v8h14v-8"/><path d="M7 4h10l3 4H4l3-4z"/></svg></div>
+                <div>
+                  <h5>Riverside Night Market</h5>
+                  <div class="meta">EVENT SERIES · MONTHLY · CO-MANAGED</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule"></div>
+
+            <div class="sechead">Who sees what</div>
+            <div class="toggle">
+              <div>
+                <div class="lab">Show what I manage</div>
+                <div class="sub">Your two managed pages appear on your public profile.</div>
+              </div>
+              <div class="sw on"></div>
+            </div>
+            <div class="toggle">
+              <div>
+                <div class="lab">Appear on the public map</div>
+                <div class="sub">Off. Nobody can see where you are. You can turn this on for a set time later.</div>
+              </div>
+              <div class="sw"></div>
+            </div>
+            <div class="toggle">
+              <div>
+                <div class="lab">Show places I've been</div>
+                <div class="sub">Only the ones you reviewed. Visits stay private.</div>
+              </div>
+              <div class="sw on"></div>
+            </div>
+
+            <div class="rule"></div>
+            <button class="btn alt"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M13 13h3v3M20 20h.01M17 20h.01M20 17h.01"/></svg> Scan a QR to claim a place</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">
+      <span class="step">Account model</span>
+      <h3>Explorer profile</h3>
+      <p>One identity. "You manage" is a section on a normal profile, not a different app — Ada's 88 reviews sit above her business. Map visibility is off, stated in plain words, and the top of the profile says so before anything else does.</p>
+      <p class="omit">Every privacy control reads as a sentence about people, not settings. "Nobody can see where you are" beats "Location sharing: disabled."</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================= SYSTEM ================= -->
+<section class="system">
+  <div class="eyebrow">The kit</div>
+  <h2>Three inks, one paper, one black.</h2>
+
+  <div class="sysgrid">
+    <div class="panel">
+      <h4>Palette</h4>
+      <div class="swatches">
+        <div class="sw2 dark" style="background:#E7E8E1"><b>Newsprint</b><span>#E7E8E1</span></div>
+        <div class="sw2 light" style="background:#2B4BE8"><b>Ink blue</b><span>#2B4BE8</span></div>
+        <div class="sw2 light" style="background:#FF3D6E"><b>Ink pink</b><span>#FF3D6E</span></div>
+        <div class="sw2 dark" style="background:#FFC61A"><b>Ink yellow</b><span>#FFC61A</span></div>
+        <div class="sw2 light" style="background:#16181C"><b>Press black</b><span>#16181C</span></div>
+        <div class="sw2 dark" style="background:#BFD1CF"><b>Water</b><span>#BFD1CF</span></div>
+      </div>
+      <p class="spnote" style="margin-top:14px">Land, water and parks stay desaturated so the three inks are the only saturated thing on screen. That's the whole readability strategy.</p>
+    </div>
+
+    <div class="panel specimen">
+      <h4>Type</h4>
+      <p class="sp1">Kestrel Fields</p>
+      <p class="spnote">Archivo, expanded width, 800. Display only — headers and place names. Poster weight, no serif.</p>
+      <p class="sp2">Small inside. Go before 9 or take it to Kestrel Fields, five minutes up the road.</p>
+      <p class="spnote">Instrument Sans. Everything a person wrote — reviews, descriptions, control labels.</p>
+      <p class="sp3">250 M AWAY · OPEN UNTIL 6 · CLAIMED</p>
+      <p class="spnote">Martian Mono, uppercase, tracked. Everything the system measured — distance, time, counts, status.</p>
+    </div>
+
+    <div class="panel">
+      <h4>Pin states</h4>
+      <ul class="key">
+        <li>
+          <span class="keydisc" style="background:#2B4BE8"></span>
+          <div><b>Blue — it exists</b><span>Business, property, park. Position and opening state.</span></div>
+        </li>
+        <li>
+          <span class="keydisc" style="background:#FF3D6E"></span>
+          <div><b>Pink — something is scheduled</b><span>Club session or event. The pin has a time attached.</span></div>
+        </li>
+        <li>
+          <span class="keydisc over" style="background:#2B4BE8"></span>
+          <div><b>Overprint — both</b><span>A place hosting something. The second ink sits misregistered, like a flyer printed twice. This is the signature move.</span></div>
+        </li>
+        <li>
+          <span class="keydisc" style="background:#FFC61A"></span>
+          <div><b>Yellow — an offer is running</b><span>Manager-set, always time-bound, expires itself.</span></div>
+        </li>
+        <li>
+          <span class="keydisc" style="background:#F3F3ED;border-style:dashed"></span>
+          <div><b>Dashed — unclaimed</b><span>An invitation, not an error. Someone can walk in and scan the QR.</span></div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="scoped">
+    <h4>Where this design disagrees with the brief</h4>
+    <ul>
+      <li><b>"Pins carry state" mostly needs Stage Two.</b> Busy, live, taking bookings — none of that is knowable in Stage One. So the pins here carry <b>scheduled</b> state, not live state. Everything pink comes from an event or club page a manager typed in.</li>
+      <li><b>The core loop has no Join or Get There yet.</b> Three of six steps are unbuildable now. Rather than grey out buttons, these screens end at Decide and say what actually happens instead: turn up, save it, walk over.</li>
+      <li><b>Reviews are the only feedback into the map in Stage One.</b> If completed experiences are the metric, the verified-visit review is the only signal you'll have — so the QR scan needs to be the spine of the product, not a claims feature.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var data = {
+    pennyroyal:{n:"Pennyroyal Coffee",m:"CAFÉ · 250 M · CLAIMED",s:"Cupping session here Thursday, 7pm.",st:"Open · hosting",c:"s-open",t:"#D8C9B4"},
+    kestrel:{n:"Kestrel Fields",m:"PARK · 600 M · 18 HECTARES",s:"Open ground, two clubs meet here weekly.",st:"Always open",c:"s-open",t:"#C2CFAF"},
+    runclub:{n:"Northside Run Club",m:"CLUB · MEETS THU 6:30 PM",s:"Easy 5k this Thursday from the Kestrel gate.",st:"Session Thu",c:"s-on",t:"#FF3D6E"},
+    market:{n:"Riverside Night Market",m:"EVENT · SAT 5–11 PM · 1.2 KM",s:"Monthly. 40 stalls along the towpath.",st:"On Saturday",c:"s-on",t:"#FF3D6E"},
+    fenn:{n:"Fenn Court",m:"PROPERTY · 400 M · 6 UNITS",s:"Two ground-floor units listed as vacant.",st:"Listed",c:"s-open",t:"#BFD1CF"},
+    sable:{n:"Sable & Sons Hardware",m:"HARDWARE · 850 M · CLAIMED",s:"Offer ends Sunday: 20% off garden tools.",st:"Offer on",c:"s-offer",t:"#FFC61A"},
+    unclaimed:{n:"Unnamed shopfront",m:"UNCLAIMED · 300 M · ADDED BY 3 EXPLORERS",s:"Nobody manages this yet. Scan the QR inside to claim it.",st:"Unclaimed",c:"s-unclaimed",t:"#E7E8E1"}
+  };
+  var name=document.getElementById('rName'),meta=document.getElementById('rMeta'),
+      sub=document.getElementById('rSub'),st=document.getElementById('rState'),
+      th=document.getElementById('rThumb');
+  document.querySelectorAll('.pin').forEach(function(p){
+    p.addEventListener('click',function(){
+      var d=data[p.dataset.k]; if(!d) return;
+      document.querySelectorAll('.pin').forEach(function(x){x.classList.remove('sel')});
+      p.classList.add('sel');
+      name.textContent=d.n; meta.textContent=d.m; sub.textContent=d.s;
+      st.className='state '+d.c; st.innerHTML='<i></i> '+d.st;
+      th.style.background=d.t;
+    });
+  });
+})();
+</script>
+</body>
+</html>
