@@ -1,3 +1,21 @@
+-- ============================================================================
+-- LEGACY / HISTORICAL ONLY — DO NOT RUN THIS FILE.
+--
+-- This is the original bootstrap sketch from early in the project. It is NOT
+-- the live schema and does not match the database the app actually runs on:
+--
+--   * `users` and `locations` are referenced by zero migrations and zero app
+--     queries — they do not exist in the live database.
+--   * `businesses`, `properties` and `reviews` really do exist, but with far
+--     more columns, plus foreign keys, indexes and RLS policies that are all
+--     missing here. The app selects columns this file does not define.
+--   * Nothing here has row-level security, so running it would create tables
+--     that are readable by anyone.
+--
+-- The authoritative schema is `supabase/migrations/`, applied in filename
+-- order. Kept in the repo only because it documents the original data model.
+-- ============================================================================
+
 CREATE TABLE users (
 id uuid PRIMARY KEY,
 name text,

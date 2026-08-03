@@ -1,0 +1,7 @@
+# Links this repository to its own Supabase project.
+#
+# The-App uses the "Xplorer" project. Guest-book-V3 uses a different project
+# ("Guestbook", ref nyyljcdrmbdavamgcydw) and must not be affected by anything
+# run from this repo — always confirm the ref below before `supabase db push`
+# or any other command that writes to a remote project.
+project_id = "yzpthslwsvesgndzdqai"
