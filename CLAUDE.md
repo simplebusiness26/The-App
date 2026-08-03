@@ -1,0 +1,175 @@
+# Xplorer
+
+## What this app is
+
+A live, interactive map of local life. Not a static map of where places
+are — a map of what is *happening* right now and what a person could
+actually go and do.
+
+**Mission:** make local life visible, connected and accessible.
+
+**Core promise:** open the map and see your local world come alive.
+
+The app should answer, in order:
+1. What is around me?
+2. What is happening now?
+3. Who else is going?
+4. How do I join?
+5. How do I get there?
+
+## What it is not
+
+Not a review app, business directory, event listings site, social feed,
+taxi app or delivery app. Those are layers inside the product. The
+product is the living local map.
+
+If a feature makes sense as a standalone listing page but adds nothing
+to the map, it's probably drifting off-concept. Say so.
+
+## Core loop
+
+See → Decide → Join → Get There → Experience → Share
+
+Every completed experience should feed information back into the map.
+When reviewing or building a feature, ask which step of this loop it
+serves. If it serves none, flag it.
+
+## Current stage: Stage One complete, Stage Two/Three underway
+
+Stage One shipped:
+
+- Explorer profiles
+- Businesses and properties
+- Reviews and photos
+- Claims, ownership and QR-code verification
+- Manager tools
+- Activity club pages
+- Event pages
+- Map discovery (static businesses/properties/clubs only so far — see
+  Phase 1 gap below)
+
+Stage Two/Three also already shipped, ahead of the original staged
+plan: opt-in live check-ins, public Link-ups (with private attendee
+boards/chat), a "Live Nearby" discovery screen, and an Explorer social
+layer (follows, Feed, Moments, likes/comments, leaderboards). These
+were accepted as done rather than rolled back — the staged discipline
+below now applies to what's genuinely still ahead, not to relitigating
+what's already built.
+
+Known structural gap: the "live" data (check-ins, Link-ups, event
+state) lives on a separate `/live` screen and never reaches the main
+map (`app/map.js`), which still only renders static business/property/
+club pins. That contradicts the core promise below and is the highest-
+priority fix — see the alignment plan.
+
+## Later stages (do not build yet)
+
+- **Remaining Three:** deeper club membership/booking flows, reminders
+- **Four:** directions, public transport, taxi partner links
+- **Five:** ordering, ticketing, payments
+- **Six:** the full local operating system
+
+If asked to build something from these, say it's out of scope for now
+and explain what groundwork it needs first.
+
+## Account model
+
+Everyone is an Explorer. There is no separate business account.
+
+Managers of businesses, properties, clubs or events unlock extra tools
+on top of their normal Explorer profile, keeping their social identity
+and reviews. Their profile can optionally surface what they manage.
+
+Do not build parallel user types. One identity, unlocked capabilities.
+
+Known gap: `app/auth/signup.js` currently forces a binary Explorer/
+Manager choice at signup (`profiles.account_type`), which is exactly
+the parallel-user-type model this rule forbids. Fix planned — see the
+alignment plan.
+
+## Privacy principle
+
+The map must be alive without being invasive.
+
+Users always control whether location is shared, who sees it, how
+precise it is, how long a check-in lasts, and whether they appear on
+the public map at all. Location sharing is opt-in, temporary and
+plainly explained.
+
+Visibility states: at this venue / in this general area / attending
+this event / available for a link-up / hidden.
+
+Default to hidden. Never make a person a permanent trackable marker.
+Treat anything touching live location as a safety-critical surface and
+raise concerns rather than quietly implementing.
+
+Not yet audited against this section: whether `live_checkins` and
+`linkups` actually default to hidden, round coordinates for "general
+area" visibility, and expire/clean up reliably. Do that audit before
+extending the live surfaces further.
+
+## Map feel
+
+Places and pins should carry state, not just position — open, busy,
+hosting something, promoting an offer, taking bookings. Clubs signal an
+approaching session. Events move through upcoming, starting soon, live,
+busy, finished.
+
+Playful and readable. Not childish, not cluttered.
+
+## Success metric
+
+Completed local experiences, not downloads or map views. A visit, a
+club session joined, an event attended, a booking finished, a verified
+review left afterwards.
+
+Prefer changes that increase completed experiences over changes that
+increase browsing.
+
+## Working with me
+
+- Read the codebase before proposing changes
+- Be blunt; I want real criticism, not encouragement
+- Point to specific files and lines
+- Ask before adding a new dependency
+- One feature at a time — no broad half-built sweeps
+
+## Project specifics
+
+- **Stack:** Expo + Expo Router (file-based routes) + React Native
+  (plain JS, no TypeScript in the app). Backend is Supabase (Postgres,
+  Auth, Storage, Edge Functions) — no custom server, no REST API layer.
+  `services/supabase.js` is the only client, reads
+  `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+- **Run locally:** `npm install`, then `npx expo start --web` (or
+  `android`/`ios`). On Replit, `bash scripts/replit-start.sh` does a
+  static production build (`expo export --platform web`) served by
+  `scripts/serve-preview.cjs` — not a dev server. See `replit.md` for
+  required secrets.
+- **Run tests:** No unit/integration test framework is installed (no
+  jest, no `__tests__`). CI (`.github/workflows/quality-checks.yml`)
+  runs standalone Node scripts instead: `scripts/verify-*.cjs`, plus
+  `npm audit`, `expo-doctor`, and a production web export. Manual QA is
+  documented as checklists in `docs/*_TEST_PLAN.md`.
+- **Key directories:** `app/` (routes), `components/` (shared UI),
+  `context/` (FeedbackContext, NotificationContext), `hooks/`,
+  `services/supabase.js`, `utils/`, `supabase/migrations/` (the real,
+  authoritative schema — 29+ files), `supabase/functions/` (Edge
+  Functions), `docs/` (feature status + test-plan docs). `database/`
+  is an explicitly-marked legacy stub, not the live schema.
+- **Data sources for places/events:** All from the app's own Supabase
+  Postgres tables (`businesses`, `properties`, `activity_clubs`,
+  `events`, `live_checkins`, `linkups`, etc.) populated via manager/
+  admin tooling and the claim workflow — no external places/events API
+  is integrated.
+- **Known constraints or gotchas:** `businesses`, `properties`,
+  `reviews`, `claims`, and `profiles` are NOT in tracked migrations —
+  they predate migration tracking and were provisioned directly
+  against the live project, so schema changes to them aren't
+  version-controlled like the rest. Older tables have incomplete RLS
+  (flagged in `docs/LINKUPS_LIVE_STATUS.md` as a deferred audit).
+  `app/place.js` and `app/saved.js` are dead/stub screens not linked
+  from any nav. `app/business/dashboard.js` and
+  `app/property/dashboard.js` are unreachable from nav despite being
+  fully implemented. `app/admin/claims.js` and `app/admin/dashboard.js`
+  are duplicate implementations of claims review.
