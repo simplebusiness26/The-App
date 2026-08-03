@@ -125,3 +125,5 @@ increase browsing.
 - **Key directories:**
 - **Data sources for places/events:**
 - **Known constraints or gotchas:**
+
+@RULES.md
