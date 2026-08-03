@@ -290,17 +290,19 @@ render only when `is_admin`, and the review-action screens sit behind unreachabl
 parents — but the routes themselves are not gated, so anything that can navigate
 directly reaches a working Approve/Reject or review-response form.
 
-The database was subsequently checked, and **row-level security does not cover
-them**. On project `yzpthslwsvesgndzdqai` (pinned at `supabase/config.toml:7`),
-`relrowsecurity` is `false` on all five tables these screens touch:
+The database was checked, and at the time of writing **row-level security did
+not cover them**. On project `yzpthslwsvesgndzdqai` (pinned at
+`supabase/config.toml:7`), `relrowsecurity` was `false` on all five tables these
+screens touch. **This has since been fixed** — see the remediation below — but
+the finding is recorded as it stood:
 
-| Table | RLS | Policies |
-|---|---|---|
-| `claims` | off | 4 |
-| `businesses` | off | 4 |
-| `reviews` | off | 1 |
-| `properties` | off | 0 |
-| `profiles` | off | 0 |
+| Table | RLS (then) | Policies (then) | RLS (now) | Policies (now) |
+|---|---|---|---|---|
+| `claims` | off | 4 | **on** | 5 |
+| `businesses` | off | 4 | **on** | 4 |
+| `reviews` | off | 1 | **on** | 5 |
+| `properties` | off | 0 | **on** | 4 |
+| `profiles` | off | 0 | **on** | 4 |
 
 Policies were written — including `Admins can update claims`, which tests
 `profiles.is_admin` exactly as the admin screens assume — but Postgres does not
@@ -335,25 +337,45 @@ policies exist makes it return nothing:
   only their own, an unrelated signed-in user sees none and updates none, and
   `anon` sees none.
 - `supabase/migrations/20260803212705_enable_rls_businesses_properties.sql` —
-  arms `businesses` and `properties`. **Applied**, verified the same way:
-  `anon` still reads all 12 businesses and 3 properties (so `/map` is
-  unaffected), an owner's update reaches only their own rows, an unrelated user
-  changes nothing, an admin reaches everything, and an insert claiming someone
-  else's `owner_id` is refused outright.
-- `supabase/migrations/20260803211733_enable_rls_on_core_tables.sql` — the
-  remaining two, `profiles` and `reviews`. **Not applied.** Run one at a time
-  and re-check the screens listed against each, since an over-strict policy
-  shows up as data missing from a screen rather than an error. Reverting a
-  table is `ALTER TABLE <t> DISABLE ROW LEVEL SECURITY`; the policies can stay.
+  arms `businesses` and `properties`. **Applied**: `anon` still reads all 12
+  businesses and 3 properties (so `/map` is unaffected), an owner's update
+  reaches only their own rows, an unrelated user changes nothing, an admin
+  reaches everything, and an insert claiming someone else's `owner_id` is
+  refused outright.
+- `supabase/migrations/20260803214126_enable_rls_reviews.sql` — arms `reviews`.
+  **Applied**: `anon` reads all 15 published rows, a listing owner's response
+  update reaches their 10, an unrelated user's reaches none. The risk here was
+  the `explorer_reviews` → `reviews` sync trigger; it runs `SECURITY DEFINER` as
+  `postgres` (which holds `rolbypassrls`), and a real review submission was
+  confirmed to still mirror across with RLS on.
+- `supabase/migrations/20260803214309_enable_rls_profiles.sql` — arms
+  `profiles`. **Applied**: a signed-in user sees all 19 profiles and can update
+  exactly one — their own; `anon` sees none, so `email` and `phone` are no
+  longer readable by anyone holding the public key; editing another user's row
+  changes 0 rows; and setting `is_admin` on your own row is **refused outright**
+  with `permission denied for table profiles`.
 
-Until those two are armed, reads on them are still unrestricted — any caller
-with the anon key can read every row, including `profiles.email` and
-`profiles.phone`.
+All five are now armed, and Supabase's linter no longer reports
+`rls_disabled_in_public` or `policy_exists_rls_disabled` against any of them.
 
-One side effect worth recording: 1 business and 2 properties have a null
-`owner_id`, so no `auth.uid()` matches them and only an admin can now edit
-those rows. They were already unreachable through the app, which finds
-listings by `owner_id`.
+Two side effects worth recording:
+
+- 1 business and 2 properties have a null `owner_id`, so no `auth.uid()`
+  matches them and only an admin can now edit those rows. They were already
+  unreachable through the app, which finds listings by `owner_id`.
+- `moments/[id].js:75` and `social-comments/[id].js:52` read the author's
+  profile without an `if (user)` guard, so a signed-out visitor arriving by deep
+  link now gets null. Both render `profile?.full_name || "Explorer"` with an "E"
+  avatar fallback, so they degrade rather than break, and both are only linked
+  from `/feed` and `/profile`, which require a session.
+
+Still open, and deliberately not addressed: `account_type` remains writable, so
+a user can still promote themselves to `manager` and reach
+`/manager/dashboard`. Closing that means moving the signup write server-side.
+Out of scope throughout: `manager_packages` and `manager_subscriptions` are
+still public with RLS off, three `SECURITY DEFINER` views, an anon-executable
+`create_notification`, the listable `review-image` bucket, and leaked-password
+protection being off.
 
 **Layout declarations out of step with the file tree**
 

@@ -1,0 +1,45 @@
+-- Switch row level security on for profiles. Last of the five, and the one
+-- with the widest reach -- 40-odd call sites across app/ and components/.
+--
+-- Depends on 20260803211732_rls_policies_and_grants.sql, which gives this table
+-- select for any signed-in user, insert of your own row, and update of your own
+-- row. That migration also narrowed the UPDATE grant to named columns, leaving
+-- is_admin out; this migration is what makes the row-level half take effect.
+--
+-- WHAT CHANGES: anon loses all access. Every profile read in the app was
+-- checked first, and all of them either sit on a screen that redirects to
+-- /auth/login, or are guarded by an explicit `if (user)` -- index.js:44,
+-- menu.js:22, business/[id].js:66, property/[id].js:66, events/[id].js:47,
+-- activity-clubs/[id].js:69 and qr/[code].js:43 are all inside such a guard.
+-- There are no PostgREST embedded joins on profiles anywhere, so no public
+-- query pulls it in indirectly.
+--
+-- TWO EXCEPTIONS, both benign. moments/[id].js:75 and
+-- social-comments/[id].js:52 read the author's profile unconditionally, so a
+-- signed-out visitor arriving by deep link now gets null back. Both render it
+-- as `profile?.full_name || "Explorer"` with an "E" avatar fallback, so the
+-- screen degrades rather than breaking, and both are only linked from /feed and
+-- /profile, which require a session. Not showing a stranger's name to an
+-- anonymous caller is arguably the better behaviour.
+--
+-- Verified after applying, in rolled-back transactions:
+--
+--   signed-in user   sees all 19 profiles, update touches exactly 1 (their own)
+--   anon             sees 0 profiles -- email and phone are no longer readable
+--                    by anyone holding the public anon key
+--   editing another  user's row       -> 0 rows changed
+--   setting is_admin on their own row -> refused outright, "permission denied
+--                    for table profiles", because is_admin is not in the
+--                    column grant
+--
+-- That last one is the point of the whole exercise. Every admin gate in the app
+-- reads profiles.is_admin, and until now that column was writable by anyone
+-- holding the anon key.
+--
+-- STILL OPEN: account_type remains writable, because auth/signup.js sets it in
+-- its upsert. A user can still promote themselves to "manager", which gates
+-- /manager/dashboard. Closing that means moving the signup write server-side.
+--
+-- To revert: alter table public.profiles disable row level security;
+
+alter table public.profiles enable row level security;

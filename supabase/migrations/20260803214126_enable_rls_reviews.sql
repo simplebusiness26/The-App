@@ -1,0 +1,49 @@
+-- Switch row level security on for reviews (the legacy mirror). Third step.
+--
+-- Depends on 20260803211732_rls_policies_and_grants.sql, which gives this table
+-- five policies: public select of published rows, a wider select for the
+-- author / listing owner / admin, insert by the author, update by the listing
+-- owner or an admin, delete by the author or an admin.
+--
+-- THE RISK HERE WAS THE SYNC TRIGGER. reviews is no longer written by the
+-- client -- ExplorerReviewForm writes explorer_reviews, and
+-- b_explorer_reviews_sync_legacy mirrors each row across by calling
+-- sync_explorer_review_to_legacy. If that function did not bypass RLS, turning
+-- RLS on here would have broken review submission entirely.
+--
+-- It bypasses on two independent grounds, both checked:
+--   - the function is SECURITY DEFINER and owned by postgres, and postgres has
+--     rolbypassrls = true
+--   - reviews is owned by postgres with relforcerowsecurity = false, and RLS
+--     is not applied to a table's owner unless FORCE is set
+--
+-- That was then confirmed the direct way, rather than by reasoning: with RLS
+-- already on, a real non-admin user inserted a row into explorer_reviews and
+-- the mirrored row appeared in reviews. Rolled back, so nothing persisted.
+--
+-- Reads: business/[id].js:53 and property/[id].js:53 both filter
+-- moderation_status = 'published' on screens that render signed out, which the
+-- public policy matches. All 15 existing rows are 'published', so nothing
+-- disappears. business/reviews.js and property/reviews.js select without a
+-- moderation filter, which the listing-owner policy covers -- both screens are
+-- unreachable anyway.
+--
+-- Writes: /business/review-action and /property/review-action set
+-- business_response, challenged and challenge_reason. Neither screen has an
+-- auth check of its own, so this table's update policy is the only thing
+-- standing behind them.
+--
+-- Verified after applying, in rolled-back transactions:
+--
+--   anon                     reads 15 of 15 published rows
+--   listing owner            response update touches their 10 rows
+--   unrelated signed-in user response update touches 0 rows
+--   review submission        explorer_reviews insert still mirrors into reviews
+--
+-- Note 5 of the 15 rows have a null user_id. They stay publicly readable via
+-- the published policy, but only an admin can delete them, since the delete
+-- policy matches on auth.uid() = user_id.
+--
+-- To revert: alter table public.reviews disable row level security;
+
+alter table public.reviews enable row level security;
