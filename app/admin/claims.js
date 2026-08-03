@@ -26,6 +26,8 @@ const [claims,setClaims]=useState([]);
 
 const [loading,setLoading]=useState(true);
 
+const [metrics,setMetrics]=useState([]);
+
 const colors=useColors();
 
 const insets=useSafeAreaInsets();
@@ -37,7 +39,28 @@ useEffect(()=>{
 
 loadClaims();
 
+loadMetrics();
+
 },[]);
+
+
+
+
+async function loadMetrics(){
+
+const {data,error}=await supabase.rpc("get_success_metrics");
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+setMetrics(data || []);
+
+}
 
 
 
@@ -389,6 +412,32 @@ paddingBottom:
 }}
 
 >
+
+
+{
+metrics.length>0 &&
+<View style={[styles.card,{marginBottom:20}]}>
+
+<Text style={styles.title}>📈 Completed Experiences</Text>
+
+<Text style={{color:colors.textSecondary || "#666",marginTop:4,marginBottom:12}}>
+Visits, club sessions joined and verified reviews left -- the metric the
+product vision says matters, not downloads or map views.
+</Text>
+
+{metrics.map(row=>(
+<View key={row.window_label} style={{flexDirection:"row",justifyContent:"space-between",paddingVertical:6}}>
+<Text style={{fontWeight:"600"}}>
+{row.window_label==="last_7_days"?"Last 7 days":row.window_label==="last_30_days"?"Last 30 days":"All time"}
+</Text>
+<Text>
+{row.total_completed_experiences} total · {row.verified_reviews} reviews · {row.linkups_joined} link-ups · {row.activity_rsvps} club RSVPs
+</Text>
+</View>
+))}
+
+</View>
+}
 
 
 {
