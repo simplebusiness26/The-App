@@ -1,0 +1,34 @@
+-- Switch row level security on for claims. First of the five.
+--
+-- Depends on 20260803211732_rls_policies_and_grants.sql, which defines the five
+-- policies this table needs (own-row select, own-row insert, admin select,
+-- admin update, admin delete).
+--
+-- claims went first because it is the lowest-traffic of the five and is read
+-- by only two screens, both admin-only. Before applying, every reference to
+-- the table was checked:
+--
+--   app/admin/claims.js, app/admin/dashboard.js  read all rows -- covered by
+--     the admin policies; 3 of 19 profiles carry is_admin, so the screens
+--     still resolve.
+--   components/ClaimButton.js                    returns early when there is
+--     no session, then filters .eq("user_id", user.id) and inserts with
+--     user_id = user.id.
+--   app/business/edit.js, app/business/reviews.js, app/property/edit.js,
+--   app/property/reviews.js, app/property/dashboard.js
+--     all filter .eq("user_id", user.id).
+--
+-- No signed-out path reads claims, so losing anon access costs nothing.
+--
+-- Verified after applying, by impersonating real users in rolled-back
+-- transactions (set local role + request.jwt.claims):
+--
+--   admin              sees 2 of 2 rows, update touches 2 rows
+--   claim owner        sees their own 2 rows
+--   unrelated user     sees 0 rows, update touches 0 rows
+--   anon               sees 0 rows
+--
+-- To revert: alter table public.claims disable row level security;
+-- The policies can stay -- they simply stop being evaluated.
+
+alter table public.claims enable row level security;

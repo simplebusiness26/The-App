@@ -29,8 +29,8 @@ alter table public.businesses enable row level security;
 -- /map, /property/:id, /property/add, /property/edit/:id, /manager/dashboard
 alter table public.properties enable row level security;
 
--- /admin/claims, /admin/dashboard
-alter table public.claims enable row level security;
+-- claims is NOT here -- it was armed separately and is already live, see
+-- 20260803212021_enable_rls_claims.sql.
 
 -- /business/:id and /property/:id review lists, plus leaving a review end to
 -- end via /business/review/:id -- that path writes explorer_reviews and

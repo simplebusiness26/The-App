@@ -329,15 +329,21 @@ policies exist makes it return nothing:
   the `UPDATE` column grant, so it can no longer be written through the API by
   anyone. That closes the escalation path. The policies themselves are still
   inert, because RLS remains off.
-- `supabase/migrations/20260803211733_enable_rls_on_core_tables.sql` — the five
-  `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` statements that make the policies
-  take effect. **Not applied.** This is the user-visible step: run it one table
-  at a time and re-check the screens listed against each, since an over-strict
-  policy shows up as data missing from a screen rather than an error. Reverting
-  a table is `ALTER TABLE <t> DISABLE ROW LEVEL SECURITY`; the policies can stay.
+- `supabase/migrations/20260803212021_enable_rls_claims.sql` — arms `claims`.
+  **Applied**, and verified by impersonating real users in rolled-back
+  transactions: an admin sees all rows and can update them, a claim owner sees
+  only their own, an unrelated signed-in user sees none and updates none, and
+  `anon` sees none.
+- `supabase/migrations/20260803211733_enable_rls_on_core_tables.sql` — the
+  remaining four `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` statements
+  (`profiles`, `businesses`, `properties`, `reviews`). **Not applied.** This is
+  the user-visible step: run it one table at a time and re-check the screens
+  listed against each, since an over-strict policy shows up as data missing
+  from a screen rather than an error. Reverting a table is
+  `ALTER TABLE <t> DISABLE ROW LEVEL SECURITY`; the policies can stay.
 
-Until the second migration runs, reads on these tables are still unrestricted —
-any caller with the anon key can read every row, including `profiles.email` and
+Until those four are armed, reads on them are still unrestricted — any caller
+with the anon key can read every row, including `profiles.email` and
 `profiles.phone`.
 
 **Layout declarations out of step with the file tree**
