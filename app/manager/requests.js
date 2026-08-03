@@ -94,18 +94,6 @@ export default function ManagerRequests(){
       return;
     }
 
-    const {data:profile,error:profileError}=await supabase
-      .from("profiles")
-      .select("account_type")
-      .eq("id",user.id)
-      .single();
-
-    if(profileError || profile?.account_type!=="manager"){
-      setError("A manager account is required to open the Action Centre.");
-      setLoading(false);
-      return;
-    }
-
     const {data:clubRows,error:clubError}=await supabase
       .from("activity_clubs")
       .select("id,name,category,location,member_limit,status")

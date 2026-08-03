@@ -63,8 +63,7 @@ export default function PropertyDetails(){
     setReviews(reviewsResult.data || []);
 
     if(user){
-      const {data:profile}=await supabase.from("profiles").select("account_type").eq("id",user.id).maybeSingle();
-      setCanClaim(profile?.account_type==="manager");
+      setCanClaim(true);
       setIsOwner(propertyResult.data.owner_id===user.id);
     }else{
       setCanClaim(false);

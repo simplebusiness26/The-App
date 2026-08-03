@@ -81,8 +81,8 @@ export default function ManagerDashboard(){
   const [error,setError]=useState("");
   const [user,setUser]=useState(null);
   const [capabilities,setCapabilities]=useState({
-    businesses_status:"active",
-    properties_status:"active",
+    businesses_status:"inactive",
+    properties_status:"inactive",
     activity_clubs_status:"inactive",
     events_status:"inactive"
   });
@@ -111,18 +111,6 @@ export default function ManagerDashboard(){
     }
 
     setUser(currentUser);
-
-    const {data:profile,error:profileError}=await supabase
-      .from("profiles")
-      .select("account_type")
-      .eq("id",currentUser.id)
-      .single();
-
-    if(profileError || profile?.account_type!=="manager"){
-      setError("A manager account is required to open this dashboard.");
-      setLoading(false);
-      return;
-    }
 
     const [
       capabilityResult,
