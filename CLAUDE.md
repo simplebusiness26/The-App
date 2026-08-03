@@ -127,3 +127,7 @@ increase browsing.
 - **Known constraints or gotchas:**
 
 @RULES.md
+@privacy-reviewer.md
+@scope-warden.md
+@designer.md
+@design-system.md
