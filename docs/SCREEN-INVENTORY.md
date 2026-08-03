@@ -281,7 +281,7 @@ approve/reject ownership claims, and each is reached from a different place — 
 menu links to the former, the `⚙️` button on `/` to the latter. Nothing in the code
 distinguishes their responsibilities.
 
-**No in-screen auth check on four sensitive routes**
+**No in-screen auth check on four sensitive routes — and nothing behind them either**
 
 `app/admin/claims.js`, `app/admin/dashboard.js`, `app/business/review-action.js`
 and `app/property/review-action.js` contain no `auth.getUser()` call, no
@@ -290,10 +290,40 @@ render only when `is_admin`, and the review-action screens sit behind unreachabl
 parents — but the routes themselves are not gated, so anything that can navigate
 directly reaches a working Approve/Reject or review-response form.
 
-Whether that is exploitable depends on row-level security in Supabase, **which I
-did not examine**. The claim here is narrow and specific: there is no client-side
-gate in these four files. Confirming or dismissing the risk means reading the RLS
-policies on `claims` and the review tables, which is a separate exercise.
+The database was subsequently checked, and **row-level security does not cover
+them**. On project `yzpthslwsvesgndzdqai` (pinned at `supabase/config.toml:7`),
+`relrowsecurity` is `false` on all five tables these screens touch:
+
+| Table | RLS | Policies |
+|---|---|---|
+| `claims` | off | 4 |
+| `businesses` | off | 4 |
+| `reviews` | off | 1 |
+| `properties` | off | 0 |
+| `profiles` | off | 0 |
+
+Policies were written — including `Admins can update claims`, which tests
+`profiles.is_admin` exactly as the admin screens assume — but Postgres does not
+evaluate policies on a table whose RLS is disabled, so none of them apply.
+Supabase's linter reports this as `rls_disabled_in_public` and
+`policy_exists_rls_disabled`. The second project, `nyyljcdrmbdavamgcydw`, is
+configured identically, so this is not one stale copy.
+
+Both `anon` and `authenticated` hold `SELECT, INSERT, UPDATE, DELETE, TRUNCATE`
+on all five tables. Because the anon key is public by design — it sits in
+`.github/workflows/build-apk.yml:25` and is inlined into every shipped bundle —
+the client screens are not the meaningful control surface: the PostgREST
+endpoint is reachable directly, and whether a screen calls `getUser()` makes no
+difference to a caller who never opens the app.
+
+The sharpest edge is `profiles`: RLS off, zero policies, `anon` UPDATE, and
+`is_admin` is a column on it. Every other admin gate in the app depends on a
+flag that is writable without authentication.
+
+A remediation migration is drafted at
+`supabase/migrations/20260803210000_enable_rls_on_core_tables.sql`. It defines
+policies and tightens grants first and enables RLS last, because arming a table
+before its policies exist makes it return nothing. **It has not been applied.**
 
 **Layout declarations out of step with the file tree**
 
