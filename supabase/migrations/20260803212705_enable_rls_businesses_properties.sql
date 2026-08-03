@@ -1,0 +1,49 @@
+-- Switch row level security on for businesses and properties. Second step.
+--
+-- Depends on 20260803211732_rls_policies_and_grants.sql, which gives both
+-- tables the same four policies: public select, insert where
+-- auth.uid() = owner_id, and update/delete for the owner or an admin.
+--
+-- These two go together because they are the same shape -- both are public
+-- listings edited by their owner and reassigned by an admin on claim approval.
+--
+-- Checked before applying:
+--
+--   Reads are all plain selects (map.js, PlacesList.js, business/[id].js,
+--   property/[id].js, manager/dashboard.js, checkins/create.js, guest/[id].js)
+--   and /map renders signed out, so the public select policy has to hold for
+--   anon. It does -- verified below.
+--
+--   Writes are owner-scoped or admin: business/add.js and property/add.js
+--   insert with owner_id = user.id; business/edit/[id].js and
+--   property/edit/[id].js update and delete their own row; admin/claims.js
+--   reassigns owner_id on approval, which is why the update policy admits
+--   admins as well as owners.
+--
+--   No database function or trigger writes to either table -- checked by
+--   scanning every function body in the public schema for writes to them. The
+--   rating and review_count columns on businesses are not maintained by a
+--   trigger, so nothing runs as a non-owner and gets refused.
+--
+-- Verified after applying, by impersonating real users in transactions that
+-- were rolled back:
+--
+--   anon              reads 12 of 12 businesses, 3 of 3 properties
+--   listing owner     update touches their 10 businesses, not the other 2
+--   unrelated user    update touches 0 businesses, 0 properties
+--   admin             update touches all 12 and all 3
+--   unrelated user    insert with own owner_id      -> allowed
+--   unrelated user    insert with someone else's id -> refused by the policy
+--
+-- NOTE: 1 business and 2 properties have owner_id null. Nothing matches
+-- auth.uid() on those rows, so from now on only an admin can edit them. They
+-- were already uneditable through the app, which finds listings by owner_id,
+-- so this changes nothing in practice -- but it is worth knowing before
+-- someone wonders why a listing cannot be claimed and edited.
+--
+-- To revert:
+--   alter table public.businesses disable row level security;
+--   alter table public.properties disable row level security;
+
+alter table public.businesses enable row level security;
+alter table public.properties enable row level security;

@@ -23,14 +23,10 @@ begin;
 -- /connections/:id, and the is_admin lookup behind the cog on /
 alter table public.profiles enable row level security;
 
--- /map, /business/:id, /business/add, /business/edit/:id, /manager/dashboard
-alter table public.businesses enable row level security;
-
--- /map, /property/:id, /property/add, /property/edit/:id, /manager/dashboard
-alter table public.properties enable row level security;
-
--- claims is NOT here -- it was armed separately and is already live, see
--- 20260803212021_enable_rls_claims.sql.
+-- claims, businesses and properties are NOT here -- they were armed separately
+-- and are already live, see 20260803212021_enable_rls_claims.sql and
+-- 20260803212705_enable_rls_businesses_properties.sql. Only profiles and
+-- reviews remain.
 
 -- /business/:id and /property/:id review lists, plus leaving a review end to
 -- end via /business/review/:id -- that path writes explorer_reviews and

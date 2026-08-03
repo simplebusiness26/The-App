@@ -330,21 +330,30 @@ policies exist makes it return nothing:
   anyone. That closes the escalation path. The policies themselves are still
   inert, because RLS remains off.
 - `supabase/migrations/20260803212021_enable_rls_claims.sql` — arms `claims`.
-  **Applied**, and verified by impersonating real users in rolled-back
+  **Applied**, verified by impersonating real users in rolled-back
   transactions: an admin sees all rows and can update them, a claim owner sees
   only their own, an unrelated signed-in user sees none and updates none, and
   `anon` sees none.
+- `supabase/migrations/20260803212705_enable_rls_businesses_properties.sql` —
+  arms `businesses` and `properties`. **Applied**, verified the same way:
+  `anon` still reads all 12 businesses and 3 properties (so `/map` is
+  unaffected), an owner's update reaches only their own rows, an unrelated user
+  changes nothing, an admin reaches everything, and an insert claiming someone
+  else's `owner_id` is refused outright.
 - `supabase/migrations/20260803211733_enable_rls_on_core_tables.sql` — the
-  remaining four `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` statements
-  (`profiles`, `businesses`, `properties`, `reviews`). **Not applied.** This is
-  the user-visible step: run it one table at a time and re-check the screens
-  listed against each, since an over-strict policy shows up as data missing
-  from a screen rather than an error. Reverting a table is
-  `ALTER TABLE <t> DISABLE ROW LEVEL SECURITY`; the policies can stay.
+  remaining two, `profiles` and `reviews`. **Not applied.** Run one at a time
+  and re-check the screens listed against each, since an over-strict policy
+  shows up as data missing from a screen rather than an error. Reverting a
+  table is `ALTER TABLE <t> DISABLE ROW LEVEL SECURITY`; the policies can stay.
 
-Until those four are armed, reads on them are still unrestricted — any caller
+Until those two are armed, reads on them are still unrestricted — any caller
 with the anon key can read every row, including `profiles.email` and
 `profiles.phone`.
+
+One side effect worth recording: 1 business and 2 properties have a null
+`owner_id`, so no `auth.uid()` matches them and only an admin can now edit
+those rows. They were already unreachable through the app, which finds
+listings by `owner_id`.
 
 **Layout declarations out of step with the file tree**
 
