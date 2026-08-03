@@ -369,11 +369,26 @@ Two side effects worth recording:
   avatar fallback, so they degrade rather than break, and both are only linked
   from `/feed` and `/profile`, which require a session.
 
+`manager_packages` and `manager_subscriptions` were the last two
+`rls_disabled_in_public` ERRORs and have since been closed as well, by
+`20260803221806_manager_billing_narrow_grants.sql` and
+`20260803221818_enable_rls_manager_billing.sql`. Both are **deny-all**: RLS on,
+no policies. They are the superseded entitlement model — the live manager
+screens use `manager_capabilities` and `manager_capability_requests` — and
+nothing in `app/`, `components/`, `hooks/`, `services/`, `utils/`,
+`supabase/functions/`, any function body or any view reads them. Writing
+owner-scoped policies would have meant inventing an access model for code that
+does not exist. The rows are untouched and still reachable to `service_role` and
+the SQL editor; only the public API surface closed. Verified: `anon`,
+`authenticated` and admin all read 0 rows, writes are refused outright, and 5
+packages / 4 subscriptions remain present service-side.
+
+**The project now reports no `rls_disabled_in_public` errors at all.**
+
 Still open, and deliberately not addressed: `account_type` remains writable, so
 a user can still promote themselves to `manager` and reach
 `/manager/dashboard`. Closing that means moving the signup write server-side.
-Out of scope throughout: `manager_packages` and `manager_subscriptions` are
-still public with RLS off, three `SECURITY DEFINER` views, an anon-executable
+Also out of scope: three `SECURITY DEFINER` views, an anon-executable
 `create_notification`, the listable `review-image` bucket, and leaked-password
 protection being off.
 

@@ -1,0 +1,62 @@
+-- Switch row level security on for the manager billing tables, with no
+-- policies -- deny all. Second half of two, and the last two
+-- rls_disabled_in_public ERRORs in the project.
+--
+-- Depends on 20260803221806_manager_billing_narrow_grants.sql, which removed
+-- the write grants. Order is kept for consistency with the five core tables
+-- (20260803211732 then the enable_rls_* migrations) and so each half reverts
+-- independently. The usual hazard behind that split -- arming a table before
+-- its policies exist -- is inverted here: having no policies IS the intent.
+--
+-- WHY DENY-ALL RATHER THAN OWNER-SCOPED POLICIES
+-- Nothing reads these tables. Not app/, components/, hooks/, services/,
+-- utils/ or supabase/functions/; not any function body; not any view. They are
+-- the superseded entitlement model, replaced by manager_capabilities and
+-- manager_capability_requests, which are live and already policied.
+--
+-- Writing owner-scoped policies would mean inventing an access model for code
+-- that does not exist -- guessing whether the package catalogue should be
+-- world-readable, whether a manager may see their own subscription rows,
+-- whether an admin needs a support view. Every one of those answers belongs to
+-- whoever revives billing, decided against the screens they actually build.
+-- Deny-by-default is the honest posture for a dormant table: it cannot leak
+-- what it will not return, and it leaves no policy to be mistaken later for a
+-- deliberate access decision.
+--
+-- WHY THAT IS SAFE
+-- The rows are not destroyed and are not unreachable. RLS constrains the
+-- PostgREST roles; service_role and the SQL editor bypass it, so both tables
+-- stay fully readable and writable for support, migration and reviving the
+-- feature. Confirmed after applying: 5 packages and 4 subscriptions still
+-- present when queried service-side. What closes is the public API surface,
+-- which nothing was using.
+--
+-- public.guestbook_is_admin() is not used here. It is the right helper for an
+-- admin test, but deny-all has no policies and so makes no admin test -- an
+-- admin reaches these tables the same way anyone else does when the feature
+-- returns, through a policy written then.
+--
+-- VERIFIED after applying, impersonating real roles in transactions that were
+-- rolled back (set local role + request.jwt.claims):
+--
+--   anon                    reads      0 packages, 0 subscriptions
+--   authenticated           reads      0 packages, 0 subscriptions
+--     (3ca554a2..., the manager who owns all 4 subscription rows)
+--   admin                   reads      0 packages, 0 subscriptions
+--     (6be5dbce..., guestbook_is_admin() = true)
+--   anon    insert into manager_packages       -> permission denied for table
+--   authenticated delete from manager_subscriptions -> permission denied
+--   service-side count                         -> 5 packages, 4 subscriptions
+--
+-- Advisor re-run afterwards: both rls_disabled_in_public ERRORs are gone, and
+-- no new ERROR or WARN appeared. The three security_definer_view ERRORs are
+-- pre-existing and untouched. Two new rls_enabled_no_policy notices now list
+-- these tables -- level INFO, not ERROR, and the expected signature of
+-- deny-all; favourites, locations, qr_codes and users already carry it.
+--
+-- To revert:
+--   alter table public.manager_packages disable row level security;
+--   alter table public.manager_subscriptions disable row level security;
+
+alter table public.manager_packages enable row level security;
+alter table public.manager_subscriptions enable row level security;

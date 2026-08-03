@@ -1,0 +1,58 @@
+-- Narrow the grants on the manager billing tables. First half of two.
+--
+-- WHY
+-- manager_packages and manager_subscriptions were the last two
+-- rls_disabled_in_public ERRORs from the Supabase linter: both exposed to
+-- PostgREST with relrowsecurity = false, and both holding
+-- SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES for anon *and* authenticated.
+-- manager_packages has 5 rows, manager_subscriptions 4. Anyone with the anon
+-- key -- which ships inlined in every bundle -- could rewrite or empty them.
+--
+-- WHAT THESE TABLES ARE
+-- manager_packages is a catalogue of manager capability tiers: Business,
+-- Property, Activity, Event, Analytics, each with a name and description, all
+-- created 2026-07-31. manager_subscriptions joins profiles.id (manager_id, FK)
+-- to manager_packages.id, with a status and an optional expires_at.
+--
+-- They are the superseded entitlement model. The live manager screens use
+-- manager_capabilities and manager_capability_requests, both of which already
+-- have RLS on with policies. The data backs that up: all 4 subscription rows
+-- belong to a single manager, all status 'active', all expires_at null, and
+-- the pairs are duplicated (Business twice, Property twice) -- seed data from
+-- a model that was replaced rather than a live billing ledger.
+--
+-- CALL SITES CHECKED
+-- Neither table name appears in app/, components/, hooks/, services/, utils/
+-- or supabase/functions/ -- each directory searched individually, all clean.
+-- In the database, no function body and no view definition references either
+-- table (pg_proc filtered to prokind='f' so aggregates do not break
+-- pg_get_functiondef; pg_views scanned by definition). The only mention
+-- anywhere in the repo is a bare `create index` in
+-- 20260802152300_explorer_review_hardening.sql, which carries no logic.
+--
+-- WHAT CHANGES
+-- anon and authenticated both lose INSERT, UPDATE, DELETE, TRUNCATE and
+-- REFERENCES on both tables. SELECT is deliberately left granted: the
+-- companion migration blocks reads at the row level instead, so if these
+-- tables are ever revived a policy alone will switch reads back on, with no
+-- grant change needed.
+--
+-- Note these statements are NOT inert. Policies do nothing until RLS is
+-- enabled, but privileges apply immediately. That is safe here precisely
+-- because nothing reads or writes these tables -- see CALL SITES CHECKED.
+--
+-- VERIFIED after applying, by querying information_schema.role_table_grants:
+--
+--   manager_packages       anon           SELECT, TRIGGER
+--   manager_packages       authenticated  SELECT, TRIGGER
+--   manager_subscriptions  anon           SELECT, TRIGGER
+--   manager_subscriptions  authenticated  SELECT, TRIGGER
+--
+-- To revert:
+--   grant insert, update, delete, truncate, references
+--     on public.manager_packages, public.manager_subscriptions
+--     to anon, authenticated;
+
+revoke insert, update, delete, truncate, references on
+  public.manager_packages, public.manager_subscriptions
+  from anon, authenticated;
