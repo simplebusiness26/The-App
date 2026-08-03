@@ -103,10 +103,22 @@ Default to hidden. Never make a person a permanent trackable marker.
 Treat anything touching live location as a safety-critical surface and
 raise concerns rather than quietly implementing.
 
-Not yet audited against this section: whether `live_checkins` and
-`linkups` actually default to hidden, round coordinates for "general
-area" visibility, and expire/clean up reliably. Do that audit before
-extending the live surfaces further.
+Audited 2026-08-03. What already holds up: check-ins are opt-in only
+(no passive tracking), expire on their own (15min-4hr, enforced
+server-side), are capped at one active check-in per user, and
+coordinates are rounded to ~3 decimal places before storage; blocking
+and reporting both work. `app/checkins/create.js` now defaults new
+check-ins to "Followers" instead of "Public" to match "default to
+hidden."
+
+Real gaps, not yet fixed: the schema only has two visibility values
+(`public`/`followers`) for `live_checkins` and `linkups` -- there is no
+"in this general area" (coarser precision) tier and no true "hidden"
+state distinct from simply not checking in. `create_linkup` also
+defaults visibility to `public` server-side when unspecified, which
+the quick-create UI relies on. Building the full five-state visibility
+model is a real feature addition, not a defaults fix -- treat it as its
+own scoped piece of work before Live/Link-ups go further.
 
 ## Map feel
 
