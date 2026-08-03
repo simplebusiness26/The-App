@@ -3,8 +3,18 @@ import {StyleSheet,View,TextInput,Pressable,Text,ScrollView} from "react-native"
 import MapView,{Marker} from "react-native-maps";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
+import PlacesList from "../components/PlacesList";
+
+const GOOGLE_MAPS_API_KEY=process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 export default function MapScreen(){
+  if(!GOOGLE_MAPS_API_KEY){
+    return <PlacesList header={<Text style={styles.fallbackTitle}>🗺️ Guestbook Map</Text>}/>;
+  }
+  return <NativeMap/>;
+}
+
+function NativeMap(){
   const [businesses,setBusinesses]=useState([]);
   const [properties,setProperties]=useState([]);
   const [activityClubs,setActivityClubs]=useState([]);
@@ -94,5 +104,5 @@ export default function MapScreen(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1},map:{flex:1},top:{position:"absolute",top:18,width:"100%",zIndex:10,padding:10},search:{backgroundColor:"white",padding:15,borderRadius:10,borderWidth:1,borderColor:"#ddd"},filters:{marginTop:9,maxHeight:44},filterButton:{backgroundColor:"white",paddingHorizontal:13,paddingVertical:10,marginRight:7,borderRadius:20,borderWidth:1,borderColor:"#ddd"},selectedFilter:{backgroundColor:"#222",borderColor:"#222"},filterText:{fontWeight:"600"},selectedFilterText:{color:"white",fontWeight:"bold"}
+  container:{flex:1},map:{flex:1},top:{position:"absolute",top:18,width:"100%",zIndex:10,padding:10},search:{backgroundColor:"white",padding:15,borderRadius:10,borderWidth:1,borderColor:"#ddd"},filters:{marginTop:9,maxHeight:44},filterButton:{backgroundColor:"white",paddingHorizontal:13,paddingVertical:10,marginRight:7,borderRadius:20,borderWidth:1,borderColor:"#ddd"},selectedFilter:{backgroundColor:"#222",borderColor:"#222"},filterText:{fontWeight:"600"},selectedFilterText:{color:"white",fontWeight:"bold"},fallbackTitle:{fontSize:30,fontWeight:"bold"}
 });
