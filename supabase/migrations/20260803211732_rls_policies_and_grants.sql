@@ -1,4 +1,5 @@
--- Enable row level security on the five core tables, and give them policies.
+-- Define row level security policies for the five core tables, and narrow the
+-- grants on them. Does NOT switch RLS on -- that is the companion migration.
 --
 -- WHY
 -- businesses, claims, profiles, properties and reviews all had
@@ -15,15 +16,25 @@
 -- zero policies, anon UPDATE, and is_admin is a column on it.
 --
 -- ORDER MATTERS
--- Every section below defines policies and tightens grants FIRST and enables
--- RLS LAST (section 7). Enabling RLS on a table with no policy makes it return
--- nothing, so arming before the policies exist would take the app down.
+-- This migration only defines policies and tightens grants. Switching RLS on
+-- is a separate migration (20260803211733_enable_rls_on_core_tables.sql),
+-- because enabling RLS on a table with no policy makes it return nothing --
+-- arming before the policies exist would take the app down.
 --
--- ROLLING OUT INCREMENTALLY
--- Sections 1-6 are safe to apply on their own: with RLS still off they change
--- no behaviour, they only prepare. Then run section 7 one ALTER at a time and
--- check the screens listed against each table. To back a table out, just
--- ALTER TABLE <t> DISABLE ROW LEVEL SECURITY -- the policies can stay.
+-- WHAT THIS ONE DOES AND DOES NOT CHANGE
+-- The policies are inert until RLS is enabled, so they change nothing on their
+-- own. The GRANT/REVOKE statements are NOT inert -- privileges apply whether or
+-- not RLS is on -- so section 6 and the column grant in section 1 do take
+-- effect immediately. Their impact was checked against the app first:
+--   - anon loses write access to all five tables. No signed-out code path
+--     writes to any of them; auth/signup.js guards its profiles upsert behind
+--     `if (data.user && !data.session) return;`, so that write always runs
+--     authenticated.
+--   - authenticated profile UPDATE is narrowed to named columns. Those are
+--     exactly the ones auth/signup.js and profile/edit.js send, plus id so the
+--     signup upsert works on either the insert or the conflict path.
+--   - is_admin is left out, which is the point: it stops being writable through
+--     the API at all.
 --
 -- NOT COVERED HERE
 -- manager_packages and manager_subscriptions are also public with RLS off, and
@@ -101,7 +112,7 @@ create policy "Admins can read all profiles"
 -- Column-level grants: RLS decides which ROWS, these decide which COLUMNS.
 revoke update on public.profiles from anon, authenticated;
 grant update (
-  full_name, email, phone, bio, profile_photo,
+  id, full_name, email, phone, bio, profile_photo,
   account_type, area, show_area, leaderboard_opt_in
 ) on public.profiles to authenticated;
 
@@ -285,31 +296,17 @@ revoke insert, update, delete on
 
 -- Re-grant the column-scoped profile UPDATE dropped by the blanket revoke above.
 grant update (
-  full_name, email, phone, bio, profile_photo,
+  id, full_name, email, phone, bio, profile_photo,
   account_type, area, show_area, leaderboard_opt_in
 ) on public.profiles to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 7. Arm it
+-- Arming RLS is deliberately NOT in this migration
 -- ---------------------------------------------------------------------------
--- Run these one at a time if rolling out incrementally. Screens to re-check
--- after each:
---
---   profiles    -> /auth/signup, /profile, /profile/edit, /explorers,
---                  /leaderboards, /connections/:id, and the admin gate on /
---   businesses  -> /map, /business/:id, /business/add, /business/edit/:id,
---                  /manager/dashboard
---   properties  -> /map, /property/:id, /property/add, /property/edit/:id,
---                  /manager/dashboard
---   claims      -> /admin/claims, /admin/dashboard
---   reviews     -> /business/:id, /property/:id (review lists), and leaving a
---                  review end to end via /business/review/:id
-
-alter table public.profiles    enable row level security;
-alter table public.businesses  enable row level security;
-alter table public.properties  enable row level security;
-alter table public.claims      enable row level security;
-alter table public.reviews     enable row level security;
+-- The ALTER TABLE ... ENABLE ROW LEVEL SECURITY statements live in
+-- 20260803211733_enable_rls_on_core_tables.sql so they can be applied
+-- separately, one table at a time, and reverted without unpicking any of the
+-- above. Until that migration runs, the policies defined here are inert.
 
 commit;
 
