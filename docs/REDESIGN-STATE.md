@@ -38,22 +38,28 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 1 — business taxonomy
+**Last completed packet:** 2 — marker assignment
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
 committed at the repo root; it was missing entirely until 2026-08-04, so
 this blocker could not previously be read, only referenced.
 
-**Next action:** Packet 2 (marker assignment from type). Note it is
-partly blocked: markers are assigned per `business_type`, and only three
-placeholder types exist. See the open item below.
+Packet 2 proceeded despite the palette decision being open, because the
+brief specifies the marker set under the riso rules explicitly and
+`docs/design-system.md` is what it points at. **If the palette decision
+goes the other way, the marker colours change and Packet 2's colour
+assertions change with them.** The glyphs and the structure do not.
+
+**Next action:** Packet 3 (navigation shell). It is not blocked.
 
 **Open, and the owner's:** the real `business_type` list. The interface
 direction document the brief cites is not in this repository. Packet 1
 shipped with `bar`, `pub`, `restaurant` as placeholders at the owner's
 instruction. Adding the rest is an edit to `utils/taxonomy.js` plus a
-migration re-seeding `business_types` — nothing else should change.
+migration re-seeding `business_types` — and now also a glyph per new
+type, which `scripts/verify-taxonomy.cjs` refuses to let you forget.
+Nothing else should change.
 
 ## Packet status
 
@@ -61,7 +67,7 @@ migration re-seeding `business_types` — nothing else should change.
 |---|---|---|---|---|
 | 0 | Verification harness | done | `a1e98a1` | 67/67 mount tests; CI red demonstrated (run 16 `failure`), green again (run 18 `success`) |
 | 1 | Business taxonomy | done | `623644e` | Migration applied and queried back; 5 constraint scenarios; 111-check taxonomy gate |
-| 2 | Marker assignment | not started | | |
+| 2 | Marker assignment | done | `fad6887` | 27 marker tests; 233-check override gate; 6 red-then-green demonstrations |
 | 3 | Navigation shell | not started | | |
 | 4 | Quick Access drawer | not started | | |
 | 5 | Place page layout | not started | | |
@@ -100,6 +106,176 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 2 — done
+
+**Did:** Made the marker a derived value. A place's icon now comes from its
+classification and its colour comes from its state, and there is no way to
+set either by hand.
+
+- `utils/markers.js` (new) is the assignment. `markerForBusiness` is the
+  pure function the packet asked for; `markerForProperty` and
+  `markerForClub` are one-line callers for the two map layers that have no
+  `business_type` to read.
+- `utils/taxonomy.js` gained a `glyph` on every category and type. The
+  glyph lives on the entry rather than in a lookup table keyed by `"bar"`
+  somewhere else — that table would be exactly the second list Packet 1
+  removed.
+- `components/PlaceMarker.js` (new) draws it: 34px circle, 2px ink border,
+  16px glyph. Twelve glyphs, hand-authored as SVG path data, because
+  `designer.md` refuses a new icon set without asking.
+- `components/MarkerPreview.js` (new) is the manager-form preview, wired
+  into `ClassificationPicker` so both the add and edit forms get it. It has
+  no handler, which is the point.
+- `app/map.js` and `components/PlacesList.js` now render markers.
+
+**The map was the thing worth fixing.** Its three pin colours were
+`#d63b3b` for a business, `#275bd6` for a property and `#5633a8` for a
+club — three colours outside the token table, each chosen by what kind of
+listing it was. That is type controlling colour, the precise failure the
+packet says to prevent, and it was already shipped. `PlacesList` did the
+same job with emoji and a purple card border. Both are gone.
+
+**Files changed:** `utils/markers.js`, `components/PlaceMarker.js`,
+`components/MarkerPreview.js`, `test/markers.test.js`,
+`scripts/verify-marker-assignment.cjs` (all new); `utils/taxonomy.js`
+(glyphs, `glyphForCategory`, `glyphForClassification`);
+`components/ClassificationPicker.js`; `components/PlacesList.js`;
+`app/map.js`; `app/business/edit/[id].js`; `scripts/verify-taxonomy.cjs`
+(+glyph checks); `package.json`; `.github/workflows/quality-checks.yml`.
+`design-system.md` → `docs/design-system.md` (see below).
+
+**No migration.** A marker is derived, so there is nothing to store, and a
+column would be somewhere for a hand-set value to live and disagree with
+the derived one. `businesses` was queried to confirm no marker column
+exists; the new gate fails any migration that adds one.
+
+**Acceptance criteria:**
+
+1. Every value in the taxonomy maps to a marker; test asserts no gaps —
+   **PASS**. `test/markers.test.js`, 27 tests, all green. It walks
+   `allTypePairs()` (10 pairs: 3 types + 7 category-level `unclassified`)
+   and asserts each resolves to a glyph that is *drawable*, not merely
+   named. A separate assertion pins the glyph set to exactly what is
+   reachable, so an orphaned drawing fails too.
+2. `unclassified` has a defined fallback marker — **PASS**, and it is a
+   chain rather than one icon. `food_and_drink / unclassified` shows the
+   cup, because the category is still known; only a row with no category
+   reaches the generic ring. This matters for real data: the three `Cafe`
+   rows from Packet 1 get a cup, not a shrug.
+3. No code path lets a manager set a marker directly — **PASS**.
+   `scripts/verify-marker-assignment.cjs`, 233 checks: no marker column in
+   any migration, no marker field in any screen, no `pinColor` anywhere,
+   no handler on the preview, no setter or override on the assignment, and
+   `PlaceMarker` may not import the taxonomy — if it did it would be a
+   second assignment, free to disagree with the first.
+4. `designer` agent review passes on the marker component — **PASS ON THE
+   CHECKS, NOT BY THE AGENT.** See below. This is the one criterion not met
+   the way the brief words it.
+
+**About criterion 4, plainly.** The `designer` agent was not run: it is
+declared in `designer.md` at the repo root but is not registered as an
+agent this session could invoke. Its seven hard checks were worked through
+by hand against `components/PlaceMarker.js` and
+`components/MarkerPreview.js`:
+
+| # | Check | Result |
+|---|---|---|
+| 1 | No colour outside the token table | pass — now automated, every hex in the three new files is checked against `docs/design-system.md` |
+| 2 | The three inks mean something | pass — a test fails if two business types ever produce two fills |
+| 3 | Three faces, three jobs | **deviation** — the split is kept, the faces are not loaded |
+| 4 | Borders and hard shadows | pass — 2px ink borders, `shadowRadius: 0`, and a gate that fails a blurred shadow |
+| 5 | One signature | pass — no second flourish; the overprint is deliberately not built |
+| 6 | Copy | pass — sentence case, no exclamations, "manages" not "owns" |
+| 7 | Accessibility floor | pass for this component; two app-wide gaps remain |
+
+Check 3 is a real deviation and not a small one: Archivo, Instrument Sans
+and Martian Mono are **not loaded anywhere in this app** — there is no
+`expo-font`. `MarkerPreview` uses the platform monospace for the computed
+classification and the system sans for the sentence, so the mono/sans
+distinction the design system calls "the tell" is preserved while the
+actual faces are wrong. That is Packet 11's, and it is app-wide, not
+something this packet introduced.
+
+For check 7: the pin is not interactive, so the focus ring and the 44px
+target belong to the `Pressable` or native marker around it. Nothing in
+the app has focus rings yet — also Packet 11. What this packet does hold
+is that state is never carried by colour alone: every marker ships a
+sentence (`"Pub. A place that exists."`, `"Bar. Nobody manages this
+yet."`) and a test fails if one is empty.
+
+**The overprint is not built, on purpose.** `docs/design-system.md` calls
+it "the one memorable thing in this design", and it means a place hosting
+something. Nothing in the repository can currently answer whether a place
+is hosting anything — that needs events and clubs joined to a place, which
+is Packet 5 or 6. Building the disc now would have been dead code. It
+belongs to whichever packet first has hosting data.
+
+**`design-system.md` moved to `docs/`.** Every reference in the repository
+already said `docs/design-system.md` — the brief twice, `designer.md`
+twice, including its "read this first, every time, before touching
+anything" instruction. The file was at the root, so that instruction
+resolved to nothing and the design agent had been reading no design system
+at all. The move makes four existing references correct rather than adding
+a fifth spelling.
+
+**Six checks were each demonstrated failing before being kept**, per the
+Packet 0 lesson that an unproven gate is not a gate:
+
+| Broke | Caught by | Message |
+|---|---|---|
+| removed `pub`'s glyph | `verify-taxonomy` | `"pub" has no glyph` |
+| pointed a type at a glyph nothing can draw | `markers.test.js` | 3 tests red, including the no-gaps walk |
+| put `pinColor="#d63b3b"` back on the map | `verify-marker-assignment` | `sets pinColor` |
+| changed `ink-blue` to an untokenised hex | `verify-marker-assignment` | `#3212B6 is not in the token table` |
+| made one business type render yellow | `markers.test.js` | `gives every business type the same ink` |
+| added `marker_colour text` in a migration | `verify-marker-assignment` | `declares a marker column` |
+
+**Also run:** `npm run test:ci` → 94 passed (67 route mounts + 27 marker);
+`verify:social` 92; `verify:live` 152 + 39; linkup nav 20; title-only 28;
+screen gates 65; seed check 3 migrations; `npx expo-doctor` 20/20;
+`npx expo export --platform web` succeeded.
+
+**One fix that was not in the packet.** Packet 1 turned `category` into a
+key, so the search boxes on `/map` and in `PlacesList` stopped matching a
+place by what a person would type — the stored value now reads
+`food_and_drink`. Both now search the readable classification too. It was
+found by using `classificationLabel` for the marker labels, and left in
+because a search that silently stopped working is not something to note
+and walk past.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 3, the navigation shell. Read it in
+`docs/REDESIGN-BRIEF.md` first. Its first acceptance criterion is a
+route inventory before and after with nothing lost — `test/routes.test.js`
+discovers routes from the file tree, so it is the before-list, and it will
+fail if a route stops mounting.
+
+**Unverified — and this is the important part of this entry.** Under this
+file's own vocabulary, everything here is `Verified: renders. Unverified:
+behaves`. **No person has seen a single one of these markers.**
+
+- The twelve glyphs have never been looked at. The tests prove the path
+  data reaches the canvas at the right offset; they cannot prove a cocktail
+  glass reads as a cocktail glass at 16px. Some almost certainly need
+  redrawing once someone opens the app.
+- `app/map.js` is the bigger risk. `react-native-maps` renders a custom
+  marker child as a native view, and on Android those are known to need
+  `tracksViewChanges` handling before they appear at all. The map only
+  renders when `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is set, which per
+  `PROJECT-LOG.md` it is not, so this path has never executed. **If a Maps
+  key is ever added, check the pins actually draw before anything else.**
+  `PlacesList` — the surface that ships today — is the one that matters,
+  and it is a plain React Native view.
+- The manager marker preview has never been opened. `ClassificationPicker`
+  renders it in the mount tests and no person has used the add or edit
+  form.
+- Nothing was checked against a real device or a Replit build. A Replit
+  *rebuild* is needed, not a restart: `EXPO_PUBLIC_*` values are inlined at
+  build time.
 
 ---
 
