@@ -378,9 +378,15 @@ because nothing in the app or the database reads them. See
 `20260803221806_manager_billing_narrow_grants.sql` and
 `20260803221818_enable_rls_manager_billing.sql`.
 
-Out of scope throughout: three `SECURITY DEFINER` views, an anon-executable
-`create_notification`, the listable `review-image` bucket, and leaked-password
-protection being off.
+The three `SECURITY DEFINER` views are closed too. `explorer_profile_stats` and
+`activity_club_stats` are now `security_invoker` views, the latter counting
+approved members through a narrow `SECURITY DEFINER` function so the number a
+signed-out visitor sees stays correct; `activity_session_stats` had no callers
+and was dropped. See `20260804013508_stats_views_respect_caller_rls.sql` and
+`20260804013544_drop_unused_activity_session_stats.sql`.
+
+Out of scope throughout: an anon-executable `create_notification`, the listable
+`review-image` bucket, and leaked-password protection being off.
 
 **Layout declarations out of step with the file tree**
 

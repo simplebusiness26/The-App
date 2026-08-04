@@ -1,0 +1,36 @@
+-- Drop activity_session_stats. Third of the three security_definer_view ERRORs,
+-- and the only one with no callers.
+--
+-- WHY DROP RATHER THAN CONVERT
+-- The name appears nowhere in app/, components/, hooks/, services/, utils/ or
+-- supabase/functions/, and nothing in the database references it either -- no
+-- function body, no other view. It had 2 rows and nothing has ever read them.
+--
+-- Converting it would have been worse than leaving it alone. It counts
+-- activity_session_rsvps rows with status = 'going', and that table's only read
+-- policy is own-rows-or-club-manager. As a security_invoker view its
+-- booking_count would silently become "bookings you personally can see", which
+-- for any ordinary caller is 0 -- a view that returns a plausible wrong number
+-- is a trap for whoever picks it up next. Making it correct would mean the same
+-- SECURITY DEFINER helper that activity_club_stats now uses, which is real work
+-- in service of a view nobody calls.
+--
+-- If session capacity ever needs displaying, rebuild it then, against the
+-- policies in force at the time, following the pattern in
+-- 20260804013508_stats_views_respect_caller_rls.sql.
+--
+-- To revert, recreate it -- the definition as it stood:
+--
+--   create view public.activity_session_stats as
+--   select s.id as session_id,
+--          count(r.id) filter (where r.status = 'going')::integer as booking_count,
+--          greatest(s.capacity - count(r.id) filter (where r.status = 'going'), 0::bigint)::integer
+--            as spaces_remaining
+--     from activity_sessions s
+--     left join activity_session_rsvps r on r.session_id = s.id
+--    group by s.id, s.capacity;
+--
+-- Note that recreating it verbatim reintroduces the ERROR, since it would again
+-- be an owner-privileged view over an RLS-protected table.
+
+drop view if exists public.activity_session_stats;
