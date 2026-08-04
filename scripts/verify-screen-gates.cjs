@@ -118,7 +118,7 @@ check(
 );
 
 // ---------------------------------------------------------------------------
-// 2b. The menu must not empty itself when a profile read fails
+// 2b. The drawer must not empty itself when a profile read fails
 // ---------------------------------------------------------------------------
 // A build that selected a column which did not exist in the database took the
 // eight Explorer links, Manager Dashboard and Admin Dashboard off the menu at
@@ -126,45 +126,71 @@ check(
 // gated entry vanished with nothing shown. The menu is not a security boundary
 // -- each destination re-checks the session and RLS decides the data -- so it
 // must fail open and say so, never fail closed and say nothing.
+//
+// Packet 4 replaced app/menu.js with components/QuickAccessDrawer.js, reading
+// its rows from utils/drawer.js. The checks moved with it rather than being
+// deleted: the defect they were written for is a property of any menu.
 
-const menu=read("app/menu.js");
-const menuCode=readCode("app/menu.js");
+const drawer=read("components/QuickAccessDrawer.js");
+const drawerCode=readCode("components/QuickAccessDrawer.js");
 
 check(
-  menu.includes("maybeSingle()"),
-  "app/menu.js: the profile read must use maybeSingle(), so a missing row is not an error"
+  drawer.includes("maybeSingle()"),
+  "components/QuickAccessDrawer.js: the profile read must use maybeSingle(), so a missing row is not an error"
 );
 check(
-  /if\(error \|\| !data\)\{/.test(menu),
-  "app/menu.js: the profile read must handle both a failed query and a missing row"
+  /profileResult\.error \|\| !profileResult\.data/.test(drawer),
+  "components/QuickAccessDrawer.js: the profile read must handle both a failed query and a missing row"
 );
 check(
-  menu.includes("setNotice("),
-  "app/menu.js: a failed profile read must tell the user, not fail silently"
+  drawer.includes("setNotice("),
+  "components/QuickAccessDrawer.js: a failed profile read must tell the user, not fail silently"
 );
 check(
-  !/is_admin\s*\?\s*"admin"\s*:/.test(menuCode),
-  "app/menu.js: must not collapse is_admin and account_type into one role, which hides every Explorer link from admins"
+  !/is_admin\s*\?\s*"admin"\s*:/.test(drawerCode),
+  "components/QuickAccessDrawer.js: must not collapse is_admin and account_type into one role, which hides every Explorer link from admins"
 );
 
-// The links themselves must stay on the menu. Losing one is how this started.
-contains("app/menu.js",[
-  'router.push("/map")',
-  'router.push("/activity-clubs")',
-  'router.push("/events")',
-  'router.push("/profile")',
-  'router.push("/settings")',
-  'router.push("/live")',
-  'router.push("/linkups")',
-  'router.push("/checkins/create")',
-  'router.push("/feed")',
-  'router.push("/explorers")',
-  'router.push("/scan")',
-  'router.push("/leaderboards")',
-  'router.push("/safety/blocked")',
-  'router.push("/manager/dashboard")'
+// The links themselves must stay reachable. Losing one is how this started.
+// They live in utils/drawer.js now, which is also what test/drawer.test.js
+// asserts against the old menu row by row.
+contains("utils/drawer.js",[
+  'route:"/map"',
+  'route:"/activity-clubs"',
+  'route:"/events"',
+  'route:"/profile"',
+  'route:"/settings"',
+  'route:"/live"',
+  'route:"/linkups"',
+  'route:"/checkins/create"',
+  'route:"/feed"',
+  'route:"/explorers"',
+  'route:"/scan"',
+  'route:"/leaderboards"',
+  'route:"/safety/blocked"',
+  'route:"/manager/dashboard"'
 ]);
 
+// The Manage section is the one with an entitlement behind it, and the
+// entitlement must be the database's answer rather than the client's guess.
+check(
+  /supabase\.rpc\("manages_any_listing"\)/.test(drawerCode),
+  "components/QuickAccessDrawer.js: the Manage section must be decided by the manages_any_listing() RPC"
+);
+
+for(const screen of ["app/business/dashboard.js","app/property/dashboard.js","app/manager/requests.js"]){
+  contains(screen,["useManagerGate","managerGate.allowed"]);
+}
+
+// /manager/dashboard is the on-ramp: it is where an Explorer requests the
+// capability to manage anything. Gating it on already managing something would
+// close the only door in.
+check(
+  !readCode("app/manager/dashboard.js").includes("useManagerGate"),
+  "app/manager/dashboard.js: must not use the manager gate — it is where a non-manager asks to become one"
+);
+
+// ---------------------------------------------------------------------------
 // Nothing may read a profiles column that no migration creates. This is the
 // exact defect: the client asked for is_manager, which existed only in an
 // unapplied migration, so every role-gated entry disappeared.
@@ -173,7 +199,7 @@ const profileColumns=new Set([
   "account_type","is_admin","area","show_area","leaderboard_opt_in"
 ]);
 
-for(const file of ["app/menu.js","app/settings.js","app/profile/edit.js"]){
+for(const file of ["components/QuickAccessDrawer.js","app/settings.js","app/profile/edit.js"]){
   const selects=[...readCode(file).matchAll(/\.from\("profiles"\)\s*\n?\s*\.select\("([^"]+)"\)/g)];
 
   for(const [,columnList] of selects){

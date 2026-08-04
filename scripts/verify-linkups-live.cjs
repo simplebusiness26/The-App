@@ -63,11 +63,11 @@ contains("app/_layout.js",[
   'name="safety/blocked"'
 ]);
 
-contains("app/menu.js",[
-  'router.push("/live")',
-  'router.push("/linkups")',
-  'router.push("/checkins/create")',
-  'router.push("/safety/blocked")'
+contains("utils/drawer.js",[
+  'route:"/live"',
+  'route:"/linkups"',
+  'route:"/checkins/create"',
+  'route:"/safety/blocked"'
 ]);
 
 contains("components/LinkupForm.js",[

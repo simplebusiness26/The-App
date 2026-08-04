@@ -59,9 +59,9 @@ contains("app/_layout.js",[
   'name="social-comments/[id]"'
 ]);
 
-contains("app/menu.js",[
-  'router.push("/feed")',
-  'router.push("/explorers")'
+contains("utils/drawer.js",[
+  'route:"/feed"',
+  'route:"/explorers"'
 ]);
 
 contains("app/feed.js",[

@@ -114,12 +114,23 @@ describe("no route was lost",()=>{
 
   const ADDED=["create","discover"];
 
-  it("keeps every route that existed before",()=>{
-    const missing=BEFORE.filter((route)=>!onDisk.includes(route));
+  // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
+  // old menu page once every link has a new home." Every link did -- that is
+  // what test/drawer.test.js asserts, row by row, against the menu as it was.
+  // Listing the removal here rather than editing BEFORE keeps the deletion
+  // deliberate: a route that vanishes without being named still fails.
+  const REMOVED=["menu"];
+
+  it("keeps every route that existed before, except the one deliberately removed",()=>{
+    const missing=BEFORE.filter((route)=>!onDisk.includes(route) && !REMOVED.includes(route));
     expect(missing).toEqual([]);
   });
 
-  it("adds only the two the packet is allowed to add",()=>{
+  it("removed the routes it said it removed, and no others",()=>{
+    expect(REMOVED.filter((route)=>onDisk.includes(route))).toEqual([]);
+  });
+
+  it("adds only the routes the packets are allowed to add",()=>{
     const unexpected=onDisk.filter((route)=>!BEFORE.includes(route) && !ADDED.includes(route));
     expect(unexpected).toEqual([]);
   });
