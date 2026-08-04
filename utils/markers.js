@@ -180,6 +180,13 @@ function buildMarker({glyph,state,typeSentence,claimed}){
 export const PROPERTY_TYPE_LABEL="Property";
 export const CLUB_TYPE_LABEL="Club";
 
+// Events are not on the map yet -- app/map.js renders businesses, properties
+// and clubs. The label lives here anyway so that when Packet 6 or 7 puts an
+// event on the map it is forced to use the same word the event page shows,
+// rather than inventing a second one. There is deliberately no markerForEvent()
+// until something renders it.
+export const EVENT_TYPE_LABEL="Event";
+
 export function typeLabelForBusiness(business){
   return classificationLabel(business);
 }

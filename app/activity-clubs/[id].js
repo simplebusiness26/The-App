@@ -1,29 +1,27 @@
 import React,{useCallback,useState} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  Alert,
-  Image,
-  Linking
-} from "react-native";
+import {View,Text,TextInput,StyleSheet,Pressable,Alert} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
+import {CLUB_TYPE_LABEL} from "../../utils/markers";
+import {INK} from "../../utils/tokens";
+import PlaceLayout from "../../components/PlaceLayout";
 import FavouriteButton from "../../components/FavouriteButton";
+
+// Packet 5b, and the largest of the five conversions. A club is a place that
+// recurs, so on top of the shared page it carries a membership state machine
+// (none / pending / approved / rejected / removed / left), the sessions it runs
+// and the announcements its manager posts.
+//
+// All of that goes into the layout's beforeReviews slot, in the order it was
+// already in. The membership states are not collapsed into one status card:
+// each says a different thing to a different person, and merging them would
+// lose the difference between "waiting" and "not this time".
 
 function formatDate(value){
   if(!value) return "Date to be confirmed";
   return new Date(value).toLocaleString([],{
-    weekday:"short",
-    day:"numeric",
-    month:"short",
-    hour:"2-digit",
-    minute:"2-digit"
+    weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"
   });
 }
 
@@ -32,15 +30,11 @@ function formatSubmittedDate(value){
   return new Date(value).toLocaleString([],{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 }
 
-function reviewDate(value){
-  if(!value) return "";
-  return new Date(value).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
-}
-
 export default function ActivityClubProfile(){
   const params=useLocalSearchParams();
   const id=Array.isArray(params.id) ? params.id[0] : params.id;
   const {showFeedback}=useFeedback();
+
   const [club,setClub]=useState(null);
   const [stats,setStats]=useState(null);
   const [sessions,setSessions]=useState([]);
@@ -65,20 +59,13 @@ export default function ActivityClubProfile(){
 
     let profileRow=null;
     if(currentUser){
-      const {data}=await supabase
-        .from("profiles")
-        .select("full_name,account_type")
-        .eq("id",currentUser.id)
-        .single();
+      const {data}=await supabase.from("profiles").select("full_name,account_type").eq("id",currentUser.id).single();
       profileRow=data || null;
     }
     setProfile(profileRow);
 
     const {data:clubRow,error:clubError}=await supabase
-      .from("activity_clubs")
-      .select("*")
-      .eq("id",id)
-      .single();
+      .from("activity_clubs").select("*").eq("id",id).single();
 
     if(clubError){
       setError("This activity club could not be loaded.");
@@ -96,16 +83,15 @@ export default function ActivityClubProfile(){
 
     setSessions(sessionResult.data || []);
     setAnnouncements(announcementResult.data || []);
-    setReviews(reviewResult.data || []);
+    // activity_club_reviews names its author column reviewer_name; PlaceReview
+    // renders `name`. Normalised here so one review card serves every place
+    // type instead of one card per table.
+    setReviews((reviewResult.data || []).map((row)=>({...row,name:row.reviewer_name})));
     setStats(statsResult.data || null);
 
     if(currentUser){
       const {data:membershipRow}=await supabase
-        .from("activity_memberships")
-        .select("*")
-        .eq("club_id",id)
-        .eq("user_id",currentUser.id)
-        .maybeSingle();
+        .from("activity_memberships").select("*").eq("club_id",id).eq("user_id",currentUser.id).maybeSingle();
       setMembership(membershipRow || null);
       setApplicationNote(membershipRow?.status==="pending" ? (membershipRow.application_note || "") : "");
     }else{
@@ -135,28 +121,23 @@ export default function ActivityClubProfile(){
     let applyError=null;
 
     if(membership && ["rejected","left","removed"].includes(membership.status)){
-      const result=await supabase
-        .from("activity_memberships")
-        .update({
-          status:"pending",
-          applicant_name:profile?.full_name || "Explorer",
-          application_note:applicationNote.trim(),
-          applied_at:now,
-          decided_at:null,
-          manager_note:""
-        })
-        .eq("id",membership.id);
+      const result=await supabase.from("activity_memberships").update({
+        status:"pending",
+        applicant_name:profile?.full_name || "Explorer",
+        application_note:applicationNote.trim(),
+        applied_at:now,
+        decided_at:null,
+        manager_note:""
+      }).eq("id",membership.id);
       applyError=result.error;
     }else{
-      const result=await supabase
-        .from("activity_memberships")
-        .insert({
-          club_id:id,
-          user_id:user.id,
-          applicant_name:profile?.full_name || "Explorer",
-          application_note:applicationNote.trim(),
-          status:"pending"
-        });
+      const result=await supabase.from("activity_memberships").insert({
+        club_id:id,
+        user_id:user.id,
+        applicant_name:profile?.full_name || "Explorer",
+        application_note:applicationNote.trim(),
+        status:"pending"
+      });
       applyError=result.error;
     }
 
@@ -197,225 +178,237 @@ export default function ActivityClubProfile(){
     ? (reviews.reduce((sum,item)=>sum+Number(item.rating || 0),0)/reviews.length).toFixed(1)
     : null;
 
-  if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#a58cff"/></View>;
-  }
-
-  if(error || !club){
-    return <View style={styles.center}><Text style={styles.errorText}>{error || "Club not found"}</Text></View>;
-  }
-
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {!!club.image_url && <Image source={{uri:club.image_url}} style={styles.heroImage}/>}
-
-      <View style={styles.hero}>
-        <Text style={styles.category}>{club.category}</Text>
-        <Text style={styles.title}>{club.name}</Text>
-        <Text style={styles.location}>📍 {club.location || "Location"}</Text>
-        {!!club.address && <Text style={styles.address}>{club.address}</Text>}
-        <Text style={styles.description}>{club.description}</Text>
-        <Text style={styles.price}>{Number(club.price)>0 ? `£${Number(club.price).toFixed(2)} per session` : "Free to attend"}</Text>
-
-        <View style={styles.statRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{approvedMemberCount}</Text>
-            <Text style={styles.statLabel}>{approvedMemberCount===1 ? "member" : "members"}</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats?.spaces_remaining ?? club.member_limit}</Text>
-            <Text style={styles.statLabel}>spaces left</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{average || "—"}</Text>
-            <Text style={styles.statLabel}>review score</Text>
-          </View>
-        </View>
-
-        <FavouriteButton
-          targetType="activity_club"
-          targetId={club.id}
-          targetName={club.name}
-          targetImageUrl={club.image_url}
-        />
-      </View>
-
-      {isManager && <Pressable style={styles.managerButton} onPress={()=>router.push("/manager/dashboard")}><Text style={styles.buttonText}>Open Manager Dashboard</Text></Pressable>}
-
-      {!isManager && canApply && !clubFull && (
-        <View style={styles.applyBox}>
-          <Text style={styles.applyTitle}>{membership ? "Apply again" : "Request to join"}</Text>
-          <Text style={styles.applyText}>The manager must approve you before you can see or post on the private message board.</Text>
-          <TextInput
-            style={styles.noteInput}
-            placeholder="Optional message to the manager"
-            placeholderTextColor="#85858e"
-            value={applicationNote}
-            onChangeText={setApplicationNote}
-            multiline
-            maxLength={300}
+    <PlaceLayout
+      loading={loading}
+      loadingLabel="Loading activity club..."
+      error={error}
+      name={club?.name}
+      // The word the club's map pin uses. Its own category is a fact about it
+      // and sits in the info rows, the way a business shows its classification.
+      typeLabel={CLUB_TYPE_LABEL}
+      description={club?.description}
+      photos={club?.image_url ? [club.image_url] : []}
+      photosEmptyLabel="No club photo yet"
+      info={[
+        {label:"WHAT",value:club?.category},
+        {label:"WHERE",value:club ? `📍 ${club.location || "Location"}${club.address ? `\n${club.address}` : ""}` : ""},
+        {label:"COST",value:club ? (Number(club.price)>0 ? `£${Number(club.price).toFixed(2)} per session` : "Free to attend") : ""}
+      ]}
+      stats={club ? [
+        {value:approvedMemberCount,label:approvedMemberCount===1 ? "member" : "members"},
+        {value:stats?.spaces_remaining ?? club.member_limit,label:"spaces left"},
+        {value:average || "—",label:"review score"}
+      ] : null}
+      rating={club ? {
+        average,
+        count:reviews.length,
+        favourite:(
+          <FavouriteButton
+            targetType="activity_club"
+            targetId={club.id}
+            targetName={club.name}
+            targetImageUrl={club.image_url}
           />
-          <Pressable style={styles.primaryButton} onPress={applyToJoin} disabled={submitting}>
-            <Text style={styles.buttonText}>{submitting ? "Sending application..." : "Send Join Request"}</Text>
-          </Pressable>
-        </View>
-      )}
+        )
+      } : null}
+      beforeReviews={club ? (
+        <View style={styles.stack}>
+          {isManager && (
+            <Pressable
+              style={styles.primary}
+              accessibilityRole="button"
+              accessibilityLabel="Open the manager dashboard"
+              onPress={()=>router.push("/manager/dashboard")}
+            >
+              <Text style={styles.primaryText}>Open Manager Dashboard</Text>
+            </Pressable>
+          )}
 
-      {!isManager && canApply && clubFull && <View style={styles.fullBox}><Text style={styles.pendingTitle}>Club currently full</Text><Text style={styles.mutedText}>The manager has reached the approved member limit.</Text></View>}
-
-      {!isManager && membership?.status==="pending" && (
-        <View style={styles.submittedBox}>
-          <View style={styles.submittedHeader}>
-            <View style={styles.pendingBadge}><Text style={styles.pendingBadgeText}>PENDING APPROVAL</Text></View>
-            <Text style={styles.submittedIcon}>✓</Text>
-          </View>
-          <Text style={styles.submittedTitle}>Application submitted</Text>
-          <Text style={styles.submittedText}>Waiting for the club manager to approve your request. You’ll get access to the private message board once approved.</Text>
-          {!!membership.applied_at && <Text style={styles.submittedDate}>Sent {formatSubmittedDate(membership.applied_at)}</Text>}
-          {!!membership.application_note && <View style={styles.submittedNoteBox}><Text style={styles.submittedNoteLabel}>Your message</Text><Text style={styles.submittedNoteText}>{membership.application_note}</Text></View>}
-        </View>
-      )}
-
-      {!isManager && membership?.status==="approved" && (
-        <View style={styles.approvedBox}>
-          <View style={styles.approvedBadge}><Text style={styles.approvedBadgeText}>MEMBERSHIP APPROVED</Text></View>
-          <Text style={styles.approvedTitle}>You’re a member</Text>
-          <Text style={styles.approvedText}>Your private message-board access is now active.</Text>
-        </View>
-      )}
-
-      {!isManager && membership?.status==="rejected" && <View style={styles.rejectedBox}><Text style={styles.pendingTitle}>Application not approved</Text><Text style={styles.rejectedText}>You can still view the public club profile and submit another request later.</Text></View>}
-
-      {!isManager && membership?.status==="removed" && (
-        <View style={styles.endedBox}>
-          <View style={styles.endedBadge}><Text style={styles.endedBadgeText}>🚪 MEMBERSHIP ENDED</Text></View>
-          <Text style={styles.endedTitle}>Membership ended</Text>
-          <Text style={styles.endedText}>The club manager has ended your membership. You no longer have access to the private message board, but you can apply again.</Text>
-        </View>
-      )}
-
-      {canOpenBoard && <Pressable style={styles.boardButton} onPress={()=>router.push(`/activity-clubs/message-board/${club.id}`)}><Text style={styles.buttonText}>Open Members’ Message Board</Text></Pressable>}
-      {canReview && <Pressable style={styles.reviewButton} onPress={openReview}><Text style={styles.buttonText}>⭐ Leave an Activity Club Review</Text></Pressable>}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Upcoming sessions</Text>
-        {sessions.length===0 && <Text style={styles.emptyText}>No upcoming sessions yet.</Text>}
-        {sessions.map(session=><View key={session.id} style={styles.sessionCard}><Text style={styles.sessionTitle}>{session.title}</Text><Text style={styles.cardText}>{formatDate(session.starts_at)}</Text><Text style={styles.sessionCapacity}>Session capacity: {session.capacity}</Text></View>)}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Club announcements</Text>
-        {announcements.length===0 && <Text style={styles.emptyText}>No announcements yet.</Text>}
-        {announcements.map(item=><View key={item.id} style={styles.publicCard}><Text style={styles.cardTitle}>{item.title}</Text><Text style={styles.cardText}>{item.message}</Text></View>)}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.reviewHeading}><Text style={styles.sectionTitle}>Reviews</Text><Text style={styles.reviewCount}>{reviews.length}</Text></View>
-        {reviews.length===0 && <Text style={styles.emptyText}>No reviews yet.</Text>}
-        {reviews.map(review=>(
-          <Pressable key={review.id} style={styles.publicCard} onPress={()=>router.push(`/profile/${review.user_id}`)}>
-            <View style={styles.reviewTop}>
-              <View style={{flex:1}}>
-                <Text style={styles.cardTitle}>{review.reviewer_name || "Explorer"}</Text>
-                <Text style={styles.reviewDate}>{reviewDate(review.created_at)}</Text>
-              </View>
-              <View style={styles.pointsBadge}><Text style={styles.pointsText}>+{review.points_awarded || 0}</Text></View>
-            </View>
-            <Text style={styles.stars}>{"★".repeat(review.rating)}<Text style={styles.emptyStars}>{"★".repeat(5-review.rating)}</Text></Text>
-            {!!review.review_title && <Text style={styles.reviewTitle}>{review.review_title}</Text>}
-            <Text style={styles.cardText}>{review.comment || "No written comment"}</Text>
-            {!!review.verified_qr && <Text style={styles.verified}>✓ VERIFIED ON-SITE REVIEW</Text>}
-            {!!review.photos?.length && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewPhotos}>
-                {review.photos.filter(Boolean).slice(0,3).map((url,index)=><Image key={`${review.id}-${index}`} source={{uri:url}} style={styles.reviewPhoto}/>)}
-              </ScrollView>
-            )}
-            {!!review.video_url && (
-              <Pressable style={styles.videoButton} onPress={(eventPress)=>{eventPress?.stopPropagation?.();Linking.openURL(review.video_url);}}>
-                <Text style={styles.videoIcon}>▶</Text><Text style={styles.videoText}>Play video review</Text>
+          {!isManager && canApply && !clubFull && (
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>{membership ? "Apply again" : "Request to join"}</Text>
+              <Text style={styles.boxText}>
+                The manager must approve you before you can see or post on the private message board.
+              </Text>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Optional message to the manager"
+                placeholderTextColor={INK.inkSoft}
+                value={applicationNote}
+                onChangeText={setApplicationNote}
+                multiline
+                maxLength={300}
+              />
+              <Pressable
+                style={styles.primary}
+                accessibilityRole="button"
+                accessibilityLabel="Send join request"
+                onPress={applyToJoin}
+                disabled={submitting}
+              >
+                <Text style={styles.primaryText}>{submitting ? "Sending application..." : "Send Join Request"}</Text>
               </Pressable>
-            )}
-          </Pressable>
-        ))}
-      </View>
-    </ScrollView>
+            </View>
+          )}
+
+          {!isManager && canApply && clubFull && (
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>Club currently full</Text>
+              <Text style={styles.boxText}>The manager has reached the approved member limit.</Text>
+            </View>
+          )}
+
+          {!isManager && membership?.status==="pending" && (
+            <View style={styles.box}>
+              <Text style={styles.badge}>PENDING APPROVAL</Text>
+              <Text style={styles.boxTitle}>Application submitted</Text>
+              <Text style={styles.boxText}>
+                Waiting for the club manager to approve your request. You’ll get access to the
+                private message board once approved.
+              </Text>
+              {!!membership.applied_at && (
+                <Text style={styles.boxMeta}>Sent {formatSubmittedDate(membership.applied_at)}</Text>
+              )}
+              {!!membership.application_note && (
+                <View style={styles.noteBox}>
+                  <Text style={styles.noteLabel}>Your message</Text>
+                  <Text style={styles.boxText}>{membership.application_note}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {!isManager && membership?.status==="approved" && (
+            <View style={styles.box}>
+              <Text style={styles.badge}>MEMBERSHIP APPROVED</Text>
+              <Text style={styles.boxTitle}>You’re a member</Text>
+              <Text style={styles.boxText}>Your private message-board access is now active.</Text>
+            </View>
+          )}
+
+          {!isManager && membership?.status==="rejected" && (
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>Application not approved</Text>
+              <Text style={styles.boxText}>
+                You can still view the public club profile and submit another request later.
+              </Text>
+            </View>
+          )}
+
+          {!isManager && membership?.status==="removed" && (
+            <View style={styles.box}>
+              <Text style={styles.badge}>MEMBERSHIP ENDED</Text>
+              <Text style={styles.boxTitle}>Membership ended</Text>
+              <Text style={styles.boxText}>
+                The club manager has ended your membership. You no longer have access to the
+                private message board, but you can apply again.
+              </Text>
+            </View>
+          )}
+
+          {canOpenBoard && (
+            <Pressable
+              style={styles.secondary}
+              accessibilityRole="button"
+              accessibilityLabel="Open the members message board"
+              onPress={()=>router.push(`/activity-clubs/message-board/${club.id}`)}
+            >
+              <Text style={styles.secondaryText}>Open Members’ Message Board</Text>
+            </Pressable>
+          )}
+
+          {canReview && (
+            <Pressable
+              style={styles.primary}
+              accessibilityRole="button"
+              accessibilityLabel="Leave an activity club review"
+              onPress={openReview}
+            >
+              <Text style={styles.primaryText}>⭐ Leave an Activity Club Review</Text>
+            </Pressable>
+          )}
+
+          <Text style={styles.sectionTitle}>Upcoming sessions</Text>
+          {sessions.length===0 && (
+            <Text style={styles.empty}>No sessions are scheduled yet. The manager adds them from the dashboard.</Text>
+          )}
+          {sessions.map((session)=>(
+            <View key={session.id} style={styles.box}>
+              <Text style={styles.boxTitle}>{session.title}</Text>
+              <Text style={styles.boxText}>{formatDate(session.starts_at)}</Text>
+              <Text style={styles.boxMeta}>Session capacity: {session.capacity}</Text>
+            </View>
+          ))}
+
+          <Text style={styles.sectionTitle}>Club announcements</Text>
+          {announcements.length===0 && (
+            <Text style={styles.empty}>Nothing announced yet. Anything the manager posts publicly appears here.</Text>
+          )}
+          {announcements.map((item)=>(
+            <View key={item.id} style={styles.box}>
+              <Text style={styles.boxTitle}>{item.title}</Text>
+              <Text style={styles.boxText}>{item.message}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      reviews={reviews}
+      reviewsEmpty={{
+        title:"No reviews yet",
+        instruction:"Members and former members can review this club after a session."
+      }}
+    />
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#18181b"},
-  content:{padding:18,paddingBottom:60},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center",padding:30},
-  errorText:{fontSize:18,textAlign:"center",color:"white"},
-  heroImage:{width:"100%",height:220,borderRadius:17,backgroundColor:"#303036",marginBottom:14},
-  hero:{backgroundColor:"#222226",padding:19,borderRadius:16,borderWidth:1,borderColor:"#44444b"},
-  category:{color:"#c8b5ff",fontWeight:"900",marginBottom:8},
-  title:{fontSize:30,fontWeight:"900",color:"white"},
-  location:{fontSize:16,marginTop:10,color:"white"},
-  address:{color:"#aaaab2",marginTop:4},
-  description:{lineHeight:23,color:"#c5c5cd",marginTop:16},
-  price:{fontWeight:"900",fontSize:16,marginTop:16,color:"white"},
-  statRow:{flexDirection:"row",gap:8,marginTop:15},
-  statBox:{flex:1,backgroundColor:"#2d2938",padding:11,borderRadius:11,alignItems:"center"},
-  statValue:{color:"white",fontSize:18,fontWeight:"900"},
-  statLabel:{color:"#9d94ae",fontSize:10,fontWeight:"700",marginTop:3},
-  applyBox:{backgroundColor:"#222226",padding:16,borderRadius:12,borderWidth:1,borderColor:"#44444b",marginTop:16},
-  applyTitle:{fontSize:19,fontWeight:"900",color:"white"},
-  applyText:{color:"#aaaab2",lineHeight:20,marginTop:6},
-  noteInput:{borderWidth:1,borderColor:"#4c4c54",backgroundColor:"#29292e",color:"white",borderRadius:10,padding:12,minHeight:75,textAlignVertical:"top",marginTop:12},
-  primaryButton:{backgroundColor:"#275bd6",padding:16,borderRadius:12,marginTop:12},
-  managerButton:{backgroundColor:"#050505",padding:16,borderRadius:12,marginTop:16},
-  boardButton:{backgroundColor:"#5633a8",padding:16,borderRadius:12,marginTop:16},
-  reviewButton:{backgroundColor:"#3212b6",padding:16,borderRadius:12,marginTop:10},
-  buttonText:{color:"white",fontWeight:"900",textAlign:"center"},
-  submittedBox:{backgroundColor:"#3a3217",padding:18,borderRadius:14,marginTop:16,borderWidth:1,borderColor:"#766326"},
-  submittedHeader:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  pendingBadge:{backgroundColor:"#66520b",paddingHorizontal:10,paddingVertical:6,borderRadius:20},
-  pendingBadgeText:{fontSize:11,fontWeight:"900",color:"#f1d87c",letterSpacing:0.4},
-  submittedIcon:{fontSize:24,fontWeight:"900",color:"#e0bf4e"},
-  submittedTitle:{fontSize:22,fontWeight:"900",marginTop:14,color:"white"},
-  submittedText:{fontSize:16,lineHeight:23,color:"#d4c99f",marginTop:8},
-  submittedDate:{fontSize:12,color:"#b7a66a",marginTop:10,fontWeight:"600"},
-  submittedNoteBox:{backgroundColor:"#2e291c",padding:12,borderRadius:10,marginTop:13},
-  submittedNoteLabel:{fontSize:12,fontWeight:"900",color:"#b7a66a",textTransform:"uppercase"},
-  submittedNoteText:{fontSize:15,lineHeight:21,color:"#e1dcc8",marginTop:5},
-  approvedBox:{backgroundColor:"#173923",padding:18,borderRadius:14,marginTop:16,borderWidth:1,borderColor:"#2b6a42"},
-  approvedBadge:{alignSelf:"flex-start",backgroundColor:"#245837",paddingHorizontal:10,paddingVertical:6,borderRadius:20},
-  approvedBadgeText:{fontSize:11,fontWeight:"900",color:"#91e6ae",letterSpacing:0.4},
-  approvedTitle:{fontSize:22,fontWeight:"900",marginTop:14,color:"white"},
-  approvedText:{fontSize:16,lineHeight:22,color:"#ace1bd",marginTop:7},
-  rejectedBox:{backgroundColor:"#3b171b",padding:16,borderRadius:12,marginTop:16,borderWidth:1,borderColor:"#80353d"},
-  rejectedText:{color:"#ffb6bd",lineHeight:21},
-  endedBox:{backgroundColor:"#29292e",padding:16,borderRadius:12,marginTop:16,borderWidth:1,borderColor:"#56565e"},
-  endedBadge:{alignSelf:"flex-start",backgroundColor:"#38383e",paddingHorizontal:10,paddingVertical:6,borderRadius:20,marginBottom:12},
-  endedBadgeText:{fontSize:11,fontWeight:"900",color:"#c3c3cb",letterSpacing:0.4},
-  endedTitle:{fontWeight:"900",fontSize:17,color:"white",marginBottom:6},
-  endedText:{color:"#b5b5bd",lineHeight:21},
-  fullBox:{backgroundColor:"#3b171b",padding:16,borderRadius:12,marginTop:16},
-  pendingTitle:{fontWeight:"900",fontSize:17,marginBottom:6,color:"white"},
-  mutedText:{color:"#aaaab2"},
-  section:{marginTop:28},
-  sectionTitle:{fontSize:22,fontWeight:"900",marginBottom:12,color:"white"},
-  emptyText:{color:"#9999a2"},
-  sessionCard:{backgroundColor:"#222226",padding:16,borderRadius:12,borderWidth:1,borderColor:"#414147",marginBottom:10},
-  sessionTitle:{fontWeight:"900",fontSize:17,marginBottom:6,color:"white"},
-  sessionCapacity:{color:"#92929b",marginTop:5},
-  publicCard:{backgroundColor:"#222226",padding:16,borderRadius:12,borderWidth:1,borderColor:"#414147",marginBottom:10},
-  cardTitle:{fontWeight:"900",fontSize:16,color:"white"},
-  cardText:{lineHeight:21,marginTop:7,color:"#c2c2ca"},
-  reviewHeading:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  reviewCount:{color:"#bca9ff",fontWeight:"900",marginBottom:12},
-  reviewTop:{flexDirection:"row",alignItems:"center"},
-  reviewDate:{color:"#8f8f99",fontSize:11,marginTop:3},
-  pointsBadge:{backgroundColor:"#332553",borderRadius:18,paddingHorizontal:10,paddingVertical:6},
-  pointsText:{color:"#c6b2ff",fontWeight:"900",fontSize:12},
-  stars:{color:"#f5c542",fontSize:17,marginTop:11},
-  emptyStars:{color:"#55555e"},
-  reviewTitle:{color:"white",fontWeight:"900",fontSize:17,marginTop:9},
-  verified:{alignSelf:"flex-start",color:"#87dfa6",backgroundColor:"#173923",paddingHorizontal:9,paddingVertical:5,borderRadius:15,overflow:"hidden",fontSize:9,fontWeight:"900",marginTop:10},
-  reviewPhotos:{paddingTop:12},
-  reviewPhoto:{width:105,height:105,borderRadius:10,backgroundColor:"#333338",marginRight:8},
-  videoButton:{backgroundColor:"#302547",borderColor:"#5d4787",borderWidth:1,borderRadius:10,padding:12,flexDirection:"row",alignItems:"center",marginTop:12},
-  videoIcon:{color:"white",fontSize:18,marginRight:10},
-  videoText:{color:"white",fontWeight:"900"}
+  stack:{marginTop:24,gap:11},
+  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginTop:13,letterSpacing:-0.3},
+  empty:{color:INK.inkSoft,lineHeight:20},
+  box:{
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:12,
+    padding:14,
+    backgroundColor:INK.card,
+    shadowColor:INK.ink,
+    shadowOffset:{width:3,height:3},
+    shadowOpacity:1,
+    shadowRadius:0,
+    elevation:0
+  },
+  badge:{
+    alignSelf:"flex-start",
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:99,
+    overflow:"hidden",
+    paddingHorizontal:9,
+    paddingVertical:3,
+    fontSize:10,
+    fontWeight:"800",
+    color:INK.ink,
+    marginBottom:9
+  },
+  boxTitle:{color:INK.ink,fontSize:17,fontWeight:"800"},
+  boxText:{color:INK.ink,lineHeight:21,marginTop:5},
+  boxMeta:{color:INK.inkSoft,fontSize:12,marginTop:7},
+  noteBox:{borderTopWidth:1,borderTopColor:INK.hair,marginTop:11,paddingTop:9},
+  noteLabel:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1},
+  noteInput:{
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:10,
+    padding:12,
+    marginTop:12,
+    minHeight:80,
+    textAlignVertical:"top",
+    color:INK.ink,
+    backgroundColor:INK.paper
+  },
+  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginTop:12},
+  primaryText:{color:INK.card,fontWeight:"800"},
+  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card},
+  secondaryText:{color:INK.ink,fontWeight:"800"}
 });

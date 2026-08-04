@@ -40,8 +40,17 @@ export default function PlaceLayout({
   photosEmptyLabel="No photos uploaded yet",
   info=[],
   rating,
+  // Clubs show members / spaces / score where a business shows average and
+  // count. Supplying stats replaces the default pair rather than the layout
+  // growing a branch per page type.
+  stats,
   ownerAction,
   actions,
+  // Everything a page type needs that the shared sections do not describe: an
+  // event's manager box, a club's membership state, its sessions and its
+  // announcements. Slots rather than flags, for the same reason as `actions`.
+  beforeReviews,
+  afterReviews,
   reviews=[],
   reviewsEmpty,
   similar=[],
@@ -103,16 +112,17 @@ export default function PlaceLayout({
             </View>
           ))}
 
-          {!!rating && (
+          {!!(stats || rating) && (
             <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{rating.average || "—"}</Text>
-                <Text style={styles.statLabel}>Average rating</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{rating.count}</Text>
-                <Text style={styles.statLabel}>{rating.count===1 ? "Review" : "Reviews"}</Text>
-              </View>
+              {(stats || [
+                {value:rating.average || "—",label:"Average rating"},
+                {value:rating.count,label:rating.count===1 ? "Review" : "Reviews"}
+              ]).map((stat)=>(
+                <View key={stat.label} style={styles.statCard}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
             </View>
           )}
 
@@ -125,6 +135,8 @@ export default function PlaceLayout({
             {actions}
           </View>
         )}
+
+        {beforeReviews}
 
         <View style={styles.section}>
           <View style={styles.reviewHeading}>
@@ -142,6 +154,8 @@ export default function PlaceLayout({
             <PlaceReview key={review.id} review={review} onPhoto={setSelectedPhoto}/>
           ))}
         </View>
+
+        {afterReviews}
 
         {!!similar.length && (
           <View style={styles.section}>
