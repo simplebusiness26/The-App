@@ -38,7 +38,7 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 5a — shared place layout (business, property)
+**Last completed packet:** 5b — place layout for events and activity clubs
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,10 +51,8 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 5b — events and activity clubs onto `PlaceLayout`.
-Write their fixture-backed assertions first and watch them fail, then
-convert. The brief still cuts Directions (Stage Four) and Book a table / Get
-tickets (Stage Five) from all of 5a/5b/5c.
+**Next action:** Packet 5c — link-ups. It starts with a written privacy
+review, not with code: see the session log and the note below.
 
 **5c needs you before it needs code.** `app/linkups/[id].js` renders private
 meeting-point details and owns the report and block controls, so `RULES.md`
@@ -86,7 +84,7 @@ Nothing else should change.
 | 3 | Navigation shell | done | `e4a300e` | 92 navigation tests; route inventory diff is +2/-0; 6 red-then-green demonstrations |
 | 4 | Quick Access drawer | done | `c7a3f94` | 34 drawer tests; entitlement proved against 2 real accounts in SQL; 6 red-then-green demonstrations |
 | 5a | Place layout: business, property | done | `893a182` | 14 place-page tests written before the refactor and green after; 35-check layout gate; 8 red-then-green demonstrations |
-| 5b | Place layout: events, clubs | not started | | |
+| 5b | Place layout: events, clubs | done | `8d843fb` | 32 place-page tests, 18 new, written before the rewrite and green after; 75-check layout gate; 7 red-then-green demonstrations |
 | 5c | Place layout: link-ups (privacy gate) | not started | | |
 | 6 | Map bottom cards | not started | | |
 | 7 | Discover screen | not started | | |
@@ -123,6 +121,114 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 5b — done
+
+**Did:** Moved events and activity clubs onto `PlaceLayout`, in the same order
+5a used: assertions written against the **original** screens, watched failing,
+then re-run unchanged after the rewrite.
+
+- 18 new assertions in `test/place-page.test.js` (32 total across four page
+  types).
+- `components/PlaceLayout.js` gained three things and no branches: a `stats`
+  prop, and `beforeReviews` / `afterReviews` slots.
+- `app/events/[id].js` and `app/activity-clubs/[id].js` rewritten.
+- `utils/markers.js` gained `EVENT_TYPE_LABEL`.
+- `scripts/verify-place-layout.cjs` now covers four page types, 75 checks.
+
+**No branches were added to the layout, on purpose.** Clubs need three stat
+boxes where a business needs two, and both new pages need blocks the shared
+sections do not describe — an event's manager box, a club's membership state,
+its sessions, its announcements. All of it arrives as slots. A `kind` prop with
+branches inside would have made the layout grow a limb per page type, which is
+the duplication it exists to remove wearing a different coat.
+
+**The lines finally came down.** 5a went up: 476 to 745. 5b: the two pages were
+717 lines and are now 638, while the layout grew only 14 (348 to 362). Net for
+this packet, 1,065 to 1,000. That is the saving 5a predicted arriving on
+schedule, and 5c should improve it again.
+
+**Four review tables, one review card.** `reviews` uses `name`;
+`event_reviews` and `activity_club_reviews` both use `reviewer_name`. Rather
+than widening `PlaceReview` to know about three column names, each screen
+normalises its rows into the shape the card already renders. The layout stays
+ignorant of which table a review came from, which is what will let 5c decide
+what a link-up does about having no reviews at all.
+
+**Acceptance criteria:**
+
+1. Converted page types use one component; grep proves no duplicate — **PASS**,
+   75 checks across four pages. The 5b additions to the forbidden list are
+   `reviewPhoto:`, `pointsBadge:` and `emptyStars:` — the event and club
+   screens had spelled the same pieces differently, which is how four copies of
+   a review card came to exist in the first place.
+2. Listing type matches the map marker — **PASS for clubs, vacuous for
+   events, and recorded as such.** The club page now shows `CLUB_TYPE_LABEL`,
+   the same constant `markerForClub` builds its spoken label from, with the
+   club's own category moved into the info rows. **Events are not on the map at
+   all** — `app/map.js` renders businesses, properties and clubs — so there is
+   no marker for an event page to match. `EVENT_TYPE_LABEL` exists anyway so
+   that whichever packet puts an event on the map inherits the word instead of
+   inventing a second one. There is deliberately no `markerForEvent()` until
+   something renders it.
+3. Loading, empty, error, unauthorised — **PASS for three; unauthorised still
+   does not exist.** Same as 5a: these pages are public. A club's *private*
+   parts are gated (board, review) and the gates are asserted, but the page
+   itself refuses nobody.
+4. No disabled or "coming soon" controls — **PASS, with one judgement call
+   recorded.** The event page keeps its locked review button: before the event
+   starts it reads "🔒 Reviews unlock when the event starts". That is not a
+   later-stage placeholder and not a dead control — the button stays pressable
+   and explains itself, and reviews genuinely do open when the event starts.
+   Saying which it is now is state, which is what this app is built on. An
+   assertion pins both halves so neither can quietly become the other.
+
+**Seven checks demonstrated failing before being kept:**
+
+| Broke | Caught by | Message |
+|---|---|---|
+| club board shown to non-members | `place-page.test.js` | `opens the private board only to approved members` |
+| club review gate dropped | `place-page.test.js` | `offers the review control only to a member or former member` |
+| join form removed | `place-page.test.js` | `invites a non-member to request a place` |
+| event review time-gate removed | `place-page.test.js` | `says when reviews unlock instead of offering them early` |
+| event manager controls leaked | `place-page.test.js` | `shows manager controls only to the manager` |
+| club kept its own star rendering | `verify-place-layout` | `still defines the star rating` |
+| club hardcoded its type label | `verify-place-layout` | `typeLabel must be CLUB_TYPE_LABEL` |
+
+**Also run:** `npm run test:ci` → **253 passed**; taxonomy 133; markers 275;
+place layout 75; screen gates 72; social 92; live 152 + 39; linkup nav 20;
+title-only 28; seed 3; `npx expo-doctor` 20/20; `npx expo export --platform
+web` succeeded.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 5c — link-ups. **It does not start with code.**
+`app/linkups/[id].js` renders `linkup_private_details.meeting_point_details`
+behind a `joined` check and owns the report and block controls, so `RULES.md`
+requires writing down what a shared layout would expose and waiting for the
+owner before building. Write that description first. Note link-ups have no
+reviews table at all, so the layout's reviews section has to be omitted rather
+than emptied — passing `reviews={[]}` would render "No reviews yet" on a page
+where reviewing is not a thing.
+
+**Unverified.** `Verified: renders. Unverified: behaves`.
+
+- **Nobody has opened either page.** Four of the five place pages have now been
+  rewritten and none has been seen by a person.
+- The club membership state machine has six states and the assertions cover
+  four of them (none, pending, approved, manager). `rejected`, `removed` and
+  `left` render blocks that are asserted only by mounting.
+- `applyToJoin` was moved verbatim and is untested beyond compiling. It writes
+  to `activity_memberships`, so a regression there is a data path, not a
+  cosmetic one.
+- The event page's start-time comparison uses the device clock. Unchanged from
+  before, but now the only thing deciding which of two buttons a person sees.
+- Both pages changed appearance completely, dark to riso. **Four of five place
+  pages, the drawer, Discover and Create are now riso; everything else is still
+  dark.** The split is widening with each packet, as predicted, and Packet 11
+  is still blocked on the palette decision.
 
 ---
 
