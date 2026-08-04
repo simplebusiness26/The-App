@@ -16,18 +16,7 @@
 // override appears anywhere.
 
 import {classificationLabel,glyphForClassification,UNCLASSIFIED} from "./taxonomy";
-
-// The tokens from design-system.md that markers need. Packet 11 is the design
-// system pass and should hoist these into a shared token module along with the
-// rest of the table; until then they live with their only consumer rather than
-// in a file invented ahead of the packet that owns it.
-export const INK={
-  card:"#F3F3ED",
-  ink:"#16181C",
-  blue:"#2B4BE8",
-  pink:"#FF3D6E",
-  yellow:"#FFC61A"
-};
+import {INK} from "./tokens";
 
 // The three inks, and what each one means. These are the design system's, not
 // this file's -- do not add a fourth.

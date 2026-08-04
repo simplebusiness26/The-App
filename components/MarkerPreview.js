@@ -1,7 +1,8 @@
 import React from "react";
 import {View,Text,StyleSheet,Platform} from "react-native";
 import PlaceMarker from "./PlaceMarker";
-import {markerForBusiness,INK} from "../utils/markers";
+import {markerForBusiness} from "../utils/markers";
+import {INK} from "../utils/tokens";
 import {classificationLabel} from "../utils/taxonomy";
 
 // Packet 2: "Marker preview component for the manager form."

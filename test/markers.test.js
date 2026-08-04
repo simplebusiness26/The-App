@@ -19,8 +19,9 @@ const {
   UNCLASSIFIED
 }=require("../utils/taxonomy");
 
+const {INK}=require("../utils/tokens");
+
 const {
-  INK,
   MARKER_STATES,
   glyphNames,
   glyphPrimitives,
