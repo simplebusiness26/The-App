@@ -54,6 +54,12 @@ export default function Menu(){
         </Pressable>
       )}
 
+      {loggedIn && (
+        <Pressable style={styles.settingsItem} onPress={()=>router.push("/settings")}>
+          <Text style={styles.text}>⚙️ Settings</Text>
+        </Pressable>
+      )}
+
       {userType==="explorer" && (
         <>
           <Pressable style={styles.liveItem} onPress={()=>router.push("/live")}>
@@ -131,6 +137,7 @@ const styles=StyleSheet.create({
   leaderboardItem:{backgroundColor:"#72520d",padding:16,borderRadius:10,marginBottom:15},
   safetyItem:{backgroundColor:"#5c2630",padding:16,borderRadius:10,marginBottom:15},
   managerItem:{backgroundColor:"#275bd6",padding:16,borderRadius:10,marginBottom:15},
+  settingsItem:{backgroundColor:"#3f3f46",padding:16,borderRadius:10,marginBottom:15},
   text:{color:"white",fontWeight:"bold",textAlign:"center"},
   logout:{backgroundColor:"#cc0000",padding:16,borderRadius:10,marginTop:20},
   logoutText:{color:"white",fontWeight:"bold",textAlign:"center"}

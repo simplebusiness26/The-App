@@ -5,41 +5,11 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
-  Platform
+  ActivityIndicator
 } from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
-
-const RECOVERY_STORAGE_KEY="guestbook-password-recovery";
-
-function getResetRedirectUrl(){
-  if(Platform.OS!=="web" || typeof window==="undefined"){
-    return undefined;
-  }
-
-  const configuredUrl=process.env.EXPO_PUBLIC_APP_URL?.trim();
-  const baseUrl=configuredUrl || window.location.origin;
-
-  try{
-    return new URL("/auth/update-password",baseUrl).toString();
-  }catch{
-    return `${baseUrl.replace(/\/$/,"")}/auth/update-password`;
-  }
-}
-
-function rememberRecoveryRequest(email){
-  if(Platform.OS!=="web" || typeof window==="undefined") return;
-
-  try{
-    window.localStorage.setItem(
-      RECOVERY_STORAGE_KEY,
-      JSON.stringify({email,requestedAt:Date.now()})
-    );
-  }catch(error){
-    console.log("Could not store password recovery request",error);
-  }
-}
+import {sendRecoveryEmail} from "../../utils/passwordRecovery";
 
 export default function ForgotPassword(){
   const [email,setEmail]=useState("");
@@ -59,16 +29,7 @@ export default function ForgotPassword(){
     setError("");
 
     try{
-      // A recovery page must never inherit another account's active session.
-      await supabase.auth.signOut({scope:"local"});
-      rememberRecoveryRequest(cleanEmail);
-
-      const redirectTo=getResetRedirectUrl();
-      const {error:resetError}=redirectTo
-        ? await supabase.auth.resetPasswordForEmail(cleanEmail,{redirectTo})
-        : await supabase.auth.resetPasswordForEmail(cleanEmail);
-
-      if(resetError) throw resetError;
+      await sendRecoveryEmail(supabase,cleanEmail);
       setSent(true);
     }catch(resetError){
       console.log(resetError);
