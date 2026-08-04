@@ -551,3 +551,182 @@ describe("the activity club place page",()=>{
     await unmount(tree);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Packet 5c. Link-ups are a privacy gate, so these assertions do more than
+// guard a refactor: they pin who can see a meeting point and who can reach the
+// safety controls. Written and watched failing against the original
+// app/linkups/[id].js before it was touched.
+//
+// The database is the real boundary -- linkup_private_select_members restricts
+// linkup_private_details to the creator and active members, verified against
+// the live project. These pin the second lock, not the first.
+// ---------------------------------------------------------------------------
+
+const ORGANISER={id:"organiser-1"};
+
+const LINKUP={
+  id:"lu-1",
+  title:"Sunset walk to the pier",
+  category:"walk",
+  creator_id:ORGANISER.id,
+  description:"Gentle pace, about an hour.",
+  location_name:"West Beach car park",
+  area:"Hove",
+  starts_at:"2099-01-01T18:00:00Z",
+  ends_at:"2099-01-01T19:30:00Z",
+  attendee_count:2,
+  max_attendees:8,
+  visibility:"public",
+  status:"upcoming"
+};
+
+const MEETING_POINT="Back gate, by the blue bins";
+
+describe("the link-up place page",()=>{
+  async function open({user,linkup=LINKUP,attendees=[],privateDetails=null}){
+    installFixture({
+      user,
+      params:{id:LINKUP.id},
+      tables:{
+        linkups:linkup ? [linkup] : [],
+        linkup_attendees:attendees,
+        linkup_private_details:privateDetails ? [{meeting_point_details:privateDetails}] : [],
+        profiles:[
+          {id:ORGANISER.id,full_name:"Jo",profile_photo:null,area:"Hove",show_area:true},
+          {id:VISITOR.id,full_name:"Sam",profile_photo:null}
+        ]
+      },
+      rpc:{refresh_live_system:null}
+    });
+    return render("../app/linkups/[id]");
+  }
+
+  const JOINED_VISITOR=[{user_id:VISITOR.id,role:"attendee",status:"joined",joined_at:"2026-07-01T10:00:00Z"}];
+
+  it("shows what the link-up is, when and roughly where",async()=>{
+    const tree=await open({user:VISITOR});
+    const text=textOf(tree.toJSON());
+
+    expect(text).toContain("Sunset walk to the pier");
+    expect(text).toContain("West Beach car park");
+    expect(text).toContain("Hove");
+
+    await unmount(tree);
+  });
+
+  it("hides the meeting point from someone who has not joined",async()=>{
+    // The one that matters. RLS already returns no row to a non-member; this
+    // pins the second lock so a refactor cannot render what it is handed.
+    const tree=await open({user:VISITOR,privateDetails:MEETING_POINT});
+    const text=textOf(tree.toJSON());
+
+    expect(text).not.toContain(MEETING_POINT);
+    expect(text).not.toContain("ATTENDEE MEETING DETAILS");
+
+    await unmount(tree);
+  });
+
+  it("shows the meeting point to someone who has joined",async()=>{
+    const tree=await open({
+      user:VISITOR,
+      attendees:JOINED_VISITOR,
+      privateDetails:MEETING_POINT
+    });
+    expect(textOf(tree.toJSON())).toContain(MEETING_POINT);
+    await unmount(tree);
+  });
+
+  it("opens the private board only to someone who has joined",async()=>{
+    const joined=await open({user:VISITOR,attendees:JOINED_VISITOR});
+    expect(textOf(joined.toJSON())).toContain("private board");
+    await unmount(joined);
+
+    const stranger=await open({user:VISITOR});
+    expect(textOf(stranger.toJSON())).not.toContain("private board");
+    await unmount(stranger);
+  });
+
+  it("offers join to a stranger and leave to an attendee",async()=>{
+    const stranger=await open({user:VISITOR});
+    expect(textOf(stranger.toJSON())).toContain("Join Link-up");
+    await unmount(stranger);
+
+    const joined=await open({user:VISITOR,attendees:JOINED_VISITOR});
+    const text=textOf(joined.toJSON());
+    expect(text).toContain("Leave Link-up");
+    expect(text).not.toContain("Join Link-up");
+    await unmount(joined);
+  });
+
+  it("keeps the safety controls in reach of everyone but the organiser",async()=>{
+    // Report and block are the two things a person needs when a link-up turns
+    // out to be a bad idea. Losing them in a refactor is the worst outcome in
+    // this packet, and worse than losing the meeting point.
+    const visitor=await open({user:VISITOR});
+    const text=textOf(visitor.toJSON());
+    expect(text).toContain("Report Link-up");
+    expect(text).toContain("Block organiser");
+    await unmount(visitor);
+
+    const organiser=await open({user:ORGANISER});
+    const ownText=textOf(organiser.toJSON());
+    expect(ownText).not.toContain("Report Link-up");
+    expect(ownText).not.toContain("Block organiser");
+    await unmount(organiser);
+  });
+
+  it("gives the organiser edit and cancel, and nobody else",async()=>{
+    const organiser=await open({user:ORGANISER});
+    const text=textOf(organiser.toJSON());
+    expect(text).toContain("Edit Link-up");
+    expect(text).toContain("Cancel Link-up");
+    await unmount(organiser);
+
+    const visitor=await open({user:VISITOR});
+    const other=textOf(visitor.toJSON());
+    expect(other).not.toContain("Edit Link-up");
+    expect(other).not.toContain("Cancel Link-up");
+    await unmount(visitor);
+  });
+
+  it("lists attendees and offers removal only to the organiser",async()=>{
+    // The attendee list must contain somebody other than the viewer. With only
+    // the viewer in it, the removal control is suppressed by "not me" rather
+    // than by "not the organiser", and the assertion passes whatever the gate
+    // says -- which is exactly how the first version of this test proved
+    // nothing when the organiser check was deleted.
+    const withOther=[
+      ...JOINED_VISITOR,
+      {user_id:ORGANISER.id,role:"creator",status:"joined",joined_at:"2026-07-01T09:00:00Z"}
+    ];
+
+    const organiser=await open({user:ORGANISER,attendees:withOther});
+    const text=textOf(organiser.toJSON());
+    expect(text).toContain("Sam");
+    expect(text).toContain("Remove");
+    await unmount(organiser);
+
+    const visitor=await open({user:VISITOR,attendees:withOther});
+    expect(textOf(visitor.toJSON())).not.toContain("Remove");
+    await unmount(visitor);
+  });
+
+  it("says so when the link-up is not visible to this Explorer",async()=>{
+    const tree=await open({user:VISITOR,linkup:null});
+    expect(textOf(tree.toJSON())).toContain("no longer visible to you");
+    await unmount(tree);
+  });
+
+  it("never offers to review a link-up",async()=>{
+    // There is no linkup_reviews table anywhere in the migrations. A reviews
+    // section here would invite something the app cannot record.
+    const tree=await open({user:VISITOR,attendees:JOINED_VISITOR});
+    const text=textOf(tree.toJSON()).toLowerCase();
+
+    expect(text).not.toContain("no reviews yet");
+    expect(text).not.toContain("leave a review");
+
+    await unmount(tree);
+  });
+});
