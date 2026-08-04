@@ -1,20 +1,32 @@
 import React from "react";
+import {View,StyleSheet} from "react-native";
 import {Stack} from "expo-router";
+import {SafeAreaProvider} from "react-native-safe-area-context";
 import Header from "../components/Header";
+import TabBar from "../components/TabBar";
 import {FeedbackProvider} from "../context/FeedbackContext";
 import {NotificationProvider} from "../context/NotificationContext";
 
 export const unstable_settings={initialRouteName:"index"};
 
+// Packet 3. The TabBar sits below the Stack rather than around it, so it
+// survives every push instead of only the five tab roots, and so no route file
+// had to move to gain one. SafeAreaProvider is here because the bar reads the
+// bottom inset; nothing else in the app had needed it.
 export default function Layout(){
   return(
-    <FeedbackProvider>
-      <NotificationProvider>
+    <SafeAreaProvider>
+      <FeedbackProvider>
+        <NotificationProvider>
+          <View style={styles.shell}>
+            <View style={styles.stack}>
         <Stack screenOptions={{headerShown:true,header:()=> <Header />}}>
           <Stack.Screen name="index" options={{headerShown:false}}/>
           <Stack.Screen name="menu"/>
           <Stack.Screen name="settings"/>
           <Stack.Screen name="map"/>
+          <Stack.Screen name="discover"/>
+          <Stack.Screen name="create"/>
           <Stack.Screen name="scan"/>
           <Stack.Screen name="qr/[code]"/>
           <Stack.Screen name="saved"/>
@@ -86,7 +98,17 @@ export default function Layout(){
           <Stack.Screen name="admin/claims"/>
           <Stack.Screen name="admin/dashboard"/>
         </Stack>
-      </NotificationProvider>
-    </FeedbackProvider>
+            </View>
+
+            <TabBar/>
+          </View>
+        </NotificationProvider>
+      </FeedbackProvider>
+    </SafeAreaProvider>
   );
 }
+
+const styles=StyleSheet.create({
+  shell:{flex:1},
+  stack:{flex:1}
+});
