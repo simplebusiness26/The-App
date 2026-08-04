@@ -53,7 +53,7 @@ value item in the whole brief, and the one everything else depends on".
 
 | # | Packet | Status | Commit | Verified how |
 |---|---|---|---|---|
-| 0 | Verification harness | done | `a1e98a1` | 67/67 mount tests; CI red demonstrated (run 16 failure), then green |
+| 0 | Verification harness | done | `a1e98a1` | 67/67 mount tests; CI red demonstrated (run 16 `failure`), green again (run 18 `success`) |
 | 1 | Business taxonomy | not started | | |
 | 2 | Marker assignment | not started | | |
 | 3 | Navigation shell | not started | | |
@@ -131,12 +131,27 @@ defects.
 2. Every route file under `app/` has a mount test — **PASS**. 66 route
    files, 66 mount tests, plus a discovery guard that fails if discovery
    ever returns an empty list.
-3. CI red demonstrated, not assumed — **PASS**:
-   - run 13 `fa845da` success — harness landing green
-   - run 14 `9593cb9` **cancelled** — first attempt, proves nothing
-   - run 16 `067c5f4` **failure**, step "Mount every route" failed
-   - run 17 `a1e98a1` — revert, expected green
-   https://github.com/simplebusiness26/The-App/actions/runs/30898897118
+3. CI red demonstrated, not assumed — **PASS**. Every conclusion below
+   was read back from the API after the run completed, not predicted:
+
+   | run | commit | conclusion | |
+   |---|---|---|---|
+   | 13 | `fa845da` | success | harness lands green |
+   | 14 | `9593cb9` | cancelled | first break attempt — proves nothing |
+   | 15 | `878cd5f` | cancelled | its revert |
+   | 16 | `067c5f4` | **failure** | **"Mount every route" failed** |
+   | 17 | `a1e98a1` | cancelled | its revert |
+   | 18 | `57d6ff5` | success | this ledger entry |
+
+   The failure: https://github.com/simplebusiness26/The-App/actions/runs/30898897118
+   Green after revert: https://github.com/simplebusiness26/The-App/actions/runs/30899037740
+
+   **Four of six runs are cancelled, and that is structural, not bad
+   luck.** `cancel-in-progress` is set on `${{ github.ref }}`, so every
+   push kills the run before it. Do not read a run's tick as a verdict on
+   its commit without checking `conclusion` — `cancelled` renders as
+   not-green and means nothing was tested. Runs 14 and 17 were both
+   killed this way, the second while writing this very warning.
 4. Web export completes and `app.config.js` validates — **PASS**.
    expo-doctor 20/20; config loads (`name: Guestbook`, `slug: guestbook`).
 5. Test-data migrations neutralised and named — **PASS**:
@@ -163,6 +178,12 @@ the run before it reached the step meant to fail — recorded as
 evidence, and the run list would still have shown a non-green tick beside
 a broken commit. Anyone repeating a red-then-green demonstration here
 must wait for the failing step to complete before reverting.
+
+It is worth knowing how sticky that trap is: the first version of this
+entry claimed run 17 was green. It was cancelled — by the push of this
+entry itself. The claim was written as "expected green" and would have
+gone in as fact if the conclusion had not been read back afterwards.
+Assume nothing about a run you have not queried after it completed.
 
 **Stopped because:** finished. One packet per session.
 
