@@ -10,11 +10,15 @@ ActivityIndicator,
 Alert
 } from "react-native";
 
+import {useAdminGate} from "../../hooks/useAdminGate";
+
 import {supabase} from "../../services/supabase";
 
 
 export default function AdminDashboard(){
 
+
+const {checking,allowed,error:gateError}=useAdminGate();
 
 const [claims,setClaims]=useState([]);
 
@@ -24,9 +28,9 @@ const [loading,setLoading]=useState(true);
 
 useEffect(()=>{
 
-loadClaims();
+if(allowed) loadClaims();
 
-},[]);
+},[allowed]);
 
 
 
@@ -98,6 +102,7 @@ async function updateClaim(id,status){
 
 
 const {
+data:updated,
 error
 }=await supabase
 
@@ -110,7 +115,9 @@ status
 .eq(
 "id",
 id
-);
+)
+
+.select();
 
 
 
@@ -127,6 +134,21 @@ return;
 
 
 
+// RLS refuses a write by matching no rows, not by returning an error, so
+// an empty result here means the policy rejected it -- not that it worked.
+if(!updated || updated.length===0){
+
+Alert.alert(
+"Claim update failed",
+"This claim was not updated. Admin access is required."
+);
+
+return;
+
+}
+
+
+
 Alert.alert(
 "Success",
 `Claim ${status}`
@@ -135,6 +157,40 @@ Alert.alert(
 
 loadClaims();
 
+
+}
+
+
+
+if(checking){
+
+return(
+
+<View style={styles.loading}>
+
+<ActivityIndicator size="large"/>
+
+</View>
+
+);
+
+}
+
+
+
+if(!allowed){
+
+return(
+
+<View style={styles.loading}>
+
+<Text style={styles.denied}>
+{gateError || "An admin account is required to open this screen."}
+</Text>
+
+</View>
+
+);
 
 }
 
@@ -283,7 +339,14 @@ const styles=StyleSheet.create({
 loading:{
 flex:1,
 justifyContent:"center",
-alignItems:"center"
+alignItems:"center",
+padding:40
+},
+
+denied:{
+fontSize:16,
+textAlign:"center",
+color:"#b42318"
 },
 
 container:{
