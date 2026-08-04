@@ -15,19 +15,6 @@ import {router} from "expo-router";
 
 import {supabase} from "../../services/supabase";
 
-const ACCOUNT_TYPES=[
-{
-value:"explorer",
-label:"Explorer",
-desc:"Discover places, join activities and leave reviews"
-},
-{
-value:"manager",
-label:"Manager",
-desc:"Manage businesses, properties, activities and events"
-}
-];
-
 export default function Signup(){
 
 
@@ -38,8 +25,6 @@ const [email,setEmail]=useState("");
 const [phone,setPhone]=useState("");
 
 const [password,setPassword]=useState("");
-
-const [accountType,setAccountType]=useState("");
 
 const [loading,setLoading]=useState(false);
 
@@ -92,19 +77,6 @@ if(password.length < 6){
 Alert.alert(
 "Password too short",
 "Password must be at least 6 characters"
-);
-
-return;
-
-}
-
-
-
-if(!accountType){
-
-Alert.alert(
-"Choose account type",
-"Please select explorer or manager"
 );
 
 return;
@@ -174,9 +146,7 @@ full_name:name.trim(),
 
 email:email.trim(),
 
-phone:phone.trim(),
-
-account_type:accountType
+phone:phone.trim()
 
 },{
 onConflict:"id"
@@ -336,45 +306,11 @@ onChangeText={setPassword}
 
 
 
-<Text style={styles.label}>
-I am a:
+<Text style={styles.note}>
+Everyone starts as an Explorer. If you manage a business, property,
+activity club or event, you can switch on a manager account at any time
+from Settings -- it is added to this profile rather than replacing it.
 </Text>
-
-
-
-{
-ACCOUNT_TYPES.map(type=>(
-
-
-<Pressable
-
-key={type.value}
-
-style={[
-styles.option,
-accountType===type.value && styles.selected
-]}
-
-onPress={()=>setAccountType(type.value)}
-
->
-
-
-<Text style={styles.optionTitle}>
-{type.label}
-</Text>
-
-
-<Text>
-{type.desc}
-</Text>
-
-
-</Pressable>
-
-
-))
-}
 
 
 
@@ -443,26 +379,12 @@ padding:15,
 marginBottom:15
 },
 
-label:{
-fontSize:18,
-marginBottom:10
-},
-
-option:{
-borderWidth:1,
-borderRadius:10,
-padding:15,
-marginBottom:10
-},
-
-selected:{
-borderWidth:2,
-backgroundColor:"#ddd"
-},
-
-optionTitle:{
-fontWeight:"bold",
-fontSize:16
+note:{
+fontSize:14,
+lineHeight:20,
+color:"#555",
+marginTop:5,
+marginBottom:5
 },
 
 button:{

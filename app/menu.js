@@ -4,7 +4,11 @@ import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 
 export default function Menu(){
-  const [userType,setUserType]=useState(null);
+  // Three independent facts, not one. is_admin used to overwrite account_type
+  // here, so an admin saw neither the explorer entries nor the manager one.
+  const [isExplorer,setIsExplorer]=useState(false);
+  const [isManager,setIsManager]=useState(false);
+  const [isAdmin,setIsAdmin]=useState(false);
   const [loggedIn,setLoggedIn]=useState(false);
 
   useEffect(()=>{loadUser();},[]);
@@ -13,18 +17,24 @@ export default function Menu(){
     const {data:{user}}=await supabase.auth.getUser();
     if(!user){
       setLoggedIn(false);
-      setUserType(null);
+      setIsExplorer(false);
+      setIsManager(false);
+      setIsAdmin(false);
       return;
     }
 
     setLoggedIn(true);
     const {data}=await supabase
       .from("profiles")
-      .select("account_type,is_admin")
+      .select("account_type,is_manager,is_admin")
       .eq("id",user.id)
       .single();
 
-    if(data) setUserType(data.is_admin ? "admin" : data.account_type);
+    if(data){
+      setIsExplorer(data.account_type==="explorer");
+      setIsManager(!!data.is_manager);
+      setIsAdmin(!!data.is_admin);
+    }
   }
 
   async function logout(){
@@ -54,7 +64,13 @@ export default function Menu(){
         </Pressable>
       )}
 
-      {userType==="explorer" && (
+      {loggedIn && (
+        <Pressable style={styles.settingsItem} onPress={()=>router.push("/settings")}>
+          <Text style={styles.text}>⚙️ Settings</Text>
+        </Pressable>
+      )}
+
+      {isExplorer && (
         <>
           <Pressable style={styles.liveItem} onPress={()=>router.push("/live")}>
             <Text style={styles.text}>📡 Live Nearby</Text>
@@ -77,19 +93,16 @@ export default function Menu(){
           <Pressable style={styles.leaderboardItem} onPress={()=>router.push("/leaderboards")}>
             <Text style={styles.text}>🏆 Explorer Leaderboards</Text>
           </Pressable>
-          <Pressable style={styles.safetyItem} onPress={()=>router.push("/safety/blocked")}>
-            <Text style={styles.text}>🛡️ Blocked Explorers</Text>
-          </Pressable>
         </>
       )}
 
-      {userType==="manager" && (
+      {isManager && (
         <Pressable style={styles.managerItem} onPress={()=>router.push("/manager/dashboard")}>
           <Text style={styles.text}>📊 Manager Dashboard</Text>
         </Pressable>
       )}
 
-      {userType==="admin" && (
+      {isAdmin && (
         <Pressable style={styles.item} onPress={()=>router.push("/admin/claims")}>
           <Text style={styles.text}>⚙️ Admin Dashboard</Text>
         </Pressable>
@@ -129,7 +142,7 @@ const styles=StyleSheet.create({
   discoveryItem:{backgroundColor:"#3b2477",padding:16,borderRadius:10,marginBottom:15},
   scanItem:{backgroundColor:"#0c6b45",padding:16,borderRadius:10,marginBottom:15},
   leaderboardItem:{backgroundColor:"#72520d",padding:16,borderRadius:10,marginBottom:15},
-  safetyItem:{backgroundColor:"#5c2630",padding:16,borderRadius:10,marginBottom:15},
+  settingsItem:{backgroundColor:"#3f3f46",padding:16,borderRadius:10,marginBottom:15},
   managerItem:{backgroundColor:"#275bd6",padding:16,borderRadius:10,marginBottom:15},
   text:{color:"white",fontWeight:"bold",textAlign:"center"},
   logout:{backgroundColor:"#cc0000",padding:16,borderRadius:10,marginTop:20},

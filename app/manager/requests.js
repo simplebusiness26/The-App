@@ -96,11 +96,11 @@ export default function ManagerRequests(){
 
     const {data:profile,error:profileError}=await supabase
       .from("profiles")
-      .select("account_type")
+      .select("is_manager")
       .eq("id",user.id)
       .single();
 
-    if(profileError || profile?.account_type!=="manager"){
+    if(profileError || !profile?.is_manager){
       setError("A manager account is required to open the Action Centre.");
       setLoading(false);
       return;

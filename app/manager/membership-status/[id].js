@@ -112,11 +112,11 @@ export default function ManagerMembershipStatus(){
 
     const {data:account,error:accountError}=await supabase
       .from("profiles")
-      .select("account_type")
+      .select("is_manager")
       .eq("id",user.id)
       .single();
 
-    if(accountError || account?.account_type!=="manager"){
+    if(accountError || !account?.is_manager){
       setError("A manager account is required to view this membership status.");
       setLoading(false);
       return;

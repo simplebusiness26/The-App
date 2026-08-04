@@ -114,11 +114,11 @@ export default function ManagerDashboard(){
 
     const {data:profile,error:profileError}=await supabase
       .from("profiles")
-      .select("account_type")
+      .select("is_manager")
       .eq("id",currentUser.id)
       .single();
 
-    if(profileError || profile?.account_type!=="manager"){
+    if(profileError || !profile?.is_manager){
       setError("A manager account is required to open this dashboard.");
       setLoading(false);
       return;
