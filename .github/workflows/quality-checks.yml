@@ -50,6 +50,9 @@ jobs:
       - name: Refuse a manually set map marker and an untokenised colour
         run: node scripts/verify-marker-assignment.cjs
 
+      - name: Verify the place pages share one layout
+        run: node scripts/verify-place-layout.cjs
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
