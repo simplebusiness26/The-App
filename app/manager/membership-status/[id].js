@@ -110,18 +110,6 @@ export default function ManagerMembershipStatus(){
       return;
     }
 
-    const {data:account,error:accountError}=await supabase
-      .from("profiles")
-      .select("account_type")
-      .eq("id",user.id)
-      .single();
-
-    if(accountError || account?.account_type!=="manager"){
-      setError("A manager account is required to view this membership status.");
-      setLoading(false);
-      return;
-    }
-
     const {data:membershipRow,error:membershipError}=await supabase
       .from("activity_memberships")
       .select("*")

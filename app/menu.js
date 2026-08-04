@@ -83,7 +83,7 @@ export default function Menu(){
         </>
       )}
 
-      {userType==="manager" && (
+      {loggedIn && (
         <Pressable style={styles.managerItem} onPress={()=>router.push("/manager/dashboard")}>
           <Text style={styles.text}>📊 Manager Dashboard</Text>
         </Pressable>
