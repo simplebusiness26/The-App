@@ -47,7 +47,7 @@ jobs:
       - name: Verify the business taxonomy has exactly one source
         run: node scripts/verify-taxonomy.cjs
 
-      - name: Refuse a manually set map marker
+      - name: Refuse a manually set map marker and an untokenised colour
         run: node scripts/verify-marker-assignment.cjs
 
       - name: Verify Explorer social layer

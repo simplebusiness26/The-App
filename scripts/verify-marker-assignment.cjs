@@ -48,6 +48,7 @@ function filesUnder(dir,extension){
 const MARKERS="utils/markers.js";
 const PIN="components/PlaceMarker.js";
 const PREVIEW="components/MarkerPreview.js";
+const TOKENS="utils/tokens.js";
 const DESIGN_SYSTEM="docs/design-system.md";
 
 // Every check below reads code, not prose. Without this the script fails a file
@@ -160,7 +161,20 @@ const tokens=new Set(
 
 check(tokens.size>0,`${DESIGN_SYSTEM}: no colour tokens parsed — the token table has moved or changed shape`);
 
-for(const source of [MARKERS,PIN,PREVIEW]){
+// Files built to the design system. This list grows one packet at a time; the
+// rest of the app is full of untokenised colour and belongs to Packet 11, which
+// owns the pass that makes this check whole-app.
+const TOKENISED=[
+  TOKENS,
+  MARKERS,
+  PIN,
+  PREVIEW,
+  "components/TabBar.js",
+  "app/discover.js",
+  "app/create.js"
+];
+
+for(const source of TOKENISED){
   const content=read(source);
 
   for(const match of content.matchAll(/#[0-9A-Fa-f]{6}\b/g)){
@@ -171,14 +185,42 @@ for(const source of [MARKERS,PIN,PREVIEW]){
   }
 }
 
+// The other direction, and the one that actually prevents drift: utils/tokens.js
+// is the document's table in code, so the two must hold exactly the same
+// colours. Without this, a colour could be dropped from the design system and
+// live on in code, or added to code and never documented.
+const inCode=new Set(
+  [...read(TOKENS).matchAll(/#[0-9A-Fa-f]{6}\b/g)].map((m)=>m[0].toUpperCase())
+);
+
+for(const token of tokens){
+  check(inCode.has(token),`${TOKENS}: ${token} is in ${DESIGN_SYSTEM} but not in the code table`);
+}
+for(const token of inCode){
+  check(tokens.has(token),`${TOKENS}: ${token} is in the code table but not in ${DESIGN_SYSTEM}`);
+}
+
 // A blurred shadow belongs to a different product (design-system.md, Surfaces).
-for(const source of [PIN,PREVIEW]){
+for(const source of TOKENISED.filter((file)=>file!==TOKENS && file!==MARKERS)){
   const content=read(source);
   const blurred=[...content.matchAll(/shadowRadius:\s*([0-9.]+)/g)].filter((m)=>Number(m[1])>0);
 
   check(
     blurred.length===0,
     `${source}: has a blurred shadow (shadowRadius > 0) — elevation is a hard offset shadow`
+  );
+}
+
+// The three inks mean something. The navigation shell is not a state, so it may
+// not spend one -- an active tab is a place you are, not a state a place is in.
+// This is designer.md's second hard check, on the one component most likely to
+// reach for a brand colour.
+const tabBar=code(read("components/TabBar.js"));
+
+for(const ink of ["blue","pink","yellow"]){
+  check(
+    !new RegExp(`INK\\.${ink}\\b`).test(tabBar),
+    `components/TabBar.js: uses INK.${ink} — the three inks carry state, never decoration`
   );
 }
 
