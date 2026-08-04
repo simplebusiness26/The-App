@@ -51,6 +51,17 @@ jest.mock("../services/supabase",()=>{
       functions:{
         invoke:jest.fn(()=>Promise.resolve({data:null,error:null}))
       },
+      // NotificationContext opens a realtime channel, but only once there is a
+      // signed-in user -- so the empty-result smoke tests never reached it and
+      // it went unmocked until a test supplied a session (Packet 5a).
+      channel:jest.fn(()=>{
+        const subscription={};
+        subscription.on=jest.fn(()=>subscription);
+        subscription.subscribe=jest.fn(()=>subscription);
+        subscription.unsubscribe=jest.fn();
+        return subscription;
+      }),
+      removeChannel:jest.fn(),
       storage:{
         from:jest.fn(()=>({
           upload:jest.fn(()=>Promise.resolve({data:null,error:null})),
