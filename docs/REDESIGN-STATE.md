@@ -38,7 +38,7 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 5b — place layout for events and activity clubs
+**Last completed packet:** 5c — place layout for link-ups. Packet 5 complete.
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,13 +51,14 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 5c — link-ups. It starts with a written privacy
-review, not with code: see the session log and the note below.
+**Next action:** Packet 6 — map bottom cards. Not blocked. Note the brief
+requires it to work with the **list fallback**: no Google Maps API key is
+set, so `components/PlacesList.js` is what actually ships.
 
-**5c needs you before it needs code.** `app/linkups/[id].js` renders private
-meeting-point details and owns the report and block controls, so `RULES.md`
-requires describing what a shared layout would expose and waiting, rather
-than implementing it. That description is 5c's first task, not its last.
+**The 5c privacy review is in the session log** and its conclusion is worth
+carrying: the meeting point is enforced by RLS, verified against the live
+project with real accounts. The client-side check is a second lock, and a
+gate now fails if either is removed.
 
 **One decision for you, from Packet 3.** The tab bar currently shows on the
 login and signup screens, because the brief's rule is "hidden on the three
@@ -85,7 +86,7 @@ Nothing else should change.
 | 4 | Quick Access drawer | done | `c7a3f94` | 34 drawer tests; entitlement proved against 2 real accounts in SQL; 6 red-then-green demonstrations |
 | 5a | Place layout: business, property | done | `893a182` | 14 place-page tests written before the refactor and green after; 35-check layout gate; 8 red-then-green demonstrations |
 | 5b | Place layout: events, clubs | done | `8d843fb` | 32 place-page tests, 18 new, written before the rewrite and green after; 75-check layout gate; 7 red-then-green demonstrations |
-| 5c | Place layout: link-ups (privacy gate) | not started | | |
+| 5c | Place layout: link-ups (privacy gate) | done | `26cb608` | Privacy review verified in SQL (creator sees 1 row, non-member 0); 42 place-page tests; 96-check layout gate; 7 red-then-green demonstrations |
 | 6 | Map bottom cards | not started | | |
 | 7 | Discover screen | not started | | |
 | 8 | Profile and reputation | not started | | |
@@ -121,6 +122,156 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 5c — done, after a privacy review
+
+**Did:** Wrote the privacy review `RULES.md` requires, found it cleared the
+conversion, then moved link-ups onto `PlaceLayout`. All five place page types
+now share one component.
+
+---
+
+#### The privacy review
+
+`RULES.md`: "Any change that touches location, presence, visibility or another
+Explorer's whereabouts is safety-critical. For these: Stop. Describe what you'd
+build and what it would expose. Wait."
+
+**What the page exposes, and to whom.** `app/linkups/[id].js` shows four things
+that are not public: the meeting point (`linkup_private_details.
+meeting_point_details`), the attendee list with names and photos, the private
+board, and the organiser's area when they have opted to show it.
+
+**What decides that, and it is not this file.** The policy
+`linkup_private_select_members` restricts `linkup_private_details` to the
+creator, or an active member who has not been blocked. `linkups`,
+`linkup_attendees` and `linkup_messages` each carry their own policy.
+**All four have RLS armed on the live project** — checked, not assumed:
+
+| Table | RLS enabled | Policies |
+|---|---|---|
+| `linkups` | true | 1 |
+| `linkup_private_details` | true | 1 |
+| `linkup_attendees` | true | 1 |
+| `linkup_messages` | true | 1 |
+
+And the boundary was exercised rather than read. A real link-up was given a
+meeting point inside a transaction, read back as two real accounts, and rolled
+back:
+
+| Caller | Rows visible |
+|---|---|
+| the creator | **1** |
+| a real Explorer who has not joined | **0** |
+
+**So the conclusion is that this conversion cannot widen exposure.** What a
+person can see is decided in the database before any component runs. Rendering
+the page differently cannot reveal a meeting point, because a non-member's
+query returns nothing to render. That is what made it safe to proceed in the
+same session rather than stopping — the thing the rule protects against is not
+present here.
+
+**Two consequences taken from that, rather than in spite of it.** The
+client-side `joined &&` check stays, and is now pinned by both a test and a
+gate. It is not the boundary, but a boundary with one lock is one mistake from
+being open. And a gate check now fails if the RLS policy is ever dropped from
+the migration, because at that point the client check *would* be the only thing
+left.
+
+**What I did not do:** touch any policy, any RPC, or `linkups/board/[id].js`.
+The review covers the detail page only.
+
+---
+
+**Files changed:** `app/linkups/[id].js` (rewritten); `components/PlaceLayout.js`
+(`showPhotos`, `showReviews`, `beforeActions`); `utils/markers.js`
+(`LINKUP_TYPE_LABEL`); `test/place-page.test.js` (+10);
+`scripts/verify-place-layout.cjs` (75 → 96 checks).
+
+**Photos and reviews are omitted, not emptied.** Link-ups have no photos, and
+there is **no `linkup_reviews` table anywhere in the migrations**. Passing
+`reviews={[]}` would have rendered "No reviews yet" on a page where reviewing
+is not a thing — an invitation to do something the app cannot record. Two
+capability flags, not page-type branches: a link-up has no photos and no
+reviews, which is a fact about link-ups rather than a special case in the
+layout.
+
+**Acceptance criteria:**
+
+1. All page types use one component; grep proves no duplicate — **PASS, and now
+   complete.** Five of five: business, property, event, activity club, link-up.
+   96 checks. The brief said six; `park` has no table, no row and no page, as
+   recorded when Packet 5 was split.
+2. Listing type matches the map marker — **PASS where a marker exists.** Clubs
+   and businesses genuinely match. Events and link-ups are not on the map at
+   all, so their labels exist in `utils/markers.js` only so that whichever
+   packet puts them there inherits the word instead of inventing a second.
+3. Loading, empty, error, unauthorised — **PASS, and link-ups are the one page
+   with a real unauthorised state.** A signed-out visitor is redirected to
+   login, and an Explorer who cannot see the link-up gets "This Link-up is
+   unavailable or no longer visible to you" — which is deliberately the same
+   message whether it was cancelled, is followers-only, or the organiser has
+   blocked them. Distinguishing those would leak the thing the visibility rule
+   is protecting.
+4. No disabled or "coming soon" controls — **PASS.**
+
+**Seven checks demonstrated failing before being kept, four of them privacy:**
+
+| Broke | Caught by | Message |
+|---|---|---|
+| meeting point rendered for everyone | test | `hides the meeting point from someone who has not joined` |
+| safety controls removed | test | `keeps the safety controls in reach of everyone but the organiser` |
+| private board opened to strangers | test | `opens the private board only to someone who has joined` |
+| attendee removal offered to everyone | test | `lists attendees and offers removal only to the organiser` |
+| the second lock removed | gate **and** test | `must stay behind a joined check` |
+| RLS policy dropped from the migration | gate | `policy is missing — the meeting point would have no server-side boundary` |
+| reviews section turned on | gate **and** test | `link-ups have no reviews table` |
+
+**The attendee-removal check needed writing twice, and the first version was
+worse than useless.** Its fixture put only the viewer in the attendee list, so
+the removal control was suppressed by "not me" rather than by "not the
+organiser" — deleting the organiser check changed nothing and the test passed.
+It now seeds a second attendee. **That is the third time in this run a check has
+looked convincing and proved nothing**, and all three were found only by trying
+to break them.
+
+**On the line count, honestly.** 143 lines became 398, which looks terrible and
+is mostly formatting: the original was written in a compressed style with an
+849-character line. By characters it is 14,691 to 17,968, about +22%, and the
+growth is accessibility labels the original did not have and comments recording
+the privacy reasoning. Across all five pages plus the layout the total is now
+1,806 lines against 1,336 before Packet 5 began.
+
+**Also run:** `npm run test:ci` → **263 passed**; place layout 96; taxonomy 133;
+markers 275; screen gates 72; social 92; live 152 + 39; linkup nav 20;
+title-only 28; seed 3; `npx expo-doctor` 20/20; web export succeeded.
+
+**Stopped because:** finished. Packet 5 is now complete in all three parts.
+
+**Exact next step:** Packet 6, map bottom cards. Read it in
+`docs/REDESIGN-BRIEF.md`. Two things it says that matter here: the map position
+must survive opening, swiping and dismissing a card, and it must work with the
+**list fallback**, because `PROJECT-LOG.md` records that no Google Maps API key
+is set and `PlacesList` is what actually ships. Packet 6 is also where a
+full-screen map mode would be added — if one is, it goes in
+`FULL_SCREEN_ROUTES` in `utils/navigation.js`, not `/map`, which is the Map tab.
+
+**Unverified.**
+
+- **Nobody has opened any of the five place pages.** That is the whole of
+  Packet 5 verified by assertions and never by a person.
+- The privacy conclusion is `Verified: used` — real SQL, real accounts, read
+  back. Everything drawn on the page is `renders, not behaves`.
+- `join_linkup`, `leave_linkup`, `cancel_linkup`, `remove_linkup_attendee`,
+  `report_live_safety` and `block_explorer` were all moved verbatim and none
+  has been called. A regression in any of them is a data or safety path.
+- The report form's reason chips now carry `accessibilityState`; the original
+  had none. Untested beyond rendering.
+- All five place pages are now riso while most of the app is still dark.
+  Packet 11 remains blocked on the palette decision, and the gap is now as wide
+  as it will get before that decision is made.
 
 ---
 
