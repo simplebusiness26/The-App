@@ -372,8 +372,13 @@ Two side effects worth recording:
 Still open, and deliberately not addressed: `account_type` remains writable, so
 a user can still promote themselves to `manager` and reach
 `/manager/dashboard`. Closing that means moving the signup write server-side.
-Out of scope throughout: `manager_packages` and `manager_subscriptions` are
-still public with RLS off, three `SECURITY DEFINER` views, an anon-executable
+Since closed: `manager_packages` and `manager_subscriptions` now have RLS on
+with no policies, and no write grants for `anon` or `authenticated` — deny-all,
+because nothing in the app or the database reads them. See
+`20260803221806_manager_billing_narrow_grants.sql` and
+`20260803221818_enable_rls_manager_billing.sql`.
+
+Out of scope throughout: three `SECURITY DEFINER` views, an anon-executable
 `create_notification`, the listable `review-image` bucket, and leaked-password
 protection being off.
 
