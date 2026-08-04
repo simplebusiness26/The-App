@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "verify:social": "node scripts/verify-social-layer.cjs",
-    "verify:live": "node scripts/verify-linkups-live.cjs && node scripts/verify-linkups-hardening.cjs"
+    "verify:live": "node scripts/verify-linkups-live.cjs && node scripts/verify-linkups-hardening.cjs",
+    "verify:screens": "node scripts/verify-screen-gates.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",

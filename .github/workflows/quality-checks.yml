@@ -48,6 +48,9 @@ jobs:
       - name: Verify title-only Link-up creation
         run: node scripts/verify-linkup-title-only.cjs
 
+      - name: Verify screen gates and route declarations
+        run: node scripts/verify-screen-gates.cjs
+
       - name: Check Expo project
         run: npx expo-doctor
 
