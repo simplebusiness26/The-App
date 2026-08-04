@@ -36,6 +36,16 @@ function contains(relative,needles){
   }
 }
 
+// Checks that forbid a pattern have to read code only. A comment explaining why
+// the pattern is banned contains the pattern, and would otherwise fail the very
+// file it is documenting.
+function readCode(relative){
+  return read(relative)
+    .split("\n")
+    .filter((line)=>!line.trim().startsWith("//"))
+    .join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // 1. The admin claim screens run the shared gate
 // ---------------------------------------------------------------------------
@@ -106,6 +116,75 @@ check(
   (read("app/admin/dashboard.js").match(/if\(!updated \|\| updated\.length===0\)\{/g) || []).length===1,
   "app/admin/dashboard.js: the claim update must treat an empty result as a rejection"
 );
+
+// ---------------------------------------------------------------------------
+// 2b. The menu must not empty itself when a profile read fails
+// ---------------------------------------------------------------------------
+// A build that selected a column which did not exist in the database took the
+// eight Explorer links, Manager Dashboard and Admin Dashboard off the menu at
+// once, silently: the query errored, the role flags stayed false, and every
+// gated entry vanished with nothing shown. The menu is not a security boundary
+// -- each destination re-checks the session and RLS decides the data -- so it
+// must fail open and say so, never fail closed and say nothing.
+
+const menu=read("app/menu.js");
+const menuCode=readCode("app/menu.js");
+
+check(
+  menu.includes("maybeSingle()"),
+  "app/menu.js: the profile read must use maybeSingle(), so a missing row is not an error"
+);
+check(
+  /if\(error \|\| !data\)\{/.test(menu),
+  "app/menu.js: the profile read must handle both a failed query and a missing row"
+);
+check(
+  menu.includes("setNotice("),
+  "app/menu.js: a failed profile read must tell the user, not fail silently"
+);
+check(
+  !/is_admin\s*\?\s*"admin"\s*:/.test(menuCode),
+  "app/menu.js: must not collapse is_admin and account_type into one role, which hides every Explorer link from admins"
+);
+
+// The links themselves must stay on the menu. Losing one is how this started.
+contains("app/menu.js",[
+  'router.push("/map")',
+  'router.push("/activity-clubs")',
+  'router.push("/events")',
+  'router.push("/profile")',
+  'router.push("/settings")',
+  'router.push("/live")',
+  'router.push("/linkups")',
+  'router.push("/checkins/create")',
+  'router.push("/feed")',
+  'router.push("/explorers")',
+  'router.push("/scan")',
+  'router.push("/leaderboards")',
+  'router.push("/safety/blocked")',
+  'router.push("/manager/dashboard")'
+]);
+
+// Nothing may read a profiles column that no migration creates. This is the
+// exact defect: the client asked for is_manager, which existed only in an
+// unapplied migration, so every role-gated entry disappeared.
+const profileColumns=new Set([
+  "id","full_name","email","phone","bio","profile_photo",
+  "account_type","is_admin","area","show_area","leaderboard_opt_in"
+]);
+
+for(const file of ["app/menu.js","app/settings.js","app/profile/edit.js"]){
+  const selects=[...readCode(file).matchAll(/\.from\("profiles"\)\s*\n?\s*\.select\("([^"]+)"\)/g)];
+
+  for(const [,columnList] of selects){
+    for(const column of columnList.split(",").map((c)=>c.trim())){
+      check(
+        profileColumns.has(column),
+        `${file}: selects profiles.${column}, which no migration creates`
+      );
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 3. app/_layout.js matches the route files on disk

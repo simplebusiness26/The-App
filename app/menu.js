@@ -4,8 +4,14 @@ import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 
 export default function Menu(){
-  const [userType,setUserType]=useState(null);
+  // Two independent facts. Collapsing them into one scalar with
+  // `is_admin ? "admin" : account_type` meant an admin saw no Explorer links at
+  // all, which is not a rule anyone wrote down -- being an admin says nothing
+  // about whether you explore.
+  const [isExplorer,setIsExplorer]=useState(false);
+  const [isAdmin,setIsAdmin]=useState(false);
   const [loggedIn,setLoggedIn]=useState(false);
+  const [notice,setNotice]=useState("");
 
   useEffect(()=>{loadUser();},[]);
 
@@ -13,18 +19,40 @@ export default function Menu(){
     const {data:{user}}=await supabase.auth.getUser();
     if(!user){
       setLoggedIn(false);
-      setUserType(null);
+      setIsExplorer(false);
+      setIsAdmin(false);
+      setNotice("");
       return;
     }
 
     setLoggedIn(true);
-    const {data}=await supabase
+
+    const {data,error}=await supabase
       .from("profiles")
       .select("account_type,is_admin")
       .eq("id",user.id)
-      .single();
+      .maybeSingle();
 
-    if(data) setUserType(data.is_admin ? "admin" : data.account_type);
+    if(error || !data){
+      // Never let a failed profile read empty the menu. This exact path took
+      // eight links off the screen with no error shown, and the menu is not a
+      // security boundary -- every destination re-checks the session itself and
+      // RLS decides the data. Showing a link the caller cannot use costs them an
+      // explanatory screen; showing none leaves them stranded with no way to
+      // reach anything and nothing to report.
+      setIsExplorer(true);
+      setIsAdmin(false);
+      setNotice(
+        error
+          ? "Your account details could not be loaded, so this menu may show more than you can open."
+          : "No profile was found for this account. Some screens will ask you to finish setting it up."
+      );
+      return;
+    }
+
+    setNotice("");
+    setIsExplorer(data.account_type==="explorer");
+    setIsAdmin(!!data.is_admin);
   }
 
   async function logout(){
@@ -35,6 +63,10 @@ export default function Menu(){
   return(
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Menu</Text>
+
+      {!!notice && (
+        <Text style={styles.notice}>{notice}</Text>
+      )}
 
       <Pressable style={styles.item} onPress={()=>router.push("/map")}>
         <Text style={styles.text}>🗺 Map</Text>
@@ -60,7 +92,7 @@ export default function Menu(){
         </Pressable>
       )}
 
-      {userType==="explorer" && (
+      {isExplorer && (
         <>
           <Pressable style={styles.liveItem} onPress={()=>router.push("/live")}>
             <Text style={styles.text}>📡 Live Nearby</Text>
@@ -95,7 +127,7 @@ export default function Menu(){
         </Pressable>
       )}
 
-      {userType==="admin" && (
+      {isAdmin && (
         <Pressable style={styles.item} onPress={()=>router.push("/admin/claims")}>
           <Text style={styles.text}>⚙️ Admin Dashboard</Text>
         </Pressable>
@@ -125,6 +157,7 @@ const styles=StyleSheet.create({
   container:{flex:1},
   content:{padding:30,paddingBottom:50},
   title:{fontSize:32,fontWeight:"bold",marginBottom:30},
+  notice:{backgroundColor:"#3d2f14",color:"#f0d39a",borderRadius:10,padding:13,marginBottom:20,lineHeight:19},
   item:{backgroundColor:"#222",padding:16,borderRadius:10,marginBottom:15},
   activityItem:{backgroundColor:"#5633a8",padding:16,borderRadius:10,marginBottom:15},
   eventsItem:{backgroundColor:"#8a3ffc",padding:16,borderRadius:10,marginBottom:15},
