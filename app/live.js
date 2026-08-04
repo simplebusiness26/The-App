@@ -11,6 +11,8 @@ const TYPES=[
 ];
 
 export default function LiveDiscovery(){
+  const deliberateBreak=null;
+  deliberateBreak.id;
   const {showFeedback}=useFeedback();
   const [user,setUser]=useState(null);
   const [areaDraft,setAreaDraft]=useState("");
