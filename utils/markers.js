@@ -173,6 +173,17 @@ function buildMarker({glyph,state,typeSentence,claimed}){
   };
 }
 
+// The type label a place shows on its page. Exported so a place page and its
+// map pin cannot disagree about what the place is -- Packet 5's criterion
+// "listing type displayed matches the map marker for the same record" holds by
+// construction rather than by two files happening to agree.
+export const PROPERTY_TYPE_LABEL="Property";
+export const CLUB_TYPE_LABEL="Club";
+
+export function typeLabelForBusiness(business){
+  return classificationLabel(business);
+}
+
 // Packet 2's pure function: a business's classification decides its glyph, and
 // nothing about the classification touches the colour.
 export function markerForBusiness(business){
@@ -185,7 +196,7 @@ export function markerForBusiness(business){
     // classificationLabel falls back to the category when the type is
     // unclassified, so a food and drink place reads as "Food and drink." rather
     // than the useless "Not yet classified."
-    typeSentence:`${classificationLabel(business)}.`,
+    typeSentence:`${typeLabelForBusiness(business)}.`,
     // businesses.claimed defaults to false in the database, so === true matches
     // it exactly: a query that forgets to select the column shows the pin as
     // unclaimed rather than inventing a manager for it.
@@ -199,7 +210,7 @@ export function markerForProperty(){
   return buildMarker({
     glyph:"home",
     state:MARKER_STATES.EXISTS,
-    typeSentence:"Property.",
+    typeSentence:`${PROPERTY_TYPE_LABEL}.`,
     claimed:true
   });
 }
@@ -210,7 +221,7 @@ export function markerForClub(){
   return buildMarker({
     glyph:"people",
     state:MARKER_STATES.SCHEDULED,
-    typeSentence:"Club.",
+    typeSentence:`${CLUB_TYPE_LABEL}.`,
     claimed:true
   });
 }
