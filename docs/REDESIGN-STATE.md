@@ -229,6 +229,10 @@ layout 35; screen gates 72; social 92; live 152 + 39; linkup nav 20;
 title-only 28; seed 3; `npx expo-doctor` 20/20; `npx expo export --platform
 web` succeeded.
 
+**CI:** run 29 on `cd8bf69`, conclusion **`success`**, read back from the API
+after the run completed.
+https://github.com/simplebusiness26/The-App/actions/runs/30936611611
+
 **One incidental fix.** `test/setup.js` never mocked `supabase.channel`.
 `NotificationContext` opens a realtime channel, but only once a user is signed
 in, and no test had ever supplied a session — so the gap was invisible until
