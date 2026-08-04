@@ -10,18 +10,20 @@
     "web": "expo start --web",
     "verify:social": "node scripts/verify-social-layer.cjs",
     "verify:live": "node scripts/verify-linkups-live.cjs && node scripts/verify-linkups-hardening.cjs",
-    "verify:screens": "node scripts/verify-screen-gates.cjs"
+    "verify:screens": "node scripts/verify-screen-gates.cjs",
+    "test": "jest",
+    "test:ci": "jest --ci --runInBand"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",
     "@supabase/supabase-js": "latest",
-    "expo": "~57.0.9",
+    "expo": "~57.0.10",
     "expo-camera": "latest",
     "expo-constants": "~57.0.7",
     "expo-image-picker": "~57.0.7",
-    "expo-linking": "~57.0.4",
+    "expo-linking": "~57.0.5",
     "expo-location": "~57.0.7",
-    "expo-router": "~57.0.9",
+    "expo-router": "~57.0.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "latest",
@@ -33,5 +35,10 @@
   },
   "overrides": {
     "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-expo": "^57.0.3",
+    "react-test-renderer": "^19.2.3"
   }
 }

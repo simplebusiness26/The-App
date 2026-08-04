@@ -36,6 +36,14 @@ jobs:
       - name: Require clean dependency audit
         run: npm audit --audit-level=moderate
 
+      # Packet 0. This is the only step in this file that proves a screen
+      # renders; every step below it reads source text or builds a bundle.
+      - name: Mount every route
+        run: npm run test:ci
+
+      - name: Refuse a migration that seeds test data unguarded
+        run: node scripts/verify-no-unguarded-seed.cjs
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

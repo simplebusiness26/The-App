@@ -5,6 +5,18 @@ declare
   manager_user_id uuid;
   test_event_id uuid;
 begin
+  -- Packet 0: this block seeds development data for manager@test.com and must
+  -- never run against production. It is opt-in, and silent when not opted in.
+  --
+  -- To seed a development database:  set guestbook.seed_test_data = 'on';
+  --
+  -- This also repairs a fresh apply. The block below raises when the test auth
+  -- user is absent, so `supabase db reset` on a clean project failed outright
+  -- rather than skipping data it was never going to be able to insert.
+  if coalesce(current_setting('guestbook.seed_test_data', true), 'off') <> 'on' then
+    raise notice 'Skipping test data: set guestbook.seed_test_data to on to seed a development database.';
+    return;
+  end if;
   select id
   into manager_user_id
   from auth.users

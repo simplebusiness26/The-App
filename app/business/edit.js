@@ -44,6 +44,19 @@ user
 
 
 
+// Without this the next line read user.id on null and threw, so a
+// signed-out visitor to /business/edit got a crashed screen rather than
+// a login prompt. Caught by the Packet 0 mount tests.
+if(!user){
+
+router.replace("/auth/login");
+
+return;
+
+}
+
+
+
 const {data:claim}=await supabase
 
 .from("claims")
