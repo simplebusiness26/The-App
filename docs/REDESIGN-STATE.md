@@ -38,7 +38,7 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 2 — marker assignment
+**Last completed packet:** 3 — navigation shell
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,7 +51,15 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 3 (navigation shell). It is not blocked.
+**Next action:** Packet 4 (Quick Access drawer). It replaces `/menu`, which
+Packet 3 deliberately left alone and still reachable.
+
+**One decision for you, from Packet 3.** The tab bar currently shows on the
+login and signup screens, because the brief's rule is "hidden on the three
+named surfaces, visible everywhere else" and auth is not one of them. It is
+arguably wrong — a half-finished signup is easy to wander out of. Adding
+`/auth/login` and `/auth/signup` to `FULL_SCREEN_ROUTES` in
+`utils/navigation.js` is a two-line change if you want it.
 
 **Open, and the owner's:** the real `business_type` list. The interface
 direction document the brief cites is not in this repository. Packet 1
@@ -68,7 +76,7 @@ Nothing else should change.
 | 0 | Verification harness | done | `a1e98a1` | 67/67 mount tests; CI red demonstrated (run 16 `failure`), green again (run 18 `success`) |
 | 1 | Business taxonomy | done | `623644e` | Migration applied and queried back; 5 constraint scenarios; 111-check taxonomy gate |
 | 2 | Marker assignment | done | `fad6887` | 27 marker tests; 233-check override gate; 6 red-then-green demonstrations |
-| 3 | Navigation shell | not started | | |
+| 3 | Navigation shell | done | `e4a300e` | 92 navigation tests; route inventory diff is +2/-0; 6 red-then-green demonstrations |
 | 4 | Quick Access drawer | not started | | |
 | 5 | Place page layout | not started | | |
 | 6 | Map bottom cards | not started | | |
@@ -106,6 +114,162 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 3 — done
+
+**Did:** Gave the app a persistent bottom tab bar — Map · Discover · Create ·
+Leaderboard · Profile, centre raised — without moving a single route file.
+
+- `utils/navigation.js` (new) holds the tab set and the hide rule as data and
+  pure functions, so both are testable without rendering.
+- `components/TabBar.js` (new) draws it. Five hand-authored SVG icons, kept as
+  a separate set from the place-marker glyphs.
+- `app/discover.js` and `app/create.js` (new) are the two tabs that had no
+  screen.
+- `utils/tokens.js` (new) is the design-system colour table in code.
+- `app/_layout.js` renders `<TabBar/>` below the Stack and gained
+  `SafeAreaProvider`.
+
+**The main decision, and the reason this packet was cheap.** The obvious Expo
+Router approach is an `app/(tabs)/` group, which means moving the five tab
+routes into it. Two reasons not to:
+
+1. The brief wants the bar "hidden on the three named surfaces, visible
+   everywhere else". Under a tabs group the bar vanishes the moment anything
+   is pushed on top of it, which is most of this app — you would see it on
+   five screens and nowhere else.
+2. "Nothing deleted, nothing orphaned." Moving sixty route files to satisfy a
+   layout is a large way to risk exactly that.
+
+So the bar sits *beside* the Stack, in flow beneath it, and the Stack simply
+gets a shorter box. No screen needed to learn about it, no route moved, and
+the Android back button still follows the same Stack it always did.
+
+**Files changed:** `utils/navigation.js`, `utils/tokens.js`,
+`components/TabBar.js`, `app/discover.js`, `app/create.js`,
+`test/navigation.test.js` (all new); `app/_layout.js`; `utils/markers.js` and
+`components/MarkerPreview.js` (INK moved to the token module);
+`scripts/verify-marker-assignment.cjs`; `.github/workflows/quality-checks.yml`.
+
+**Two places the brief is out of date, where the repo won.**
+
+*Leaderboard is not a placeholder.* The brief says the Leaderboard tab points
+at a stub. `app/leaderboards.js` is a finished screen with period and scope
+filters, shipped with the Explorer social layer. Pointing a tab at an empty
+state instead would have been a regression dressed as progress, so the tab
+points at the real screen.
+
+*Two of the three full-screen surfaces do not exist.* The brief says the bar
+hides on full-screen photo, QR scan and full-screen map. Only `/scan` exists.
+There is no full-screen photo route — `app/moments/[id].js` is a scrolling
+detail screen with a photo in it. And there is no full-screen map mode: `/map`
+**is** the Map tab, so hiding the bar there would strand a person on the tab
+they just opened. `FULL_SCREEN_ROUTES` is a list precisely so Packet 6 can add
+its expanded map mode with one line, and a test asserts every route in that
+list actually exists.
+
+**Acceptance criteria:**
+
+1. Route inventory before/after — no route lost — **PASS**. Diffed against
+   `46a75d8`:
+
+   ```
+   22a23,24
+   > create
+   > discover
+   ```
+
+   That is the entire diff: two added, none removed, none renamed. 64 routes
+   before, 66 after. The before-list is also pinned inside
+   `test/navigation.test.js`, so deleting a screen in a later packet fails a
+   test rather than passing quietly.
+2. Back behaviour correct on Android hardware back button — **NOT VERIFIED ON
+   A DEVICE.** See below. What is asserted is the structural claim it rests
+   on: the root layout still renders a `Stack` and not a `Tabs`, so the
+   navigator the back button follows is unchanged from what already shipped.
+3. Tab bar hidden on the three named surfaces, visible everywhere else —
+   **PASS for the one surface that exists**. `isTabBarHidden` is asserted true
+   for `/scan` and false for all 65 other routes, individually. The bar also
+   renders to nothing on `/scan`, tested by rendering it.
+4. Mount tests pass for all five tab roots — **PASS**. Each tab route is
+   resolved to a file on disk and mounted; a tab pointing at a missing route
+   fails both that test and the inventory test.
+
+**About criterion 2, plainly.** No Android device or emulator was available in
+this session, so the hardware back button has not been pressed. Recording it
+as passed would be a lie of exactly the kind this ledger exists to prevent.
+The honest claim is narrower and worth stating precisely: this packet did not
+change the navigator, so it cannot have changed back behaviour. It did not add
+a tab navigator, did not move a route, and did not touch `Header.goBack`. If
+back was correct before Packet 3, it is correct after. **If it was already
+broken, this packet neither fixed nor found it.**
+
+**Design notes worth carrying.**
+
+The tab bar spends none of the three inks, and a gate now enforces that.
+An active tab is a place you are, not a state a place is in — if blue meant
+"selected tab" here and "this place exists" on the map, it would mean neither.
+Active is carried by an ink bar above the tab, a heavier label, and
+`accessibilityState={{selected}}`, so it survives being read aloud and being
+seen by someone who does not separate those two greys.
+
+The raised Create button is drawn *after* the bar rather than inside it, and
+is absolutely positioned in a transparent strip above it. Android clips
+children that overflow their parent, so a button that "sits above the bar"
+by overflowing would have been cut in half on exactly one platform and looked
+fine everywhere else.
+
+`utils/tokens.js` exists because Packet 3 became the second consumer of the
+palette. One file needing it is a local constant; two is a table. The gate now
+checks the code table and the document hold the same ten colours in both
+directions, so a colour cannot be dropped from the design system and live on
+in code.
+
+**Six checks were demonstrated failing before being kept:**
+
+| Broke | Caught by | Message |
+|---|---|---|
+| gave the active tab an ink-blue bar | `verify-marker-assignment` | `uses INK.blue — the three inks carry state` |
+| changed one hex in the code token table | `verify-marker-assignment` | 3 failures, both directions of the drift check |
+| used an untokenised colour on `/discover` | `verify-marker-assignment` | `#7A5CFF is not in the token table` |
+| pointed the Discover tab at `/discovery` | `navigation.test.js` | tab route missing, and its mount test |
+| deleted `app/explorers.js` | `navigation.test.js` | `keeps every route that existed before` |
+| swapped the `Stack` for `Tabs` | `navigation.test.js` | `still navigates with a Stack` |
+
+**Also run:** `npm run test:ci` → **188 passed** (67 route mounts, 27 marker,
+92 navigation, 2 new route mounts); taxonomy 129; markers 270; social 92; live
+152 + 39; linkup nav 20; title-only 28; screen gates 65; seed check 3;
+`npx expo-doctor` 20/20; `npx expo export --platform web` succeeded and the
+bundle still contains `/linkups/create`.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 4, the Quick Access drawer. Read it in
+`docs/REDESIGN-BRIEF.md` first. Its first criterion is a table mapping every
+row of the old `/menu` to a drawer row or a tab — `app/menu.js` is untouched
+by Packet 3 and still holds that list, including the notice-on-failure
+behaviour added after the ten-links defect. Note its Manage section criterion
+says entitlement must be checked **server-side**, not merely hidden.
+
+**Unverified.** `Verified: renders. Unverified: behaves`. **Nobody has seen
+the tab bar.**
+
+- The five navigation icons have never been looked at, same as the twelve
+  marker glyphs from Packet 2.
+- The raised button's placement is reasoned about, not observed. The Android
+  clipping problem it avoids is real; whether the button lands where it should
+  on a real screen is not known.
+- `/create` and `/discover` have never been opened. Every route they link to
+  existed before this packet, but no link has been tapped.
+- The bar's effect on the 64 screens that predate it is unverified. It takes
+  layout height rather than floating, so nothing should be covered — but
+  several screens set their own `paddingBottom` and may now be over-padded.
+- The Android hardware back button, as above.
+- `SafeAreaProvider` was added to `app/_layout.js` for the bottom inset.
+  Nothing else in the app used it, and it has not run on a device with a home
+  indicator.
 
 ---
 
