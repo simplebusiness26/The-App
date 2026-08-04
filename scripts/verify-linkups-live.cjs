@@ -66,7 +66,13 @@ contains("app/_layout.js",[
 contains("app/menu.js",[
   'router.push("/live")',
   'router.push("/linkups")',
-  'router.push("/checkins/create")',
+  'router.push("/checkins/create")'
+]);
+
+// Blocked Explorers moved off the menu and into Settings, alongside the other
+// account-level controls. The contract is that it stays reachable from a real
+// entry point, not that it lives on any particular screen.
+contains("app/settings.js",[
   'router.push("/safety/blocked")'
 ]);
 

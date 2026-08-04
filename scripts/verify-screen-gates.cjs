@@ -108,6 +108,77 @@ check(
 );
 
 // ---------------------------------------------------------------------------
+// 2b. Manager is a flag, not a value of account_type
+// ---------------------------------------------------------------------------
+// account_type must stay 'explorer' for everyone. Every explorer gate in the
+// app and ~15 RPCs and triggers in the database test it for that exact value,
+// so a screen that starts writing or comparing it against 'manager' silently
+// revokes half of someone's account.
+
+const managerGates=[
+  "app/manager/dashboard.js",
+  "app/manager/requests.js",
+  "app/manager/membership-status/[id].js",
+  "app/business/[id].js",
+  "app/property/[id].js"
+];
+
+for(const screen of managerGates){
+  const content=read(screen);
+
+  check(
+    content.includes("is_manager"),
+    `${screen}: the manager gate must read is_manager`
+  );
+  check(
+    !/account_type\s*[!=]==?\s*"manager"/.test(content),
+    `${screen}: must not compare account_type against "manager"`
+  );
+}
+
+// Signup must not choose a role -- the column default supplies 'explorer'.
+const signup=read("app/auth/signup.js");
+check(
+  !signup.includes("account_type"),
+  "app/auth/signup.js: must not write account_type; the column default supplies it"
+);
+
+// The upgrade goes through the RPC, never a column write.
+const settings=read("app/settings.js");
+contains("app/settings.js",[
+  "set_manager_account",
+  "useFeedback",
+  "router.replace(\"/auth/login\")"
+]);
+check(
+  !/\.update\(\s*\{[^}]*is_manager/.test(settings),
+  "app/settings.js: is_manager must be set through set_manager_account, not a column update"
+);
+
+// The three roles are independent facts. menu.js used to collapse them into one
+// scalar with `is_admin ? "admin" : account_type`, which hid the explorer and
+// manager entries from every admin.
+const menu=read("app/menu.js");
+check(
+  !/is_admin\s*\?\s*"admin"\s*:/.test(menu),
+  "app/menu.js: must not collapse is_admin and account_type into a single role"
+);
+contains("app/menu.js",["isExplorer","isManager","isAdmin",'router.push("/settings")']);
+
+// The grant that closes the escalation path.
+const grantMigration=read("supabase/migrations/20260804090100_manager_account_rpc.sql");
+const grantBlock=grantMigration.match(/grant update \(([^)]*)\) on public\.profiles/);
+check(!!grantBlock,"20260804090100: expected a column-scoped UPDATE grant on profiles");
+if(grantBlock){
+  for(const forbidden of ["account_type","is_manager","is_admin"]){
+    check(
+      !grantBlock[1].includes(forbidden),
+      `20260804090100: ${forbidden} must not appear in the profiles UPDATE grant`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 3. app/_layout.js matches the route files on disk
 // ---------------------------------------------------------------------------
 
