@@ -42,9 +42,15 @@ function code(content){
 
 const LAYOUT="components/PlaceLayout.js";
 
-// Converted in 5a. 5b appends events and activity clubs; 5c appends link-ups,
-// and not before the privacy review the ledger records as its first task.
-const CONVERTED=["app/business/[id].js","app/property/[id].js"];
+// Grown one packet at a time. 5a converted business and property; 5b added
+// events and activity clubs. 5c appends link-ups, and not before the privacy
+// review the ledger records as its first task.
+const CONVERTED=[
+  "app/business/[id].js",
+  "app/property/[id].js",
+  "app/events/[id].js",
+  "app/activity-clubs/[id].js"
+];
 
 // ---------------------------------------------------------------------------
 // 1. Every converted page uses the layout
@@ -77,7 +83,12 @@ const LAYOUT_ONLY=[
   ["reviewCard:","the review card style"],
   ["modalBackdrop:","the photo viewer"],
   ["heroPhoto:","the hero photo strip"],
-  ["statCard:","the rating block"]
+  ["statCard:","the rating block"],
+  // Added in 5b. The event and club screens spelled the same pieces
+  // differently, which is how four copies of a review card came to exist.
+  ["reviewPhoto:","the review photo strip"],
+  ["pointsBadge:","the points badge"],
+  ["emptyStars:","the star rating"]
 ];
 
 for(const screen of CONVERTED){
@@ -152,6 +163,17 @@ check(
   /typeLabel=\{PROPERTY_TYPE_LABEL\}/.test(code(read("app/property/[id].js"))),
   "app/property/[id].js: typeLabel must be PROPERTY_TYPE_LABEL, not be written here"
 );
+check(
+  /typeLabel=\{CLUB_TYPE_LABEL\}/.test(code(read("app/activity-clubs/[id].js"))),
+  "app/activity-clubs/[id].js: typeLabel must be CLUB_TYPE_LABEL, not be written here"
+);
+// Events are not on the map yet, so there is no marker to disagree with. The
+// label is still taken from utils/markers.js so that whichever packet puts an
+// event on the map inherits the same word rather than inventing a second one.
+check(
+  /typeLabel=\{EVENT_TYPE_LABEL\}/.test(code(read("app/events/[id].js"))),
+  "app/events/[id].js: typeLabel must be EVENT_TYPE_LABEL, not be written here"
+);
 
 const markers=code(read("utils/markers.js"));
 check(
@@ -161,6 +183,10 @@ check(
 check(
   /typeSentence:`\$\{PROPERTY_TYPE_LABEL\}\.`/.test(markers),
   "utils/markers.js: the property marker must use the same label the page shows"
+);
+check(
+  /typeSentence:`\$\{CLUB_TYPE_LABEL\}\.`/.test(markers),
+  "utils/markers.js: the club marker must use the same label the page shows"
 );
 
 // ---------------------------------------------------------------------------
