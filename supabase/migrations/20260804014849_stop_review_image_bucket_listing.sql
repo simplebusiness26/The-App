@@ -1,0 +1,43 @@
+-- Stop clients enumerating the review-image bucket.
+--
+-- WHY
+-- review-image is a public bucket that also carried a broad SELECT policy on
+-- storage.objects ("Anyone can view review images", qualified only by
+-- bucket_id). A public bucket does not need one: the public object endpoint
+-- serves files without consulting RLS. All the policy added was the ability to
+-- LIST -- to walk every object in the bucket, including files whose review was
+-- later deleted or never published. Supabase reports it as
+-- public_bucket_allows_listing.
+--
+-- The object paths make that worse than it sounds. They are
+-- <user_id>/business-reviews/<review_id>/<file>, so a listing hands out a map
+-- of which user reviewed which listing, without reading a single table.
+--
+-- THE EVIDENCE THAT NOTHING NEEDS IT
+-- The other three buckets on this project -- profile-images, review-media and
+-- social-media -- are all public and none has a SELECT policy. They work.
+-- That is the same configuration this migration leaves review-image in.
+--
+-- Nothing in the app touches this bucket at all: the only storage.from() calls
+-- are profile-images, social-media and review-media. There are no .list() calls
+-- anywhere in the codebase. The bucket holds 3 objects, and the 3 review rows
+-- whose photos mention "review-image" point at
+-- nyyljcdrmbdavamgcydw.supabase.co -- the Guest-book-V3 project, not this one --
+-- so even those are not served from here.
+--
+-- Verified either side of applying, against the live project:
+--
+--   public object URL   200, 260459 bytes before -- 200, 260459 bytes after
+--   anon listing        0 objects visible (was: the whole bucket)
+--
+-- Reads of individual files are untouched; only enumeration stops.
+--
+-- The INSERT policy ("Authenticated users can upload review images") is left in
+-- place. It is not what the linter flagged, and removing upload rights is a
+-- product decision rather than a security fix.
+--
+-- To revert:
+--   create policy "Anyone can view review images" on storage.objects
+--     for select to public using (bucket_id = 'review-image');
+
+drop policy if exists "Anyone can view review images" on storage.objects;

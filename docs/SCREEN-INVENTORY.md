@@ -385,8 +385,16 @@ signed-out visitor sees stays correct; `activity_session_stats` had no callers
 and was dropped. See `20260804013508_stats_views_respect_caller_rls.sql` and
 `20260804013544_drop_unused_activity_session_stats.sql`.
 
-Out of scope throughout: an anon-executable `create_notification`, the listable
-`review-image` bucket, and leaked-password protection being off.
+`create_notification` is no longer reachable by `anon` or `authenticated`, so
+notifications can only be raised by the database's own definer functions and
+triggers; the three trigger functions were revoked alongside it, and the
+`review-image` bucket's broad SELECT policy is gone, which stops enumeration
+while leaving public object URLs working. See
+`20260804014743_close_anon_notification_forgery.sql` and
+`20260804014849_stop_review_image_bucket_listing.sql`.
+
+Out of scope throughout: leaked-password protection is still off, which is a
+dashboard setting rather than a migration (Authentication -> Passwords).
 
 **Layout declarations out of step with the file tree**
 
