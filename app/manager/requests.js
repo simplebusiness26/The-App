@@ -11,6 +11,8 @@ import {
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
+import GateNotice from "../../components/GateNotice";
+import {useManagerGate} from "../../hooks/useManagerGate";
 
 function firstParam(value){
   return Array.isArray(value) ? value[0] : value || null;
@@ -66,6 +68,10 @@ function NextStep({icon,text,tone="success"}){
 }
 
 export default function ManagerRequests(){
+  // Packet 4: entitlement is decided by public.manages_any_listing() in the
+  // database, not by the drawer having hidden the row that leads here.
+  const managerGate=useManagerGate();
+
   const params=useLocalSearchParams();
   const targetClubId=firstParam(params.club);
   const targetMembershipId=firstParam(params.membership);
@@ -416,6 +422,10 @@ export default function ManagerRequests(){
         </View>
       </>
     );
+  }
+
+  if(!managerGate.allowed){
+    return <GateNotice checking={managerGate.checking} message={managerGate.error}/>;
   }
 
   if(loading){

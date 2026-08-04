@@ -16,10 +16,16 @@ import {router} from "expo-router";
 import {useFocusEffect} from "expo-router";
 
 import QRCodeGenerator from "../../components/QRCodeGenerator";
+import GateNotice from "../../components/GateNotice";
+import {useManagerGate} from "../../hooks/useManagerGate";
 
 
 
 export default function BusinessDashboard(){
+  // Packet 4: entitlement is decided by public.manages_any_listing() in the
+  // database, not by the drawer having hidden the row that leads here.
+  const managerGate=useManagerGate();
+
 
 
 const [businesses,setBusinesses]=useState([]);
@@ -110,6 +116,10 @@ setStatus("No business listings yet");
 
 
 
+
+  if(!managerGate.allowed){
+    return <GateNotice checking={managerGate.checking} message={managerGate.error}/>;
+  }
 
 return(
 

@@ -12,9 +12,15 @@ import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
 
 import QRCodeGenerator from "../../components/QRCodeGenerator";
+import GateNotice from "../../components/GateNotice";
+import {useManagerGate} from "../../hooks/useManagerGate";
 
 
 export default function PropertyDashboard(){
+  // Packet 4: entitlement is decided by public.manages_any_listing() in the
+  // database, not by the drawer having hidden the row that leads here.
+  const managerGate=useManagerGate();
+
 
 
 const [properties,setProperties]=useState([]);
@@ -137,6 +143,10 @@ setStatus("Your Properties");
 }
 
 
+
+  if(!managerGate.allowed){
+    return <GateNotice checking={managerGate.checking} message={managerGate.error}/>;
+  }
 
 return(
 
