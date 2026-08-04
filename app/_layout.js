@@ -4,8 +4,10 @@ import {Stack} from "expo-router";
 import {SafeAreaProvider} from "react-native-safe-area-context";
 import Header from "../components/Header";
 import TabBar from "../components/TabBar";
+import QuickAccessDrawer from "../components/QuickAccessDrawer";
 import {FeedbackProvider} from "../context/FeedbackContext";
 import {NotificationProvider} from "../context/NotificationContext";
+import {DrawerProvider} from "../context/DrawerContext";
 
 export const unstable_settings={initialRouteName:"index"};
 
@@ -18,11 +20,11 @@ export default function Layout(){
     <SafeAreaProvider>
       <FeedbackProvider>
         <NotificationProvider>
-          <View style={styles.shell}>
+          <DrawerProvider>
+            <View style={styles.shell}>
             <View style={styles.stack}>
         <Stack screenOptions={{headerShown:true,header:()=> <Header />}}>
           <Stack.Screen name="index" options={{headerShown:false}}/>
-          <Stack.Screen name="menu"/>
           <Stack.Screen name="settings"/>
           <Stack.Screen name="map"/>
           <Stack.Screen name="discover"/>
@@ -100,8 +102,10 @@ export default function Layout(){
         </Stack>
             </View>
 
-            <TabBar/>
-          </View>
+              <TabBar/>
+              <QuickAccessDrawer/>
+            </View>
+          </DrawerProvider>
         </NotificationProvider>
       </FeedbackProvider>
     </SafeAreaProvider>

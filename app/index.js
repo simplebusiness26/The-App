@@ -10,11 +10,13 @@ import {
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useNotifications} from "../context/NotificationContext";
+import {useDrawer} from "../context/DrawerContext";
 
 const HOME_LAYOUT_VERSION="compact-v2";
 
 export default function Home(){
   const {unreadCount}=useNotifications();
+  const {openDrawer}=useDrawer();
   const [loggedIn,setLoggedIn]=useState(false);
   const [isAdmin,setIsAdmin]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -120,10 +122,10 @@ export default function Home(){
         {loggedIn ? (
           <Pressable
             style={[styles.actionButton,styles.menuButton]}
-            onPress={()=>router.push("/menu")}
+            onPress={openDrawer}
           >
             <Text style={styles.buttonIcon}>☰</Text>
-            <Text style={styles.primaryButtonText}>Open Menu</Text>
+            <Text style={styles.primaryButtonText}>Quick access</Text>
           </Pressable>
         ) : (
           <View style={styles.authRow}>

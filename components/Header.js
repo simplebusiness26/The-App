@@ -8,10 +8,12 @@ import {
 } from "react-native";
 import {router,usePathname} from "expo-router";
 import {useNotifications} from "../context/NotificationContext";
+import {useDrawer} from "../context/DrawerContext";
 
 export default function Header(){
   const pathname=usePathname();
   const {unreadCount}=useNotifications();
+  const {openDrawer}=useDrawer();
 
   function goBack(){
     if(pathname==="/") return;
@@ -64,9 +66,9 @@ export default function Header(){
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open menu"
+          accessibilityLabel="Open quick access"
           style={styles.iconButton}
-          onPress={()=>router.push("/menu")}
+          onPress={openDrawer}
         >
           <Text style={styles.icon}>☰</Text>
         </Pressable>
