@@ -4,6 +4,9 @@ import MapView,{Marker} from "react-native-maps";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import PlacesList from "../components/PlacesList";
+import PlaceMarker from "../components/PlaceMarker";
+import {markerForBusiness,markerForProperty,markerForClub} from "../utils/markers";
+import {classificationLabel} from "../utils/taxonomy";
 
 const GOOGLE_MAPS_API_KEY=process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -25,7 +28,7 @@ function NativeMap(){
 
   async function loadPlaces(){
     const [businessResult,propertyResult,clubResult]=await Promise.all([
-      supabase.from("businesses").select("id,name,category,address,latitude,longitude"),
+      supabase.from("businesses").select("id,name,category,business_type,claimed,address,latitude,longitude"),
       supabase.from("properties").select("id,name,address,latitude,longitude"),
       supabase.from("activity_clubs").select("id,name,category,location,address,latitude,longitude,status").in("status",["open","full"])
     ]);
@@ -39,10 +42,13 @@ function NativeMap(){
     setActivityClubs(clubResult.data || []);
   }
 
-  function matchesSearch(item){
+  // Packet 1 turned businesses.category into a key, so a search for the word a
+  // person would type stopped matching a place whose category now reads
+  // food_and_drink. The readable classification is passed in as extra text.
+  function matchesSearch(item,extraText){
     const clean=search.trim().toLowerCase();
     if(!clean) return true;
-    return [item.name,item.category,item.address,item.location]
+    return [item.name,item.category,item.address,item.location,extraText]
       .filter(Boolean)
       .some(value=>String(value).toLowerCase().includes(clean));
   }
@@ -51,7 +57,7 @@ function NativeMap(){
     return Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
   }
 
-  const filteredBusinesses=businesses.filter(item=>matchesSearch(item) && hasCoordinates(item));
+  const filteredBusinesses=businesses.filter(item=>matchesSearch(item,classificationLabel(item)) && hasCoordinates(item));
   const filteredProperties=properties.filter(item=>matchesSearch(item) && hasCoordinates(item));
   const filteredClubs=activityClubs.filter(item=>matchesSearch(item) && hasCoordinates(item));
 
@@ -72,32 +78,42 @@ function NativeMap(){
       </View>
 
       <MapView style={styles.map} initialRegion={{latitude:50.8225,longitude:-0.1372,latitudeDelta:0.12,longitudeDelta:0.12}}>
+        {/*
+          Packet 2. These were pinColor="#d63b3b" / "#275bd6" / "#5633a8" -- three
+          colours outside the token table, each chosen by what kind of listing it
+          was. That is type controlling colour, which is exactly what breaks the
+          three-ink rule. Now the ink says whether something is scheduled there
+          and the icon says what the place is.
+        */}
         {(typeFilter==="all" || typeFilter==="business") && filteredBusinesses.map(place=><Marker
           key={`business-${place.id}`}
           coordinate={{latitude:Number(place.latitude),longitude:Number(place.longitude)}}
           title={place.name}
-          description={place.category || "Business"}
-          pinColor="#d63b3b"
+          description={classificationLabel(place)}
           onPress={()=>router.push(`/business/${place.id}`)}
-        />)}
+        >
+          <PlaceMarker marker={markerForBusiness(place)}/>
+        </Marker>)}
 
         {(typeFilter==="all" || typeFilter==="property") && filteredProperties.map(place=><Marker
           key={`property-${place.id}`}
           coordinate={{latitude:Number(place.latitude),longitude:Number(place.longitude)}}
           title={place.name}
           description="Property"
-          pinColor="#275bd6"
           onPress={()=>router.push(`/property/${place.id}`)}
-        />)}
+        >
+          <PlaceMarker marker={markerForProperty()}/>
+        </Marker>)}
 
         {(typeFilter==="all" || typeFilter==="activity") && filteredClubs.map(club=><Marker
           key={`activity-${club.id}`}
           coordinate={{latitude:Number(club.latitude),longitude:Number(club.longitude)}}
           title={club.name}
           description={`${club.category} · ${club.status}`}
-          pinColor="#5633a8"
           onPress={()=>router.push(`/activity-clubs/${club.id}`)}
-        />)}
+        >
+          <PlaceMarker marker={markerForClub()}/>
+        </Marker>)}
       </MapView>
     </View>
   );
