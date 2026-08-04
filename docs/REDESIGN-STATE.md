@@ -202,6 +202,10 @@ place layout 75; screen gates 72; social 92; live 152 + 39; linkup nav 20;
 title-only 28; seed 3; `npx expo-doctor` 20/20; `npx expo export --platform
 web` succeeded.
 
+**CI:** run 31 on `b42f2da`, conclusion **`success`**, read back from the API
+after the run completed.
+https://github.com/simplebusiness26/The-App/actions/runs/30945397313
+
 **Stopped because:** finished. One packet per session.
 
 **Exact next step:** Packet 5c — link-ups. **It does not start with code.**
