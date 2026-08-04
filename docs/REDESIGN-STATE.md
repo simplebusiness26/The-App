@@ -38,23 +38,29 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 0 — verification harness
+**Last completed packet:** 1 — business taxonomy
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
 committed at the repo root; it was missing entirely until 2026-08-04, so
 this blocker could not previously be read, only referenced.
 
-**Next action:** Packet 1 (business taxonomy) is next in sequence and
-depends on neither open decision. Note the brief calls it "the highest-
-value item in the whole brief, and the one everything else depends on".
+**Next action:** Packet 2 (marker assignment from type). Note it is
+partly blocked: markers are assigned per `business_type`, and only three
+placeholder types exist. See the open item below.
+
+**Open, and the owner's:** the real `business_type` list. The interface
+direction document the brief cites is not in this repository. Packet 1
+shipped with `bar`, `pub`, `restaurant` as placeholders at the owner's
+instruction. Adding the rest is an edit to `utils/taxonomy.js` plus a
+migration re-seeding `business_types` — nothing else should change.
 
 ## Packet status
 
 | # | Packet | Status | Commit | Verified how |
 |---|---|---|---|---|
 | 0 | Verification harness | done | `a1e98a1` | 67/67 mount tests; CI red demonstrated (run 16 `failure`), green again (run 18 `success`) |
-| 1 | Business taxonomy | not started | | |
+| 1 | Business taxonomy | done | `623644e` | Migration applied and queried back; 5 constraint scenarios; 111-check taxonomy gate |
 | 2 | Marker assignment | not started | | |
 | 3 | Navigation shell | not started | | |
 | 4 | Quick Access drawer | not started | | |
@@ -94,6 +100,80 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 1 — done, with a placeholder type list
+
+**Did:** Replaced free-text `businesses.category` with a structured
+classification enforced by the database.
+
+- `utils/taxonomy.js` is the single source. `scripts/verify-taxonomy.cjs`
+  (111 checks) proves it, and proves it has not drifted from what the
+  migration seeded.
+- `20260804120000_business_taxonomy.sql`: `business_categories` and
+  `business_types` catalogue tables, `business_type` / `secondary_types`
+  / `tags` / `category_source` on businesses, backfill, and a composite
+  foreign key `(category, business_type)` → `business_types(category,key)`.
+- `components/ClassificationPicker.js` replaces the free-text category
+  boxes in `business/add.js` and `business/edit/[id].js`.
+- `components/Categories.js` deleted — a rival list, imported nowhere.
+
+**The type list is a placeholder, at the owner's instruction.** The
+interface direction document the brief cites for categories and types is
+not in this repository. The six categories are named in the brief itself
+and were used; the types are not, so only `bar`, `pub` and `restaurant`
+were seeded. **This is the main thing the next session should know**:
+Packet 2 assigns a marker per `business_type`, and there are three.
+
+**Acceptance criteria:**
+
+1. Migration applies cleanly and is reversible — **PASS**. Applied to
+   `yzpthslwsvesgndzdqai`. `category_source` preserves the original free
+   text; the reversal script is in the migration footer.
+2. Backfill run; `unclassified` count reported — **PASS**:
+
+   | category | type | rows | was |
+   |---|---|---|---|
+   | food_and_drink | pub | 6 | `Pub` |
+   | food_and_drink | unclassified | 3 | `Cafe` |
+   | unclassified | unclassified | 3 | `Test` (2), `Restaurant test` (1) |
+
+   **6 rows have an unclassified type; 3 have an unclassified category.
+   0 rows are null.** `Restaurant test` was treated as junk rather than a
+   restaurant — a row named "test" is not evidence of a restaurant.
+3. A mismatched category/type is rejected by the database — **PASS**.
+   Queried in a rolled-back transaction: mismatch rejected by
+   `businesses_classification_fk`; three secondary types rejected;
+   secondary repeating the primary rejected; unknown type `wizardry`
+   rejected; a valid reclassification accepted.
+4. Exactly one exported source — **PASS**. Both drift checks were
+   demonstrated failing before being kept: a type added to JS but not
+   seeded, and a type key restated in another file.
+5. Existing business queries still return rows — **PASS**. As `anon`:
+   12 businesses, 7 categories, 10 types.
+
+**Two decisions worth knowing.**
+
+Every category carries its own `unclassified` type. Without it the three
+`Cafe` rows would have had to throw away the one accurate fact known
+about them; instead they are `food_and_drink / unclassified`.
+
+`category` was converted in place rather than joined by a second column.
+A parallel category column is exactly the drift this packet removes.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 2, marker assignment from `business_type`.
+Before starting, decide whether to proceed with three placeholder types
+or supply the real list first — Packet 2's output is a pure function from
+type to marker, so a later type list means revisiting it.
+
+**Unverified:** No form has been opened. `ClassificationPicker` renders
+in the mount tests and has never been used by a person; the add and edit
+flows are `Verified: renders. Unverified: behaves`. The database
+behaviour above is `Verified: used` — it was exercised by real SQL and
+read back.
 
 ---
 
