@@ -38,8 +38,7 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 4 — Quick Access drawer
-**Last session:** Packet 5 read and split into 5a/5b/5c without being started
+**Last completed packet:** 5a — shared place layout (business, property)
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -52,10 +51,10 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 5a — the shared place layout for business and
-property, and the harness content assertions it needs first. Packet 5 was
-read and split; see the session log. The brief still cuts Directions (Stage
-Four) and Book a table / Get tickets (Stage Five) from all of 5a/5b/5c.
+**Next action:** Packet 5b — events and activity clubs onto `PlaceLayout`.
+Write their fixture-backed assertions first and watch them fail, then
+convert. The brief still cuts Directions (Stage Four) and Book a table / Get
+tickets (Stage Five) from all of 5a/5b/5c.
 
 **5c needs you before it needs code.** `app/linkups/[id].js` renders private
 meeting-point details and owns the report and block controls, so `RULES.md`
@@ -86,7 +85,7 @@ Nothing else should change.
 | 2 | Marker assignment | done | `fad6887` | 27 marker tests; 233-check override gate; 6 red-then-green demonstrations |
 | 3 | Navigation shell | done | `e4a300e` | 92 navigation tests; route inventory diff is +2/-0; 6 red-then-green demonstrations |
 | 4 | Quick Access drawer | done | `c7a3f94` | 34 drawer tests; entitlement proved against 2 real accounts in SQL; 6 red-then-green demonstrations |
-| 5a | Place layout: business, property | not started | | |
+| 5a | Place layout: business, property | done | `893a182` | 14 place-page tests written before the refactor and green after; 35-check layout gate; 8 red-then-green demonstrations |
 | 5b | Place layout: events, clubs | not started | | |
 | 5c | Place layout: link-ups (privacy gate) | not started | | |
 | 6 | Map bottom cards | not started | | |
@@ -124,6 +123,145 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 5a — done
+
+**Did:** Built the harness this refactor needed, then the shared place layout
+behind it, and moved business and property onto it.
+
+The order matters and was the point of splitting Packet 5. The assertions were
+written against the **original** screens, watched fail by deleting controls
+from those screens, and then re-run **unchanged** after the rewrite. A refactor
+test written after the refactor only proves the new code does what the new code
+does.
+
+- `test/fixture.js` (new) lets a test say "here is a business, here is who is
+  looking at it" and then assert what appears.
+- `test/place-page.test.js` (new), 14 assertions.
+- `components/PlaceLayout.js` (new): hero, title and verification, listing
+  type, rating, primary action, essential info, photos, reviews, similar
+  nearby.
+- `app/business/[id].js` and `app/property/[id].js` rewritten onto it.
+- `scripts/verify-place-layout.cjs` (new), 35 checks.
+- `utils/markers.js` now exports the type labels its own markers are built
+  from, so a page and its pin read the same source.
+
+**The harness is the part worth keeping.** Before this, the only thing that
+could see a place page was `routes.test.js`, which mounts it against an empty
+Supabase result. With no data, none of the conditional controls render at all —
+so the claim button, the favourite button, the review link and the owner's edit
+button were invisible to every existing test. Each was deleted in turn to prove
+the new assertions catch it:
+
+| Control removed | Result |
+|---|---|
+| the review link | 1 failed, 13 passed |
+| the claim button | 1 failed, 13 passed |
+| the favourite button | 1 failed, 13 passed |
+| owner-only edit leaked to every visitor | 1 failed, 13 passed |
+| the property page's "not displayed publicly" QR note | 1 failed, 13 passed |
+
+Each failure is isolated to its own assertion, which is what makes them useful
+rather than a single tripwire that goes off for any reason.
+
+**Files changed:** `test/fixture.js`, `test/place-page.test.js`,
+`components/PlaceLayout.js`, `scripts/verify-place-layout.cjs` (all new);
+`app/business/[id].js`, `app/property/[id].js` (rewritten); `utils/markers.js`,
+`test/setup.js`, `package.json`, `.github/workflows/quality-checks.yml`.
+
+**Acceptance criteria** (as scoped by the 5a/5b/5c split recorded in the
+previous session):
+
+1. All converted page types use one component; grep proves no duplicate —
+   **PASS**. `verify-place-layout.cjs`, 35 checks: both screens import and
+   render `PlaceLayout`, and neither still defines the review date formatter,
+   the review card, the photo viewer, the hero strip or the rating block —
+   each of which existed twice before. The layout must define all five.
+2. Listing type displayed matches the map marker for the same record —
+   **PASS**, and by construction rather than coincidence. `utils/markers.js`
+   exports `typeLabelForBusiness()` and `PROPERTY_TYPE_LABEL`, the pages read
+   them, and the markers build their spoken labels from the same values. The
+   gate matches at the point of use.
+3. Loading, empty, error, unauthorised states all present — **PASS for three,
+   and the fourth does not exist here.** Loading, error and empty are each
+   asserted. There is no unauthorised state on a place page: a business page is
+   public, and a signed-out visitor sees the page without the controls that
+   need an account. Inventing a refusal screen would be wrong, not thorough.
+4. No disabled or "coming soon" controls anywhere — **PASS**, twice over: a
+   test asserts the rendered text contains no Directions, Book a table, Get
+   tickets or coming soon, and the gate asserts the source does not either.
+
+**Total lines went up, not down, and that is the honest number.** 476 before
+(236 + 240), 745 after (199 + 198 + 348). The duplicated parts genuinely exist
+once now, but the layout is a superset of what it replaced: it adds "similar
+nearby", which did not exist on either screen, and accessibility labels the
+originals never had. The saving arrives in 5b and 5c, which add page types
+without adding markup.
+
+**Similar nearby, since it is new.** For a business it is the same *category*,
+not the same type — with three types seeded, matching on type would return
+nothing for most places, and someone looking at a pub is usually open to the
+bar next door. For a property it is any other property. Both order by squared
+coordinate distance, which is rough but adequate for ranking a dozen places in
+one town, and both keep rows with no coordinates rather than dropping them.
+
+**Three checks demonstrated failing before being kept**, beyond the five
+control deletions above:
+
+| Broke | Caught by | Message |
+|---|---|---|
+| left a copy of the review card on the page | `verify-place-layout` | `still defines the review card style` |
+| put a Directions control on the shared layout | gate **and** test | `Directions is Stage Four`, and `shows no later-stage controls` |
+| hardcoded the property type label | `verify-place-layout` | `typeLabel must be PROPERTY_TYPE_LABEL` |
+
+The third of those is worth recording because **the first version of that check
+passed and proved nothing.** It tested whether `PROPERTY_TYPE_LABEL` appeared
+anywhere in the file, and replacing the prop with a literal left the import
+behind, so the identifier was still there. It now matches at the point of use.
+That is the second time in this run a check has needed breaking twice before it
+was real.
+
+**Also run:** `npm run test:ci` → **235 passed** (68 route mounts, 27 marker,
+92 navigation, 34 drawer, 14 place page); taxonomy 133; markers 275; place
+layout 35; screen gates 72; social 92; live 152 + 39; linkup nav 20;
+title-only 28; seed 3; `npx expo-doctor` 20/20; `npx expo export --platform
+web` succeeded.
+
+**One incidental fix.** `test/setup.js` never mocked `supabase.channel`.
+`NotificationContext` opens a realtime channel, but only once a user is signed
+in, and no test had ever supplied a session — so the gap was invisible until
+this one did. Every place-page test failed on it before it was added.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 5b — events and activity clubs onto `PlaceLayout`.
+Both bring their own reviews table (`event_reviews`, `activity_club_reviews`)
+which must be normalised into the shape `PlaceReview` already renders rather
+than widening the layout. Clubs also bring membership, sessions, announcements,
+stats and the message board, and at 421 lines are the largest single screen in
+the app. Write the fixture-backed assertions for both screens **first**, watch
+them fail, then convert. Add each converted path to `CONVERTED` in
+`scripts/verify-place-layout.cjs`. Do not touch `app/linkups/[id].js` — that is
+5c and it needs the privacy write-up before any code.
+
+**Unverified.** `Verified: renders. Unverified: behaves`.
+
+- **Nobody has opened either page.** The assertions prove the controls are in
+  the tree with fixture data; they do not prove the page is usable, that the
+  photo viewer opens, or that "similar nearby" returns anything sensible
+  against real rows.
+- Both pages changed appearance completely — they were dark (`#18181b`) and are
+  now riso paper and ink, like `/discover`, `/create` and the drawer. The rest
+  of the app is still dark. **The app is now visibly two designs**, and will be
+  until Packet 11. That is a deliberate consequence of building to the design
+  system as each packet lands, but nobody has seen how jarring it is.
+- `similar nearby` runs a second query after the page has already rendered. Its
+  failure path is silent by design (a missing section, not an error), which
+  also means a broken query would look like "no similar places".
+- The photo viewer modal is now reachable from the hero strip as well as from
+  review photos, which is new behaviour. Untested beyond mounting.
 
 ---
 
