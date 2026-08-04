@@ -12,6 +12,8 @@ import {
 import {useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../../services/supabase";
 import LocationPicker from "../../../components/LocationPicker";
+import ClassificationPicker from "../../../components/ClassificationPicker";
+import {UNCLASSIFIED} from "../../../utils/taxonomy";
 import {useFeedback} from "../../../context/FeedbackContext";
 
 export default function EditBusiness(){
@@ -27,7 +29,8 @@ export default function EditBusiness(){
   const [address,setAddress]=useState("");
   const [latitude,setLatitude]=useState(null);
   const [longitude,setLongitude]=useState(null);
-  const [category,setCategory]=useState("");
+  const [category,setCategory]=useState(UNCLASSIFIED);
+  const [businessType,setBusinessType]=useState(UNCLASSIFIED);
   const [image,setImage]=useState("");
   const [openingHours,setOpeningHours]=useState("");
 
@@ -63,7 +66,8 @@ export default function EditBusiness(){
     setAddress(data.address || "");
     setLatitude(data.latitude ?? null);
     setLongitude(data.longitude ?? null);
-    setCategory(data.category || "");
+    setCategory(data.category || UNCLASSIFIED);
+    setBusinessType(data.business_type || UNCLASSIFIED);
     setImage(data.image || "");
     setOpeningHours(data.opening_hours || "");
     setLoading(false);
@@ -95,7 +99,8 @@ export default function EditBusiness(){
         address,
         latitude:Number(latitude),
         longitude:Number(longitude),
-        category:category.trim(),
+        category,
+        business_type:businessType,
         image:image.trim(),
         opening_hours:openingHours.trim()
       })
@@ -139,7 +144,15 @@ export default function EditBusiness(){
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Edit Business</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Business name"/>
-      <TextInput style={styles.input} value={category} onChangeText={setCategory} placeholder="Category"/>
+      <ClassificationPicker
+        category={category}
+        businessType={businessType}
+        disabled={saving}
+        onChange={({category:nextCategory,businessType:nextType})=>{
+          setCategory(nextCategory);
+          setBusinessType(nextType);
+        }}
+      />
       <TextInput style={[styles.input,styles.multiline]} value={description} onChangeText={setDescription} placeholder="Description" multiline/>
 
       <LocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>

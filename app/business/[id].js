@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {classificationLabel} from "../../utils/taxonomy";
 import ClaimButton from "../../components/ClaimButton";
 import FavouriteButton from "../../components/FavouriteButton";
 
@@ -108,7 +109,7 @@ export default function BusinessPage(){
           <View style={styles.titleRow}>
             <View style={{flex:1}}>
               <Text style={styles.title}>{business.name}</Text>
-              <Text style={styles.category}>{business.category}</Text>
+              <Text style={styles.category}>{classificationLabel(business)}</Text>
               {!!business.owner_id && <Text style={styles.verifiedBusiness}>✓ VERIFIED BUSINESS</Text>}
             </View>
             {isOwner && <Pressable style={styles.editButton} onPress={()=>router.push(`/business/edit/${businessId}`)}><Text style={styles.buttonText}>Edit</Text></Pressable>}

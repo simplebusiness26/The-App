@@ -12,7 +12,8 @@
     "verify:live": "node scripts/verify-linkups-live.cjs && node scripts/verify-linkups-hardening.cjs",
     "verify:screens": "node scripts/verify-screen-gates.cjs",
     "test": "jest",
-    "test:ci": "jest --ci --runInBand"
+    "test:ci": "jest --ci --runInBand",
+    "verify:taxonomy": "node scripts/verify-taxonomy.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",

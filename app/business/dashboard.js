@@ -9,6 +9,7 @@ ScrollView
 } from "react-native";
 
 import {supabase} from "../../services/supabase";
+import {classificationLabel} from "../../utils/taxonomy";
 
 import {router} from "expo-router";
 
@@ -153,7 +154,7 @@ style={styles.card}
 
 
 <Text>
-{business.category}
+{classificationLabel(business)}
 </Text>
 
 

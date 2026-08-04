@@ -11,12 +11,15 @@ import {
 import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
 import LocationPicker from "../../components/LocationPicker";
+import ClassificationPicker from "../../components/ClassificationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
+import {UNCLASSIFIED} from "../../utils/taxonomy";
 
 export default function AddBusiness(){
   const {showFeedback}=useFeedback();
   const [name,setName]=useState("");
-  const [category,setCategory]=useState("");
+  const [category,setCategory]=useState(UNCLASSIFIED);
+  const [businessType,setBusinessType]=useState(UNCLASSIFIED);
   const [description,setDescription]=useState("");
   const [website,setWebsite]=useState("");
   const [phone,setPhone]=useState("");
@@ -27,8 +30,13 @@ export default function AddBusiness(){
   async function addBusiness(){
     if(loading) return;
 
-    if(!name.trim() || !category.trim()){
-      Alert.alert("Missing information","Business name and category are required.");
+    if(!name.trim()){
+      Alert.alert("Missing information","A business name is required.");
+      return;
+    }
+
+    if(category===UNCLASSIFIED){
+      Alert.alert("Choose a category","Pick the category this business belongs to.");
       return;
     }
 
@@ -52,7 +60,8 @@ export default function AddBusiness(){
       .insert({
         owner_id:user.id,
         name:name.trim(),
-        category:category.trim(),
+        category,
+        business_type:businessType,
         description:description.trim(),
         address:selectedLocation.address,
         website:website.trim(),
@@ -80,7 +89,15 @@ export default function AddBusiness(){
       <Text style={styles.title}>Add Business</Text>
 
       <TextInput style={styles.input} placeholder="Business Name *" value={name} onChangeText={setName}/>
-      <TextInput style={styles.input} placeholder="Category *" value={category} onChangeText={setCategory}/>
+      <ClassificationPicker
+        category={category}
+        businessType={businessType}
+        disabled={loading}
+        onChange={({category:nextCategory,businessType:nextType})=>{
+          setCategory(nextCategory);
+          setBusinessType(nextType);
+        }}
+      />
       <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
 
       <LocationPicker onChange={setSelectedLocation}/>
