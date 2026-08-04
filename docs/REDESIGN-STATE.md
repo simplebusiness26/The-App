@@ -238,6 +238,15 @@ Packet 0 lesson that an unproven gate is not a gate:
 screen gates 65; seed check 3 migrations; `npx expo-doctor` 20/20;
 `npx expo export --platform web` succeeded.
 
+**CI:** run 22 on `419e6d9`, conclusion **`success`**, all 18 steps green
+including the new "Refuse a manually set map marker".
+https://github.com/simplebusiness26/The-App/actions/runs/30904417999
+
+That conclusion was read back from the API after the run completed, not
+predicted from a tick — Packet 0 recorded that four of its six runs were
+`cancelled` by `cancel-in-progress` and rendered as not-green while having
+tested nothing. Packet 2 pushed once, so nothing was cancelled.
+
 **One fix that was not in the packet.** Packet 1 turned `category` into a
 key, so the search boxes on `/map` and in `PlacesList` stopped matching a
 place by what a person would type — the stored value now reads
