@@ -2,9 +2,9 @@ name: Guestbook Quality Checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, main2.0, "main2.0-**"]
   push:
-    branches: [main]
+    branches: [main, main2.0, "main2.0-**"]
   workflow_dispatch:
 
 permissions:
