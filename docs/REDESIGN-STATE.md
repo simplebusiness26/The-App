@@ -248,6 +248,10 @@ the privacy reasoning. Across all five pages plus the layout the total is now
 markers 275; screen gates 72; social 92; live 152 + 39; linkup nav 20;
 title-only 28; seed 3; `npx expo-doctor` 20/20; web export succeeded.
 
+**CI:** run 33 on `880cb5a`, conclusion **`success`**, read back from the API
+after the run completed.
+https://github.com/simplebusiness26/The-App/actions/runs/30946819933
+
 **Stopped because:** finished. Packet 5 is now complete in all three parts.
 
 **Exact next step:** Packet 6, map bottom cards. Read it in
