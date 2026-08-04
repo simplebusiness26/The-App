@@ -147,6 +147,7 @@ export default function EditBusiness(){
       <ClassificationPicker
         category={category}
         businessType={businessType}
+        claimed={business?.claimed===true}
         disabled={saving}
         onChange={({category:nextCategory,businessType:nextType})=>{
           setCategory(nextCategory);

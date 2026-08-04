@@ -1,6 +1,7 @@
 import React from "react";
 import {View,Text,Pressable,StyleSheet} from "react-native";
 import {CATEGORIES,typesForCategory,UNCLASSIFIED} from "../utils/taxonomy";
+import MarkerPreview from "./MarkerPreview";
 
 // The only classification control in the app. It reads utils/taxonomy.js and
 // nothing else, so the forms cannot drift from the database catalogue -- the
@@ -12,7 +13,8 @@ export default function ClassificationPicker({
   category,
   businessType,
   onChange,
-  disabled
+  disabled,
+  claimed=true
 }){
   const types=typesForCategory(category || UNCLASSIFIED);
 
@@ -62,6 +64,12 @@ export default function ClassificationPicker({
           </Pressable>
         ))}
       </View>
+
+      <MarkerPreview
+        category={category || UNCLASSIFIED}
+        businessType={businessType || UNCLASSIFIED}
+        claimed={claimed}
+      />
     </View>
   );
 }

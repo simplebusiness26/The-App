@@ -16,22 +16,28 @@
 
 export const UNCLASSIFIED="unclassified";
 
+// Packet 2 adds `glyph`. It is the name of a marker icon, not the icon itself:
+// utils/markers.js owns the drawing, this file owns which one a classification
+// gets. Keeping the association on the entry is what stops a second list
+// appearing -- a glyph table keyed by "bar" elsewhere would be exactly the
+// drift scripts/verify-taxonomy.cjs exists to catch, and adding a type without
+// choosing a glyph now fails that script rather than silently rendering a gap.
 export const CATEGORIES=[
-  {key:"food_and_drink",label:"Food and drink"},
-  {key:"entertainment_and_nightlife",label:"Entertainment and nightlife"},
-  {key:"health_and_wellbeing",label:"Health and wellbeing"},
-  {key:"shopping",label:"Shopping"},
-  {key:"attractions_and_experiences",label:"Attractions and experiences"},
-  {key:"essential_local_services",label:"Essential local services"},
-  {key:UNCLASSIFIED,label:"Unclassified"}
+  {key:"food_and_drink",label:"Food and drink",glyph:"cup"},
+  {key:"entertainment_and_nightlife",label:"Entertainment and nightlife",glyph:"note"},
+  {key:"health_and_wellbeing",label:"Health and wellbeing",glyph:"leaf"},
+  {key:"shopping",label:"Shopping",glyph:"bag"},
+  {key:"attractions_and_experiences",label:"Attractions and experiences",glyph:"star"},
+  {key:"essential_local_services",label:"Essential local services",glyph:"signpost"},
+  {key:UNCLASSIFIED,label:"Unclassified",glyph:"ring"}
 ];
 
 // Specific types, each belonging to exactly one category. Placeholders only --
 // see the note above.
 export const TYPES=[
-  {key:"bar",label:"Bar",category:"food_and_drink"},
-  {key:"pub",label:"Pub",category:"food_and_drink"},
-  {key:"restaurant",label:"Restaurant",category:"food_and_drink"}
+  {key:"bar",label:"Bar",category:"food_and_drink",glyph:"cocktail"},
+  {key:"pub",label:"Pub",category:"food_and_drink",glyph:"tankard"},
+  {key:"restaurant",label:"Restaurant",category:"food_and_drink",glyph:"cutlery"}
 ];
 
 // Every category also carries an "unclassified" type. That is what lets a row
@@ -41,8 +47,32 @@ export const TYPES=[
 export function typesForCategory(categoryKey){
   return[
     ...TYPES.filter((type)=>type.category===categoryKey),
-    {key:UNCLASSIFIED,label:"Not yet classified",category:categoryKey}
+    {
+      key:UNCLASSIFIED,
+      label:"Not yet classified",
+      category:categoryKey,
+      // An unclassified type falls back to its category's glyph, so a place
+      // known to be food and drink still shows a cup rather than losing the one
+      // fact recorded about it. Only a row with no category at all reaches the
+      // unclassified category's own glyph.
+      glyph:glyphForCategory(categoryKey)
+    }
   ];
+}
+
+export function glyphForCategory(categoryKey){
+  const category=CATEGORIES.find((item)=>item.key===categoryKey);
+  if(category) return category.glyph;
+  return CATEGORIES.find((item)=>item.key===UNCLASSIFIED).glyph;
+}
+
+// The taxonomy half of marker assignment: a classification names an icon.
+// utils/markers.js turns that name into something drawable and decides the
+// colour, which under the three-ink rule is state and never type.
+export function glyphForClassification(categoryKey,typeKey){
+  const type=TYPES.find((item)=>item.key===typeKey && item.category===categoryKey);
+  if(type) return type.glyph;
+  return glyphForCategory(categoryKey);
 }
 
 export function allTypePairs(){
