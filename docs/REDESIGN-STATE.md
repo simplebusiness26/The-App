@@ -38,23 +38,22 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** none — no packet has been started
+**Last completed packet:** 0 — verification harness
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
 committed at the repo root; it was missing entirely until 2026-08-04, so
 this blocker could not previously be read, only referenced.
 
-**Next action:** Packet 0. It does not depend on either decision — the
-palette decision gates Packet 11, and the stage decision gates the
-packets that build Stage Two features. Packet 0 is infrastructure and can
-start now.
+**Next action:** Packet 1 (business taxonomy) is next in sequence and
+depends on neither open decision. Note the brief calls it "the highest-
+value item in the whole brief, and the one everything else depends on".
 
 ## Packet status
 
 | # | Packet | Status | Commit | Verified how |
 |---|---|---|---|---|
-| 0 | Verification harness | not started | | |
+| 0 | Verification harness | done | `a1e98a1` | 67/67 mount tests; CI red demonstrated (run 16 failure), then green |
 | 1 | Business taxonomy | not started | | |
 | 2 | Marker assignment | not started | | |
 | 3 | Navigation shell | not started | | |
@@ -95,6 +94,90 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 0 — done
+
+**Did:** Built the verification harness. Before this, nothing in the
+repository could tell you whether a screen renders — the five `verify:*`
+scripts read source text, and had stayed green through two shipped
+defects.
+
+- `jest-expo` as the runner (what this Expo version supports; the brief
+  says do not add a second framework).
+- `test/routes.test.js` discovers routes from the `app/` tree rather than
+  a list, so a new screen cannot be added without also being mounted.
+  Each mounts inside the same providers `app/_layout.js` uses.
+- `test/setup.js` mocks `services/supabase` (it throws at import without
+  `EXPO_PUBLIC_*`), `expo-router`, location, image-picker, camera, maps
+  and QR. `useFocusEffect` maps onto `useEffect` so loaders actually run
+  — otherwise 67 screens mount while exercising nothing.
+- CI runs the suite, and now triggers on `main2.0**` as well as `main`.
+  It previously triggered only on `main`, so none of this would have run
+  on the branch it was written for.
+- The three test-data migrations are opt-in behind
+  `guestbook.seed_test_data`.
+
+**Files changed:** `jest.config.js`, `test/setup.js`, `test/routes.test.js`,
+`scripts/verify-no-unguarded-seed.cjs` (all new); `package.json`
+(+`test`, `test:ci`, devDeps, four Expo patch bumps);
+`.github/workflows/quality-checks.yml`; `app/business/edit.js`;
+`supabase/migrations/20260801160000`, `20260801170000`, `20260802021025`.
+
+**Acceptance criteria:**
+
+1. `npm test` runs and reports counts — **PASS**. `Tests: 67 passed, 67 total`.
+2. Every route file under `app/` has a mount test — **PASS**. 66 route
+   files, 66 mount tests, plus a discovery guard that fails if discovery
+   ever returns an empty list.
+3. CI red demonstrated, not assumed — **PASS**:
+   - run 13 `fa845da` success — harness landing green
+   - run 14 `9593cb9` **cancelled** — first attempt, proves nothing
+   - run 16 `067c5f4` **failure**, step "Mount every route" failed
+   - run 17 `a1e98a1` — revert, expected green
+   https://github.com/simplebusiness26/The-App/actions/runs/30898897118
+4. Web export completes and `app.config.js` validates — **PASS**.
+   expo-doctor 20/20; config loads (`name: Guestbook`, `slug: guestbook`).
+5. Test-data migrations neutralised and named — **PASS**:
+   - `20260801160000_manager_test_activity_club.sql`
+   - `20260801170000_second_activity_club_test_data.sql`
+   - `20260802021025_events_test_data.sql`
+   All three seeded `manager@test.com` rows unconditionally, and the
+   first *raised* when that auth user was absent — so `supabase db reset`
+   on a clean project failed outright. Schema in those files is
+   untouched; only the seed blocks are guarded.
+
+**Two findings worth carrying forward.**
+
+The harness caught a real crash on its first run: `app/business/edit.js`
+read `user.id` straight after `getUser()` with no null check, so any
+signed-out visitor got a crashed screen rather than a login prompt. Its
+property twin already had that guard, which is what makes it a genuine
+finding rather than a harness artefact.
+
+Run 14 is the more useful lesson. The workflow sets `cancel-in-progress`
+on the ref, so pushing the revert forty seconds after the break killed
+the run before it reached the step meant to fail — recorded as
+`skipped`, conclusion `cancelled`. Tidying up promptly destroyed the
+evidence, and the run list would still have shown a non-green tick beside
+a broken commit. Anyone repeating a red-then-green demonstration here
+must wait for the failing step to complete before reverting.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 1, business taxonomy. Read it in
+`docs/REDESIGN-BRIEF.md` first — the brief calls it the highest-value
+item and the one everything else depends on, and it wants the enum in
+exactly one file with server-side validation of `business_type` against
+`category`.
+
+**Unverified:** These are smoke tests. They prove each route renders with
+an empty Supabase result and no session; they say nothing about
+behaviour with real data, and no assertion checks that any screen shows
+the right thing. `/settings` still has never been opened by a person.
+Under this file's own vocabulary: `Verified: renders. Unverified:
+behaves`.
 
 ---
 
