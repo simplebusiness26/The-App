@@ -212,7 +212,7 @@ View Public Profile
 
 style={styles.button}
 
-onPress={()=>router.push(`/property/reviews/${property.id}`)}
+onPress={()=>router.push("/property/reviews")}
 
 >
 

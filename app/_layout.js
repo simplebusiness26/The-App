@@ -40,24 +40,34 @@ export default function Layout(){
 
           <Stack.Screen name="auth/signup"/>
           <Stack.Screen name="auth/login"/>
-          <Stack.Screen name="auth/verify"/>
           <Stack.Screen name="auth/forgot-password"/>
           <Stack.Screen name="auth/update-password"/>
 
           <Stack.Screen name="manager/dashboard"/>
           <Stack.Screen name="manager/requests"/>
           <Stack.Screen name="manager/qr/[type]/[id]"/>
+          <Stack.Screen name="manager/membership-status/[id]"/>
 
+          <Stack.Screen name="business/[id]"/>
           <Stack.Screen name="business/dashboard"/>
           <Stack.Screen name="business/add"/>
+          <Stack.Screen name="business/edit"/>
+          <Stack.Screen name="business/edit/[id]"/>
           <Stack.Screen name="business/reviews"/>
           <Stack.Screen name="business/review/[id]"/>
+          <Stack.Screen name="business/review-action"/>
 
+          <Stack.Screen name="property/[id]"/>
           <Stack.Screen name="property/dashboard"/>
           <Stack.Screen name="property/add"/>
+          <Stack.Screen name="property/edit"/>
           <Stack.Screen name="property/edit/[id]"/>
           <Stack.Screen name="property/reviews"/>
           <Stack.Screen name="property/review/[id]"/>
+          <Stack.Screen name="property/review-action"/>
+
+          <Stack.Screen name="guest/[id]"/>
+          <Stack.Screen name="place"/>
 
           <Stack.Screen name="activity-clubs/index"/>
           <Stack.Screen name="activity-clubs/[id]"/>
@@ -73,6 +83,7 @@ export default function Layout(){
           <Stack.Screen name="events/review/[id]"/>
 
           <Stack.Screen name="admin/claims"/>
+          <Stack.Screen name="admin/dashboard"/>
         </Stack>
       </NotificationProvider>
     </FeedbackProvider>
