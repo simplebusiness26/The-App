@@ -13,9 +13,13 @@ link targets were extracted from every `router.push` / `router.replace` /
 **Nothing here has been exercised at runtime.** Every Status cell reads UNTESTED
 by design — this document records what the code says, not what the app does.
 
-- Commit: `ddd27be`
+- Compiled at commit: `ddd27be`
 - Routes: 64 (66 files; `map.js`/`map.web.js` share one route)
 - Navigation calls found: 212
+
+Findings that have since been acted on are marked **Fixed** in place, with the
+original observation left intact above the remediation, so the record still
+reads as it stood when it was taken.
 
 ## How to read the Auth column
 
@@ -77,7 +81,7 @@ exist on nearly every row below and are not repeated in each one:
 | `/business/edit` | `app/business/edit.js` | Legacy edit screen that finds the business through the `claims` table instead of a route param. Superseded — see Abandoned. | `Save Changes` → `save()` | Reads user | UNTESTED |
 | `/business/dashboard` | `app/business/dashboard.js` | Standalone business-owner dashboard with listings and a customer QR code. Superseded by `/manager/dashboard` — see Abandoned. | `View Public Profile` → `/business/:id` · `Edit Business` → `/business/edit/:id` · `➕ Add Business Listing` → `/business/add` | Reads user + owner | UNTESTED |
 | `/business/reviews` | `app/business/reviews.js` | Lists customer reviews for the owner's businesses. Unreachable — see Abandoned. | `Manage Review` → `/business/review-action?id=:reviewId` | Reads user | UNTESTED |
-| `/business/review-action` | `app/business/review-action.js` | Owner replies to, or challenges, a single review. Takes `?id=`. | `Save Reply` → `saveResponse()` · `Challenge Review` → `challenge()` · both return via `router.back()` | **Public — no gate in the screen** | UNTESTED |
+| `/business/review-action` | `app/business/review-action.js` | Owner replies to, or challenges, a single review. Takes `?id=`. | `Save Reply` → `saveResponse()` · `Challenge Review` → `challenge()` · both confirm the write, then `router.back()` | Auth — redirect + owner | UNTESTED |
 | `/business/review/:id` | `app/business/review/[id].js` | Review submission form; thin wrapper over `ExplorerReviewForm` with `targetType="business"`. Accepts `?qr=` for verified visits. | Form controls only; the shared form redirects to `/auth/login` when signed out (`components/ExplorerReviewForm.js:110`) | Auth — redirect *(enforced in the shared form)* | UNTESTED |
 
 ## Places — properties
@@ -90,7 +94,7 @@ exist on nearly every row below and are not repeated in each one:
 | `/property/edit` | `app/property/edit.js` | Legacy edit screen resolving the property through `claims`. Superseded — see Abandoned. | `Save Changes` → `save()` | Reads user | UNTESTED |
 | `/property/dashboard` | `app/property/dashboard.js` | Standalone property-owner dashboard with a guest review QR. Superseded by `/manager/dashboard` — see Abandoned. | `View Public Profile` → `/property/:id` · `Manage Reviews` → **`/property/reviews/:id` — broken, see Broken links** · `Edit Property` → `/property/edit/:id` · `➕ Add Property Listing` → `/property/add` | Reads user | UNTESTED |
 | `/property/reviews` | `app/property/reviews.js` | Lists guest reviews for the owner's properties. Unreachable — see Abandoned. | `Manage Review` → `/property/review-action?id=:reviewId` | Reads user | UNTESTED |
-| `/property/review-action` | `app/property/review-action.js` | Owner replies to, or challenges, a guest review. Takes `?id=`. | `Save Reply` → `saveResponse()` · `Challenge Review` → `challenge()` · both return via `router.back()` | **Public — no gate in the screen** | UNTESTED |
+| `/property/review-action` | `app/property/review-action.js` | Owner replies to, or challenges, a guest review. Takes `?id=`. | `Save Reply` → `saveResponse()` · `Challenge Review` → `challenge()` · both confirm the write, then `router.back()` | Auth — redirect + owner | UNTESTED |
 | `/property/review/:id` | `app/property/review/[id].js` | Review submission form; wrapper over `ExplorerReviewForm` with `targetType="property"`. Accepts `?qr=`. | Form controls only; shared form redirects when signed out | Auth — redirect *(in shared form)* | UNTESTED |
 | `/guest/:id` | `app/guest/[id].js` | Guest welcome screen for a property stay. Unreachable — see Abandoned. | `🏠 View Property` → `/property/:id` · `⭐ Leave Review` → `/property/review/:id` · `📍 Explore Local Area` → `/map` | Public | UNTESTED |
 
@@ -190,8 +194,8 @@ exist on nearly every row below and are not repeated in each one:
 
 | Route | File | Purpose | Buttons and links | Auth | Status |
 |---|---|---|---|---|---|
-| `/admin/claims` | `app/admin/claims.js` | Reviews ownership claims over businesses and properties. Reached from the menu's admin-only entry. | `Approve` → `updateClaim()` · `Reject` → `updateClaim()` | **Public — no gate in the screen** | UNTESTED |
-| `/admin/dashboard` | `app/admin/dashboard.js` | Second admin surface over the same claims data. Reached from the `⚙️` button on `/`, which renders only when `is_admin`. | `Approve` → `updateClaim()` · `Reject` → `updateClaim()` | **Public — no gate in the screen** | UNTESTED |
+| `/admin/claims` | `app/admin/claims.js` | Reviews ownership claims over businesses and properties. Reached from the menu's admin-only entry. | `Approve` → `updateClaim()` · `Reject` → `updateClaim()` | Auth — redirect + admin | UNTESTED |
+| `/admin/dashboard` | `app/admin/dashboard.js` | Second admin surface over the same claims data. Reached from the `⚙️` button on `/`, which renders only when `is_admin`. | `Approve` → `updateClaim()` · `Reject` → `updateClaim()` | Auth — redirect + admin | UNTESTED |
 
 ---
 
@@ -235,8 +239,8 @@ cluster.
 
 | Link | Written at | Problem |
 |---|---|---|
-| `/property/reviews/:id` | `app/property/dashboard.js:215` (`Manage Reviews`) | **Genuine dead link.** The file is `app/property/reviews.js`, a static route taking no parameter. `/property/reviews/<uuid>` matches nothing and will not resolve. Either the button should push `/property/reviews`, or the screen should become `app/property/reviews/[id].js`. Note the equivalent button on `/business/dashboard` pushes the parameterless `/business/:id`, so the two dashboards disagree. |
-| `auth/verify` | `app/_layout.js:44` | A `<Stack.Screen name="auth/verify"/>` is declared but **no `app/auth/verify.js` exists**. Nothing navigates to it, so it is inert, but it points at an email-verification screen that was planned and never built. |
+| `/property/reviews/:id` | `app/property/dashboard.js:215` (`Manage Reviews`) | **Genuine dead link. Fixed** — the button now pushes the parameterless `/property/reviews`, matching what the file tree actually provides. The alternative, promoting the screen to `app/property/reviews/[id].js`, was not taken: `/property/reviews` still finds its target through the legacy `claims` lookup, and reworking that belongs with the wider two-generations cleanup below rather than with a broken-link fix. |
+| `auth/verify` | `app/_layout.js:44` | A `<Stack.Screen name="auth/verify"/>` was declared but **no `app/auth/verify.js` exists**. **Fixed** — the declaration is removed. Nothing navigated to it, so nothing changes at runtime; it pointed at an email-verification screen that was planned and never built. |
 
 One candidate was checked and cleared: the dynamic `router.replace` at
 `app/qr/[code].js:91` builds its path from `_config.route`, whose four possible
@@ -284,11 +288,39 @@ distinguishes their responsibilities.
 **No in-screen auth check on four sensitive routes — and nothing behind them either**
 
 `app/admin/claims.js`, `app/admin/dashboard.js`, `app/business/review-action.js`
-and `app/property/review-action.js` contain no `auth.getUser()` call, no
+and `app/property/review-action.js` contained no `auth.getUser()` call, no
 `is_admin` test and no redirect. Their entry points are hidden — the admin buttons
 render only when `is_admin`, and the review-action screens sit behind unreachable
-parents — but the routes themselves are not gated, so anything that can navigate
-directly reaches a working Approve/Reject or review-response form.
+parents — but the routes themselves were not gated, so anything that could
+navigate directly reached a working Approve/Reject or review-response form.
+
+**This has since been fixed.** All four now check the session on load and
+redirect to `/auth/login` without one:
+
+- The two admin screens share `hooks/useAdminGate.js`, which reads
+  `profiles.is_admin` and renders a refusal in place of the claims list when it
+  is not set.
+- The two review-action screens load the review, follow `business_id` /
+  `property_id` to the listing, and compare `owner_id` against the caller before
+  rendering the form.
+
+The gate is defence in depth, not the control itself: the database decides, and
+since the RLS rollout below it decides correctly. What the client-side check buys
+is that a non-owner is told why the screen is closed rather than being shown a
+form whose buttons silently change nothing.
+
+That silence was the sharper half of the problem. Both review-action screens
+wrote with a bare `await supabase.from("reviews").update(...)` and then called
+`router.back()` — no error check, no row check. **A write refused by RLS returns
+no error; it simply matches no rows.** So the moment the policies were armed,
+every refused reply would have looked to the user exactly like a saved one. Each
+write now ends in `.select()` and treats an empty result as a rejection, with a
+`FeedbackContext` banner either way. The same check was added to the three claim
+approval writes in `app/admin/claims.js` and `app/admin/dashboard.js`, which had
+the same shape.
+
+`scripts/verify-screen-gates.cjs` holds all of this in place, and runs in
+`quality-checks.yml`.
 
 The database was checked, and at the time of writing **row-level security did
 not cover them**. On project `yzpthslwsvesgndzdqai` (pinned at
@@ -394,13 +426,24 @@ protection being off.
 
 **Layout declarations out of step with the file tree**
 
-`app/_layout.js` names 63 screens. One (`auth/verify`) has no file, and eleven
-files are absent from it: `admin/dashboard`, `business/[id]`, `business/edit`,
+`app/_layout.js` named 63 screens. One (`auth/verify`) had no file, and eleven
+files were absent from it: `admin/dashboard`, `business/[id]`, `business/edit`,
 `business/edit/[id]`, `business/review-action`, `guest/[id]`,
 `manager/membership-status/[id]`, `place`, `property/[id]`, `property/edit`,
 `property/review-action`. Expo-router registers routes from the file tree
-regardless, so the undeclared ones still work and only miss their explicit
+regardless, so the undeclared ones still worked and only missed their explicit
 `Stack.Screen` options — but the drift is a reliable marker of which screens were
 added or abandoned without the layout being revisited. Note that
 `business/[id]` and `property/[id]` are heavily used, so absence from the layout
-does not by itself imply a screen is dead.
+never implied a screen was dead.
+
+**This has since been fixed.** The phantom `auth/verify` declaration is gone and
+the eleven missing files are declared, so the layout now names exactly the 64
+routes on disk. Declaring a screen does not resurrect it — `place` and the
+superseded owner dashboards are still stranded, and the section above still
+stands — it only means the layout stops disagreeing with the file tree.
+
+The drift is now a build failure rather than a documentation note:
+`scripts/verify-screen-gates.cjs` derives the route list from the `app/` tree
+and compares it against the `<Stack.Screen>` declarations, reporting each side
+separately. It runs in `quality-checks.yml`.

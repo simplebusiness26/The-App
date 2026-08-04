@@ -15,12 +15,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "../../hooks/useColors";
 
+import { useAdminGate } from "../../hooks/useAdminGate";
+
 import { supabase } from "../../services/supabase";
 
 
 
 export default function AdminClaimsScreen(){
 
+
+const {checking,allowed,error:gateError}=useAdminGate();
 
 const [claims,setClaims]=useState([]);
 
@@ -35,9 +39,9 @@ const insets=useSafeAreaInsets();
 
 useEffect(()=>{
 
-loadClaims();
+if(allowed) loadClaims();
 
-},[]);
+},[allowed]);
 
 
 
@@ -292,6 +296,7 @@ if(claim.property_id){
 
 
 const {
+data:updatedProperty,
 error:propertyError
 }=await supabase
 
@@ -303,7 +308,9 @@ owner_id:claim.user_id
 
 })
 
-.eq("id",claim.property_id);
+.eq("id",claim.property_id)
+
+.select();
 
 
 
@@ -312,6 +319,19 @@ if(propertyError){
 Alert.alert(
 "Property update failed",
 propertyError.message
+);
+
+return;
+
+}
+
+
+
+if(!updatedProperty || updatedProperty.length===0){
+
+Alert.alert(
+"Property update failed",
+"No property updated"
 );
 
 return;
@@ -328,6 +348,7 @@ return;
 
 
 const {
+data:updatedClaim,
 error:updateError
 }=await supabase
 
@@ -339,7 +360,9 @@ status:status
 
 })
 
-.eq("id",id);
+.eq("id",id)
+
+.select();
 
 
 
@@ -348,6 +371,21 @@ if(updateError){
 Alert.alert(
 "Claim update failed",
 updateError.message
+);
+
+return;
+
+}
+
+
+
+// RLS refuses a write by matching no rows, not by returning an error, so
+// an empty result here means the policy rejected it -- not that it worked.
+if(!updatedClaim || updatedClaim.length===0){
+
+Alert.alert(
+"Claim update failed",
+"This claim was not updated. Admin access is required."
 );
 
 return;
@@ -368,6 +406,58 @@ loadClaims();
 
 }
 
+
+
+
+if(checking){
+
+return(
+
+<View
+style={{
+flex:1,
+justifyContent:"center",
+backgroundColor:colors.background
+}}
+>
+
+<ActivityIndicator
+size="large"
+color={colors.primary}
+/>
+
+</View>
+
+);
+
+}
+
+
+
+if(!allowed){
+
+return(
+
+<View
+style={[
+styles.empty,
+{
+flex:1,
+justifyContent:"center",
+backgroundColor:colors.background
+}
+]}
+>
+
+<Text style={styles.denied}>
+{gateError || "An admin account is required to open this screen."}
+</Text>
+
+</View>
+
+);
+
+}
 
 
 
@@ -575,6 +665,12 @@ const styles=StyleSheet.create({
 empty:{
 padding:40,
 alignItems:"center"
+},
+
+denied:{
+fontSize:16,
+textAlign:"center",
+color:"#b42318"
 },
 
 card:{
