@@ -7,23 +7,21 @@ import {
   StyleSheet,
   Image,
   ScrollView,
-  Switch,
   ActivityIndicator
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
+import {useFeedback} from "../../context/FeedbackContext";
 
 export default function EditProfile(){
+  const {showFeedback}=useFeedback();
+
   const [name,setName]=useState("");
   const [phone,setPhone]=useState("");
   const [bio,setBio]=useState("");
-  const [area,setArea]=useState("");
-  const [showArea,setShowArea]=useState(false);
-  const [leaderboardOptIn,setLeaderboardOptIn]=useState(true);
   const [photo,setPhoto]=useState("");
   const [file,setFile]=useState(null);
-  const [accountType,setAccountType]=useState("explorer");
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");
@@ -39,7 +37,7 @@ export default function EditProfile(){
 
     const {data,error:profileError}=await supabase
       .from("profiles")
-      .select("full_name,phone,bio,profile_photo,account_type,area,show_area,leaderboard_opt_in")
+      .select("full_name,phone,bio,profile_photo")
       .eq("id",user.id)
       .single();
 
@@ -53,10 +51,6 @@ export default function EditProfile(){
     setPhone(data.phone || "");
     setBio(data.bio || "");
     setPhoto(data.profile_photo || "");
-    setArea(data.area || "");
-    setShowArea(!!data.show_area);
-    setLeaderboardOptIn(data.leaderboard_opt_in!==false);
-    setAccountType(data.account_type || "explorer");
     setLoading(false);
   }
 
@@ -81,11 +75,6 @@ export default function EditProfile(){
 
     if(!name.trim()){
       setError("Add your name before saving.");
-      return;
-    }
-
-    if(showArea && !area.trim()){
-      setError("Add a town or area before choosing to display it publicly.");
       return;
     }
 
@@ -115,22 +104,21 @@ export default function EditProfile(){
         imageUrl=data?.publicUrl || imageUrl;
       }
 
-      const update={
-        full_name:name.trim(),
-        phone:phone.trim(),
-        bio:bio.trim(),
-        profile_photo:imageUrl
-      };
+      const {data:saved,error:updateError}=await supabase
+        .from("profiles")
+        .update({
+          full_name:name.trim(),
+          phone:phone.trim(),
+          bio:bio.trim(),
+          profile_photo:imageUrl
+        })
+        .eq("id",user.id)
+        .select();
 
-      if(accountType==="explorer"){
-        update.area=area.trim();
-        update.show_area=showArea;
-        update.leaderboard_opt_in=leaderboardOptIn;
-      }
-
-      const {error:updateError}=await supabase.from("profiles").update(update).eq("id",user.id);
       if(updateError) throw new Error(updateError.message);
+      if(!saved || saved.length===0) throw new Error("Your profile was not saved.");
 
+      showFeedback("Your profile has been updated.");
       router.back();
     }catch(saveError){
       console.error("Profile save error:",saveError);
@@ -168,29 +156,13 @@ export default function EditProfile(){
       <TextInput style={styles.textarea} placeholder="A short bio about you" placeholderTextColor="#888891" value={bio} onChangeText={setBio} multiline maxLength={300} editable={!saving}/>
       <Text style={styles.characterCount}>{bio.length}/300</Text>
 
-      {accountType==="explorer" && (
-        <>
-          <Text style={styles.sectionTitle}>Explorer location</Text>
-          <Text style={styles.helpText}>Use a town or broad area only. Guestbook does not need your exact address.</Text>
-          <TextInput style={styles.input} placeholder="Town or area, e.g. Hastings" placeholderTextColor="#888891" value={area} onChangeText={setArea} maxLength={100} editable={!saving}/>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextWrap}>
-              <Text style={styles.settingTitle}>Display my area</Text>
-              <Text style={styles.settingText}>Shows your chosen town or area on your public profile and local leaderboard.</Text>
-            </View>
-            <Switch value={showArea} onValueChange={setShowArea} disabled={saving}/>
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextWrap}>
-              <Text style={styles.settingTitle}>Appear on leaderboards</Text>
-              <Text style={styles.settingText}>Turn this off to keep earning profile points without appearing in public rankings.</Text>
-            </View>
-            <Switch value={leaderboardOptIn} onValueChange={setLeaderboardOptIn} disabled={saving}/>
-          </View>
-        </>
-      )}
+      <Pressable style={styles.settingRow} onPress={()=>router.push("/settings")}>
+        <View style={styles.settingTextWrap}>
+          <Text style={styles.settingTitle}>Area and privacy</Text>
+          <Text style={styles.settingText}>Your town, whether it is shown publicly, and leaderboard visibility now live in Settings.</Text>
+        </View>
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
 
       <Pressable style={[styles.saveButton,saving && styles.disabled]} onPress={saveProfile} disabled={saving}>
         {saving ? <View style={styles.savingRow}><ActivityIndicator color="white"/><Text style={styles.saveText}>Saving profile...</Text></View> : <Text style={styles.saveText}>Save Profile</Text>}
@@ -223,6 +195,7 @@ const styles=StyleSheet.create({
   settingTextWrap:{flex:1,paddingRight:12},
   settingTitle:{color:"white",fontWeight:"900",fontSize:16},
   settingText:{color:"#9999a2",fontSize:12,lineHeight:18,marginTop:4},
+  chevron:{color:"#85858e",fontSize:26,fontWeight:"900"},
   saveButton:{backgroundColor:"#3212b6",padding:17,borderRadius:13,alignItems:"center",marginTop:24},
   saveText:{color:"white",fontWeight:"900",fontSize:16,marginLeft:9},
   savingRow:{flexDirection:"row",alignItems:"center"},

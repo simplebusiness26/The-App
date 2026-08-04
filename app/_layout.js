@@ -13,6 +13,7 @@ export default function Layout(){
         <Stack screenOptions={{headerShown:true,header:()=> <Header />}}>
           <Stack.Screen name="index" options={{headerShown:false}}/>
           <Stack.Screen name="menu"/>
+          <Stack.Screen name="settings"/>
           <Stack.Screen name="map"/>
           <Stack.Screen name="scan"/>
           <Stack.Screen name="qr/[code]"/>
