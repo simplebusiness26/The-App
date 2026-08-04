@@ -38,7 +38,7 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 3 — navigation shell
+**Last completed packet:** 4 — Quick Access drawer
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,8 +51,10 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 4 (Quick Access drawer). It replaces `/menu`, which
-Packet 3 deliberately left alone and still reachable.
+**Next action:** Packet 5 (Place page shared layout). Not blocked. Note the
+brief cuts Directions (Stage Four) and Book a table / Get tickets (Stage
+Five) from it — the section ends without them, and `RULES.md` bans the
+placeholder either way.
 
 **One decision for you, from Packet 3.** The tab bar currently shows on the
 login and signup screens, because the brief's rule is "hidden on the three
@@ -77,7 +79,7 @@ Nothing else should change.
 | 1 | Business taxonomy | done | `623644e` | Migration applied and queried back; 5 constraint scenarios; 111-check taxonomy gate |
 | 2 | Marker assignment | done | `fad6887` | 27 marker tests; 233-check override gate; 6 red-then-green demonstrations |
 | 3 | Navigation shell | done | `e4a300e` | 92 navigation tests; route inventory diff is +2/-0; 6 red-then-green demonstrations |
-| 4 | Quick Access drawer | not started | | |
+| 4 | Quick Access drawer | done | `c7a3f94` | 34 drawer tests; entitlement proved against 2 real accounts in SQL; 6 red-then-green demonstrations |
 | 5 | Place page layout | not started | | |
 | 6 | Map bottom cards | not started | | |
 | 7 | Discover screen | not started | | |
@@ -114,6 +116,165 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 4 — done
+
+**Did:** Replaced the `/menu` page with a slide-over drawer, and put a real
+server-side entitlement behind its Manage section.
+
+- `utils/drawer.js` (new) is every row the drawer can show, as data. Five
+  sections, each row carrying a gate. The component renders this; it does not
+  decide it.
+- `components/QuickAccessDrawer.js` (new) draws it as a right-hand slide-over.
+- `context/DrawerContext.js` (new) owns "is it open", because the drawer
+  replaced a route with an overlay and both the Header and the layout need it.
+- `hooks/useManagerGate.js` + `components/GateNotice.js` (new) stop a
+  non-manager opening a listing management screen directly.
+- `supabase/migrations/20260804180000_manages_any_listing.sql` (new) is the
+  entitlement itself.
+- `app/menu.js` **deleted**. `components/Header.js` and `app/index.js` now open
+  the drawer instead of pushing to it.
+
+**The entitlement is the packet.** The brief says "Check entitlement
+server-side, not just by hiding the section", and that distinction is the whole
+difference between a menu and a permission. `public.manages_any_listing()` is
+`security invoker`, so it runs as the caller with RLS applied and can only see
+listings the caller could already see. A `security definer` version would have
+been a way to ask the database about somebody else, which nothing needs.
+
+**Files changed:** `utils/drawer.js`, `components/QuickAccessDrawer.js`,
+`components/GateNotice.js`, `context/DrawerContext.js`,
+`hooks/useManagerGate.js`, `test/drawer.test.js`,
+`supabase/migrations/20260804180000_manages_any_listing.sql` (all new);
+`app/menu.js` (deleted); `app/_layout.js`, `app/index.js`,
+`components/Header.js`, `app/business/dashboard.js`,
+`app/property/dashboard.js`, `app/manager/requests.js`,
+`test/navigation.test.js`, `scripts/verify-screen-gates.cjs`,
+`scripts/verify-social-layer.cjs`, `scripts/verify-linkups-live.cjs`.
+
+**Acceptance criteria:**
+
+1. Every row in the old menu maps to a drawer row or a tab — **PASS**. The old
+   menu is pinned in `test/drawer.test.js` as it stood at `da011c3`, and each
+   of its seventeen rows is asserted individually:
+
+   | Old menu row | New home |
+   |---|---|
+   | Map | Map tab, and Explore |
+   | Explore Activity Clubs | Explore |
+   | Explore Events | Explore |
+   | Profile | Profile tab, and My app |
+   | Settings | Account and safety |
+   | Live Nearby | Explore |
+   | Link-ups | Explore |
+   | Check in | Create tab, and My app |
+   | Explorer Feed | Community |
+   | Find Explorers | Community |
+   | Scan Verified Review QR | Create tab, and My app |
+   | Explorer Leaderboards | Leaderboard tab, and Community |
+   | Blocked Explorers | Account and safety |
+   | Manager Dashboard | Manage, or My app when not yet a manager |
+   | Admin Dashboard | Account and safety, admin only |
+   | Login / Create Account | Account and safety, signed out only |
+   | Logout | Account and safety, as an action |
+
+2. Non-manager: Manage absent, and the underlying routes reject direct
+   navigation — **PASS**, and proved in the database rather than argued:
+
+   | Caller | `manages_any_listing()` |
+   |---|---|
+   | no session | `false` |
+   | a real Explorer who owns a business | **`true`** |
+   | a real Explorer who manages nothing | **`false`** |
+   | role `anon` | `ERROR: 42501: permission denied for function` |
+
+   Both accounts are real rows from the live project, selected by query rather
+   than invented. `/business/dashboard`, `/property/dashboard` and
+   `/manager/requests` now call that function through `useManagerGate` and show
+   a refusal instead of themselves.
+3. Old menu route removed, no dead imports — **PASS**. `app/menu.js` is gone,
+   its `<Stack.Screen>` with it, and nothing references `/menu`. The route
+   inventory test records the deletion explicitly rather than by editing its
+   before-list, so a route that vanishes *without* being named still fails.
+
+**One place the brief and CLAUDE.md disagreed, and CLAUDE.md won.**
+
+Criterion 2 read literally would gate `/manager/dashboard` on already being a
+manager. But that screen is where an Explorer *requests* the capability to
+manage something — it is the on-ramp. Gating it would close the only door in,
+and it contradicts the account model directly: "Everyone is an Explorer...
+Managers unlock extra tools on top of their normal Explorer profile."
+`RULES.md` says CLAUDE.md wins when the two conflict.
+
+So the Manage section holds the screens that manage listings that already
+exist, and `/manager/dashboard` appears in My app for an Explorer who is not
+yet a manager. A gate script now asserts that screen does **not** use
+`useManagerGate`, so a later packet cannot quietly close it.
+
+**The link-loss checks moved rather than being deleted.** Three verify scripts
+asserted against `app/menu.js`, all of them written after the defect where a
+build selected a `profiles` column that did not exist, every role flag stayed
+false, and ten links left the menu silently with five gates green. Deleting the
+file would have deleted those checks too. They now assert against
+`utils/drawer.js` and `components/QuickAccessDrawer.js` — the fail-open rule,
+the notice, the fourteen links, and the ban on collapsing `is_admin` and
+`account_type` into one role. The drawer fails open for the same reason the
+menu had to: it is not a security boundary, so showing a link the caller cannot
+use costs them one explanatory screen, while showing none strands them.
+
+**Six checks demonstrated failing before being kept:**
+
+| Broke | Caught by | Message |
+|---|---|---|
+| dropped `/safety/blocked` from the drawer | `drawer.test.js` + `verify-screen-gates` | row missing, and `expected to contain route:"/safety/blocked"` |
+| downgraded the whole Manage section to "signed in" | `drawer.test.js` | `is absent for an Explorer who manages nothing` |
+| made the drawer assume the answer instead of asking | `verify-screen-gates` | `must be decided by the manages_any_listing() RPC` |
+| removed the gate from `/business/dashboard` | `verify-screen-gates` | `expected to contain managerGate.allowed` |
+| gated the on-ramp shut | `verify-screen-gates` | `must not use the manager gate` |
+| restored `app/menu.js` | `navigation.test.js` | `removed the routes it said it removed` |
+
+The second of those is worth recording, because the first attempt at it
+**passed and proved nothing**: downgrading only the section's own gate changed
+no behaviour, since every row inside was still manager-gated and the section
+drops out when it has no visible rows. The demonstration only became real once
+the rows were downgraded too. A check that cannot be made to fail has not been
+tested — it has been assumed.
+
+**Also run:** `npm run test:ci` → **221 passed** (68 route mounts, 27 marker,
+92 navigation, 34 drawer); taxonomy 132; markers 273; social 92; live 152 + 39;
+linkup nav 20; title-only 28; screen gates 72; seed 3; `npx expo-doctor` 20/20;
+`npx expo export --platform web` succeeded, bundle still contains
+`/linkups/create`.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 5, the place page shared layout. Read it in
+`docs/REDESIGN-BRIEF.md` first. It wants one component behind business,
+property, park, event, club and link-up, with grep proving no duplicate — and
+it explicitly cuts Directions, Book a table and Get tickets. Note `app/place.js`
+is a dead stub containing hardcoded mock data ("The Coffee House", 4.8 stars),
+which `RULES.md` bans in application code; it is unlinked from all navigation
+and is the obvious candidate to become, or be replaced by, that shared layout.
+
+**Unverified.** `Verified: renders. Unverified: behaves` for everything drawn.
+
+- **Nobody has opened the drawer.** It mounts in tests through
+  `utils/drawer.js`, and the component itself has never been rendered by a
+  person. Its slide animation, its width on a real screen, and whether the
+  backdrop dismiss feels right are all unknown.
+- The entitlement is the exception and is stronger: `Verified: used`. It was
+  exercised with real SQL against the live project, as two real accounts and as
+  `anon`, and the results read back.
+- The three gated screens have not been opened by a non-manager in the app.
+  The database says the function returns false for them; that the screen then
+  shows `GateNotice` is asserted by a source check, not by a person.
+- `AccessibilityInfo.isReduceMotionEnabled` is called with optional chaining
+  and a swallowed rejection, so a platform that lacks it degrades to the slide
+  animation rather than crashing. That fallback has not been exercised.
+- The Header's hamburger and the home screen's button now open an overlay
+  rather than pushing a route. Nobody has tapped either.
 
 ---
 
