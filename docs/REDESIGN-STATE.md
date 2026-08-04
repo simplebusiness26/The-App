@@ -244,6 +244,10 @@ in code.
 `npx expo-doctor` 20/20; `npx expo export --platform web` succeeded and the
 bundle still contains `/linkups/create`.
 
+**CI:** run 24 on `9a6a3fb`, conclusion **`success`**, read back from the API
+after the run completed.
+https://github.com/simplebusiness26/The-App/actions/runs/30930999739
+
 **Stopped because:** finished. One packet per session.
 
 **Exact next step:** Packet 4, the Quick Access drawer. Read it in
