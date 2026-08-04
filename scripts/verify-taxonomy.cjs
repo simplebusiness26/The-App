@@ -52,8 +52,8 @@ function parseEntries(block){
     .replace(/key:UNCLASSIFIED/g,'key:"unclassified"')
     .replace(/category:UNCLASSIFIED/g,'category:"unclassified"');
 
-  return [...resolved.matchAll(/\{key:"([^"]+)",label:"([^"]+)"(?:,category:"([^"]+)")?\}/g)]
-    .map((m)=>({key:m[1],label:m[2],category:m[3]}));
+  return [...resolved.matchAll(/\{key:"([^"]+)",label:"([^"]+)"(?:,category:"([^"]+)")?(?:,glyph:"([^"]+)")?\}/g)]
+    .map((m)=>({key:m[1],label:m[2],category:m[3],glyph:m[4]}));
 }
 
 const categoriesBlock=(taxonomy.match(/export const CATEGORIES=\[([\s\S]*?)\];/) || [])[1] || "";
@@ -72,6 +72,18 @@ for(const type of jsTypes){
   check(
     !!type.category && jsCategories.some((c)=>c.key===type.category),
     `${TAXONOMY_FILE}: type "${type.key}" names category "${type.category}", which is not in CATEGORIES`
+  );
+}
+
+// Packet 2 assigns a marker per classification. A type added without a glyph
+// would fall back to its category's icon and render a plausible-looking pin
+// that quietly says the wrong thing, so the omission is caught at the source
+// rather than left to look deliberate. test/markers.test.js covers the other
+// direction -- that the glyph named here is one this app can actually draw.
+for(const entry of [...jsCategories,...jsTypes]){
+  check(
+    !!entry.glyph,
+    `${TAXONOMY_FILE}: "${entry.key}" has no glyph — every category and type needs one so its marker is not guessed`
   );
 }
 

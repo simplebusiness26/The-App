@@ -13,7 +13,8 @@
     "verify:screens": "node scripts/verify-screen-gates.cjs",
     "test": "jest",
     "test:ci": "jest --ci --runInBand",
-    "verify:taxonomy": "node scripts/verify-taxonomy.cjs"
+    "verify:taxonomy": "node scripts/verify-taxonomy.cjs",
+    "verify:markers": "node scripts/verify-marker-assignment.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",
