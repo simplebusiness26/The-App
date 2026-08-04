@@ -49,7 +49,8 @@ const CONVERTED=[
   "app/business/[id].js",
   "app/property/[id].js",
   "app/events/[id].js",
-  "app/activity-clubs/[id].js"
+  "app/activity-clubs/[id].js",
+  "app/linkups/[id].js"
 ];
 
 // ---------------------------------------------------------------------------
@@ -173,6 +174,53 @@ check(
 check(
   /typeLabel=\{EVENT_TYPE_LABEL\}/.test(code(read("app/events/[id].js"))),
   "app/events/[id].js: typeLabel must be EVENT_TYPE_LABEL, not be written here"
+);
+check(
+  /typeLabel=\{LINKUP_TYPE_LABEL\}/.test(code(read("app/linkups/[id].js"))),
+  "app/linkups/[id].js: typeLabel must be LINKUP_TYPE_LABEL, not be written here"
+);
+
+// ---------------------------------------------------------------------------
+// 4b. The link-up page keeps its second lock
+// ---------------------------------------------------------------------------
+//
+// Packet 5c is a privacy gate. The database is the real boundary: the policy
+// linkup_private_select_members restricts linkup_private_details to the creator
+// and active members, and a real non-member was verified to read zero rows from
+// the live project. These checks defend the layer above it, which exists so a
+// mistake in the first one is not the only thing standing between a meeting
+// point and a stranger.
+
+const linkupPage=code(read("app/linkups/[id].js"));
+
+check(
+  /joined\s*&&\s*privateDetails/.test(linkupPage),
+  "app/linkups/[id].js: the meeting point must stay behind a joined check, even though RLS also enforces it"
+);
+check(
+  /report_live_safety/.test(linkupPage),
+  "app/linkups/[id].js: the report control must remain — it is what a person needs when a Link-up goes wrong"
+);
+check(
+  /block_explorer/.test(linkupPage),
+  "app/linkups/[id].js: the block control must remain"
+);
+check(
+  /showReviews=\{false\}/.test(linkupPage),
+  "app/linkups/[id].js: link-ups have no reviews table, so the reviews section must be omitted rather than emptied"
+);
+
+// The policy itself must still be declared. A migration that dropped it would
+// leave the client check as the only thing between a meeting point and anyone
+// who can open the page.
+const privacyMigration=read("supabase/migrations/20260802211800_harden_linkups_live_privacy.sql");
+check(
+  /create policy linkup_private_select_members on public\.linkup_private_details/.test(privacyMigration),
+  "the linkup_private_select_members policy is missing — the meeting point would have no server-side boundary"
+);
+check(
+  /is_active_linkup_member/.test(privacyMigration) && /is_linkup_creator/.test(privacyMigration),
+  "the private-details policy must restrict to active members and the creator"
 );
 
 const markers=code(read("utils/markers.js"));
