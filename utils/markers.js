@@ -186,6 +186,7 @@ export const CLUB_TYPE_LABEL="Club";
 // rather than inventing a second one. There is deliberately no markerForEvent()
 // until something renders it.
 export const EVENT_TYPE_LABEL="Event";
+export const LINKUP_TYPE_LABEL="Link-up";
 
 export function typeLabelForBusiness(business){
   return classificationLabel(business);

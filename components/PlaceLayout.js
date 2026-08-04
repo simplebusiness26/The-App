@@ -38,6 +38,12 @@ export default function PlaceLayout({
   description,
   photos=[],
   photosEmptyLabel="No photos uploaded yet",
+  // A link-up has no photos and no reviews -- there is no linkup_reviews table
+  // anywhere. Rendering "No reviews yet" on a page where reviewing is not a
+  // thing would invite something the app cannot record, so the sections are
+  // omitted rather than emptied. Capability flags, not page-type branches.
+  showPhotos=true,
+  showReviews=true,
   info=[],
   rating,
   // Clubs show members / spaces / score where a business shows average and
@@ -45,6 +51,7 @@ export default function PlaceLayout({
   // growing a branch per page type.
   stats,
   ownerAction,
+  beforeActions,
   actions,
   // Everything a page type needs that the shared sections do not describe: an
   // event's manager box, a club's membership state, its sessions and its
@@ -79,7 +86,7 @@ export default function PlaceLayout({
   return(
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {photos.length ? (
+        {showPhotos && (photos.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
             {photos.map((photo,index)=>(
               <Pressable key={`${photo}-${index}`} onPress={()=>setSelectedPhoto(photo)}>
@@ -91,7 +98,7 @@ export default function PlaceLayout({
           <View style={styles.photoFallback}>
             <Text style={styles.muted}>{photosEmptyLabel}</Text>
           </View>
-        )}
+        ))}
 
         <View style={styles.card}>
           <View style={styles.titleRow}>
@@ -129,6 +136,8 @@ export default function PlaceLayout({
           {rating?.favourite}
         </View>
 
+        {beforeActions}
+
         {!!actions && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Actions</Text>
@@ -138,22 +147,24 @@ export default function PlaceLayout({
 
         {beforeReviews}
 
-        <View style={styles.section}>
-          <View style={styles.reviewHeading}>
-            <Text style={styles.sectionTitle}>Reviews</Text>
-            <Text style={styles.reviewCount}>{reviews.length}</Text>
-          </View>
-
-          {!reviews.length ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>{reviewsEmpty?.title || "No reviews yet"}</Text>
-              {/* Empty states are instructions, not moods. */}
-              <Text style={styles.muted}>{reviewsEmpty?.instruction}</Text>
+        {showReviews && (
+          <View style={styles.section}>
+            <View style={styles.reviewHeading}>
+              <Text style={styles.sectionTitle}>Reviews</Text>
+              <Text style={styles.reviewCount}>{reviews.length}</Text>
             </View>
-          ) : reviews.map((review)=>(
-            <PlaceReview key={review.id} review={review} onPhoto={setSelectedPhoto}/>
-          ))}
-        </View>
+
+            {!reviews.length ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>{reviewsEmpty?.title || "No reviews yet"}</Text>
+                {/* Empty states are instructions, not moods. */}
+                <Text style={styles.muted}>{reviewsEmpty?.instruction}</Text>
+              </View>
+            ) : reviews.map((review)=>(
+              <PlaceReview key={review.id} review={review} onPhoto={setSelectedPhoto}/>
+            ))}
+          </View>
+        )}
 
         {afterReviews}
 
