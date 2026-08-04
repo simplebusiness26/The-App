@@ -39,6 +39,7 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 4 — Quick Access drawer
+**Last session:** Packet 5 read and split into 5a/5b/5c without being started
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,10 +52,15 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 5 (Place page shared layout). Not blocked. Note the
-brief cuts Directions (Stage Four) and Book a table / Get tickets (Stage
-Five) from it — the section ends without them, and `RULES.md` bans the
-placeholder either way.
+**Next action:** Packet 5a — the shared place layout for business and
+property, and the harness content assertions it needs first. Packet 5 was
+read and split; see the session log. The brief still cuts Directions (Stage
+Four) and Book a table / Get tickets (Stage Five) from all of 5a/5b/5c.
+
+**5c needs you before it needs code.** `app/linkups/[id].js` renders private
+meeting-point details and owns the report and block controls, so `RULES.md`
+requires describing what a shared layout would expose and waiting, rather
+than implementing it. That description is 5c's first task, not its last.
 
 **One decision for you, from Packet 3.** The tab bar currently shows on the
 login and signup screens, because the brief's rule is "hidden on the three
@@ -80,7 +86,9 @@ Nothing else should change.
 | 2 | Marker assignment | done | `fad6887` | 27 marker tests; 233-check override gate; 6 red-then-green demonstrations |
 | 3 | Navigation shell | done | `e4a300e` | 92 navigation tests; route inventory diff is +2/-0; 6 red-then-green demonstrations |
 | 4 | Quick Access drawer | done | `c7a3f94` | 34 drawer tests; entitlement proved against 2 real accounts in SQL; 6 red-then-green demonstrations |
-| 5 | Place page layout | not started | | |
+| 5a | Place layout: business, property | not started | | |
+| 5b | Place layout: events, clubs | not started | | |
+| 5c | Place layout: link-ups (privacy gate) | not started | | |
 | 6 | Map bottom cards | not started | | |
 | 7 | Discover screen | not started | | |
 | 8 | Profile and reputation | not started | | |
@@ -116,6 +124,109 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 5 — split, not started
+
+**Did:** Read the five detail screens, found the packet is three packets and
+one of them is a privacy gate, and stopped without editing anything. Rule 5 of
+the brief: "Never edit a packet's scope mid-session to make it fit. If it's too
+big, split it in the ledger and stop."
+
+Nothing in `app/` was changed. This entry is the whole output.
+
+**First, a correction to the brief.** It says "One layout used by business,
+property, park, event, club, link-up" — six page types. **There are five.**
+`park` has no table, no row and no page. It exists only as a `place_type`
+string on a check-in (`app/checkins/create.js`, and the `place_type` check
+constraint in `20260802211500_linkups_live_tables.sql`), where it means "I am
+at a park" with no listing behind it. `RULES.md` calls a park a Place, but
+nothing has ever created one. A shared layout cannot be used by a page type
+that does not exist, so the criterion "all six page types use one component"
+is unmeetable as written.
+
+**Why it is three packets.** These are not one page with six skins. Sizes and
+distinct behaviour:
+
+| Screen | Lines | Carries |
+|---|---|---|
+| `business/[id]` | 236 | claim, favourite, call, website, review, owner edit, photo modal |
+| `property/[id]` | 240 | claim, favourite, review, owner edit, printable QR |
+| `events/[id]` | 296 | favourite, auth-gated review, manager edit, manager dashboard |
+| `activity-clubs/[id]` | 421 | membership application with a note, sessions, announcements, stats, message board, manager surface |
+| `linkups/[id]` | 143 | join/leave, **private meeting-point details**, attendee list, private board, **report**, **block**, cancel |
+
+They also do not share a reviews table. `reviews` covers business and property
+(via `business_id` / `property_id`), events use `event_reviews`, clubs use
+`activity_club_reviews`, and **link-ups have no reviews at all** — there is no
+`linkup_reviews` table anywhere in the migrations. A "reviews" section in a
+shared layout is therefore four different queries and one absence, not one
+component with a prop.
+
+**The blocking reason, and it is not size.** The verification harness cannot
+protect this refactor. `test/routes.test.js` mounts each screen with an empty
+Supabase result and asserts it does not throw. That would stay green if the
+rewrite silently dropped the ClaimButton, the FavouriteButton, the review link,
+or the report control — every one of them renders conditionally on data or
+session state that the smoke test does not supply. Packet 0 built the harness
+so that refactors would stop being blind, and for *this* refactor it is not
+sufficient. Rewriting 1,336 lines of shipped behaviour behind tests that cannot
+see the behaviour is how the crashing map got shipped behind a green build.
+
+**The second blocking reason: `linkups/[id]` is a privacy gate.** `RULES.md`:
+"Any change that touches location, presence, visibility or another Explorer's
+whereabouts is safety-critical. For these: Stop. Describe what you'd build and
+what it would expose. Wait." That screen renders
+`linkup_private_details.meeting_point_details`, gated on `joined && privateDetails!==""`
+(line 112), and owns the report and block controls. Folding it into a layout
+shared with public place pages is exactly the change the rule says to stop and
+describe rather than quietly implement. It does not go in the same packet as a
+business page, and it does not go in any packet without a `privacy-reviewer`
+pass on what the shared layout would expose.
+
+**The proposed split.**
+
+- **5a — the shared layout, plus the harness it needs.** Build
+  `components/PlaceLayout.js` and convert `business/[id]` and `property/[id]`,
+  which are genuinely the same page: same reviews table, same claim flow, same
+  owner-edit, differing only in the claim target and the QR button. First add
+  content assertions to the harness — a screen rendered with a fixture that has
+  an owner, a session and reviews, asserting the claim, favourite and review
+  controls are present — because without that, 5a cannot be verified and
+  neither can 5b.
+- **5b — events and clubs.** Both bring their own review table and a manager
+  surface; clubs add membership, sessions, announcements, stats and the board.
+  Onto the layout from 5a with type-specific slots.
+- **5c — link-ups, only after a privacy review.** Write down what the shared
+  layout would expose about a meeting point and an attendee list before any of
+  it is built.
+
+**On "listing type displayed matches the map marker".** This one is already
+half-solved and worth knowing: `business/[id]` line 112 renders
+`classificationLabel(business)`, the same function `markerForBusiness` uses to
+build the marker's spoken label, so business pages and business pins cannot
+disagree. The other four types have no equivalent — `markerForProperty` and
+`markerForClub` hardcode "Property." and "Club." in `utils/markers.js` while the
+screens write their own headings. 5a should give the layout its type label from
+`utils/markers.js` so that stays true by construction rather than by
+coincidence.
+
+**Acceptance criteria:** none met, none attempted. The packet was not started.
+
+**Stopped because:** too big, and one third of it is a privacy gate that
+`RULES.md` says to stop and describe rather than implement.
+
+**Exact next step:** Packet 5a. Start with the harness, not the layout: add a
+test that renders `business/[id]` with a fixture containing an owner, a
+session and at least one review, and assert the claim, favourite, review and
+edit controls appear for the right viewer. Watch it fail by deleting one of
+those controls, then build `components/PlaceLayout.js` behind it. Do not touch
+`linkups/[id]` in 5a or 5b.
+
+**Unverified:** Nothing was built, so there is nothing to verify. The line
+counts, the review-table split and the absence of `linkup_reviews` were read
+out of the repository rather than remembered.
 
 ---
 
