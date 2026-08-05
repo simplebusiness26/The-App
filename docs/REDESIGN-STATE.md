@@ -209,6 +209,10 @@ it.
 taxonomy 136; markers 277; screen gates 72; social 92; live 152 + 39; linkup nav
 20; title-only 28; seed 3; `npx expo-doctor` 20/20; web export succeeded.
 
+**CI:** run 35 on `d489c2f`, conclusion **`success`**, read back from the API
+after the run completed.
+https://github.com/simplebusiness26/The-App/actions/runs/30964920405
+
 **Stopped because:** finished. One packet per session.
 
 **Exact next step:** Packet 7, the Discover screen. It replaces
