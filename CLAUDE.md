@@ -161,6 +161,28 @@ increase browsing.
 - Ask before adding a new dependency
 - One feature at a time — no broad half-built sweeps
 
+## Development branch
+
+`main2.0-Dev` is the authoritative and active Xplorer development
+branch.
+
+The ordinary `main` branch is outdated and must not be used.
+
+Follow the complete workflow in `AGENTS.md`.
+
+Unless the user explicitly requests otherwise:
+
+- work directly on `main2.0-Dev`;
+- do not create another branch;
+- do not open a pull request;
+- commit and push completed, tested work directly to
+  `origin/main2.0-Dev`.
+
+Before editing, fetch the remote state and confirm local `main2.0-Dev`
+has not diverged.
+
+Never reset, force-push or discard commits to solve divergence.
+
 ## Project specifics
 
 - **Stack:** Expo + Expo Router (file-based routes) + React Native
