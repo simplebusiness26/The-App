@@ -1,8 +1,11 @@
 name: Build Android APK
+run-name: APK • ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main2.0-Dev
     tags:
       - "v*"
 
@@ -50,8 +53,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate Expo configuration
+        run: npx expo config --type public > /tmp/expo-config.json
+
       - name: Generate native Android project
-        run: npx expo prebuild --platform android --clean --non-interactive
+        run: npx expo prebuild --platform android --clean
 
       - name: Build standalone release APK
         working-directory: android
@@ -63,7 +69,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p apk-output
-          cp android/app/build/outputs/apk/release/app-release.apk apk-output/Guestbook.apk
+          APK_PATH="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          if [ -z "$APK_PATH" ]; then
+            echo "No release APK was produced."
+            exit 1
+          fi
+          cp "$APK_PATH" apk-output/Guestbook.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -71,4 +82,12 @@ jobs:
           name: Guestbook-Android-APK
           path: apk-output/Guestbook.apk
           if-no-files-found: error
+          compression-level: 0
           retention-days: 30
+
+      - name: Add download instructions
+        shell: bash
+        run: |
+          echo "### Guestbook APK built" >> "$GITHUB_STEP_SUMMARY"
+          echo "Open this workflow run's **Artifacts** section and download **Guestbook-Android-APK**." >> "$GITHUB_STEP_SUMMARY"
+          echo "Unzip it on Android, then open **Guestbook.apk** to install." >> "$GITHUB_STEP_SUMMARY"
