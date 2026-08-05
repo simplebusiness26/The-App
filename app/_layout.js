@@ -104,6 +104,7 @@ export default function Layout(){
 
           <Stack.Screen name="admin/claims"/>
           <Stack.Screen name="admin/dashboard"/>
+          <Stack.Screen name="admin/listings"/>
           <Stack.Screen name="admin/public-places"/>
         </Stack>
             </View>

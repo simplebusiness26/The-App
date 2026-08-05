@@ -11,12 +11,12 @@ import {INK} from "../../utils/tokens";
 // row counts. In particular, it never tries to infer a claims.user_id ->
 // profiles relationship: claims.user_id points to auth.users, not profiles.
 const OVERVIEW=[
-  {key:"claims",table:"claims",label:"Pending claims",status:"pending"},
-  {key:"businesses",table:"businesses",label:"Businesses"},
-  {key:"properties",table:"properties",label:"Properties"},
-  {key:"publicPlaces",table:"public_places",label:"Public places"},
-  {key:"activityClubs",table:"activity_clubs",label:"Activity clubs"},
-  {key:"events",table:"events",label:"Events"}
+  {key:"claims",table:"claims",label:"Pending claims",status:"pending",route:"/admin/claims"},
+  {key:"businesses",table:"businesses",label:"Businesses",route:"/admin/listings?type=businesses"},
+  {key:"properties",table:"properties",label:"Properties",route:"/admin/listings?type=properties"},
+  {key:"publicPlaces",table:"public_places",label:"Public places",route:"/admin/listings?type=public_places"},
+  {key:"activityClubs",table:"activity_clubs",label:"Activity clubs",route:"/admin/listings?type=activity_clubs"},
+  {key:"events",table:"events",label:"Events",route:"/admin/listings?type=events"}
 ];
 
 export default function AdminDashboard(){
@@ -112,18 +112,37 @@ export default function AdminDashboard(){
         <>
           <View style={styles.metricGrid}>
             {OVERVIEW.map((item)=>(
-              <View
+              <Pressable
                 key={item.key}
-                style={[styles.metricCard,item.key==="claims" && styles.claimMetric]}
-                accessibilityLabel={`${item.label}: ${counts[item.key]}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${item.label}: ${counts[item.key]}`}
+                onPress={()=>router.push(item.route)}
+                style={({pressed})=>[
+                  styles.metricCard,
+                  item.key==="claims" && styles.claimMetric,
+                  pressed && styles.pressed
+                ]}
               >
                 <Text style={styles.metricNumber}>{counts[item.key]}</Text>
                 <Text style={styles.metricLabel}>{item.label}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
 
           <Text style={styles.sectionTitle}>Admin tools</Text>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Browse all listings"
+            onPress={()=>router.push("/admin/listings")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>Browse all listings</Text>
+              <Text style={styles.toolDetail}>Search businesses, properties, public places, clubs and events.</Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
 
           <Pressable
             accessibilityRole="button"

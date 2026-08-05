@@ -39,14 +39,15 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 8d — Memories (code only, migration not applied)
-**Admin dashboard workstream:** Stage 2 overview is **done in code**. Stage 1's
-security foundation remains live. Stage 2 needs no migration: its six
-count-only reads were verified through the owner's real admin role against the
-live project. A Replit/device UI pass is still owed.
-**Last session:** Admin dashboard Stage 2 replaced the broken duplicate claims
-screen with the count-only overview and canonical links to the two admin tools
-that already exist. 8d remains built end-to-end in code, but **8d's migration
-has not been applied.**
+**Admin dashboard workstream:** Stage 3's searchable listing catalogue is
+**done in code; its read-policy migration has not been applied**. Stage 2's
+overview passed its Replit/device test, and Stage 1's security foundation
+remains live. Stage 3 needs the prepared migration before an administrator is
+guaranteed to see draft activity clubs and unpublished events.
+**Last session:** Admin dashboard Stage 3 added one read-only catalogue for
+businesses, properties, public places, activity clubs and events, with search,
+type filters and links to the canonical listing screens. 8d remains built
+end-to-end in code, but **8d's migration has not been applied.**
 **Branch:** `main2.0-Dev` — the only development branch now. `AGENTS.md` was
 rewritten this session: no feature branches, no pull requests, work directly
 on `main2.0-Dev`. The old `main` is outdated and must not be used.
@@ -160,6 +161,56 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Admin dashboard Stage 3 — code complete, migration not applied
+
+**Did:** Recorded the owner's successful Stage 2 Replit/device pass, then built
+the Stage 3 Admin Listing Catalogue. The dashboard's six total cards are now
+buttons, and the five listing totals open the catalogue already filtered to
+that type. The catalogue loads businesses, properties, public places, activity
+clubs and events in parallel, selects only the non-sensitive columns it
+displays, searches names/details, filters by type and opens the existing
+canonical detail route. If any table read fails, it shows one error and no
+partial catalogue. It contains no update, delete, owner-id or manager-id read.
+
+The live policy audit found that administrators can already inspect all
+businesses, properties and public places, but the activity-club and event read
+policies only included public records or the listing's own manager. Prepared a
+versioned migration that extends those two existing policies with the shared
+`guestbook_is_admin()` check. It deliberately alters the existing policies
+instead of adding duplicate permissive policies. The migration was not applied
+because live migrations require separate owner approval.
+
+**Files changed:** `app/admin/listings.js`, `app/admin/dashboard.js`,
+`app/_layout.js`, `utils/drawer.js`, `scripts/verify-screen-gates.cjs`,
+`test/admin-listings.test.js`, `test/admin-dashboard.test.js`,
+`test/drawer.test.js`, `test/navigation.test.js`,
+`supabase/migrations/20260805150624_admin_listing_catalogue_read_access.sql`,
+and this ledger.
+
+**Acceptance criteria:** the new behaviour suite was first demonstrated red
+because `/admin/listings` did not exist, then passes 4/4. The focused admin,
+drawer and navigation run passes 145/145. Full Jest passes 366/366 across 13
+suites. The expanded screen/security gate passes 126/126, every other source
+gate passes, `npm audit` reports 0 vulnerabilities, Expo Doctor passes 20/20,
+and a production web export completes. The five live table shapes and their RLS
+policies were read directly from project `yzpthslwsvesgndzdqai`; no live row,
+policy or schema was changed.
+
+**Stopped because:** Stage 3 code is complete, but its live read-policy
+migration needs explicit owner approval.
+
+**Exact next step:** ask the owner to approve applying
+`20260805150624_admin_listing_catalogue_read_access.sql`. If approved, apply it
+to project `yzpthslwsvesgndzdqai`, verify an administrator can see all five
+listing types while a normal Explorer gains no extra rows, rerun the advisors,
+then pull `main2.0-Dev` into Replit and device-test search, filters and links.
+
+**Unverified:** the migration is not live; therefore complete administrator
+visibility of draft clubs and unpublished events is unverified. The new screen
+has not yet been rendered or tapped in Replit/on a device.
 
 ---
 

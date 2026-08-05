@@ -191,6 +191,7 @@ for(const table of ["claims","businesses","properties","public_places","activity
 contains("app/admin/dashboard.js",[
   'select("id",{count:"exact",head:true})',
   'router.push("/admin/claims")',
+  'router.push("/admin/listings")',
   'router.push("/admin/public-places")',
   "Overview could not be loaded"
 ]);
@@ -202,6 +203,52 @@ check(
   !adminDashboardCode.includes(".update("),
   "app/admin/dashboard.js: claim decisions belong to /admin/claims, not the overview"
 );
+
+// Stage 3 is an inspection catalogue, not a second set of editing forms. It
+// loads every canonical listing table, selects only visible catalogue fields,
+// and hands each row to its existing detail route.
+const adminListings=read("app/admin/listings.js");
+const adminListingsCode=readCode("app/admin/listings.js");
+for(const table of ["businesses","properties","public_places","activity_clubs","events"]){
+  check(
+    adminListings.includes(`table:"${table}"`),
+    `app/admin/listings.js: Stage 3 catalogue must load ${table}`
+  );
+}
+contains("app/admin/listings.js",[
+  "Search admin listings",
+  "Show only",
+  "Listings could not be loaded",
+  "useLocalSearchParams",
+  "router.push(listing.route)"
+]);
+for(const forbidden of ['select("*")',".update(",".delete(","owner_id","manager_id"]){
+  check(
+    !adminListingsCode.includes(forbidden),
+    `app/admin/listings.js: read-only catalogue must not contain ${JSON.stringify(forbidden)}`
+  );
+}
+
+const catalogueMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_listing_catalogue_read_access.sql"));
+check(
+  catalogueMigrations.length===1,
+  `supabase/migrations: expected one Stage 3 catalogue access migration, found ${catalogueMigrations.length}`
+);
+if(catalogueMigrations.length===1){
+  const relative=`supabase/migrations/${catalogueMigrations[0]}`;
+  const migration=read(relative);
+  for(const table of ["activity_clubs","events"]){
+    check(
+      new RegExp(`alter\\s+policy[\\s\\S]+?on\\s+public\\.${table}[\\s\\S]+?using`,"i").test(migration),
+      `${relative}: expected the existing ${table} SELECT policy to gain admin visibility`
+    );
+  }
+  check(
+    (migration.match(/\(select\s+public\.guestbook_is_admin\(\)\)/gi)||[]).length===2,
+    `${relative}: both Stage 3 policies must use the database-owned admin helper`
+  );
+}
 
 // ---------------------------------------------------------------------------
 // 2b. The drawer must not empty itself when a profile read fails
@@ -255,7 +302,8 @@ contains("utils/drawer.js",[
   'route:"/leaderboards"',
   'route:"/safety/blocked"',
   'route:"/manager/dashboard"',
-  'route:"/admin/dashboard"'
+  'route:"/admin/dashboard"',
+  'route:"/admin/listings"'
 ]);
 
 // The Manage section is the one with an entitlement behind it, and the

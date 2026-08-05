@@ -121,6 +121,15 @@ describe("Admin Dashboard Stage 2",()=>{
     expect(router.push).toHaveBeenCalledWith("/admin/public-places");
   });
 
+  it("opens the Stage 3 listing catalogue",async()=>{
+    installAdminOverview();
+    const tree=await renderDashboard();
+
+    await act(async()=>{pressable(tree,"Browse all listings").props.onPress();});
+
+    expect(router.push).toHaveBeenCalledWith("/admin/listings");
+  });
+
   it("shows one honest load error instead of turning failed counts into zero",async()=>{
     installAdminOverview({
       counts:{...LIVE_STAGE_2_COUNTS,claims:0},

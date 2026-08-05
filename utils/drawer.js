@@ -88,6 +88,7 @@ export const SECTIONS=[
       {label:"Settings",route:"/settings",gate:GATES.SIGNED_IN},
       {label:"Blocked Explorers",route:"/safety/blocked",gate:GATES.SIGNED_IN},
       {label:"Admin dashboard",route:"/admin/dashboard",gate:GATES.ADMIN},
+      {label:"Listing catalogue",route:"/admin/listings",gate:GATES.ADMIN},
       {label:"Review claims",route:"/admin/claims",gate:GATES.ADMIN},
       {label:"Manage public places",route:"/admin/public-places",gate:GATES.ADMIN},
       {label:"Log in",route:"/auth/login",gate:GATES.SIGNED_OUT},

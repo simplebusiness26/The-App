@@ -118,7 +118,7 @@ describe("no route was lost",()=>{
   // than folded into BEFORE, so a route that appears without being named
   // still fails.
   const ADDED=["create","discover","places/index","places/[id]","admin/public-places",
-    "memories/create","memories/[id]"];
+    "admin/listings","memories/create","memories/[id]"];
 
   // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
   // old menu page once every link has a new home." Every link did -- that is
