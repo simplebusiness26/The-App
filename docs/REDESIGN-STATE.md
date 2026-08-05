@@ -39,12 +39,14 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 8d — Memories (code only, migration not applied)
-**Admin dashboard workstream:** Stage 1 security foundation is **done and
-live**. Supabase migration `20260805134032_admin_security_foundation` was
-applied and its role boundary was verified against the live project.
-**Last session:** 8e was merged to `main2.0-Dev` and its **five** migrations
-applied to the live project and verified against real accounts. 8d was then
-built end-to-end in code. **8d's migration has not been applied.**
+**Admin dashboard workstream:** Stage 2 overview is **done in code**. Stage 1's
+security foundation remains live. Stage 2 needs no migration: its six
+count-only reads were verified through the owner's real admin role against the
+live project. A Replit/device UI pass is still owed.
+**Last session:** Admin dashboard Stage 2 replaced the broken duplicate claims
+screen with the count-only overview and canonical links to the two admin tools
+that already exist. 8d remains built end-to-end in code, but **8d's migration
+has not been applied.**
 **Branch:** `main2.0-Dev` — the only development branch now. `AGENTS.md` was
 rewritten this session: no feature branches, no pull requests, work directly
 on `main2.0-Dev`. The old `main` is outdated and must not be used.
@@ -158,6 +160,54 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Admin dashboard Stage 2 — built and live reads verified
+
+**Did:** Replaced `/admin/dashboard`'s second copy of claim approval with one
+admin overview. The old screen asked PostgREST to infer
+`claims.user_id -> profiles.id`; the real foreign key points to `auth.users`,
+so that query failed with the schema-cache relationship error before showing a
+truthful total. The new screen makes six count-only reads for pending claims,
+businesses, properties, public places, activity clubs and events. It shows no
+totals if any read fails, offers a retry, and links to the existing dedicated
+claim-review and public-place management screens. The Quick Access drawer now
+has a canonical Admin dashboard row without removing either direct shortcut.
+No schema change or live migration was needed.
+
+The required full Jest command was already red on untouched
+`origin/main2.0-Dev`: two older suites mounted `FeedbackProvider`, triggered
+its dismissal timer and never unmounted it. Their assertions all passed, but
+the timers updated React after Jest had torn down. Those two test helpers now
+unmount their own trees after each test, allowing the provider's existing
+cleanup to run; production code is unchanged by that repair.
+
+**Files changed:** `app/admin/dashboard.js`, `utils/drawer.js`,
+`scripts/verify-screen-gates.cjs`, `test/admin-dashboard.test.js`,
+`test/drawer.test.js`, `test/place-follows.test.js`, `test/memories.test.js`,
+and this ledger.
+
+**Acceptance criteria:** the new source gate was demonstrated red against the
+old screen (89 checks passed, 13 intended Stage 2 failures), then green at
+102/102. The new behaviour suite passes 4/4: exact real-shaped totals, no
+relational profile join, both tool destinations, and an honest all-or-nothing
+error state. Full Jest passes 359/359 across 12 suites. Every CI source gate
+passes; `npm audit` reports 0 vulnerabilities; Expo Doctor passes 20/20; and a
+production web export completes. A rolled-back live role simulation for the
+owner returned admin `true` and the same six reads returned 1 pending claim,
+26 businesses, 9 properties, 1 public place, 8 activity clubs and 9 events.
+No live row or schema was changed.
+
+**Stopped because:** Stage 2 is complete in code and no migration is required.
+
+**Exact next step:** pull `main2.0-Dev` in Replit, rebuild the App Preview, log
+in as `Guestbooker1@gmail.com`, open Admin dashboard, confirm the six cards and
+open both admin tools. Do not begin Stage 3 until that device pass is recorded.
+
+**Unverified:** the owner has not yet opened this Stage 2 interface on a device,
+so its Replit rendering and touch behaviour remain `Unverified: behaves` even
+though its code, tests, bundle and live read permissions are verified.
 
 ---
 

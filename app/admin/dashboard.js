@@ -1,399 +1,352 @@
-import React,{useEffect,useState} from "react";
-
-import {
-View,
-Text,
-StyleSheet,
-ScrollView,
-Pressable,
-ActivityIndicator,
-Alert
-} from "react-native";
-
+import React,{useCallback,useState} from "react";
+import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import {router,useFocusEffect} from "expo-router";
+import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {useAdminGate} from "../../hooks/useAdminGate";
-
 import {supabase} from "../../services/supabase";
+import {INK} from "../../utils/tokens";
 
+// Admin Dashboard Stage 2: one trustworthy overview, with each editing job
+// kept on the screen that owns it. The dashboard asks PostgREST only for exact
+// row counts. In particular, it never tries to infer a claims.user_id ->
+// profiles relationship: claims.user_id points to auth.users, not profiles.
+const OVERVIEW=[
+  {key:"claims",table:"claims",label:"Pending claims",status:"pending"},
+  {key:"businesses",table:"businesses",label:"Businesses"},
+  {key:"properties",table:"properties",label:"Properties"},
+  {key:"publicPlaces",table:"public_places",label:"Public places"},
+  {key:"activityClubs",table:"activity_clubs",label:"Activity clubs"},
+  {key:"events",table:"events",label:"Events"}
+];
 
 export default function AdminDashboard(){
+  const insets=useSafeAreaInsets();
+  const {checking,allowed,error:gateError}=useAdminGate();
+  const [counts,setCounts]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState("");
 
+  const load=useCallback(async()=>{
+    if(!allowed) return;
 
-const {checking,allowed,error:gateError}=useAdminGate();
+    setLoading(true);
+    setError("");
+    setCounts(null);
 
-const [claims,setClaims]=useState([]);
+    try{
+      const results=await Promise.all(OVERVIEW.map(async(item)=>{
+        let query=supabase.from(item.table).select("id",{count:"exact",head:true});
+        if(item.status) query=query.eq("status",item.status);
 
-const [loading,setLoading]=useState(true);
+        const {count,error:countError}=await query;
+        return{...item,count,error:countError};
+      }));
 
+      if(results.some((result)=>result.error || typeof result.count!=="number")){
+        setError("One or more database checks failed, so no totals are shown.");
+        return;
+      }
 
+      setCounts(Object.fromEntries(results.map((result)=>[result.key,result.count])));
+    }catch{
+      setError("One or more database checks failed, so no totals are shown.");
+    }finally{
+      setLoading(false);
+    }
+  },[allowed]);
 
-useEffect(()=>{
+  useFocusEffect(useCallback(()=>{
+    load();
+  },[load]));
 
-if(allowed) loadClaims();
+  if(checking){
+    return(
+      <View style={styles.fullState}>
+        <ActivityIndicator size="large" color={INK.ink}/>
+        <Text style={styles.stateText}>Checking admin access…</Text>
+      </View>
+    );
+  }
 
-},[allowed]);
+  if(!allowed){
+    return(
+      <View style={styles.fullState}>
+        <Text style={styles.deniedTitle}>Admin access required</Text>
+        <Text style={styles.stateText}>
+          {gateError || "An admin account is required to open this screen."}
+        </Text>
+      </View>
+    );
+  }
 
+  return(
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.content,{paddingBottom:Math.max(insets.bottom,24)+32}]}
+    >
+      <Text style={styles.eyebrow}>ADMIN OVERVIEW</Text>
+      <Text style={styles.title}>What needs attention</Text>
+      <Text style={styles.intro}>
+        Live totals from the database, followed by the admin tools that are ready to use.
+      </Text>
 
+      {loading ? (
+        <View style={styles.panel}>
+          <ActivityIndicator size="small" color={INK.ink}/>
+          <Text style={styles.panelText}>Loading the latest totals…</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorPanel} accessibilityRole="alert">
+          <Text style={styles.errorTitle}>Overview could not be loaded</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try loading the admin overview again"
+            onPress={load}
+            style={({pressed})=>[styles.primaryButton,pressed && styles.pressed]}
+          >
+            <Text style={styles.primaryButtonText}>Try again</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <View style={styles.metricGrid}>
+            {OVERVIEW.map((item)=>(
+              <View
+                key={item.key}
+                style={[styles.metricCard,item.key==="claims" && styles.claimMetric]}
+                accessibilityLabel={`${item.label}: ${counts[item.key]}`}
+              >
+                <Text style={styles.metricNumber}>{counts[item.key]}</Text>
+                <Text style={styles.metricLabel}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
 
-async function loadClaims(){
+          <Text style={styles.sectionTitle}>Admin tools</Text>
 
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Review pending claims"
+            onPress={()=>router.push("/admin/claims")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>Review pending claims</Text>
+              <Text style={styles.toolDetail}>
+                {counts.claims===1 ? "1 claim is waiting for a decision." : `${counts.claims} claims are waiting for a decision.`}
+              </Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
 
-setLoading(true);
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Manage public places"
+            onPress={()=>router.push("/admin/public-places")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>Manage public places</Text>
+              <Text style={styles.toolDetail}>Add, edit or hide parks, beaches and other public places.</Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
 
-
-
-const {
-data,
-error
-}=await supabase
-
-.from("claims")
-
-.select(`
-*,
-profiles:user_id(
-full_name,
-email,
-account_type
-)
-`)
-
-.eq(
-"status",
-"pending"
-)
-
-.order(
-"created_at",
-{
-ascending:false
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Refresh admin overview"
+            onPress={load}
+            style={({pressed})=>[styles.refreshButton,pressed && styles.pressed]}
+          >
+            <Text style={styles.refreshText}>Refresh overview</Text>
+          </Pressable>
+        </>
+      )}
+    </ScrollView>
+  );
 }
-);
-
-
-
-if(error){
-
-console.log(error);
-
-Alert.alert(
-"Error",
-error.message
-);
-
-setLoading(false);
-
-return;
-
-}
-
-
-
-setClaims(data || []);
-
-setLoading(false);
-
-
-}
-
-
-
-
-async function updateClaim(id,status){
-
-
-const {
-data:updated,
-error
-}=await supabase
-
-.from("claims")
-
-.update({
-status
-})
-
-.eq(
-"id",
-id
-)
-
-.select();
-
-
-
-if(error){
-
-Alert.alert(
-"Error",
-error.message
-);
-
-return;
-
-}
-
-
-
-// RLS refuses a write by matching no rows, not by returning an error, so
-// an empty result here means the policy rejected it -- not that it worked.
-if(!updated || updated.length===0){
-
-Alert.alert(
-"Claim update failed",
-"This claim was not updated. Admin access is required."
-);
-
-return;
-
-}
-
-
-
-Alert.alert(
-"Success",
-`Claim ${status}`
-);
-
-
-loadClaims();
-
-
-}
-
-
-
-if(checking){
-
-return(
-
-<View style={styles.loading}>
-
-<ActivityIndicator size="large"/>
-
-</View>
-
-);
-
-}
-
-
-
-if(!allowed){
-
-return(
-
-<View style={styles.loading}>
-
-<Text style={styles.denied}>
-{gateError || "An admin account is required to open this screen."}
-</Text>
-
-</View>
-
-);
-
-}
-
-
-
-if(loading){
-
-return(
-
-<View style={styles.loading}>
-
-<ActivityIndicator size="large"/>
-
-</View>
-
-);
-
-}
-
-
-
-return(
-
-<ScrollView style={styles.container}>
-
-
-<Text style={styles.title}>
-Admin Dashboard
-</Text>
-
-
-
-<Text>
-Pending Claims: {claims.length}
-</Text>
-
-
-
-{
-claims.map(claim=>(
-
-
-<View
-
-key={claim.id}
-
-style={styles.card}
-
->
-
-
-<Text style={styles.name}>
-{claim.profiles?.full_name || "Unknown User"}
-</Text>
-
-
-<Text>
-Account:
-{claim.profiles?.account_type}
-</Text>
-
-
-
-<Text>
-Listing:
-{
-claim.business_id
-?
-"Business"
-:
-"Property"
-}
-</Text>
-
-
-<Text>
-Claim ID:
-{claim.id}
-</Text>
-
-
-
-<View style={styles.row}>
-
-
-<Pressable
-
-style={styles.approve}
-
-onPress={()=>updateClaim(
-claim.id,
-"approved"
-)}
-
->
-
-<Text style={styles.buttonText}>
-Approve
-</Text>
-
-</Pressable>
-
-
-
-<Pressable
-
-style={styles.reject}
-
-onPress={()=>updateClaim(
-claim.id,
-"rejected"
-)}
-
->
-
-<Text style={styles.buttonText}>
-Reject
-</Text>
-
-</Pressable>
-
-
-
-</View>
-
-
-</View>
-
-
-))
-
-}
-
-
-
-</ScrollView>
-
-);
-
-}
-
-
 
 const styles=StyleSheet.create({
-
-loading:{
-flex:1,
-justifyContent:"center",
-alignItems:"center",
-padding:40
-},
-
-denied:{
-fontSize:16,
-textAlign:"center",
-color:"#b42318"
-},
-
-container:{
-padding:20
-},
-
-title:{
-fontSize:32,
-fontWeight:"bold",
-marginBottom:20
-},
-
-card:{
-borderWidth:1,
-borderRadius:10,
-padding:15,
-marginTop:15
-},
-
-name:{
-fontSize:20,
-fontWeight:"bold"
-},
-
-row:{
-flexDirection:"row",
-gap:10,
-marginTop:15
-},
-
-approve:{
-backgroundColor:"green",
-padding:12,
-borderRadius:8,
-flex:1
-},
-
-reject:{
-backgroundColor:"red",
-padding:12,
-borderRadius:8,
-flex:1
-},
-
-buttonText:{
-color:"white",
-textAlign:"center"
-}
-
+  screen:{
+    flex:1,
+    backgroundColor:INK.paper
+  },
+  content:{
+    paddingHorizontal:20,
+    paddingTop:28
+  },
+  fullState:{
+    flex:1,
+    alignItems:"center",
+    justifyContent:"center",
+    gap:12,
+    padding:32,
+    backgroundColor:INK.paper
+  },
+  stateText:{
+    maxWidth:320,
+    color:INK.inkSoft,
+    fontSize:16,
+    lineHeight:23,
+    textAlign:"center"
+  },
+  deniedTitle:{
+    color:INK.ink,
+    fontSize:24,
+    fontWeight:"800"
+  },
+  eyebrow:{
+    color:INK.inkSoft,
+    fontSize:12,
+    fontWeight:"800",
+    letterSpacing:1.4,
+    marginBottom:9
+  },
+  title:{
+    color:INK.ink,
+    fontSize:34,
+    fontWeight:"900",
+    letterSpacing:-1.2,
+    lineHeight:38
+  },
+  intro:{
+    color:INK.inkSoft,
+    fontSize:16,
+    lineHeight:23,
+    marginTop:10,
+    marginBottom:24
+  },
+  panel:{
+    minHeight:150,
+    alignItems:"center",
+    justifyContent:"center",
+    gap:12,
+    borderColor:INK.hair,
+    borderRadius:20,
+    borderWidth:1,
+    backgroundColor:INK.card,
+    padding:24
+  },
+  panelText:{
+    color:INK.inkSoft,
+    fontSize:15
+  },
+  errorPanel:{
+    borderColor:INK.ink,
+    borderRadius:20,
+    borderWidth:1,
+    backgroundColor:INK.card,
+    padding:22
+  },
+  errorTitle:{
+    color:INK.ink,
+    fontSize:21,
+    fontWeight:"800"
+  },
+  errorText:{
+    color:INK.inkSoft,
+    fontSize:15,
+    lineHeight:22,
+    marginTop:8
+  },
+  primaryButton:{
+    alignItems:"center",
+    borderRadius:14,
+    backgroundColor:INK.ink,
+    marginTop:18,
+    paddingHorizontal:18,
+    paddingVertical:14
+  },
+  primaryButtonText:{
+    color:INK.paper,
+    fontSize:16,
+    fontWeight:"800"
+  },
+  metricGrid:{
+    flexDirection:"row",
+    flexWrap:"wrap",
+    gap:10
+  },
+  metricCard:{
+    width:"48%",
+    minHeight:116,
+    justifyContent:"space-between",
+    borderColor:INK.hair,
+    borderRadius:18,
+    borderWidth:1,
+    backgroundColor:INK.card,
+    padding:17
+  },
+  claimMetric:{
+    backgroundColor:INK.water
+  },
+  metricNumber:{
+    color:INK.ink,
+    fontSize:34,
+    fontWeight:"900",
+    letterSpacing:-1
+  },
+  metricLabel:{
+    color:INK.inkSoft,
+    fontSize:14,
+    fontWeight:"700",
+    lineHeight:18
+  },
+  sectionTitle:{
+    color:INK.ink,
+    fontSize:22,
+    fontWeight:"900",
+    marginBottom:12,
+    marginTop:32
+  },
+  toolCard:{
+    minHeight:96,
+    flexDirection:"row",
+    alignItems:"center",
+    borderColor:INK.hair,
+    borderRadius:18,
+    borderWidth:1,
+    backgroundColor:INK.card,
+    marginBottom:10,
+    paddingHorizontal:18,
+    paddingVertical:16
+  },
+  toolCopy:{
+    flex:1,
+    paddingRight:12
+  },
+  toolTitle:{
+    color:INK.ink,
+    fontSize:17,
+    fontWeight:"800"
+  },
+  toolDetail:{
+    color:INK.inkSoft,
+    fontSize:14,
+    lineHeight:19,
+    marginTop:5
+  },
+  arrow:{
+    color:INK.ink,
+    fontSize:34,
+    fontWeight:"300"
+  },
+  refreshButton:{
+    alignItems:"center",
+    borderColor:INK.ink,
+    borderRadius:14,
+    borderWidth:1,
+    marginTop:10,
+    paddingHorizontal:18,
+    paddingVertical:14
+  },
+  refreshText:{
+    color:INK.ink,
+    fontSize:15,
+    fontWeight:"800"
+  },
+  pressed:{
+    opacity:0.68
+  }
 });

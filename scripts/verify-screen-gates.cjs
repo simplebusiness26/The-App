@@ -168,7 +168,7 @@ for(const {file,table,column} of reviewActions){
   );
 }
 
-// The claim approvals do the same, on three tables.
+// The dedicated claim-review screen performs claim approvals on three tables.
 const claimsScreen=read("app/admin/claims.js");
 for(const marker of ["updatedBusiness","updatedProperty","updatedClaim"]){
   check(
@@ -176,9 +176,31 @@ for(const marker of ["updatedBusiness","updatedProperty","updatedClaim"]){
     `app/admin/claims.js: ${marker} must be checked for an empty result`
   );
 }
+
+// Stage 2 gives /admin/dashboard one responsibility: a count-only overview.
+// It must not grow the invalid claims.user_id -> profiles join or duplicate
+// the approval writes that belong to /admin/claims again.
+const adminDashboard=read("app/admin/dashboard.js");
+const adminDashboardCode=readCode("app/admin/dashboard.js");
+for(const table of ["claims","businesses","properties","public_places","activity_clubs","events"]){
+  check(
+    adminDashboard.includes(`table:"${table}"`),
+    `app/admin/dashboard.js: Stage 2 overview must count ${table}`
+  );
+}
+contains("app/admin/dashboard.js",[
+  'select("id",{count:"exact",head:true})',
+  'router.push("/admin/claims")',
+  'router.push("/admin/public-places")',
+  "Overview could not be loaded"
+]);
 check(
-  (read("app/admin/dashboard.js").match(/if\(!updated \|\| updated\.length===0\)\{/g) || []).length===1,
-  "app/admin/dashboard.js: the claim update must treat an empty result as a rejection"
+  !adminDashboardCode.includes("profiles:user_id"),
+  "app/admin/dashboard.js: must not restore the invalid claims.user_id -> profiles relationship"
+);
+check(
+  !adminDashboardCode.includes(".update("),
+  "app/admin/dashboard.js: claim decisions belong to /admin/claims, not the overview"
 );
 
 // ---------------------------------------------------------------------------
@@ -232,7 +254,8 @@ contains("utils/drawer.js",[
   'route:"/scan"',
   'route:"/leaderboards"',
   'route:"/safety/blocked"',
-  'route:"/manager/dashboard"'
+  'route:"/manager/dashboard"',
+  'route:"/admin/dashboard"'
 ]);
 
 // The Manage section is the one with an entitlement behind it, and the

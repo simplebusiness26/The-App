@@ -21,6 +21,7 @@ const {installFixture,restoreRouterParams,labelsOf,textOf}=require("./fixture");
 
 const EntityFollowButton=require("../components/EntityFollowButton").default;
 const places=require("../utils/places");
+const mountedTrees=[];
 
 function wrap(element){
   return React.createElement(
@@ -35,6 +36,7 @@ async function render(element){
   await act(async()=>{
     tree=create(wrap(element));
   });
+  mountedTrees.push(tree);
   return tree;
 }
 
@@ -57,8 +59,12 @@ function pressable(tree,label){
   return hits[0] || null;
 }
 
-afterEach(()=>{
+afterEach(async()=>{
   restoreRouterParams();
+  await act(async()=>{
+    for(const tree of mountedTrees) tree.unmount();
+  });
+  mountedTrees.length=0;
 });
 
 // ---------------------------------------------------------------------------

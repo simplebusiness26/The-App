@@ -17,6 +17,7 @@ const {Alert}=require("react-native");
 const {installFixture,restoreRouterParams,labelsOf,textOf}=require("./fixture");
 
 const memories=require("../utils/memories");
+const mountedTrees=[];
 
 function wrap(element){
   return React.createElement(
@@ -31,6 +32,7 @@ async function render(element){
   await act(async()=>{
     tree=create(wrap(element));
   });
+  mountedTrees.push(tree);
   return tree;
 }
 
@@ -61,8 +63,12 @@ function lastCallTo(table){
   return null;
 }
 
-afterEach(()=>{
+afterEach(async()=>{
   restoreRouterParams();
+  await act(async()=>{
+    for(const tree of mountedTrees) tree.unmount();
+  });
+  mountedTrees.length=0;
 });
 
 // ---------------------------------------------------------------------------

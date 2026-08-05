@@ -141,6 +141,7 @@ describe("admin is a separate fact from being an Explorer",()=>{
     const rows=visibleSections({signedIn:true,isAdmin:true,isManager:false})
       .flatMap((section)=>section.rows.map((row)=>row.route));
 
+    expect(rows).toContain("/admin/dashboard");
     expect(rows).toContain("/admin/claims");
     expect(rows).toContain("/feed");
     expect(rows).toContain("/profile");
@@ -150,6 +151,7 @@ describe("admin is a separate fact from being an Explorer",()=>{
     const rows=visibleSections({signedIn:true,isAdmin:false,isManager:false})
       .flatMap((section)=>section.rows.map((row)=>row.route));
 
+    expect(rows).not.toContain("/admin/dashboard");
     expect(rows).not.toContain("/admin/claims");
   });
 });
