@@ -38,7 +38,7 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 6 — map bottom cards
+**Last completed packet:** 7 — Discover screen
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,10 +51,11 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 7 — the Discover screen. It replaces the placeholder
-`app/discover.js` from Packet 3. Its hard rule: every recommendation must
-carry a visible reason string, and an item whose reason cannot be computed
-does not appear at all.
+**Next action:** Packet 8 — Explorer profile and reputation. **It starts with
+a privacy review, like 5c did.** The brief's own criterion says a
+`privacy-reviewer` pass on "My Map" is required: a personal map of visited
+places is a movement history, and what it exposes to another Explorer viewing
+the profile has to be written down before it is built.
 
 **The 5c privacy review is in the session log** and its conclusion is worth
 carrying: the meeting point is enforced by RLS, verified against the live
@@ -89,7 +90,7 @@ Nothing else should change.
 | 5b | Place layout: events, clubs | done | `8d843fb` | 32 place-page tests, 18 new, written before the rewrite and green after; 75-check layout gate; 7 red-then-green demonstrations |
 | 5c | Place layout: link-ups (privacy gate) | done | `26cb608` | Privacy review verified in SQL (creator sees 1 row, non-member 0); 42 place-page tests; 96-check layout gate; 7 red-then-green demonstrations |
 | 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
-| 7 | Discover screen | not started | | |
+| 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
 | 8 | Profile and reputation | not started | | |
 | 9a | Scoring engine | not started | | |
 | 9b | Leaderboard UI | not started | | |
@@ -123,6 +124,128 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 7 — done
+
+**Did:** Built the Discover screen, replacing the placeholder Packet 3 left
+there, around the rule the packet turns on.
+
+- `utils/discover.js` (new) issues the reason. `reasonFor` returns a sentence
+  or `null`; `recommend` drops everything that got `null`.
+- `app/discover.js` rewritten. Six sections, every one passed through
+  `recommend`.
+- `test/discover.test.js` (new), 24 assertions.
+- `scripts/verify-discover.cjs` (new), 30 checks.
+
+**The reason is the admission ticket, not a caption.** "Every recommendation
+must carry a visible reason string. If the reason cannot be computed, the item
+does not appear." The ordering is the whole thing: a reason computed *after*
+selection ends up being written to justify whatever was already on screen,
+which is how "Recommended for you" comes to mean "we had this row handy". So
+nothing reaches the screen except through the function that can refuse.
+
+**Every reason is derived from something the database holds** — a saved row, a
+start time, a measured distance, a matching area. There are five, tried in that
+order, most specific first. **None claims popularity**, because nothing in this
+app measures it, and the gate fails on the words.
+
+**Files changed:** `utils/discover.js`, `test/discover.test.js`,
+`scripts/verify-discover.cjs` (all new); `app/discover.js` (rewritten);
+`package.json`, `.github/workflows/quality-checks.yml`.
+
+**Acceptance criteria:**
+
+1. No recommendation renders without a reason — **PASS**, from both ends. The
+   engine cannot produce a reasonless item, and the gate reads the screen's
+   `setItems` call and fails if any section is assigned an array that did not
+   go through `recommend()`. The card's accessible name is
+   `"<title>. <reason>."`, so a reasonless card would be detectable by its name
+   alone.
+2. Empty state per section is an instruction, not a mood — **PASS**. All six
+   are asserted to name an action and to avoid "nothing here" / "no results".
+3. Saved reads the same store as the profile Collections tab — **PASS, with a
+   deliberate difference in the filter.** Both read `explorer_favourites`. The
+   Collections tab filters `is_public`, because that is somebody else looking
+   at your profile; Discover shows your own list unfiltered, because hiding
+   your own private saves from you is that filter applied to the wrong person.
+   The gate fails if Discover ever copies it, and also fails if the profile
+   stops reading the table at all.
+
+**Two departures from the brief's section list, both recorded rather than
+quietly taken.**
+
+*No Feed section.* `app/feed.js` already is that screen, built on
+`get_explorer_social_feed` and reachable from the drawer. A strip of the same
+rows here would be a second place to maintain one thing. Discover ends with a
+row pointing at it.
+
+*"For You" is not a recommender.* It is your recent saves and what is live near
+you, both of which produce honest reasons. Nothing in this repository could
+support a personalised ranking, and inventing one would have meant inventing
+reasons for it.
+
+**Eight checks demonstrated failing before being kept:**
+
+| Broke | Caught by | Message |
+|---|---|---|
+| engine blanked instead of dropping | test **and** gate | `must drop an item with no reason` |
+| screen rendered a section straight from its query | test **and** gate | `section "events" is not passed through recommend()` |
+| an empty state became a mood | test | `instructs in every empty state` |
+| a live-feed failure was swallowed | test | `says so when live activity could not be loaded` |
+| a reason claimed popularity | gate | `nothing in this app measures that` |
+| Saved copied the profile's `is_public` filter | gate | `the filter for somebody else looking at your profile` |
+
+**Two mistakes of mine worth recording, because both nearly passed as work.**
+
+*The gate was failing for the wrong reason.* Its first version matched the
+first `setItems({...})` in the file — which is the signed-out branch's
+`setItems({})` — found no sections in an empty object, and reported "no
+sections found". It looked like a real failure about the screen and was a
+failure about the regex. It now picks the call that actually has sections in
+it. **A check that fails for the wrong reason is as misleading as one that
+passes for the wrong reason**, and this one would have been "fixed" by
+someone changing the screen.
+
+*I clobbered `app/discover.js` with a bad backup.* The demonstration script
+copied `utils/discover.js` and `app/discover.js` into one directory, where they
+share a basename; the second copy was refused, and a later restore wrote the
+utils module over the screen. It was caught immediately by the test run, and
+the screen was rewritten. Nothing was lost, but the near-miss is the point:
+**the backup that protects a demonstration has to be as carefully named as the
+code it protects.**
+
+**Also run:** `npm run test:ci` → **306 passed**; discover 30; map cards 16;
+place layout 96; taxonomy 137; markers 277; screen gates 72; social 92; live
+152 + 39; linkup nav 20; title-only 28; seed 3; `npx expo-doctor` 20/20; web
+export succeeded.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 8, Explorer profile and reputation. Read it in
+`docs/REDESIGN-BRIEF.md`. It wants Explorer Score, Average Review Score and
+Review Reputation as **three separately labelled figures**, with Average Review
+Score labelled explicitly as scores this Explorer *gave*. Its second criterion
+is a `privacy-reviewer` pass on "My Map" — a personal map of visited places is
+a movement history, and the brief says to check what it exposes to other
+Explorers viewing the profile. Treat that the way 5c was treated: the review
+comes first, and `components/ExplorerProfileScreen.js` is where it lands.
+
+**Unverified.**
+
+- **Nobody has seen the Discover screen.** Ten packets in.
+- The reason strings have never been read in place. "300 m from you" and
+  "Starts in 40 minutes" are asserted as strings; whether a screen full of them
+  reads as useful or as noise is unknown.
+- `get_live_discovery` is called with the Explorer's area and a 24-hour window
+  and **has never returned a real row in this work**. Its failure path is
+  handled and tested; its success path is shaped from the migration's `returns
+  table(...)` declaration, not from an observed response.
+- The six-hour cutoff on "Starts in..." is a judgement, not a measurement.
+  Nobody has checked whether it leaves the Events section empty in practice.
+- "For you" mixes saves and live items with no ranking between them beyond the
+  order they were concatenated.
 
 ---
 
