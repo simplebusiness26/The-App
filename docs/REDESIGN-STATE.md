@@ -38,8 +38,11 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 7 — Discover screen
-**Last session:** Packet 8's privacy review written; packet split into 8a/8b, no code
+**Last completed packet:** 8c — Review reputation
+**Last session:** 8c built end-to-end (self-endorsement block, EndorseButton,
+profile figures, migration applied and verified live). Before that: a
+detailed owner spec for Moments/Memories/friends/feed ranking/trending
+arrived, and a revised 8d/8e/8f design is owed before any of that is coded.
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -52,21 +55,23 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** answer the two questions below, then Packet 8a. The privacy
-review is written and is in the session log.
+**Both decisions below have been answered by the owner and are resolved —
+kept here as a record, not as open questions.**
 
-**Two decisions for you, and 8b is blocked on the first.**
-
-1. **Should your own My Map remember check-ins after they expire?** Nothing is
-   exposed to anyone else either way — RLS only ever serves another Explorer an
-   *active* check-in. The question is whether a feature sold as temporary
-   should quietly become a personal history. My read: build it from Stage One
-   Visits, which is what `RULES.md` says a map of visited places is made of,
-   and which do not exist yet. Failing that, a bounded window.
-2. **What does "Review Reputation" mean?** It cannot be the score an Explorer
-   received — `RULES.md` says reviews attach to places, not Explorers. The
-   honest reading from existing data is the share of their reviews that are
-   QR-verified. Confirm or correct.
+1. **Should your own My Map remember check-ins after they expire? — resolved.**
+   The owner's answer was to introduce **Memories**: an explicit, opt-in,
+   separately-created artifact distinct from the ephemeral check-in itself.
+   My Map (8b, still not started) will read Memories, never `live_checkins`
+   history — this sidesteps the "surfacing something promised to be
+   temporary" problem entirely rather than picking a retention window.
+   Memories is scoped as its own packet, 8d, with a full revised design owed
+   before it is coded (see "Exact next step" below).
+2. **What does "Review Reputation" mean? — resolved, and built (8c).** Not
+   QR-verification share as I'd guessed — the owner confirmed **endorsement**:
+   "how many people found this user's reviews useful", using `social_likes`
+   with `target_type='review'`, surfaced as total endorsements, reviews with
+   ≥1, most useful review, and average per review. Done, see the 8c entry
+   below.
 
 Also note **Explorer Score does not exist yet** and belongs to Packet 9a.
 8a should not label `total_points` as one.
@@ -106,7 +111,11 @@ Nothing else should change.
 | 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
 | 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
 | 8a | Profile: three figures and tabs | not started | | |
-| 8b | Profile: My Map (privacy gate) | blocked — retention decision | | |
+| 8b | Profile: My Map, sourced from Memories | not started — depends on 8d | | |
+| 8c | Review reputation and endorsements | done | *(pending push)* | 32-check gate; 5 jest tests; 5 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai` |
+| 8d | Memories (map-attached, visibility-tiered) | design owed, not started | | |
+| 8e | Follow businesses/properties/clubs/events + canonical locations | design owed, not started | | |
+| 8f | Feed ranking (friendship, follows, trending, source labels) | design owed, not started | | |
 | 9a | Scoring engine | not started | | |
 | 9b | Leaderboard UI | not started | | |
 | 10 | Manager Hub | not started | | |
@@ -139,6 +148,200 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Packet 8c — done
+
+**Did:** Between the last session and this one, the owner answered both open
+8-track questions and, in doing so, issued a much larger spec for the whole
+social layer (Moments as a ranked live feed, Memories as a map-attached
+permanent scrapbook, mutual-follow-derived friendship, canonical geography,
+official-entity posting, trending with anti-spam rules). Per the owner's
+explicit instruction, that spec was answered first with an inspect-then-plan
+write-up (no code) covering what exists, conflicts, DB/RLS/index needs, files,
+phasing and risks — not recorded as its own ledger entry because no packet
+number was assigned to it and nothing landed in the repo.
+
+The owner then approved a revised split (8a/8b/8c/8d/8e/8f) and asked for 8c —
+Review Reputation — built now, in isolation, with 8d/8e/8f redesigned against
+six numbered product decisions before any of them are coded. This entry is
+8c only.
+
+**What 8c is:** the mechanism was already there. `social_likes` with
+`target_type='review'` has worked since the social layer shipped
+(`20260802155202_explorer_social_layer.sql`) — nothing new was invented, one
+real gap was closed (a reviewer could endorse their own review; nothing
+stopped it), and the aggregation + a second, review-specific button were
+built on top.
+
+**Files changed:**
+- `supabase/migrations/20260805090000_review_endorsement_reputation.sql`
+  (new) — `guestbook_private.validate_social_target()` replaced with one
+  addition (reject a `social_likes` insert where `target_type='review'` and
+  the inserting user owns the review); `public.get_explorer_review_reputation
+  (uuid)` (new, `security invoker`, no new table, no new index).
+- `components/EndorseButton.js` (new) — not `LikeButton` with a label prop.
+  Fixed to `social_likes`/`target_type="review"`, says "Useful", renders a
+  disabled count-only view when `viewerId === ownerId` rather than a control
+  the database would only reject.
+- `components/ExplorerProfileScreen.js` — `LikeButton` import removed
+  entirely (was only ever used for reviews here); review cards use
+  `EndorseButton`; new "Review reputation" card calling
+  `get_explorer_review_reputation`.
+- `app/feed.js` — review rows use `EndorseButton`, Moment rows still use
+  `LikeButton`, branch is explicit (`isMoment ? <LikeButton.../> :
+  <EndorseButton.../>`).
+- `app/social-comments/[id].js` (video review comments) — `LikeButton`
+  replaced with `EndorseButton`; added a `viewerId` state the file never
+  tracked before.
+- `app/moments/[id].js` — **untouched**, verified by the gate.
+- `components/LikeButton.js` — **untouched**, verified by the gate (still
+  says "Like"/"Remove like").
+- `scripts/verify-review-reputation.cjs` (new, 32 checks), wired into
+  `package.json` (`verify:reputation`) and
+  `.github/workflows/quality-checks.yml`.
+- `test/endorse-button.test.js` (new, 5 tests).
+- `docs/REVIEW_REPUTATION_TEST_PLAN.md` (new) — manual QA script.
+
+**Acceptance criteria, against the owner's list:**
+
+1. Self-endorsement blocked — **PASS**. UI hides the control for the owner;
+   DB rejects it independently (defence in depth, not just a client check —
+   see live verification below).
+2. One endorsement per user per review — **PASS**, pre-existing
+   `social_likes_unique unique(user_id,target_type,target_id)`, confirmed
+   live (see below), `EndorseButton` treats `23505` as "already endorsed"
+   rather than surfacing an error.
+3. Endorsements removable — **PASS**, `EndorseButton` deletes the row, test
+   `"removing an endorsement deletes the row and decrements the count"`.
+4. Uses `social_likes`/`target_type='review'` — **PASS**, no new table.
+5. Wording is "Useful", not "Like" — **PASS** for reviews; gate independently
+   asserts `LikeButton.js` still says "Like" so Moments could not have
+   drifted the other way.
+6. Profile shows total endorsements, reviews-with-≥1, most useful review +
+   its count, average per review — **PASS**, all four rendered from
+   `get_explorer_review_reputation`, gate checks each figure by name.
+7. Moment likes unchanged — **PASS**. `app/moments/[id].js` still imports and
+   renders only `LikeButton`; gate fails if it ever references
+   `EndorseButton`.
+8. Separate `EndorseButton`, not a relabelled `LikeButton` — **PASS**, two
+   components, `LikeButton.js` has zero diff.
+9. Removed/unpublished reviews excluded from reputation totals — **PASS**,
+   `get_explorer_review_reputation` filters `er.status='published'` in the
+   same CTE that computes both the sum and the per-review denominator, so an
+   unpublished review is invisible to the average, not just the total.
+10. Migration, RLS/security checks, indexes only where needed, verify
+    script, manual test plan — **PASS**. No new RLS policy was required: the
+    existing `social_likes_insert_own` policy (ties `user_id` to
+    `auth.uid()`) plus the new trigger check together are the actual
+    boundary, matching how self-follow prevention already works in this
+    schema. No new index — `explorer_reviews_user_created_idx` and
+    `social_likes_target_idx` already cover every access path the reputation
+    query needs, confirmed present on the live project before writing the
+    function rather than assumed.
+11. Isolated packet, no Memories/location-follows/feed-ranking — **PASS**,
+    grep confirms nothing under this diff touches `explorer_moments` schema,
+    `explorer_follows`, or `get_explorer_social_feed`.
+
+**A real bug caught before it shipped, not after.** The migration originally
+reproduced `guestbook_private.validate_social_target()` from
+`20260802155202_explorer_social_layer.sql`, the migration that first created
+it. Before applying, I read the function actually live on `yzpthslwsvesgndzdqai`
+with `pg_get_functiondef` and found it had already been patched by
+`20260802191500_fix_activity_club_moment_attachments.sql`, which widened the
+`activity_club` Moment-attachment check from `status='published'` to `status
+in ('open','full')`. A straight reproduction of the 155202 file's text would
+have silently reverted that fix the moment this migration applied — the same
+"read source, not the running system" mistake the ledger has already
+recorded once (`app/menu.js` and `profiles.is_manager`, 2026-08-04). Fixed by
+rebuilding the function body from the live definition instead, with the one
+intended addition on top.
+
+**Five checks demonstrated failing before being kept, plus the empirical DB
+run:**
+
+| Broke | Caught by | Message |
+|---|---|---|
+| removed the owner-guard branch from `EndorseButton.js` | gate **and** test | `does not compare viewerId to ownerId`; test `hides the endorse action...` failed on the label assertion |
+| changed `Useful` wording to `Like` | gate | `must say "Useful", not a generic "Like"` |
+| removed the self-endorsement block from the migration | gate | `missing the self-endorsement rejection` |
+| reverted `ExplorerProfileScreen.js`'s review card to a placeholder | gate | `does not render EndorseButton on review cards` |
+| removed the `average_endorsements_per_review` figure from the profile | gate | `does not render the "average_endorsements_per_review" reputation figure` |
+| collapsed `app/feed.js`'s moment/review branch to always render `EndorseButton` | gate | `Moments must still render LikeButton in the feed` |
+
+Each was restored from a pre-break backup and re-verified clean before
+moving on.
+
+**Empirical verification against real rows on `yzpthslwsvesgndzdqai`**
+(applied migration, then, against a real published review and two real
+Explorer accounts — not the accounts that own the review):
+- Inserting a `social_likes` row where the inserting user is the review's own
+  author: **rejected**, `P0001: You cannot mark your own review as useful`.
+- `get_explorer_review_reputation` on a review with zero endorsements:
+  `{total_endorsements:0, reviews_with_endorsement:0, most_useful_review_id:
+  null, average:0.00}`.
+- After a different Explorer endorsed one review: `total_endorsements:1,
+  reviews_with_endorsement:1, most_useful_review_id` matching, count `1`,
+  average `0.17` (1 endorsement ÷ 6 published reviews for that user — over
+  *all* published reviews, not just endorsed ones, per the owner's spec).
+- Endorsing the same review twice from the same account: **rejected**,
+  `23505 duplicate key value violates ... social_likes_unique` — the exact
+  code `EndorseButton.js` treats as "already endorsed".
+- Removing the endorsement: figures returned to the zero state above. No
+  test data left behind.
+- Self-liking your own Moment (`target_type='moment'`): **still succeeds**,
+  confirming the review-only restriction did not leak onto Moments.
+
+**Also run:** `npm run test:ci` → **311 passed** (306 before, +5 new);
+`verify:reputation` 32; `verify:taxonomy` 138; `verify:markers` 280;
+`verify:place` 96; `verify:cards` 16; `verify:discover` 30; `verify:social`
+92; `verify:live` 152 + 39; linkup-nav 20; linkup-title-only 28; seed 3;
+screen-gates 72; `npx expo-doctor` 20/20; `npm audit --audit-level=moderate`
+0 vulnerabilities; `npx expo export --platform web` succeeded, `/linkups/
+create` confirmed present in the bundle.
+
+**CI:** *(filled in after push — see below)*
+
+**Stopped because:** finished. One packet per session, and the owner was
+explicit that 8d/8e/8f need a revised design, not code, next.
+
+**Exact next step:** the owner's six product decisions (canonical
+`geo_areas` for locations rather than free-text `area`; Moments gaining
+`area_id`/`lat`/`lng` with inheritance from an attached entity;
+`actor_type`/`actor_id` so an official business post is distinguishable from
+an Explorer tagging that business, with server-side authorisation checked;
+Memory lifecycle split into `live_until` / `visibility` / `archive_visibility`
+/ `show_on_profile` rather than the two flags this session's earlier plan
+proposed; `are_friends` kept derived, no friendship table, with
+`explorer_memory_shares` explicitly named as partial and a future
+`social_shares` sketched but not built; followable entity types reviewed
+against the real schema rather than hardcoded to the four Moment-attachment
+types; feed items carrying `source_reasons text[]` rather than one lossy
+label, deduplicated; a trending formula defined — recency, engagement
+velocity, distinct posters, distinct engagers, geographic relevance,
+moderation signals, anti-spam, public-content-only — before any trending
+code is written) need a full revised design for 8d/8e/8f, in the same
+inspect-then-plan form as before, covering the ten points the owner listed.
+**No code for 8d, 8e or 8f until that design is delivered and approved.**
+8a and 8b are unaffected by any of this and remain available to build
+independently first if preferred — 8a has no dependency on the social-layer
+redesign at all, and 8b now explicitly depends on 8d rather than being
+blocked on a retention question.
+
+**Unverified:**
+- Nobody has opened `/feed`, a profile, or `/social-comments/[id]` in a
+  browser this session. The reputation card, the endorse control's visual
+  states, and the feed's per-row button choice are `Verified: renders.
+  Unverified: behaves` at best — proven by test and by direct SQL, not by a
+  person looking at the screen.
+- The "most useful review" tie-break (`order by endorsement_count desc, id
+  asc`) is arbitrary and undocumented in the UI — two reviews tied at the top
+  will silently prefer the lower UUID with no explanation shown.
+- Average endorsements per review is rounded to 2 decimal places
+  server-side; no test asserts the exact rounding behaviour at a boundary
+  (e.g. `x.005`).
+- `docs/REVIEW_REPUTATION_TEST_PLAN.md` has not been run by a person.
 
 ---
 

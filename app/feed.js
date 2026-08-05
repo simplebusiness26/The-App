@@ -3,6 +3,7 @@ import {ActivityIndicator,Image,Linking,Pressable,RefreshControl,ScrollView,Styl
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import LikeButton from "../components/LikeButton";
+import EndorseButton from "../components/EndorseButton";
 
 function timeLabel(value){
   if(!value) return "";
@@ -33,6 +34,7 @@ function Avatar({item}){
 
 export default function Feed(){
   const [items,setItems]=useState([]);
+  const [viewerId,setViewerId]=useState(null);
   const [loading,setLoading]=useState(true);
   const [refreshing,setRefreshing]=useState(false);
   const [error,setError]=useState("");
@@ -46,6 +48,7 @@ export default function Feed(){
       router.replace("/auth/login");
       return;
     }
+    setViewerId(user.id);
 
     const {data:profile,error:profileError}=await supabase
       .from("profiles")
@@ -193,12 +196,22 @@ export default function Feed(){
 
             {(isMoment || isReview) && (
               <View style={styles.actionRow}>
-                <LikeButton
-                  targetType={isMoment ? "moment" : "review"}
-                  targetId={item.item_id}
-                  initialCount={item.like_count}
-                  initialLiked={item.viewer_liked}
-                />
+                {isMoment ? (
+                  <LikeButton
+                    targetType="moment"
+                    targetId={item.item_id}
+                    initialCount={item.like_count}
+                    initialLiked={item.viewer_liked}
+                  />
+                ) : (
+                  <EndorseButton
+                    reviewId={item.item_id}
+                    ownerId={item.actor_id}
+                    viewerId={viewerId}
+                    initialCount={item.like_count}
+                    initialEndorsed={item.viewer_liked}
+                  />
+                )}
                 {canComment && (
                   <Pressable style={styles.commentButton} onPress={()=>openComments(item)}>
                     <Text style={styles.commentIcon}>💬</Text>

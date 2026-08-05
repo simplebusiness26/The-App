@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
-import LikeButton from "./LikeButton";
+import EndorseButton from "./EndorseButton";
 
 function dateLabel(value){
   if(!value) return "";
@@ -63,6 +63,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
   const [favourites,setFavourites]=useState([]);
   const [moments,setMoments]=useState([]);
   const [reviewLikes,setReviewLikes]=useState({});
+  const [reputation,setReputation]=useState(null);
   const [currentUser,setCurrentUser]=useState(null);
   const [monthlyNationalRank,setMonthlyNationalRank]=useState(null);
   const [monthlyLocalRank,setMonthlyLocalRank]=useState(null);
@@ -130,6 +131,13 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
     setReviewLikes(likeMap);
     setFavourites(favouritesResult.data || []);
     setMoments(momentsResult.data || []);
+
+    if(profileResult.data.account_type==="explorer"){
+      const reputationResult=await supabase.rpc("get_explorer_review_reputation",{p_user_id:id});
+      setReputation((reputationResult.data && reputationResult.data[0]) || null);
+    }else{
+      setReputation(null);
+    }
 
     if(profileResult.data.account_type==="explorer" && profileResult.data.leaderboard_opt_in!==false){
       const nationalResult=await supabase.rpc("get_explorer_leaderboard",{
@@ -255,6 +263,30 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
         </View>
       </Pressable>
 
+      {!!reputation && (
+        <View style={styles.reputationCard}>
+          <Text style={styles.sectionEyebrow}>REVIEW REPUTATION</Text>
+          <Text style={styles.reputationHeadline}>
+            {Number(reputation.total_endorsements || 0)} useful review endorsement{Number(reputation.total_endorsements || 0)===1 ? "" : "s"}
+          </Text>
+          <View style={styles.reputationRow}>
+            <View style={styles.reputationStat}>
+              <Text style={styles.reputationValue}>{Number(reputation.reviews_with_endorsement || 0)}</Text>
+              <Text style={styles.reputationLabel}>Reviews found useful</Text>
+            </View>
+            <View style={styles.reputationStat}>
+              <Text style={styles.reputationValue}>{Number(reputation.average_endorsements_per_review || 0).toFixed(1)}</Text>
+              <Text style={styles.reputationLabel}>Avg. per review</Text>
+            </View>
+          </View>
+          {!!reputation.most_useful_review_id && (
+            <Text style={styles.reputationMostUseful}>
+              Most useful review: {reputation.most_useful_review_target_name} · {Number(reputation.most_useful_review_count || 0)} people found it useful
+            </Text>
+          )}
+        </View>
+      )}
+
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Favourite places</Text><Text style={styles.sectionCount}>{favourites.length}</Text></View>
       {favourites.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
@@ -333,7 +365,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
             )}
 
             <View style={styles.reviewActions}>
-              <LikeButton targetType="review" targetId={review.id} initialCount={likes.count} initialLiked={likes.liked}/>
+              <EndorseButton reviewId={review.id} ownerId={review.user_id} viewerId={currentUser?.id} initialCount={likes.count} initialEndorsed={likes.liked}/>
               {!!video && <Pressable style={styles.commentsLink} onPress={()=>router.push(`/social-comments/${review.id}`)}><Text style={styles.commentsLinkText}>💬 Comments</Text></Pressable>}
             </View>
           </View>
@@ -429,6 +461,13 @@ const styles=StyleSheet.create({
   rankTitle:{color:"white",fontWeight:"900",fontSize:16,marginTop:4},
   rankValues:{alignItems:"flex-end"},
   rankText:{color:"#c9b9f7",fontWeight:"800",fontSize:12,marginVertical:2},
+  reputationCard:{backgroundColor:"#152a1e",borderColor:"#286640",borderWidth:1,borderRadius:15,padding:16,marginTop:13},
+  reputationHeadline:{color:"white",fontSize:18,fontWeight:"900",marginTop:5},
+  reputationRow:{flexDirection:"row",gap:22,marginTop:13},
+  reputationStat:{alignItems:"flex-start"},
+  reputationValue:{color:"#83e0a5",fontSize:22,fontWeight:"900"},
+  reputationLabel:{color:"#9fc7ac",fontWeight:"700",fontSize:11,marginTop:2},
+  reputationMostUseful:{color:"#bcdfc9",fontSize:12,lineHeight:18,marginTop:13},
   sectionHeader:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:27,marginBottom:11},
   sectionTitle:{color:"white",fontSize:23,fontWeight:"900"},
   sectionCount:{color:"#a58cff",fontWeight:"900"},

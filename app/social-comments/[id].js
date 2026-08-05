@@ -2,7 +2,7 @@ import React,{useCallback,useState} from "react";
 import {ActivityIndicator,Image,Linking,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
-import LikeButton from "../../components/LikeButton";
+import EndorseButton from "../../components/EndorseButton";
 import CommentThread from "../../components/CommentThread";
 
 function dateLabel(value){
@@ -26,6 +26,7 @@ export default function VideoReviewComments(){
   const [profile,setProfile]=useState(null);
   const [likeCount,setLikeCount]=useState(0);
   const [viewerLiked,setViewerLiked]=useState(false);
+  const [viewerId,setViewerId]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -34,6 +35,7 @@ export default function VideoReviewComments(){
     setError("");
 
     const {data:{user}}=await supabase.auth.getUser();
+    setViewerId(user?.id || null);
     const {data:reviewRow,error:reviewError}=await supabase
       .from("explorer_reviews")
       .select("*")
@@ -127,7 +129,7 @@ export default function VideoReviewComments(){
         )}
 
         <View style={styles.actionRow}>
-          <LikeButton targetType="review" targetId={review.id} initialCount={likeCount} initialLiked={viewerLiked}/>
+          <EndorseButton reviewId={review.id} ownerId={review.user_id} viewerId={viewerId} initialCount={likeCount} initialEndorsed={viewerLiked}/>
         </View>
       </View>
 

@@ -59,6 +59,9 @@ jobs:
       - name: Verify no recommendation appears without a reason
         run: node scripts/verify-discover.cjs
 
+      - name: Verify review reputation and endorsement wording
+        run: node scripts/verify-review-reputation.cjs
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
