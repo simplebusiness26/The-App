@@ -39,6 +39,7 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 7 — Discover screen
+**Last session:** Packet 8's privacy review written; packet split into 8a/8b, no code
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,11 +52,24 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 8 — Explorer profile and reputation. **It starts with
-a privacy review, like 5c did.** The brief's own criterion says a
-`privacy-reviewer` pass on "My Map" is required: a personal map of visited
-places is a movement history, and what it exposes to another Explorer viewing
-the profile has to be written down before it is built.
+**Next action:** answer the two questions below, then Packet 8a. The privacy
+review is written and is in the session log.
+
+**Two decisions for you, and 8b is blocked on the first.**
+
+1. **Should your own My Map remember check-ins after they expire?** Nothing is
+   exposed to anyone else either way — RLS only ever serves another Explorer an
+   *active* check-in. The question is whether a feature sold as temporary
+   should quietly become a personal history. My read: build it from Stage One
+   Visits, which is what `RULES.md` says a map of visited places is made of,
+   and which do not exist yet. Failing that, a bounded window.
+2. **What does "Review Reputation" mean?** It cannot be the score an Explorer
+   received — `RULES.md` says reviews attach to places, not Explorers. The
+   honest reading from existing data is the share of their reviews that are
+   QR-verified. Confirm or correct.
+
+Also note **Explorer Score does not exist yet** and belongs to Packet 9a.
+8a should not label `total_points` as one.
 
 **The 5c privacy review is in the session log** and its conclusion is worth
 carrying: the meeting point is enforced by RLS, verified against the live
@@ -91,7 +105,8 @@ Nothing else should change.
 | 5c | Place layout: link-ups (privacy gate) | done | `26cb608` | Privacy review verified in SQL (creator sees 1 row, non-member 0); 42 place-page tests; 96-check layout gate; 7 red-then-green demonstrations |
 | 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
 | 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
-| 8 | Profile and reputation | not started | | |
+| 8a | Profile: three figures and tabs | not started | | |
+| 8b | Profile: My Map (privacy gate) | blocked — retention decision | | |
 | 9a | Scoring engine | not started | | |
 | 9b | Leaderboard UI | not started | | |
 | 10 | Manager Hub | not started | | |
@@ -124,6 +139,149 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 8 — privacy review done, packet split, no code written
+
+**Did:** Wrote the `privacy-reviewer` pass the brief demands on "My Map",
+before building it. It changed the packet. Nothing under `app/` or
+`components/` was touched.
+
+---
+
+#### The privacy review: My Map
+
+The brief's own criterion: "`privacy-reviewer` agent review passes on My Map —
+a personal map of visited places is a movement history. Check what is exposed
+to other Explorers viewing the profile."
+
+**Finding 1: there is no such thing as a visit in this database.**
+`RULES.md` distinguishes them carefully — a **Visit** is "a private, verified
+presence at a place (Stage One, via QR)" and a **Check-in** is "a public,
+opt-in, expiring presence (Stage Two)". Only one of those exists. The tables
+matching `%visit%`, `%checkin%` or `%scan%` are exactly one: `live_checkins`.
+
+So "a map of places you have visited" can only be built from check-ins, and a
+check-in is not a visit. Building My Map from them silently redefines a word
+`RULES.md` sets aside two lines to keep separate.
+
+**Finding 2: check-ins are the one thing the app promises to forget.**
+`CLAUDE.md`: check-ins are "opt-in, temporary and plainly explained", expire on
+their own between 15 minutes and 4 hours, and "Never make a person a permanent
+trackable marker." A map that plots every check-in you have ever made is a
+permanent record assembled out of things that were each promised to be
+temporary. The rows do persist — `live_checkins` keeps `status`, `expires_at`
+and `ended_at` rather than deleting — so the history is already there. My Map
+would not create it. It would *surface* it, and turn "expires in 4 hours" into
+"remembered forever, shown back to you on a map".
+
+**Finding 3: the exposure question the brief asks is already answered, and
+answered well.** The `SELECT` policy on `live_checkins`, read from the live
+project:
+
+```
+user_id = auth.uid()
+OR (status = 'active' AND expires_at > now()
+    AND NOT blocked(user_id, auth.uid())
+    AND (visibility = 'public' OR viewer follows user_id))
+```
+
+Another Explorer can therefore only ever read a check-in that is **active and
+unexpired**. Expired rows are invisible to everyone except their owner. And
+because one active check-in per Explorer is enforced, the most another Explorer
+can ever see is a single current position — not a history, and not a map.
+
+**So the answer to "what does My Map expose to other Explorers" is: nothing,
+provided it is never given a share control.** The database will not serve
+another Explorer the rows a map would need. That is a strong position and it
+was not built by accident.
+
+**What I would build, and the one thing I will not decide alone.**
+
+Safe, and I am confident in it:
+- My Map renders **only on your own profile**. Not empty for other viewers —
+  absent, so no later change can accidentally populate it.
+- It is sourced from your own `live_checkins` and nothing else.
+- It gets **no `is_public` flag, no share control, no sort order**.
+  `explorer_favourites` has `is_public` and Collections uses it; the equivalent
+  here would be a published movement history, and it must not exist.
+
+Not mine to decide, and the reason this packet stops here:
+
+> **Should your own map remember check-ins after they expire?**
+>
+> Showing them is useful and exposes nothing to anyone else. It also quietly
+> converts a feature sold as temporary into a personal history you did not ask
+> to be kept. The alternatives are (a) show all of it, (b) show a bounded
+> window such as the last 30 days, (c) show only places you also saved, or
+> (d) do not build My Map from check-ins at all and wait for Stage One Visits,
+> which is what `RULES.md` says the map of visited places is actually made of.
+>
+> My own read is **(d), then (b)**: the tab the brief describes wants Visits,
+> and there are none yet. If it must ship now, a bounded window keeps the word
+> "temporary" closer to true than an unbounded one. But this is a promise to
+> users about their own location history, and `RULES.md` says to stop and ask
+> rather than pick one.
+
+**No code was written for My Map. No policy, table or RPC was touched.**
+
+---
+
+#### The rest of Packet 8, and a second finding
+
+The other half of the packet has no privacy weight and is ready to build:
+
+**Three separately labelled figures.** The profile currently shows two pills,
+`AVG RATING` and `REVIEW POINTS`, from the `explorer_profile_stats` view
+(`review_count`, `average_rating_given`, `verified_review_count`,
+`video_review_count`, `image_review_count`, `total_points`).
+
+The brief wants three: Explorer Score, Average Review Score, Review Reputation.
+**Two of them are a problem, in different ways.**
+
+*Explorer Score does not exist yet, and belongs to Packet 9a.* The brief says
+9a builds the scoring engine and that points must be awarded server-side.
+`total_points` is review points, not an Explorer Score. Labelling it "Explorer
+Score" now would name a thing 9a has to build and then contradict.
+
+*Review Reputation cannot mean what it sounds like.* `RULES.md`: "Reviews
+attach to places, clubs and events — not to Explorers." **An Explorer cannot
+receive a review score**, so "Review Reputation" cannot be the average rating
+somebody was given. The defensible reading from data that exists is *how
+trustworthy this Explorer's reviews are* — the share that are QR-verified,
+which `verified_review_count / review_count` already supports. That is a real
+measure and an honest label, but it is my interpretation of an ambiguous phrase
+and should be confirmed.
+
+The brief is right that merging these is confusing. It is right for a bigger
+reason than it says: two of the three do not currently mean anything.
+
+---
+
+**Acceptance criteria:** none met. The packet was not built.
+
+**Stopped because:** the privacy review turned up a question that is the
+owner's, and `RULES.md` says to stop and ask on exactly this kind of change.
+
+**The split:**
+
+- **8a — the three figures and the scrapbook tabs.** Adventures, Reviews,
+  Collections, Clubs. No My Map. Needs the Review Reputation reading confirmed
+  and needs to not borrow Packet 9a's Explorer Score.
+- **8b — My Map**, after the retention decision above.
+
+**Exact next step:** answer the retention question, and confirm or correct the
+Review Reputation reading. Then 8a, which does not depend on either but should
+not ship a figure whose meaning is still open. If both answers are wanted
+before any of it moves, 8a can be built with **two** honest figures and the
+third added when it means something — that is better than three where one is
+mislabelled.
+
+**Unverified:** nothing was built. The RLS policy and the table list were read
+out of the live project rather than remembered; the counts of expired rows were
+zero because no check-in exists in the database today, so the policy's
+behaviour on expired rows is read from its definition rather than exercised.
 
 ---
 
@@ -220,6 +378,10 @@ code it protects.**
 place layout 96; taxonomy 137; markers 277; screen gates 72; social 92; live
 152 + 39; linkup nav 20; title-only 28; seed 3; `npx expo-doctor` 20/20; web
 export succeeded.
+
+**CI:** run 36 on `e898ea8`, conclusion **`success`**, read back from the API
+after the run completed.
+https://github.com/simplebusiness26/The-App/actions/runs/30965510547
 
 **Stopped because:** finished. One packet per session.
 
