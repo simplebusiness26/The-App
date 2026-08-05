@@ -2,12 +2,10 @@ import {useEffect,useState} from "react";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 
-// Client-side admin gate for the screens that approve or reject ownership
-// claims. The database is the real control -- the "Admins can update claims"
-// policy tests profiles.is_admin, and RLS is armed -- so this does not grant
-// anything. It stops a non-admin who reaches the route directly from being
-// shown a working Approve/Reject form whose buttons would silently change
-// nothing.
+// Client-side gate for every /admin screen. The database is the real control:
+// this calls the same guestbook_is_admin() helper used by RLS instead of
+// implementing a second definition of administrator access in the client.
+// The screen gate provides a useful refusal; the policies protect the data.
 export function useAdminGate(){
   const [checking,setChecking]=useState(true);
   const [allowed,setAllowed]=useState(false);
@@ -24,16 +22,13 @@ export function useAdminGate(){
         return;
       }
 
-      const {data:profile,error:profileError}=await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id",user.id)
-        .maybeSingle();
+      const {data:isAdmin,error:adminError}=await supabase
+        .rpc("guestbook_is_admin");
 
       if(!active) return;
 
-      if(profileError) setError("Your admin access could not be confirmed.");
-      else if(!profile?.is_admin) setError("An admin account is required to open this screen.");
+      if(adminError) setError("Your admin access could not be confirmed.");
+      else if(isAdmin!==true) setError("An admin account is required to open this screen.");
       else setAllowed(true);
 
       setChecking(false);

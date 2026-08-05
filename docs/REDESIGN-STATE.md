@@ -39,6 +39,9 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 8d — Memories (code only, migration not applied)
+**Admin dashboard workstream:** Stage 1 security foundation is complete in
+code. Its migration has **not** been applied to the live project, so the stage
+remains in progress until deployment and live role verification.
 **Last session:** 8e was merged to `main2.0-Dev` and its **five** migrations
 applied to the live project and verified against real accounts. 8d was then
 built end-to-end in code. **8d's migration has not been applied.**
@@ -155,6 +158,53 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Admin dashboard Stage 1 — code complete, migration not applied
+
+**Did:** Audited the live administrator boundary before building the new
+dashboard. RLS was enabled on every table in the dashboard survey, and the
+existing `guestbook_is_admin()` helper returned `true` for an administrator
+and `false` for a non-administrator. The audit also found a real privilege
+escalation gap: `authenticated` could not update `profiles.is_admin`, but its
+table-wide profile INSERT grant still allowed that column on first profile
+creation. Added a migration that restricts profile INSERT and UPDATE to the
+ordinary signup/profile fields, excludes `is_admin`, and makes the insert
+policy independently reject `is_admin=true`. The same migration pins the
+SECURITY DEFINER helper to an empty `search_path`. Changed `useAdminGate()` to
+call that database helper, so admin screens and RLS no longer implement
+separate checks. Expanded the verifier to discover every `/admin/*` route and
+require the shared gate, and added four behavioural gate tests.
+
+**Files changed:** `hooks/useAdminGate.js`,
+`supabase/migrations/20260805132127_admin_security_foundation.sql`,
+`scripts/verify-screen-gates.cjs`, `test/admin-security.test.js`,
+`test/place-follows.test.js`, `docs/REDESIGN-STATE.md`.
+
+**Acceptance criteria:** Red demonstration: screen gate verifier reported
+75 passed / 3 intended failures, and the new gate suite reported 2 passed / 2
+failed before implementation. Green: screen gate verifier 90/90; gate tests
+4/4; full Jest suite 355/355 across 11 suites (the existing delayed
+FeedbackProvider timer warnings remain after Jest completes); every CI source
+gate passed; `npm audit` found 0 vulnerabilities; Expo Doctor passed 20/20;
+the production web export completed; live read-only probes returned admin
+`true` and non-admin `false` without changing data.
+
+**Stopped because:** the repository rule requires explicit approval before a
+migration is applied to the live Supabase project. No live database change was
+made.
+
+**Exact next step:** with explicit approval, apply
+`20260805132127_admin_security_foundation.sql` to project
+`yzpthslwsvesgndzdqai`, then verify that authenticated has no INSERT or UPDATE
+privilege on `profiles.is_admin`, ordinary signup columns still insert, an
+attempted `is_admin=true` profile is refused, the helper still returns the
+right answer for both roles, and the security advisors introduce no new
+finding.
+
+**Unverified:** SQL syntax and behaviour against the live database, because
+the migration has not been applied. Stage 1 is therefore not marked done.
 
 ---
 

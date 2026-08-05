@@ -2,7 +2,7 @@
 
 // Guards the screen-alignment work recorded in docs/SCREEN-INVENTORY.md:
 //
-//   1. The four sensitive routes the inventory found ungated stay gated.
+//   1. Every admin route stays behind the shared database-backed admin gate.
 //   2. Writes to RLS-protected tables check that a row actually changed,
 //      because a policy refusal returns no error -- only zero rows.
 //   3. app/_layout.js keeps declaring exactly the routes that exist on disk.
@@ -47,22 +47,86 @@ function readCode(relative){
 }
 
 // ---------------------------------------------------------------------------
-// 1. The admin claim screens run the shared gate
+// 1. Every admin screen runs the shared database-backed gate
 // ---------------------------------------------------------------------------
 
 contains("hooks/useAdminGate.js",[
   "export function useAdminGate",
   "auth.getUser()",
   "router.replace(\"/auth/login\")",
-  "select(\"is_admin\")"
+  "rpc(\"guestbook_is_admin\")"
 ]);
 
-for(const screen of ["app/admin/claims.js","app/admin/dashboard.js"]){
-  contains(screen,[
-    "useAdminGate",
-    "if(allowed) loadClaims();",
-    "if(!allowed){"
-  ]);
+const adminRouteDirectory=path.join(root,"app/admin");
+const adminRoutes=fs.readdirSync(adminRouteDirectory)
+  .filter((name)=>name.endsWith(".js"))
+  .map((name)=>`app/admin/${name}`)
+  .sort();
+
+check(adminRoutes.length>0,"app/admin: expected at least one admin route");
+
+for(const screen of adminRoutes){
+  contains(screen,["useAdminGate","allowed","gateError"]);
+}
+
+// The route gate and every RLS policy use the same helper. Reading
+// profiles.is_admin directly here would create two definitions of admin.
+check(
+  !readCode("hooks/useAdminGate.js").includes('.from("profiles")'),
+  "hooks/useAdminGate.js: must not implement a second admin check against profiles"
+);
+
+// ---------------------------------------------------------------------------
+// 1b. A new profile cannot grant itself administrator access
+// ---------------------------------------------------------------------------
+
+const migrationDirectory=path.join(root,"supabase/migrations");
+const adminSecurityMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_security_foundation.sql"));
+
+check(
+  adminSecurityMigrations.length===1,
+  `supabase/migrations: expected one admin security foundation migration, found ${adminSecurityMigrations.length}`
+);
+
+if(adminSecurityMigrations.length===1){
+  const relative=`supabase/migrations/${adminSecurityMigrations[0]}`;
+  const migration=read(relative);
+
+  check(
+    /set\s+search_path\s*=\s*''/i.test(migration),
+    `${relative}: guestbook_is_admin must pin an empty search_path`
+  );
+  check(
+    /revoke\s+all\s+on\s+function\s+public\.guestbook_is_admin\(\)\s+from\s+public\s*,\s*anon/i.test(migration),
+    `${relative}: guestbook_is_admin must not be executable by public or anon`
+  );
+  check(
+    /grant\s+execute\s+on\s+function\s+public\.guestbook_is_admin\(\)\s+to\s+authenticated/i.test(migration),
+    `${relative}: authenticated callers need the admin-check RPC`
+  );
+  check(
+    /revoke\s+insert\s+on\s+public\.profiles\s+from\s+anon\s*,\s*authenticated/i.test(migration),
+    `${relative}: broad profile INSERT must be revoked`
+  );
+
+  const insertGrant=migration.match(
+    /grant\s+insert\s*\(([^)]+)\)\s+on\s+public\.profiles\s+to\s+authenticated/i
+  );
+  check(!!insertGrant,`${relative}: expected a column-scoped profile INSERT grant`);
+
+  if(insertGrant){
+    const columns=insertGrant[1].split(",").map((column)=>column.trim().toLowerCase());
+    for(const column of ["id","full_name","email","phone","account_type"]){
+      check(columns.includes(column),`${relative}: signup needs INSERT access to profiles.${column}`);
+    }
+    check(!columns.includes("is_admin"),`${relative}: profiles.is_admin must not be insertable by authenticated`);
+  }
+
+  check(
+    /coalesce\s*\(\s*is_admin\s*,\s*false\s*\)\s*=\s*false/i.test(migration),
+    `${relative}: the profile INSERT policy must reject is_admin=true as defence in depth`
+  );
 }
 
 // ---------------------------------------------------------------------------

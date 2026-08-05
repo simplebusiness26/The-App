@@ -281,7 +281,7 @@ describe("the admin public places screen",()=>{
   }
 
   it("refuses a non-admin instead of showing them a form",async()=>{
-    installFixture({user:{id:"explorer-1"},tables:{profiles:[{is_admin:false}]}});
+    installFixture({user:{id:"explorer-1"},rpc:{guestbook_is_admin:false}});
 
     const tree=await mountAdmin();
     const text=textOf(tree.toJSON());
@@ -293,7 +293,8 @@ describe("the admin public places screen",()=>{
   it("gives an admin the form",async()=>{
     installFixture({
       user:{id:"admin-1"},
-      tables:{profiles:[{is_admin:true}],public_places:[],geo_areas:[{id:"area-1",name:"Hastings",area_type:"town"}]}
+      tables:{public_places:[],geo_areas:[{id:"area-1",name:"Hastings",area_type:"town"}]},
+      rpc:{guestbook_is_admin:true}
     });
 
     const tree=await mountAdmin();
