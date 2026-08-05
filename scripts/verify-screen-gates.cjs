@@ -250,6 +250,41 @@ if(catalogueMigrations.length===1){
   );
 }
 
+// The first live Stage 3 verification proved that a CASE inside a `public`
+// policy does not safely shield anon from a restricted helper: Postgres may
+// evaluate the helper before deciding which branch wins. The corrective
+// migration must therefore give anon and authenticated disjoint SELECT rules.
+const catalogueAnonSplitMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_listing_catalogue_anon_split.sql"));
+check(
+  catalogueAnonSplitMigrations.length===1,
+  `supabase/migrations: expected one Stage 3 anon-policy correction, found ${catalogueAnonSplitMigrations.length}`
+);
+if(catalogueAnonSplitMigrations.length===1){
+  const relative=`supabase/migrations/${catalogueAnonSplitMigrations[0]}`;
+  const migration=read(relative);
+  contains(relative,[
+    'drop policy if exists "Public can view published activity clubs"',
+    'drop policy if exists "Published events are public and managers see their own"',
+    "create policy activity_clubs_read_anon",
+    "create policy activity_clubs_read_authenticated",
+    "create policy events_read_anon",
+    "create policy events_read_authenticated"
+  ]);
+  check(
+    (migration.match(/for\s+select\s+to\s+anon/gi)||[]).length===2,
+    `${relative}: both signed-out policies must be scoped only to anon`
+  );
+  check(
+    (migration.match(/for\s+select\s+to\s+authenticated/gi)||[]).length===2,
+    `${relative}: both signed-in policies must be scoped only to authenticated`
+  );
+  check(
+    (migration.match(/\(select\s+public\.guestbook_is_admin\(\)\)/gi)||[]).length===2,
+    `${relative}: only the two authenticated policies should use the admin helper`
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 2b. The drawer must not empty itself when a profile read fails
 // ---------------------------------------------------------------------------

@@ -39,14 +39,14 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 8d — Memories (code only, migration not applied)
-**Admin dashboard workstream:** Stage 3's searchable listing catalogue is
-**done in code; its read-policy migration has not been applied**. Stage 2's
-overview passed its Replit/device test, and Stage 1's security foundation
-remains live. Stage 3 needs the prepared migration before an administrator is
-guaranteed to see draft activity clubs and unpublished events.
-**Last session:** Admin dashboard Stage 3 added one read-only catalogue for
-businesses, properties, public places, activity clubs and events, with search,
-type filters and links to the canonical listing screens. 8d remains built
+**Admin dashboard workstream:** Stage 3's searchable listing catalogue and its
+read policies are **live and verified**. Stage 2's overview passed its
+Replit/device test, and Stage 1's security foundation remains live. Stage 3's
+screen still needs its own Replit/device test after pulling `main2.0-Dev`.
+**Last session:** Applied and verified Admin dashboard Stage 3. Live testing
+caught an anonymous-policy error in the first migration, so a second versioned
+migration split signed-out and signed-in reads before completion. Administrator,
+ordinary Explorer and signed-out database checks now pass. 8d remains built
 end-to-end in code, but **8d's migration has not been applied.**
 **Branch:** `main2.0-Dev` — the only development branch now. `AGENTS.md` was
 rewritten this session: no feature branches, no pull requests, work directly
@@ -161,6 +161,59 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Admin dashboard Stage 3 — migrations live and verified
+
+**Did:** Applied the prepared Stage 3 listing-catalogue policy migration to
+Supabase project `yzpthslwsvesgndzdqai`; Supabase recorded it as
+`20260805152040_admin_listing_catalogue_read_access`. Administrator and ordinary
+Explorer role simulations passed, but the signed-out simulation correctly
+caught a `42501` error: PostgreSQL evaluated the restricted
+`guestbook_is_admin()` subquery in a policy scoped to `public`, despite the
+surrounding CASE intended to keep anonymous callers away from it.
+
+Added and applied a corrective migration rather than editing the migration
+that had already run. Supabase recorded the correction as
+`20260805152354_admin_listing_catalogue_anon_split`. It replaces each broad
+SELECT policy with disjoint `anon` and `authenticated` policies. Signed-out
+rules contain no administrator helper; signed-in rules preserve public,
+manager-owned and administrator visibility. No data row and no write or delete
+permission changed.
+
+**Files changed:**
+`supabase/migrations/20260805152300_admin_listing_catalogue_anon_split.sql`,
+`scripts/verify-screen-gates.cjs`, and this ledger.
+
+**Acceptance criteria:** PASS. The second live role-simulation run proved that
+`Guestbooker1@gmail.com` is signed in, the database helper returns true, and the
+administrator sees all 8 activity clubs and all 9 events. A non-administrator
+Explorer returned false from the helper and saw exactly the public rows. A
+signed-out caller also saw exactly the public rows without calling the secure
+helper or raising an error. The current data has no draft clubs and no
+unpublished events, so the hidden-row difference could not be demonstrated
+with an existing row; the installed policy definitions were queried back and
+contain the administrator branch only on the authenticated policies.
+
+Supabase now reports exactly four relevant SELECT policies: one `anon` and one
+`authenticated` policy on each table. The advisors show no new
+multiple-permissive-policy warning for activity clubs or events. The expected
+notice for signed-in access to the secure yes/no administrator helper remains;
+anonymous EXECUTE is still revoked. Full Jest passes 366/366 across 13 suites,
+the expanded screen gate passes 136/136, every other source gate passes,
+`npm audit` reports 0 vulnerabilities, and Expo Doctor passes 20/20.
+
+**Stopped because:** Stage 3's database work is complete and verified.
+
+**Exact next step:** pull `main2.0-Dev` in Replit, restart App Preview, sign in
+as the administrator and device-test Browse all listings, search, all five type
+filters and one detail link from each listing type.
+
+**Unverified:** the Stage 3 catalogue has not yet been tapped on a device.
+There is currently no draft activity club or unpublished event in the live
+data, so those two future-row cases are proven by the installed policy
+definitions and administrator result, not by reading an existing hidden row.
 
 ---
 
