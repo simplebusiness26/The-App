@@ -4,6 +4,7 @@ import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {typeLabelForBusiness} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
+import {nearestFirst} from "../../utils/geo";
 import PlaceLayout from "../../components/PlaceLayout";
 import ClaimButton from "../../components/ClaimButton";
 import FavouriteButton from "../../components/FavouriteButton";
@@ -71,7 +72,7 @@ export default function BusinessPage(){
       .neq("id",current.id)
       .limit(12);
 
-    setSimilar(nearest(current,data || []).slice(0,4).map((item)=>({
+    setSimilar(nearestFirst(current,data || []).slice(0,4).map((item)=>({
       id:item.id,
       name:item.name,
       detail:typeLabelForBusiness(item),
@@ -170,23 +171,6 @@ export default function BusinessPage(){
   );
 }
 
-// Rough great-circle ordering. Good enough to rank a dozen places in one town,
-// and it degrades to "keep the given order" when coordinates are missing rather
-// than dropping the row.
-function nearest(from,rows){
-  const lat=Number(from.latitude);
-  const lng=Number(from.longitude);
-  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return rows;
-
-  return [...rows].sort((a,b)=>distance(lat,lng,a)-distance(lat,lng,b));
-}
-
-function distance(lat,lng,row){
-  const rowLat=Number(row.latitude);
-  const rowLng=Number(row.longitude);
-  if(!Number.isFinite(rowLat) || !Number.isFinite(rowLng)) return Number.MAX_SAFE_INTEGER;
-  return (rowLat-lat)**2+(rowLng-lng)**2;
-}
 
 const styles=StyleSheet.create({
   editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},

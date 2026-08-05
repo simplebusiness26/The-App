@@ -4,6 +4,7 @@ import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {PROPERTY_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
+import {nearestFirst} from "../../utils/geo";
 import PlaceLayout from "../../components/PlaceLayout";
 import ClaimButton from "../../components/ClaimButton";
 import FavouriteButton from "../../components/FavouriteButton";
@@ -63,7 +64,7 @@ export default function PropertyDetails(){
       .neq("id",current.id)
       .limit(12);
 
-    setSimilar(nearest(current,data || []).slice(0,4).map((item)=>({
+    setSimilar(nearestFirst(current,data || []).slice(0,4).map((item)=>({
       id:item.id,
       name:item.name,
       detail:item.address,
@@ -170,23 +171,6 @@ export default function PropertyDetails(){
   );
 }
 
-// Rough ordering by squared coordinate distance. Good enough to rank a dozen
-// places in one town, and it keeps rows with no coordinates rather than
-// dropping them -- a stay with a missing lat/lng is still a stay.
-function nearest(from,rows){
-  const lat=Number(from.latitude);
-  const lng=Number(from.longitude);
-  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return rows;
-
-  return [...rows].sort((a,b)=>distance(lat,lng,a)-distance(lat,lng,b));
-}
-
-function distance(lat,lng,row){
-  const rowLat=Number(row.latitude);
-  const rowLng=Number(row.longitude);
-  if(!Number.isFinite(rowLat) || !Number.isFinite(rowLng)) return Number.MAX_SAFE_INTEGER;
-  return (rowLat-lat)**2+(rowLng-lng)**2;
-}
 
 const styles=StyleSheet.create({
   editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
