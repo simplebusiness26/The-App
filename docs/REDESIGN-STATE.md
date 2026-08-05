@@ -38,7 +38,7 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 5c — place layout for link-ups. Packet 5 complete.
+**Last completed packet:** 6 — map bottom cards
 **Branch:** `main2.0-Dev` (branched from `main2.0`)
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
@@ -51,9 +51,10 @@ brief specifies the marker set under the riso rules explicitly and
 goes the other way, the marker colours change and Packet 2's colour
 assertions change with them.** The glyphs and the structure do not.
 
-**Next action:** Packet 6 — map bottom cards. Not blocked. Note the brief
-requires it to work with the **list fallback**: no Google Maps API key is
-set, so `components/PlacesList.js` is what actually ships.
+**Next action:** Packet 7 — the Discover screen. It replaces the placeholder
+`app/discover.js` from Packet 3. Its hard rule: every recommendation must
+carry a visible reason string, and an item whose reason cannot be computed
+does not appear at all.
 
 **The 5c privacy review is in the session log** and its conclusion is worth
 carrying: the meeting point is enforced by RLS, verified against the live
@@ -87,7 +88,7 @@ Nothing else should change.
 | 5a | Place layout: business, property | done | `893a182` | 14 place-page tests written before the refactor and green after; 35-check layout gate; 8 red-then-green demonstrations |
 | 5b | Place layout: events, clubs | done | `8d843fb` | 32 place-page tests, 18 new, written before the rewrite and green after; 75-check layout gate; 7 red-then-green demonstrations |
 | 5c | Place layout: link-ups (privacy gate) | done | `26cb608` | Privacy review verified in SQL (creator sees 1 row, non-member 0); 42 place-page tests; 96-check layout gate; 7 red-then-green demonstrations |
-| 6 | Map bottom cards | not started | | |
+| 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
 | 7 | Discover screen | not started | | |
 | 8 | Profile and reputation | not started | | |
 | 9a | Scoring engine | not started | | |
@@ -122,6 +123,122 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-04 — Packet 6 — done
+
+**Did:** Built the bottom card, on both surfaces, with no new dependency.
+
+- `utils/placeCards.js` (new) turns a row from any of the three map tables into
+  a card, and builds the swipeable set around a tapped place.
+- `utils/geo.js` (new) is the distance ordering, extracted on its third caller.
+- `components/PlaceCards.js` (new) is the sheet: drag to dismiss, swipe between
+  places, reduced-motion aware.
+- `app/map.js` and `components/PlacesList.js` both open it.
+- `scripts/verify-map-cards.cjs` (new), 16 checks. `test/map-cards.test.js`
+  (new), 19 assertions.
+
+**Nothing was installed.** The brief asks for a draggable card that swipes
+between places, which sounds like `react-native-gesture-handler` and a bottom
+sheet library. It is `PanResponder` and a `pagingEnabled` ScrollView, both from
+react-native. `RULES.md` says ask before adding a dependency; nothing needed
+asking for, and the gate now fails if a gesture or sheet library appears.
+
+**The card is used in the list, not only on the map.** This is the point the
+brief is emphatic about and it is easy to get wrong: no Google Maps API key is
+set, so `PlacesList` is the shipping path and a card that only worked on
+`react-native-maps` would be a feature nobody could reach. Tapping a list row
+now opens the same card the map would, and the card offers the full page rather
+than replacing it. The gate fails if either surface stops offering it, or if
+the card or the list imports the map library.
+
+**Files changed:** `utils/placeCards.js`, `utils/geo.js`,
+`components/PlaceCards.js`, `test/map-cards.test.js`,
+`scripts/verify-map-cards.cjs` (all new); `app/map.js`,
+`components/PlacesList.js`, `app/business/[id].js`, `app/property/[id].js`
+(now share `nearestFirst`), `test/setup.js`, `package.json`,
+`.github/workflows/quality-checks.yml`.
+
+**Acceptance criteria:**
+
+1. Map position unchanged after opening, swiping and dismissing — **PASS**, and
+   asserted rather than reasoned about. The test reads the `MapView`'s own
+   props before a marker tap and again after, and checks `initialRegion` is
+   identical and that no `region` prop has appeared. An uncontrolled map keeps
+   where it was left; a `region` prop is what would drag it back on every
+   render. The card is a `Modal`, so it is outside the map's view tree
+   entirely. Both facts are also gated in the source.
+2. Works with the list fallback when no Maps API key is set — **PASS**. Both
+   paths are exercised: with a key the screen renders a `MapView` and a marker
+   tap opens a card; with no key it renders the list and a row tap opens the
+   same card. The API key is now read inside the component rather than at
+   module scope, which is what made the fallback testable at all.
+3. `prefers-reduced-motion` respected — **PASS in code, unverified in
+   behaviour.** `AccessibilityInfo.isReduceMotionEnabled` decides whether the
+   sheet slides, and the gate requires it. Nobody has turned reduced motion on
+   and watched.
+
+**Six checks demonstrated failing before being kept:**
+
+| Broke | Caught by | Message |
+|---|---|---|
+| gave MapView a `region` prop | test **and** gate | `does not move when a card is opened` |
+| dropped the tapped place from its own set | test | `puts the tapped place first` + 2 more |
+| removed the card from the list fallback | test | `opens the same card from a list row` |
+| made the card always open at index 0 | test | `opens on the place that was tapped` |
+| added `react-native-gesture-handler` | gate | `a new dependency needs asking for first` |
+| imported `react-native-maps` into the card | gate | `the card is shown with and without a map` |
+
+**Two of those needed a second attempt, and both were my test being wrong.**
+Dropping the tapped place from its own set first "passed", because I broke it
+by re-sorting a list that still contained the tapped card — which is always
+zero distance from itself and therefore still first. And the start-index check
+could not fail while its fixture opened on the first card; it now opens on the
+second. **That is the fourth and fifth time in this run a check has looked
+convincing and proved nothing.** Every one was found by trying to break it, and
+none would have been found by reading it.
+
+**One change beyond the packet, taken because the rule said so.** `RULES.md`:
+"Two similar things stay duplicated until there are three." The distance sort
+was written twice in Packet 5a and left alone deliberately. Packet 6 is the
+third caller, so it moved to `utils/geo.js` and the two place pages now import
+it.
+
+**Also run:** `npm run test:ci` → **282 passed**; map cards 16; place layout 96;
+taxonomy 136; markers 277; screen gates 72; social 92; live 152 + 39; linkup nav
+20; title-only 28; seed 3; `npx expo-doctor` 20/20; web export succeeded.
+
+**Stopped because:** finished. One packet per session.
+
+**Exact next step:** Packet 7, the Discover screen. It replaces
+`app/discover.js`, which Packet 3 left as a placeholder listing the discovery
+surfaces that already work. Its hard rule is the interesting one: "Every
+recommendation must carry a visible reason string. If the reason cannot be
+computed, the item does not appear." Note the Saved section "reads the same
+store as the profile Collections tab" — that is `explorer_favourites`, which
+`components/FavouriteButton.js` already writes to.
+
+**Unverified.**
+
+- **Nobody has seen the card.** Nine packets in, still nothing has been opened
+  by a person.
+- **The drag is the least verified thing in this packet.** `PanResponder` with
+  `Animated` is exercised only by mounting: no test moves a finger. Whether the
+  threshold feels right, whether a downward drag steals a sideways swipe, and
+  whether the spring-back looks correct are all unknown. The gesture rule tries
+  to claim only clearly-downward drags, but that is a judgement written into a
+  comparison, not a measurement.
+- **Swiping between places is equally untested as a gesture.** The test proves
+  every card is rendered so a swipe has somewhere to land; it does not scroll.
+- `Dimensions.get("window").width` is read once at render. On a rotation the
+  page width would be stale until the next render, which nobody has tried.
+- Tapping a list row no longer goes straight to the place page. That is a real
+  change to a shipped behaviour, made deliberately so the card is reachable
+  without a map, and it costs a list user one extra tap to reach a full page.
+  **If that reads badly in use, the fix is to keep row taps navigating and open
+  the card only from the map — but then the card ships to nobody until a Maps
+  key exists.**
 
 ---
 
