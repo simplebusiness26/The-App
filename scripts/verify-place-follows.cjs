@@ -54,13 +54,14 @@ const AREAS="supabase/migrations/20260805120000_geo_areas_and_public_places.sql"
 const REFS="supabase/migrations/20260805120100_area_and_place_references.sql";
 const FOLLOWS="supabase/migrations/20260805120200_entity_and_location_follows.sql";
 const MOMENTS="supabase/migrations/20260805120300_moment_place_visibility_and_actor.sql";
+const ANON_SPLIT="supabase/migrations/20260805120400_moment_read_policy_anon_split.sql";
 
 // ---------------------------------------------------------------------------
 // 1. Every file the packet is made of exists
 // ---------------------------------------------------------------------------
 
 for(const file of [
-  AREAS,REFS,FOLLOWS,MOMENTS,
+  AREAS,REFS,FOLLOWS,MOMENTS,ANON_SPLIT,
   "utils/places.js",
   "components/EntityFollowButton.js",
   "app/places/index.js",
@@ -249,9 +250,31 @@ check(
   `${MOMENTS}: does not drop explorer_moments_public_read — policies OR together, so every friends-only Moment would stay publicly readable`
 );
 
+// The read policy is split by role, and the split is not cosmetic: anon has
+// no USAGE on guestbook_private and no EXECUTE on are_friends, so a single
+// `to public` policy that calls it raises 42501 for a signed-out visitor
+// rather than returning the public Moments. That shipped for the length of
+// one migration and is why this check exists.
+const anonSplit=read(ANON_SPLIT);
+
 check(
-  /create policy explorer_moments_read_visible[\s\S]*visibility='friends' and guestbook_private\.are_friends/.test(momentsSql),
-  `${MOMENTS}: the read policy no longer restricts friends-only Moments to mutual follows`
+  /create policy explorer_moments_read_anon on public\.explorer_moments\s+for select to anon/.test(anonSplit),
+  `${ANON_SPLIT}: has no anon-specific read policy — a signed-out visitor would evaluate are_friends and be refused`
+);
+
+check(
+  !/create policy explorer_moments_read_anon[\s\S]*?;/.exec(anonSplit)?.[0]?.includes("are_friends"),
+  `${ANON_SPLIT}: the anon read policy calls are_friends — anon cannot execute it, so every Moment becomes unreadable when signed out`
+);
+
+check(
+  /create policy explorer_moments_read_authenticated[\s\S]*visibility='friends' and guestbook_private\.are_friends/.test(anonSplit),
+  `${ANON_SPLIT}: the authenticated read policy no longer restricts friends-only Moments to mutual follows`
+);
+
+check(
+  !/for select to public/.test(code(ANON_SPLIT)),
+  `${ANON_SPLIT}: a read policy targets "public", which includes anon — the two roles need different rules`
 );
 
 // The feed is the second lock on the same rule.
