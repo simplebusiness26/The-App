@@ -65,6 +65,9 @@ jobs:
       - name: Verify canonical places, follows and Moment visibility
         run: npm run verify:places
 
+      - name: Verify the Memory lifecycle and its archive defaults
+        run: npm run verify:memories
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

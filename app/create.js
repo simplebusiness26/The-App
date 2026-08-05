@@ -29,6 +29,11 @@ const SHARE=[
     detail:"A photo or a note from somewhere you have been."
   },
   {
+    route:"/memories/create",
+    title:"Keep a memory",
+    detail:"Somewhere worth remembering. Yours by default, and it does not expire."
+  },
+  {
     route:"/scan",
     title:"Leave a verified review",
     detail:"Scan the code inside a place to prove you were there, then write it up."

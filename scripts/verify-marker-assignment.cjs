@@ -177,7 +177,9 @@ const TOKENISED=[
   "components/EntityFollowButton.js",
   "app/places/index.js",
   "app/places/[id].js",
-  "app/admin/public-places.js"
+  "app/admin/public-places.js",
+  "app/memories/create.js",
+  "app/memories/[id].js"
 ];
 
 for(const source of TOKENISED){

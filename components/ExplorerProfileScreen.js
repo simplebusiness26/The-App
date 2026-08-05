@@ -62,6 +62,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
   const [media,setMedia]=useState([]);
   const [favourites,setFavourites]=useState([]);
   const [moments,setMoments]=useState([]);
+  const [memories,setMemories]=useState([]);
   const [reviewLikes,setReviewLikes]=useState({});
   const [reputation,setReputation]=useState(null);
   const [currentUser,setCurrentUser]=useState(null);
@@ -91,12 +92,16 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
       return;
     }
 
-    const [profileResult,statsResult,reviewsResult,favouritesResult,momentsResult]=await Promise.all([
+    const [profileResult,statsResult,reviewsResult,favouritesResult,momentsResult,memoriesResult]=await Promise.all([
       supabase.from("profiles").select("id,full_name,email,phone,profile_photo,bio,account_type,area,show_area,leaderboard_opt_in,is_admin").eq("id",id).single(),
       supabase.from("explorer_profile_stats").select("*").eq("user_id",id).maybeSingle(),
       supabase.from("explorer_reviews").select("*").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}),
       supabase.from("explorer_favourites").select("*").eq("user_id",id).eq("is_public",true).order("sort_order",{ascending:true}).order("created_at",{ascending:false}),
-      supabase.from("explorer_moments").select("*").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}).limit(60)
+      supabase.from("explorer_moments").select("*").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}).limit(60),
+      // Packet 8d. show_on_profile is not a permission -- row level security
+      // decides what comes back, so a private Memory with the flag set reaches
+      // its owner and nobody else. The scope only shapes the list.
+      supabase.rpc("get_explorer_memories",{p_user_id:id,p_scope:"profile"})
     ]);
 
     if(profileResult.error || !profileResult.data){
@@ -131,6 +136,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
     setReviewLikes(likeMap);
     setFavourites(favouritesResult.data || []);
     setMoments(momentsResult.data || []);
+    setMemories(memoriesResult.data || []);
 
     if(profileResult.data.account_type==="explorer"){
       const reputationResult=await supabase.rpc("get_explorer_review_reputation",{p_user_id:id});
@@ -285,6 +291,31 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
             </Text>
           )}
         </View>
+      )}
+
+      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Memories</Text><Text style={styles.sectionCount}>{memories.length}</Text></View>
+      {memories.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
+          {memories.map(item=>(
+            <Pressable
+              key={item.id}
+              style={styles.favouriteCard}
+              accessibilityRole="button"
+              accessibilityLabel={item.title || "Open this Memory"}
+              onPress={()=>router.push(`/memories/${item.id}`)}
+            >
+              {item.media_url ? <Image source={{uri:item.media_url}} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>🗺️</Text></View>}
+              <Text style={styles.favouriteName} numberOfLines={2}>{item.title || item.target_name || "A Memory"}</Text>
+              <Text style={styles.favouriteType}>{item.is_live ? "live" : "archived"}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : (
+        <EmptyCard>
+          {ownProfile
+            ? "Keep a Memory of somewhere and choose whether it shows here."
+            : "Nothing shared here yet."}
+        </EmptyCard>
       )}
 
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Favourite places</Text><Text style={styles.sectionCount}>{favourites.length}</Text></View>

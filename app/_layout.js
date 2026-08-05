@@ -40,6 +40,8 @@ export default function Layout(){
           <Stack.Screen name="feed"/>
           <Stack.Screen name="moments/create"/>
           <Stack.Screen name="moments/[id]"/>
+          <Stack.Screen name="memories/create"/>
+          <Stack.Screen name="memories/[id]"/>
           <Stack.Screen name="social-comments/[id]"/>
           <Stack.Screen name="leaderboards"/>
           <Stack.Screen name="notifications"/>

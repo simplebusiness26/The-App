@@ -38,18 +38,18 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 8e — Place, location and follow foundation
-**Last session:** 8e built end-to-end in code: four migrations, three new
-screens, entity and location follows, Moment visibility/location/actor, a
-132-check gate and 17 tests. **The migrations were deliberately not applied.**
-Nothing was written to `yzpthslwsvesgndzdqai` — the owner asked for committed
-code this session and a separate approval for the deployment. Until they are
-applied, every 8e screen queries tables that do not exist yet.
-**Branch:** `feature/app-alignment-packet-8e`, from `main2.0-Dev` @ `32a500e`
-**Packet order from here:** 8d → 8b → 8f1 → 8f2. The owner split the ledger's
-old 8f into **8f1** (shared activity read model + living-map integration) and
+**Last completed packet:** 8d — Memories (code only, migration not applied)
+**Last session:** 8e was merged to `main2.0-Dev` and its **five** migrations
+applied to the live project and verified against real accounts. 8d was then
+built end-to-end in code. **8d's migration has not been applied.**
+**Branch:** `main2.0-Dev` — the only development branch now. `AGENTS.md` was
+rewritten this session: no feature branches, no pull requests, work directly
+on `main2.0-Dev`. The old `main` is outdated and must not be used.
+**Packet order from here:** 8b → 8f1 → 8f2. The owner split the ledger's old
+8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
-activity before the ranking does.
+activity before the ranking does. 8b (My Map) is now unblocked: it reads
+`explorer_memories`, which exists.
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
 committed at the repo root; it was missing entirely until 2026-08-04, so
@@ -117,10 +117,10 @@ Nothing else should change.
 | 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
 | 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
 | 8a | Profile: three figures and tabs | not started | | |
-| 8b | Profile: My Map, sourced from Memories | not started — depends on 8d | | |
+| 8b | Profile: My Map, sourced from Memories | not started — 8d is done, so no longer blocked | | |
 | 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
-| 8d | Memories (map-attached, visibility-tiered) | designed, not started | | |
-| 8e | Canonical places and areas, entity/location follows, Moment visibility | done in code, **migrations not applied** | `0578aec` | 132-check gate; 17 new tests; 334 total; 10 red-then-green demonstrations; every gate and the web export run. **Nothing verified against a database** |
+| 8d | Memories (two-phase lifecycle, private archive) | done in code, **migration not applied** | | 57-check gate; 13 new tests; 351 total; 6 red-then-green demonstrations; every gate, expo-doctor and the web export run. **Nothing verified against a database** |
+| 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
 | 8f1 | Shared activity read model + living-map integration | designed, not started | | |
 | 8f2 | Feed ranking and trending (source reasons, place activity) | designed, not started | | |
 | 9a | Scoring engine | not started | | |
@@ -155,6 +155,156 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Packet 8e deployed, workflow corrected, Packet 8d built
+
+**Did:** Three things, in one continuous run with the owner's explicit
+approval for each: merged 8e to `main2.0-Dev` and applied its migrations to
+the live project, rewrote the branch workflow, and built 8d.
+
+---
+
+#### The workflow changed, because the old one caused a real failure
+
+`AGENTS.md` said "start from the latest `main` branch". Every packet since the
+redesign began has landed on `main2.0-Dev`, so following step 1 produced a
+checkout with no `CLAUDE.md`, no `RULES.md` and no ledger — which is exactly
+what happened at the start of this session, and led to a confident report that
+those files did not exist anywhere in the repository. They did. The clone was
+single-branch.
+
+`AGENTS.md` is now the direct workflow: `main2.0-Dev` only, no feature
+branches, no pull requests, a state report before editing, and never reset or
+force-push out of a divergence. `CLAUDE.md` gained a pointer, not a copy.
+`RULES.md` is untouched — it governs how the work is done, not where it lands.
+
+---
+
+#### 8e applied live, and one defect found by doing it
+
+Five migrations, in order, one at a time:
+
+| # | Migration | Result |
+|---|---|---|
+| 1 | `geo_areas_and_public_places` | 4 areas, 8 aliases, 3 tables, RLS on all three |
+| 2 | `area_and_place_references` | `area_id` on 7 tables, backfill as predicted |
+| 3 | `entity_and_location_follows` | 2 tables, 6 policies, 2 count RPCs |
+| 4 | `moment_place_visibility_and_actor` | 6 columns, 22 rows backfilled public/explorer |
+| 5 | `moment_read_policy_anon_split` | **the correction below** |
+
+The backfill matched exactly what a read-only survey had predicted before any
+of it ran: profiles 2/2, activity clubs 6/8, events 2/9, link-ups 6/7,
+check-ins 19/19, and **businesses and properties 0** — deliberately, because
+neither has a town column and parsing a postal address is guessing. All eight
+uncertain values (`Hastings Old Town`, `Preston Park`, `Local area` and the
+rest) are still unmatched and still in `get_unmatched_area_report()`.
+
+**Migration 4 broke signed-out reading of every Moment, and Phase 3 caught
+it before a person did.** The new read policy was one policy `for select to
+public`; `public` includes `anon`; the friends branch calls
+`guestbook_private.are_friends`, which anon can neither execute nor reach; and
+Postgres does not promise to short-circuit an OR in a policy. So a signed-out
+read raised `42501` instead of returning the public Moments.
+`20260805120400` splits the policy by role. **The lesson generalises and was
+applied to 8d the same day: a policy that has to be safe for both anon and
+authenticated should usually be two policies.**
+
+**Verified live, with RLS on, from four callers reading the same friends-only
+Moment:** author 1, mutual friend 1, non-friend Explorer 0, signed out 0 —
+and the non-friend and signed-out callers still see all 22 public Moments.
+Ten more behaviours were exercised inside a transaction and rolled back:
+following a place and a town both work, following a missing place and
+following a Link-up are both refused, an official post by someone who does not
+manage the listing is refused (`You do not manage this listing`), an official
+post attached to something else is refused, an Explorer Moment cannot claim
+another author, 8c's self-endorsement block still fires, another Explorer sees
+0 of your follow rows while the count RPC still answers, and both the ten- and
+eleven-argument `start_live_checkin` calls work.
+
+**A mistake of mine, recorded because it wrote to the live database.** The
+first verification block ended in `commit;` where I meant `rollback;`, so a
+probe park, a probe Moment and one follow row were committed. I removed all of
+it, then checked whether the `on conflict do nothing` insert had masked a
+pre-existing row my cleanup would then have deleted. It had not: only two
+accounts have ever followed that Explorer, from 17 July and 2 August, and
+neither is the probe account — the row was mine and so was the notification.
+Post-cleanup counts match the pre-probe state exactly (22 Moments, 19
+check-ins, 0 public places, 0 follows of either kind). **A destructive typo in
+a verification script is still a destructive typo**, and the reason it was
+recoverable is that the data it touched could be identified afterwards.
+
+---
+
+#### 8d — Memories
+
+**The design is the two phases, and everything else follows from them.**
+`visibility` decides who may read a Memory until `live_until`;
+`archive_visibility` decides afterwards; the creator can always read their own
+in either phase. `archive_visibility` defaults to `private` and is **never**
+copied from `visibility` — a person who agrees to be seen today has not agreed
+to be seen forever. `guestbook_private.can_read_memory` is the single place
+that picks the rule, so the policy and the profile list cannot drift.
+
+Anything other people can see requires `live_until`; a private Memory may sit
+on its owner's map with none, because nothing about it is shown to anybody.
+`show_on_profile` is a filter, not a permission: `get_explorer_memories` is
+`SECURITY INVOKER`, so a private Memory with the flag on reaches its owner and
+nobody else.
+
+**Files:** `supabase/migrations/20260805130000_explorer_memories.sql`,
+`utils/memories.js`, `app/memories/create.js`, `app/memories/[id].js`,
+`scripts/verify-memories.cjs` (57 checks), `test/memories.test.js` (13 tests),
+`docs/MEMORIES_TEST_PLAN.md`. Changed: `components/ExplorerProfileScreen.js`
+(a Memories section through the RPC), `app/_layout.js`, `app/create.js`,
+`utils/drawer.js`, `test/navigation.test.js`, `package.json`, the workflow and
+the tokenised-colour list.
+
+**Six checks demonstrated failing before being kept:** archive defaulting to
+public, the phase branch collapsed to `visibility`, the expiry requirement
+removed, the anon policy calling `can_read_memory`, the create screen
+defaulting the archive to the live audience, and `private` losing its place as
+the first option.
+
+**One test of mine was wrong before the code was.** The create-screen
+assertions used the pressable finder on a text field, which has `onChangeText`
+and no `onPress`, and failed on a null. That is a broken test reading as a
+broken screen — the seventh time in this project a check has needed a second
+look, and the first where the check failed loudly rather than passing quietly.
+
+**Ran:** `npm run test:ci` → **351 passed** (334 before, +13); memories 57;
+places 136; markers 304; taxonomy 143; place layout 96; cards 16; discover 30;
+reputation 32; social 92; live 152 + 39; linkup nav 20; title-only 28; seed 3;
+screen gates 72; `npx expo-doctor` 20/20; `npm audit` 0 vulnerabilities;
+`npx expo export --platform web` succeeded with `explorer_memories` present in
+the bundle.
+
+**Stopped because:** finished. 8e is deployed, 8d is committed.
+
+**Exact next step:** apply `20260805130000_explorer_memories.sql` — it is the
+only unapplied migration in the repository — then work
+`docs/MEMORIES_TEST_PLAN.md` section 4 first, which is the archive boundary
+and the only part of this packet that would be expensive to get wrong. After
+that, 8b (My Map) is unblocked and reads `explorer_memories`, never
+`live_checkins`.
+
+**Unverified:**
+- **8d's migration has never run.** Same standing as 8e had this morning:
+  every statement is verified by reading. The phase-aware policy in particular
+  has been reasoned about and never executed.
+- Nobody has opened `/memories/create`, `/memories/[id]`, `/places` or
+  `/admin/public-places`. Twelve packets in.
+- 8e is verified live but through SQL and RLS probes, not through the app. The
+  screens are still `Verified: renders. Unverified: behaves`.
+- `businesses.area_id` and `properties.area_id` are live and empty. Location
+  follows will not surface business content until something sets them, and
+  there is no admin screen for it.
+- `geo_area_aliases` has an admin write policy and no admin screen.
+- Brighton is seeded with no parent area. Whether it sits under East Sussex is
+  still the owner's call.
+- The selected-Explorer picker on a Memory lists only people the owner
+  follows, capped at 50, with no search.
 
 ---
 

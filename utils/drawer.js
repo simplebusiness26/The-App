@@ -53,6 +53,7 @@ export const SECTIONS=[
     rows:[
       {label:"Profile",route:"/profile",gate:GATES.SIGNED_IN},
       {label:"Check in",route:"/checkins/create",gate:GATES.SIGNED_IN},
+      {label:"Keep a memory",route:"/memories/create",gate:GATES.SIGNED_IN},
       {label:"Scan a review code",route:"/scan",gate:GATES.SIGNED_IN},
       // The on-ramp. /manager/dashboard is where an Explorer requests the
       // capability to manage something, so it cannot sit behind a section that
