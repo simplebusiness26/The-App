@@ -112,7 +112,7 @@ Nothing else should change.
 | 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
 | 8a | Profile: three figures and tabs | not started | | |
 | 8b | Profile: My Map, sourced from Memories | not started — depends on 8d | | |
-| 8c | Review reputation and endorsements | done | *(pending push)* | 32-check gate; 5 jest tests; 5 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai` |
+| 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
 | 8d | Memories (map-attached, visibility-tiered) | design owed, not started | | |
 | 8e | Follow businesses/properties/clubs/events + canonical locations | design owed, not started | | |
 | 8f | Feed ranking (friendship, follows, trending, source labels) | design owed, not started | | |
@@ -301,7 +301,9 @@ screen-gates 72; `npx expo-doctor` 20/20; `npm audit --audit-level=moderate`
 0 vulnerabilities; `npx expo export --platform web` succeeded, `/linkups/
 create` confirmed present in the bundle.
 
-**CI:** *(filled in after push — see below)*
+**CI:** run 38 on `93baa0e`, conclusion **`success`**, read back from the API
+after the run completed.
+https://github.com/simplebusiness26/The-App/actions/runs/30969526636
 
 **Stopped because:** finished. One packet per session, and the owner was
 explicit that 8d/8e/8f need a revised design, not code, next.
