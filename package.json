@@ -15,7 +15,8 @@
     "test:ci": "jest --ci --runInBand",
     "verify:taxonomy": "node scripts/verify-taxonomy.cjs",
     "verify:markers": "node scripts/verify-marker-assignment.cjs",
-    "verify:place": "node scripts/verify-place-layout.cjs"
+    "verify:place": "node scripts/verify-place-layout.cjs",
+    "verify:cards": "node scripts/verify-map-cards.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",

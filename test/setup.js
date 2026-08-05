@@ -132,12 +132,19 @@ jest.mock("expo-camera",()=>{
 // react-native-maps ships no web build and requires a native module.
 jest.mock("react-native-maps",()=>{
   const React=require("react");
-  const MapView=({children})=>React.createElement("MapView",null,children);
+
+  // Props are passed through rather than swallowed, so a test can read the
+  // map's region props and assert they did not change -- Packet 6's first
+  // acceptance criterion. Marker forwards onPress and renders its children for
+  // the same reason: without it, a marker tap cannot be exercised at all and
+  // the whole map path stays as untested as it was before Packet 0.
+  const MapView=({children,...rest})=>React.createElement("MapView",rest,children);
+  const Marker=({children,...rest})=>React.createElement("Marker",rest,children);
 
   return{
     __esModule:true,
     default:MapView,
-    Marker:()=>React.createElement("Marker"),
+    Marker,
     Callout:({children})=>React.createElement("Callout",null,children),
     PROVIDER_GOOGLE:"google"
   };

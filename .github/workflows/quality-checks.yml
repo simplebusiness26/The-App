@@ -53,6 +53,9 @@ jobs:
       - name: Verify the place pages share one layout
         run: node scripts/verify-place-layout.cjs
 
+      - name: Verify the map keeps its position and the card needs no map
+        run: node scripts/verify-map-cards.cjs
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
