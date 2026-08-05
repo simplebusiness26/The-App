@@ -56,6 +56,9 @@ jobs:
       - name: Verify the map keeps its position and the card needs no map
         run: node scripts/verify-map-cards.cjs
 
+      - name: Verify no recommendation appears without a reason
+        run: node scripts/verify-discover.cjs
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
