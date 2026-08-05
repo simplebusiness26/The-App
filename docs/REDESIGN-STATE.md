@@ -39,9 +39,9 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 8d — Memories (code only, migration not applied)
-**Admin dashboard workstream:** Stage 1 security foundation is complete in
-code. Its migration has **not** been applied to the live project, so the stage
-remains in progress until deployment and live role verification.
+**Admin dashboard workstream:** Stage 1 security foundation is **done and
+live**. Supabase migration `20260805134032_admin_security_foundation` was
+applied and its role boundary was verified against the live project.
 **Last session:** 8e was merged to `main2.0-Dev` and its **five** migrations
 applied to the live project and verified against real accounts. 8d was then
 built end-to-end in code. **8d's migration has not been applied.**
@@ -158,6 +158,45 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Admin dashboard Stage 1 — deployed and verified
+
+**Did:** With the owner's explicit approval, applied repository migration
+`20260805132127_admin_security_foundation.sql` to the live Xplorer Supabase
+project. Supabase recorded it as migration
+`20260805134032_admin_security_foundation`. The migration removed broad
+authenticated INSERT access to `profiles`, kept only the ordinary signup and
+profile fields insertable/updateable, excluded `is_admin`, strengthened the
+own-profile INSERT policy, and locked `guestbook_is_admin()` to an empty
+`search_path` with execution for `authenticated` but not `anon`.
+
+**Files changed:** live database schema and permissions; this deployment entry
+in `docs/REDESIGN-STATE.md`. The migration SQL itself was already committed.
+
+**Acceptance criteria:** migration appears in live history; RLS remains on for
+`profiles`; broad profile INSERT is gone; the five required signup columns
+remain insertable; `is_admin` is neither insertable nor updateable by
+`authenticated`; the INSERT policy independently rejects `is_admin=true`;
+the helper is callable by `authenticated`, not `anon`, and returns `true` for
+an admin and `false` for a normal user. A normal signup-shaped INSERT planned
+successfully inside a rolled-back transaction, while the same attempt with
+`is_admin` was refused. All 4 admin and 15 non-admin profiles remained
+unchanged. The security advisor has no mutable-search-path or anonymous-call
+finding for this helper; it retains the expected signed-in SECURITY DEFINER
+notice because the app intentionally calls this tightly scoped boolean helper.
+
+**Stopped because:** finished. Admin dashboard Stage 1 is complete in code and
+live.
+
+**Exact next step:** identify which existing profile belongs to the owner,
+confirm or grant its administrator role through a trusted database operation,
+then begin Admin dashboard Stage 2.
+
+**Unverified:** a signed-in admin UI pass in Replit/on a device. The database
+boundary and client gate are verified, but the owner's login account has not
+yet been identified and Replit has not been synchronised in this workstream.
 
 ---
 
