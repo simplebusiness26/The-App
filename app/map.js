@@ -1,17 +1,21 @@
 import React,{useEffect,useState} from "react";
 import {StyleSheet,View,TextInput,Pressable,Text,ScrollView} from "react-native";
 import MapView,{Marker} from "react-native-maps";
-import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import PlacesList from "../components/PlacesList";
 import PlaceMarker from "../components/PlaceMarker";
-import {markerForBusiness,markerForProperty,markerForClub} from "../utils/markers";
+import PlaceCards from "../components/PlaceCards";
+import {CARD_KINDS,cardsAround,toCard} from "../utils/placeCards";
 import {classificationLabel} from "../utils/taxonomy";
 
-const GOOGLE_MAPS_API_KEY=process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
 export default function MapScreen(){
-  if(!GOOGLE_MAPS_API_KEY){
+  // Read inside the component rather than at module scope, so a test can
+  // exercise both the map and the list fallback. PROJECT-LOG.md records that no
+  // key is set, which makes the fallback the shipping path -- the brief is
+  // explicit: "do not assume a map".
+  const apiKey=process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  if(!apiKey){
     return <PlacesList header={<Text style={styles.fallbackTitle}>🗺️ Guestbook Map</Text>}/>;
   }
   return <NativeMap/>;
@@ -23,6 +27,7 @@ function NativeMap(){
   const [activityClubs,setActivityClubs]=useState([]);
   const [search,setSearch]=useState("");
   const [typeFilter,setTypeFilter]=useState("all");
+  const [openKey,setOpenKey]=useState(null);
 
   useEffect(()=>{loadPlaces();},[]);
 
@@ -61,6 +66,21 @@ function NativeMap(){
   const filteredProperties=properties.filter(item=>matchesSearch(item) && hasCoordinates(item));
   const filteredClubs=activityClubs.filter(item=>matchesSearch(item) && hasCoordinates(item));
 
+  const showBusinesses=typeFilter==="all" || typeFilter==="business";
+  const showProperties=typeFilter==="all" || typeFilter==="property";
+  const showClubs=typeFilter==="all" || typeFilter==="activity";
+
+  // Every pin currently on the map, as cards. This is what a person can swipe
+  // through, so it follows the same filters the pins do -- swiping to a place
+  // the filter has hidden would be a different map than the one on screen.
+  const cards=[
+    ...(showBusinesses ? filteredBusinesses.map((row)=>toCard(CARD_KINDS.BUSINESS,row)) : []),
+    ...(showProperties ? filteredProperties.map((row)=>toCard(CARD_KINDS.PROPERTY,row)) : []),
+    ...(showClubs ? filteredClubs.map((row)=>toCard(CARD_KINDS.CLUB,row)) : [])
+  ].filter(Boolean);
+
+  const tapped=cards.find((card)=>card.key===openKey) || null;
+
   return(
     <View style={styles.container}>
       <View style={styles.top}>
@@ -77,44 +97,61 @@ function NativeMap(){
         </ScrollView>
       </View>
 
+      {/*
+        Packet 6. initialRegion and never `region`: an uncontrolled MapView keeps
+        whatever position the person left it at. Passing `region` would drag the
+        map back to a fixed point on every re-render, which is exactly the
+        criterion this packet has to meet -- "map position unchanged after
+        opening, swiping and dismissing".
+
+        The card is a Modal rendered outside this element, so it cannot
+        re-render or remount the map either.
+
+        Packet 2. The pins were pinColor="#d63b3b" / "#275bd6" / "#5633a8" --
+        three colours outside the token table, each chosen by what kind of
+        listing it was. That is type controlling colour, which breaks the
+        three-ink rule. Now the ink says whether something is scheduled there
+        and the icon says what the place is.
+      */}
       <MapView style={styles.map} initialRegion={{latitude:50.8225,longitude:-0.1372,latitudeDelta:0.12,longitudeDelta:0.12}}>
-        {/*
-          Packet 2. These were pinColor="#d63b3b" / "#275bd6" / "#5633a8" -- three
-          colours outside the token table, each chosen by what kind of listing it
-          was. That is type controlling colour, which is exactly what breaks the
-          three-ink rule. Now the ink says whether something is scheduled there
-          and the icon says what the place is.
-        */}
-        {(typeFilter==="all" || typeFilter==="business") && filteredBusinesses.map(place=><Marker
+        {showBusinesses && filteredBusinesses.map(place=><Marker
           key={`business-${place.id}`}
           coordinate={{latitude:Number(place.latitude),longitude:Number(place.longitude)}}
           title={place.name}
           description={classificationLabel(place)}
-          onPress={()=>router.push(`/business/${place.id}`)}
+          onPress={()=>setOpenKey(`${CARD_KINDS.BUSINESS}-${place.id}`)}
         >
-          <PlaceMarker marker={markerForBusiness(place)}/>
+          <PlaceMarker marker={toCard(CARD_KINDS.BUSINESS,place).marker}/>
         </Marker>)}
 
-        {(typeFilter==="all" || typeFilter==="property") && filteredProperties.map(place=><Marker
+        {showProperties && filteredProperties.map(place=><Marker
           key={`property-${place.id}`}
           coordinate={{latitude:Number(place.latitude),longitude:Number(place.longitude)}}
           title={place.name}
           description="Property"
-          onPress={()=>router.push(`/property/${place.id}`)}
+          onPress={()=>setOpenKey(`${CARD_KINDS.PROPERTY}-${place.id}`)}
         >
-          <PlaceMarker marker={markerForProperty()}/>
+          <PlaceMarker marker={toCard(CARD_KINDS.PROPERTY,place).marker}/>
         </Marker>)}
 
-        {(typeFilter==="all" || typeFilter==="activity") && filteredClubs.map(club=><Marker
+        {showClubs && filteredClubs.map(club=><Marker
           key={`activity-${club.id}`}
           coordinate={{latitude:Number(club.latitude),longitude:Number(club.longitude)}}
           title={club.name}
           description={`${club.category} · ${club.status}`}
-          onPress={()=>router.push(`/activity-clubs/${club.id}`)}
+          onPress={()=>setOpenKey(`${CARD_KINDS.CLUB}-${club.id}`)}
         >
-          <PlaceMarker marker={markerForClub()}/>
+          <PlaceMarker marker={toCard(CARD_KINDS.CLUB,club).marker}/>
         </Marker>)}
       </MapView>
+
+      {!!tapped && (
+        <PlaceCards
+          cards={cardsAround(tapped,cards)}
+          startKey={tapped.key}
+          onClose={()=>setOpenKey(null)}
+        />
+      )}
     </View>
   );
 }
