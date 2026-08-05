@@ -119,7 +119,7 @@ Nothing else should change.
 | 8a | Profile: three figures and tabs | not started | | |
 | 8b | Profile: My Map, sourced from Memories | not started — 8d is done, so no longer blocked | | |
 | 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
-| 8d | Memories (two-phase lifecycle, private archive) | done in code, **migration not applied** | | 57-check gate; 13 new tests; 351 total; 6 red-then-green demonstrations; every gate, expo-doctor and the web export run. **Nothing verified against a database** |
+| 8d | Memories (two-phase lifecycle, private archive) | done in code, **migration not applied** | `42b695d` | 57-check gate; 13 new tests; 351 total; 6 red-then-green demonstrations; every gate, expo-doctor and the web export run. **Nothing verified against a database** |
 | 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
 | 8f1 | Shared activity read model + living-map integration | designed, not started | | |
 | 8f2 | Feed ranking and trending (source reasons, place activity) | designed, not started | | |
