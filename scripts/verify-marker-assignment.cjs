@@ -171,7 +171,13 @@ const TOKENISED=[
   PREVIEW,
   "components/TabBar.js",
   "app/discover.js",
-  "app/create.js"
+  "app/create.js",
+  // Packet 8e's screens were built to the token table from the start, so they
+  // join the list rather than waiting for Packet 11.
+  "components/EntityFollowButton.js",
+  "app/places/index.js",
+  "app/places/[id].js",
+  "app/admin/public-places.js"
 ];
 
 for(const source of TOKENISED){

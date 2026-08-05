@@ -7,6 +7,7 @@ import {CLUB_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
 import PlaceLayout from "../../components/PlaceLayout";
 import FavouriteButton from "../../components/FavouriteButton";
+import EntityFollowButton from "../../components/EntityFollowButton";
 
 // Packet 5b, and the largest of the five conversions. A club is a place that
 // recurs, so on top of the shared page it carries a membership state machine
@@ -204,12 +205,22 @@ export default function ActivityClubProfile(){
         average,
         count:reviews.length,
         favourite:(
-          <FavouriteButton
-            targetType="activity_club"
-            targetId={club.id}
-            targetName={club.name}
-            targetImageUrl={club.image_url}
-          />
+          // Save is private and for you; Follow is how its updates reach your
+          // feed. Two different promises, so two controls rather than one.
+          <View style={styles.placeActions}>
+            <FavouriteButton
+              targetType="activity_club"
+              targetId={club.id}
+              targetName={club.name}
+              targetImageUrl={club.image_url}
+            />
+            <EntityFollowButton
+              targetType="activity_club"
+              targetId={club.id}
+              targetName={club.name}
+              compact
+            />
+          </View>
         )
       } : null}
       beforeReviews={club ? (
@@ -363,6 +374,7 @@ export default function ActivityClubProfile(){
 }
 
 const styles=StyleSheet.create({
+  placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
   stack:{marginTop:24,gap:11},
   sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginTop:13,letterSpacing:-0.3},
   empty:{color:INK.inkSoft,lineHeight:20},

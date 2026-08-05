@@ -62,6 +62,9 @@ jobs:
       - name: Verify review reputation and endorsement wording
         run: node scripts/verify-review-reputation.cjs
 
+      - name: Verify canonical places, follows and Moment visibility
+        run: npm run verify:places
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

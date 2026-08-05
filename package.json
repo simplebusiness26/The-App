@@ -18,7 +18,8 @@
     "verify:place": "node scripts/verify-place-layout.cjs",
     "verify:cards": "node scripts/verify-map-cards.cjs",
     "verify:discover": "node scripts/verify-discover.cjs",
-    "verify:reputation": "node scripts/verify-review-reputation.cjs"
+    "verify:reputation": "node scripts/verify-review-reputation.cjs",
+    "verify:places": "node scripts/verify-place-follows.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",

@@ -8,6 +8,7 @@ import {nearestFirst} from "../../utils/geo";
 import PlaceLayout from "../../components/PlaceLayout";
 import ClaimButton from "../../components/ClaimButton";
 import FavouriteButton from "../../components/FavouriteButton";
+import EntityFollowButton from "../../components/EntityFollowButton";
 
 // Packet 5a. Everything this screen and app/property/[id].js once duplicated --
 // hero, title, verification, type, rating, essential info, reviews, photo
@@ -118,12 +119,22 @@ export default function BusinessPage(){
         average,
         count:reviews.length,
         favourite:(
-          <FavouriteButton
-            targetType="business"
-            targetId={business.id}
-            targetName={business.name}
-            targetImageUrl={photos[0] || null}
-          />
+          // Save is private and for you; Follow is how its updates reach your
+          // feed. Two different promises, so two controls rather than one.
+          <View style={styles.placeActions}>
+            <FavouriteButton
+              targetType="business"
+              targetId={business.id}
+              targetName={business.name}
+              targetImageUrl={photos[0] || null}
+            />
+            <EntityFollowButton
+              targetType="business"
+              targetId={business.id}
+              targetName={business.name}
+              compact
+            />
+          </View>
         )
       } : null}
       ownerAction={isOwner ? (
@@ -173,6 +184,7 @@ export default function BusinessPage(){
 
 
 const styles=StyleSheet.create({
+  placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
   editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
   editText:{color:INK.ink,fontWeight:"800"},
   actionRow:{flexDirection:"row",gap:10,marginBottom:10},

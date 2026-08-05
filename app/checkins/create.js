@@ -19,6 +19,7 @@ export default function CreateCheckin(){
   const [user,setUser]=useState(null);
   const [placeType,setPlaceType]=useState("park");
   const [targetId,setTargetId]=useState(null);
+  const [publicPlaceId,setPublicPlaceId]=useState(null);
   const [placeName,setPlaceName]=useState("");
   const [area,setArea]=useState("");
   const [latitude,setLatitude]=useState(null);
@@ -47,11 +48,15 @@ export default function CreateCheckin(){
     setUser(currentUser);setArea(profile.area || "");setLoading(false);
   }
 
+  // Packet 8e: a park is a row now, not a spelling. Choosing one from this list
+  // attaches the canonical id, so twelve check-ins at one park stop arriving as
+  // twelve different places. Typing a name still works exactly as before -- the
+  // free-text fields are untouched and the reference stays null.
   async function loadPlaces(type){
-    setTargetId(null);setQuery("");setPlaces([]);
-    if(type==="park"||type==="public_place") return;
+    setTargetId(null);setPublicPlaceId(null);setQuery("");setPlaces([]);
     setLoadingPlaces(true);
     let request;
+    if(type==="park"||type==="public_place") request=supabase.from("public_places").select("id,name,place_type,location_description,latitude,longitude,status").eq("status","published").order("name").limit(80);
     if(type==="business") request=supabase.from("businesses").select("id,name,address,latitude,longitude").order("name").limit(80);
     if(type==="activity_club") request=supabase.from("activity_clubs").select("id,name,location,latitude,longitude,status").in("status",["open","full"]).order("name").limit(80);
     if(type==="event") request=supabase.from("events").select("id,name,location,latitude,longitude,status").eq("status","published").order("starts_at").limit(80);
@@ -60,14 +65,24 @@ export default function CreateCheckin(){
     setLoadingPlaces(false);
   }
 
+  const isPublicPlace=["park","public_place"].includes(placeType);
+
   const filtered=useMemo(()=>{
     const term=query.trim().toLowerCase();
     if(!term) return places;
-    return places.filter(item=>`${item.name} ${item.address||item.location||""}`.toLowerCase().includes(term));
+    return places.filter(item=>`${item.name} ${item.address||item.location||item.location_description||""}`.toLowerCase().includes(term));
   },[places,query]);
 
   function selectPlace(place){
-    setTargetId(place.id);
+    // A canonical public place carries public_place_id; a listing carries
+    // target_id. The RPC refuses the wrong one for the place type.
+    if(isPublicPlace){
+      setPublicPlaceId(place.id);
+      setTargetId(null);
+    }else{
+      setTargetId(place.id);
+      setPublicPlaceId(null);
+    }
     setPlaceName(place.name);
     if(place.latitude!=null&&place.longitude!=null){
       setLatitude(Number(Number(place.latitude).toFixed(2)));
@@ -96,7 +111,7 @@ export default function CreateCheckin(){
     const {error:checkinError}=await supabase.rpc("start_live_checkin",{
       p_place_type:placeType,p_target_id:targetId,p_place_name:placeName.trim(),p_area:area.trim(),
       p_latitude:latitude,p_longitude:longitude,p_activity:selectedActivity,p_message:message.trim(),
-      p_visibility:visibility,p_minutes:minutes
+      p_visibility:visibility,p_minutes:minutes,p_public_place_id:publicPlaceId
     });
     setWorking(false);
     if(checkinError){setError(checkinError.message);return;}
@@ -114,9 +129,9 @@ export default function CreateCheckin(){
 
       <Text style={styles.label}>Place type</Text><View style={styles.wrap}>{TYPES.map(type=><Pressable key={type.key} style={[styles.chip,placeType===type.key&&styles.chipActive]} onPress={()=>setPlaceType(type.key)}><Text style={[styles.chipText,placeType===type.key&&styles.chipTextActive]}>{type.label}</Text></Pressable>)}</View>
 
-      {!["park","public_place"].includes(placeType)&&<View style={styles.placePicker}><TextInput value={query} onChangeText={setQuery} placeholder="Search public places" placeholderTextColor="#74747d" style={styles.input}/>{loadingPlaces&&<ActivityIndicator color="#bca8ff" style={{margin:18}}/>}{!loadingPlaces&&filtered.slice(0,25).map(place=><Pressable key={place.id} style={[styles.placeRow,targetId===place.id&&styles.placeRowActive]} onPress={()=>selectPlace(place)}><View style={styles.placeText}><Text style={styles.placeName}>{place.name}</Text><Text style={styles.placeAddress}>{place.address||place.location||"Public location"}</Text></View><Text style={styles.check}>{targetId===place.id?"✓":""}</Text></Pressable>)}</View>}
+      <View style={styles.placePicker}><TextInput value={query} onChangeText={setQuery} placeholder={isPublicPlace?"Search parks and public places":"Search public places"} placeholderTextColor="#74747d" style={styles.input}/>{loadingPlaces&&<ActivityIndicator color="#bca8ff" style={{margin:18}}/>}{!loadingPlaces&&filtered.slice(0,25).map(place=>{const selected=isPublicPlace?publicPlaceId===place.id:targetId===place.id;return <Pressable key={place.id} style={[styles.placeRow,selected&&styles.placeRowActive]} onPress={()=>selectPlace(place)}><View style={styles.placeText}><Text style={styles.placeName}>{place.name}</Text><Text style={styles.placeAddress}>{place.address||place.location||place.location_description||"Public location"}</Text></View><Text style={styles.check}>{selected?"✓":""}</Text></Pressable>;})}{!loadingPlaces&&isPublicPlace&&!filtered.length&&<Text style={styles.placeAddress}>No matching place yet. Type the name below and check in anyway.</Text>}</View>
 
-      <Text style={styles.label}>Public place name</Text><TextInput value={placeName} onChangeText={value=>{setPlaceName(value);setTargetId(null);}} maxLength={120} placeholder="Alexandra Park" placeholderTextColor="#74747d" style={styles.input}/>
+      <Text style={styles.label}>Public place name</Text><TextInput value={placeName} onChangeText={value=>{setPlaceName(value);setTargetId(null);setPublicPlaceId(null);}} maxLength={120} placeholder="Alexandra Park" placeholderTextColor="#74747d" style={styles.input}/>
       <Text style={styles.label}>Broad area</Text><TextInput value={area} onChangeText={setArea} maxLength={80} placeholder="Hastings or Central Hastings" placeholderTextColor="#74747d" style={styles.input}/>
       <Text style={styles.areaHelp}>Use a town or neighbourhood, not a street or private address.</Text>
       <Pressable style={styles.locationButton} disabled={locating} onPress={useLocation}>{locating?<ActivityIndicator color="#d9ceff"/>:<Text style={styles.locationText}>{latitude!=null?"✓ Approximate location added":"Add approximate location"}</Text>}</Pressable>

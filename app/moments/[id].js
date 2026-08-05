@@ -19,6 +19,7 @@ function listingRoute(moment){
   if(moment.target_type==="property") return `/property/${moment.target_id}`;
   if(moment.target_type==="activity_club") return `/activity-clubs/${moment.target_id}`;
   if(moment.target_type==="event") return `/events/${moment.target_id}`;
+  if(moment.target_type==="public_place") return `/places/${moment.target_id}`;
   return null;
 }
 
@@ -162,9 +163,23 @@ export default function MomentDetail(){
           : <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text></View>
         }
         <View style={styles.profileText}>
-          <Text style={styles.name}>{profile?.full_name || "Explorer"}</Text>
-          <Text style={styles.date}>{dateLabel(moment.created_at)}</Text>
+          {/* An official Moment says the listing's name first and the person
+              who published it second. user_id is still the author -- the
+              profile link below goes to them, not to the listing. */}
+          <Text style={styles.name}>
+            {moment.actor_type && moment.actor_type!=="explorer"
+              ? moment.target_name || profile?.full_name || "Explorer"
+              : profile?.full_name || "Explorer"}
+          </Text>
+          <Text style={styles.date}>
+            {moment.actor_type && moment.actor_type!=="explorer"
+              ? `Official update · ${dateLabel(moment.created_at)}`
+              : dateLabel(moment.created_at)}
+          </Text>
         </View>
+        {moment.visibility==="friends" && (
+          <Text style={styles.audienceBadge} accessibilityLabel="Visible to friends only">FRIENDS</Text>
+        )}
       </Pressable>
 
       <View style={styles.card}>
@@ -247,6 +262,7 @@ const styles=StyleSheet.create({
   profileText:{marginLeft:11},
   name:{color:"white",fontSize:16,fontWeight:"900"},
   date:{color:"#878790",fontSize:11,marginTop:3},
+  audienceBadge:{color:"#d9ceff",backgroundColor:"#29233d",borderColor:"#554777",borderWidth:1,borderRadius:99,overflow:"hidden",paddingHorizontal:9,paddingVertical:4,fontSize:9,fontWeight:"900",letterSpacing:1},
   card:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:17,padding:12},
   media:{width:"100%",height:420,borderRadius:13,backgroundColor:"#303036"},
   videoWrap:{height:420,borderRadius:13,overflow:"hidden",backgroundColor:"#0c0c0e",alignItems:"center",justifyContent:"center"},

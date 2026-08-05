@@ -1,21 +1,47 @@
 import React,{useEffect,useMemo,useState} from "react";
 import {ActivityIndicator,Image,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
-import {router} from "expo-router";
+import {router,useLocalSearchParams} from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import MomentMediaPreview from "../../components/MomentMediaPreview";
 import {prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
+import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY,roundCoordinate} from "../../utils/places";
+
+// Packet 8e added three things to this screen, each with a boundary in the
+// database rather than only here:
+//
+//   Audience. A Moment is now for friends -- mutual follows -- or for everyone,
+//   and Friends is what the screen opens on. RULES.md: a visibility flag
+//   defaults to the closed setting.
+//
+//   Location. An attached Moment takes the place's own coordinates. A
+//   standalone one takes the device's only after an explicit tap, rounded to
+//   three decimal places before it leaves here and rounded again on insert.
+//
+//   Identity. A manager can post as the listing they manage, which is a
+//   different act from an Explorer tagging that listing. The database checks
+//   owner_id/manager_id; this screen only offers the choice.
 
 const PLACE_TYPES={
-  business:{label:"Business",table:"businesses",select:"id,name,image,photos",image:row=>row.image || row.photos?.[0] || null},
-  property:{label:"Stay",table:"properties",select:"id,name,photos",image:row=>row.photos?.[0] || null},
-  activity_club:{label:"Club",table:"activity_clubs",select:"id,name,image_url,status",image:row=>row.image_url || null,statuses:["open","full"]},
-  event:{label:"Event",table:"events",select:"id,name,image_url,status",image:row=>row.image_url || null,status:"published"}
+  business:{label:"Business",table:"businesses",select:"id,name,image,photos,owner_id",image:row=>row.image || row.photos?.[0] || null,manager:row=>row.owner_id},
+  property:{label:"Stay",table:"properties",select:"id,name,photos,owner_id",image:row=>row.photos?.[0] || null,manager:row=>row.owner_id},
+  activity_club:{label:"Club",table:"activity_clubs",select:"id,name,image_url,status,manager_id",image:row=>row.image_url || null,statuses:["open","full"],manager:row=>row.manager_id},
+  event:{label:"Event",table:"events",select:"id,name,image_url,status,manager_id",image:row=>row.image_url || null,status:"published",manager:row=>row.manager_id},
+  // A public place has no manager and never will until public places have a
+  // permission model. Attaching a Moment to a park is fine; speaking as the
+  // park is not, so `manager` returns null and the official option cannot
+  // appear for one.
+  public_place:{label:"Public place",table:"public_places",select:"id,name,image_url,status",image:row=>row.image_url || null,status:"published",manager:()=>null}
 };
 
 export default function CreateMoment(){
   const {showFeedback}=useFeedback();
+  const params=useLocalSearchParams();
+  const presetType=Array.isArray(params.target_type) ? params.target_type[0] : params.target_type;
+  const presetId=Array.isArray(params.target_id) ? params.target_id[0] : params.target_id;
+
   const [user,setUser]=useState(null);
   const [asset,setAsset]=useState(null);
   const [mediaType,setMediaType]=useState(null);
@@ -24,6 +50,10 @@ export default function CreateMoment(){
   const [places,setPlaces]=useState([]);
   const [placeQuery,setPlaceQuery]=useState("");
   const [selectedPlace,setSelectedPlace]=useState(null);
+  const [visibility,setVisibility]=useState(DEFAULT_MOMENT_VISIBILITY);
+  const [postOfficially,setPostOfficially]=useState(false);
+  const [coordinates,setCoordinates]=useState(null);
+  const [locating,setLocating]=useState(false);
   const [loading,setLoading]=useState(true);
   const [loadingPlaces,setLoadingPlaces]=useState(false);
   const [publishing,setPublishing]=useState(false);
@@ -34,6 +64,24 @@ export default function CreateMoment(){
   useEffect(()=>{
     return()=>releaseSocialAsset(asset);
   },[asset]);
+
+  // Opened from a place page with the place already chosen.
+  useEffect(()=>{
+    if(user && presetType && presetId && PLACE_TYPES[presetType] && !placeType){
+      choosePlaceType(presetType,presetId);
+    }
+  },[user,presetType,presetId]);
+
+  // Only the Explorer who manages the selected listing may speak as it, and
+  // only a listing that has a manager can be spoken as at all.
+  const canPostOfficially=!!user
+    && !!selectedPlace
+    && !!placeType
+    && PLACE_TYPES[placeType].manager(selectedPlace)===user.id;
+
+  useEffect(()=>{
+    if(!canPostOfficially && postOfficially) setPostOfficially(false);
+  },[canPostOfficially,postOfficially]);
 
   async function loadUser(){
     const {data:{user:currentUser}}=await supabase.auth.getUser();
@@ -56,6 +104,30 @@ export default function CreateMoment(){
 
     setUser(currentUser);
     setLoading(false);
+  }
+
+  // Never automatic. A Moment carries a location because somebody pressed a
+  // button that says so, and a refusal is a refusal -- the Explorer's own area
+  // is used instead by the database, with no coordinates at all.
+  async function addLocation(){
+    setLocating(true);
+    setError("");
+
+    try{
+      const permission=await Location.requestForegroundPermissionsAsync();
+      if(permission.status!=="granted") throw new Error("Location permission was not granted, so this Moment will carry your area only.");
+
+      const position=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});
+      setCoordinates({
+        latitude:roundCoordinate(position.coords.latitude),
+        longitude:roundCoordinate(position.coords.longitude)
+      });
+    }catch(locationError){
+      setCoordinates(null);
+      setError(locationError.message || "Your location could not be added.");
+    }
+
+    setLocating(false);
   }
 
   async function requestPermission(){
@@ -147,7 +219,7 @@ export default function CreateMoment(){
     }
   }
 
-  async function choosePlaceType(type){
+  async function choosePlaceType(type,preselectId=null){
     setPlaceType(type);
     setSelectedPlace(null);
     setPlaceQuery("");
@@ -169,7 +241,9 @@ export default function CreateMoment(){
       setError("Places could not be loaded.");
       setPlaces([]);
     }else{
-      setPlaces((data || []).map(row=>({...row,displayImage:config.image(row)})));
+      const rows=(data || []).map(row=>({...row,displayImage:config.image(row)}));
+      setPlaces(rows);
+      if(preselectId) setSelectedPlace(rows.find((row)=>row.id===preselectId) || null);
     }
     setLoadingPlaces(false);
   }
@@ -217,6 +291,17 @@ export default function CreateMoment(){
         throw new Error("The selected video must be 30 seconds or shorter.");
       }
 
+      // An official Moment is public: "friends" is a relationship between
+      // people, and a business does not have any. The database refuses the
+      // combination too -- this keeps the screen from sending it.
+      const official=postOfficially && canPostOfficially;
+      const audience=official ? "public" : visibility;
+
+      // Coordinates are sent only for a standalone Moment. An attached one is
+      // snapshotted from the place itself on insert, so sending the device's
+      // position with it would be a second, disagreeing answer.
+      const deviceLocation=!selectedPlace && coordinates ? coordinates : {};
+
       const {data:moment,error:insertError}=await supabase
         .from("explorer_moments")
         .insert({
@@ -230,6 +315,10 @@ export default function CreateMoment(){
           target_id:selectedPlace?.id || null,
           target_name:selectedPlace?.name || null,
           target_image_url:selectedPlace?.displayImage || null,
+          visibility:audience,
+          actor_type:official ? placeType : "explorer",
+          actor_id:official ? selectedPlace.id : user.id,
+          ...deviceLocation,
           status:"published"
         })
         .select("id")
@@ -237,7 +326,15 @@ export default function CreateMoment(){
 
       if(insertError) throw new Error(insertError.message);
 
-      showFeedback("Your followers can now see this Moment.","success","Moment published");
+      showFeedback(
+        official
+          ? `Posted as ${selectedPlace.name}. It will appear for the Explorers who follow it.`
+          : audience==="friends"
+            ? "Only Explorers you follow who follow you back can see this Moment."
+            : "Any Explorer can see this Moment.",
+        "success",
+        "Moment published"
+      );
       router.replace(`/moments/${moment.id}`);
     }catch(publishError){
       console.error(publishError);
@@ -255,7 +352,7 @@ export default function CreateMoment(){
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.eyebrow}>SHARE YOUR DAY</Text>
       <Text style={styles.title}>New Moment</Text>
-      <Text style={styles.subtitle}>Post a photo or short video for the Explorers who follow you.</Text>
+      <Text style={styles.subtitle}>Post a photo or short video. You choose who can see it before you publish.</Text>
 
       {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
 
@@ -319,6 +416,76 @@ export default function CreateMoment(){
         </View>
       )}
 
+      {canPostOfficially && (
+        <>
+          <Text style={styles.label}>Post as</Text>
+          <View style={styles.audienceRow}>
+            <Pressable
+              style={[styles.audience,!postOfficially && styles.audienceActive]}
+              accessibilityRole="button"
+              accessibilityLabel="Post as yourself"
+              onPress={()=>setPostOfficially(false)}
+            >
+              <Text style={styles.audienceTitle}>Yourself</Text>
+              <Text style={styles.audienceHint}>An Explorer Moment at this place</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.audience,postOfficially && styles.audienceActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`Post officially as ${selectedPlace.name}`}
+              onPress={()=>setPostOfficially(true)}
+            >
+              <Text style={styles.audienceTitle}>{selectedPlace.name}</Text>
+              <Text style={styles.audienceHint}>An official update, seen by its followers</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
+
+      <Text style={styles.label}>Who can see this</Text>
+      {postOfficially ? (
+        <Text style={styles.audienceNote}>
+          Official Moments are public. Everyone who follows {selectedPlace.name} will see it.
+        </Text>
+      ) : (
+        <View style={styles.audienceRow}>
+          {MOMENT_VISIBILITY.map((option)=>(
+            <Pressable
+              key={option.key}
+              style={[styles.audience,visibility===option.key && styles.audienceActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`${option.label}: ${option.hint}`}
+              onPress={()=>setVisibility(option.key)}
+            >
+              <Text style={styles.audienceTitle}>{option.label}</Text>
+              <Text style={styles.audienceHint}>{option.hint}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {!selectedPlace && (
+        <>
+          <Text style={styles.label}>Location <Text style={styles.optional}>(optional)</Text></Text>
+          <Pressable
+            style={styles.locationButton}
+            disabled={locating}
+            accessibilityRole="button"
+            accessibilityLabel={coordinates ? "Remove the location from this Moment" : "Add your approximate location"}
+            onPress={coordinates ? ()=>setCoordinates(null) : addLocation}
+          >
+            {locating
+              ? <ActivityIndicator color="#d9ceff"/>
+              : <Text style={styles.locationText}>
+                  {coordinates ? "✓ Approximate location added — tap to remove" : "Add my approximate location"}
+                </Text>}
+          </Pressable>
+          <Text style={styles.locationHint}>
+            Rounded to roughly 100 metres before it is sent. Skip it and this Moment carries your area only.
+          </Text>
+        </>
+      )}
+
       <Pressable style={[styles.publishButton,publishing && styles.disabled]} disabled={publishing} onPress={publish}>
         {publishing ? <ActivityIndicator color="white"/> : <Text style={styles.publishText}>Publish Moment</Text>}
       </Pressable>
@@ -345,6 +512,15 @@ const styles=StyleSheet.create({
   mediaButtons:{flexDirection:"row",gap:10,marginTop:11},
   mediaButton:{flex:1,backgroundColor:"#302655",borderColor:"#5d4b91",borderWidth:1,borderRadius:11,paddingVertical:12,alignItems:"center"},
   mediaButtonText:{color:"#e2d9ff",fontWeight:"900"},
+  audienceRow:{flexDirection:"row",gap:9},
+  audience:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:12,padding:13},
+  audienceActive:{backgroundColor:"#2d2152",borderColor:"#644be0"},
+  audienceTitle:{color:"white",fontWeight:"900"},
+  audienceHint:{color:"#85858e",fontSize:10,lineHeight:15,marginTop:3},
+  audienceNote:{color:"#a9a9b2",fontSize:12,lineHeight:18},
+  locationButton:{backgroundColor:"#29233d",borderColor:"#554777",borderWidth:1,borderRadius:12,padding:13,alignItems:"center"},
+  locationText:{color:"#d9ceff",fontWeight:"900"},
+  locationHint:{color:"#85858e",fontSize:11,lineHeight:16,marginTop:6},
   label:{color:"white",fontSize:15,fontWeight:"900",marginTop:20,marginBottom:8},
   optional:{color:"#85858e",fontWeight:"700"},
   captionInput:{minHeight:120,backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,color:"white",fontSize:15,lineHeight:22,padding:14},

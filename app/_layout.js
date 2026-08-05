@@ -84,6 +84,9 @@ export default function Layout(){
           <Stack.Screen name="guest/[id]"/>
           <Stack.Screen name="place"/>
 
+          <Stack.Screen name="places/index"/>
+          <Stack.Screen name="places/[id]"/>
+
           <Stack.Screen name="activity-clubs/index"/>
           <Stack.Screen name="activity-clubs/[id]"/>
           <Stack.Screen name="activity-clubs/add"/>
@@ -99,6 +102,7 @@ export default function Layout(){
 
           <Stack.Screen name="admin/claims"/>
           <Stack.Screen name="admin/dashboard"/>
+          <Stack.Screen name="admin/public-places"/>
         </Stack>
             </View>
 

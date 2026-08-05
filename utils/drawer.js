@@ -31,6 +31,9 @@ export const SECTIONS=[
       {label:"Live nearby",route:"/live",gate:GATES.SIGNED_IN},
       {label:"Events",route:"/events",gate:GATES.ALWAYS},
       {label:"Activity clubs",route:"/activity-clubs",gate:GATES.ALWAYS},
+      // Packet 8e. Parks, beaches and viewpoints are canonical rows now, so
+      // they have somewhere to be reached from.
+      {label:"Public places",route:"/places",gate:GATES.ALWAYS},
       {label:"Link-ups",route:"/linkups",gate:GATES.SIGNED_IN}
     ]
   },
@@ -84,6 +87,7 @@ export const SECTIONS=[
       {label:"Settings",route:"/settings",gate:GATES.SIGNED_IN},
       {label:"Blocked Explorers",route:"/safety/blocked",gate:GATES.SIGNED_IN},
       {label:"Review claims",route:"/admin/claims",gate:GATES.ADMIN},
+      {label:"Manage public places",route:"/admin/public-places",gate:GATES.ADMIN},
       {label:"Log in",route:"/auth/login",gate:GATES.SIGNED_OUT},
       {label:"Create account",route:"/auth/signup",gate:GATES.SIGNED_OUT},
       // The only row that is not a destination.

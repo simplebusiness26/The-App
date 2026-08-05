@@ -38,12 +38,18 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 8c — Review reputation
-**Last session:** 8c built end-to-end (self-endorsement block, EndorseButton,
-profile figures, migration applied and verified live). Before that: a
-detailed owner spec for Moments/Memories/friends/feed ranking/trending
-arrived, and a revised 8d/8e/8f design is owed before any of that is coded.
-**Branch:** `main2.0-Dev` (branched from `main2.0`)
+**Last completed packet:** 8e — Place, location and follow foundation
+**Last session:** 8e built end-to-end in code: four migrations, three new
+screens, entity and location follows, Moment visibility/location/actor, a
+132-check gate and 17 tests. **The migrations were deliberately not applied.**
+Nothing was written to `yzpthslwsvesgndzdqai` — the owner asked for committed
+code this session and a separate approval for the deployment. Until they are
+applied, every 8e screen queries tables that do not exist yet.
+**Branch:** `feature/app-alignment-packet-8e`, from `main2.0-Dev` @ `32a500e`
+**Packet order from here:** 8d → 8b → 8f1 → 8f2. The owner split the ledger's
+old 8f into **8f1** (shared activity read model + living-map integration) and
+**8f2** (feed ranking and trending), and put 8f1 first so the map gets the
+activity before the ranking does.
 **Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
 palette. Neither is a coding task. Both are yours. The file is now
 committed at the repo root; it was missing entirely until 2026-08-04, so
@@ -113,9 +119,10 @@ Nothing else should change.
 | 8a | Profile: three figures and tabs | not started | | |
 | 8b | Profile: My Map, sourced from Memories | not started — depends on 8d | | |
 | 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
-| 8d | Memories (map-attached, visibility-tiered) | design owed, not started | | |
-| 8e | Follow businesses/properties/clubs/events + canonical locations | design owed, not started | | |
-| 8f | Feed ranking (friendship, follows, trending, source labels) | design owed, not started | | |
+| 8d | Memories (map-attached, visibility-tiered) | designed, not started | | |
+| 8e | Canonical places and areas, entity/location follows, Moment visibility | done in code, **migrations not applied** | | 132-check gate; 17 new tests; 334 total; 10 red-then-green demonstrations; every gate and the web export run. **Nothing verified against a database** |
+| 8f1 | Shared activity read model + living-map integration | designed, not started | | |
+| 8f2 | Feed ranking and trending (source reasons, place activity) | designed, not started | | |
 | 9a | Scoring engine | not started | | |
 | 9b | Leaderboard UI | not started | | |
 | 10 | Manager Hub | not started | | |
@@ -148,6 +155,138 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-05 — Packet 8e — built and committed, not deployed
+
+**Did:** Built the place, location and follow foundation. Four migrations
+written, three screens added, four place pages given a Follow control, and the
+Moment gained a location, an audience and an identity.
+
+**The session started in the wrong repository state, and that is worth
+recording.** The container's clone was single-branch — `main` only — so
+`CLAUDE.md`, `RULES.md`, this ledger and `docs/REDESIGN-BRIEF.md` were all
+genuinely absent from the checkout, and I reported that they did not exist
+anywhere. The owner corrected it: the work lives on `main2.0-Dev`, and a
+`git fetch origin --prune` brought back twelve branches. **A missing file in a
+shallow or single-branch clone looks exactly like a file that was never
+written.** The first 8e plan was drafted against the old `main` and was wrong
+about the test harness, the design tokens, the account model and half the
+screens; it was thrown away rather than adapted.
+
+**Files created:**
+- `supabase/migrations/20260805120000_geo_areas_and_public_places.sql` —
+  `geo_areas`, `geo_area_aliases`, `public_places`,
+  `guestbook_private.normalise_area_text()`, hierarchy validation, RLS, grants,
+  and the four-area launch seed.
+- `supabase/migrations/20260805120100_area_and_place_references.sql` —
+  `area_id` on seven tables, `live_checkins.public_place_id`, the exact-match
+  backfill, `get_unmatched_area_report()`,
+  `get_unmatched_public_place_report()`, and `start_live_checkin` gaining an
+  eleventh, defaulted argument.
+- `supabase/migrations/20260805120200_entity_and_location_follows.sql` —
+  `explorer_entity_follows`, `explorer_location_follows`, validation and rate
+  limits, own-rows-only RLS, and two count RPCs.
+- `supabase/migrations/20260805120300_moment_place_visibility_and_actor.sql` —
+  six columns on `explorer_moments`, `are_friends()`, the snapshot trigger, the
+  replaced read policy, and rebuilt `validate_social_target()`,
+  `social_notification_trigger()` and `get_explorer_social_feed()`.
+- `utils/places.js`, `components/EntityFollowButton.js`, `app/places/index.js`,
+  `app/places/[id].js`, `app/admin/public-places.js`,
+  `scripts/verify-place-follows.cjs` (132 checks),
+  `test/place-follows.test.js` (17 tests),
+  `docs/PLACE_FOLLOW_TEST_PLAN.md`.
+
+**Files changed:** `app/moments/create.js` (audience, official identity,
+explicit location, public-place attachment), `app/moments/[id].js` (official
+byline, FRIENDS badge, `/places/` deep link), `app/checkins/create.js`
+(canonical place picker), the four place pages (Follow beside Save),
+`app/_layout.js`, `utils/drawer.js`, `test/navigation.test.js` (the three new
+routes named in `ADDED`), `scripts/verify-marker-assignment.cjs` (the new
+screens join the tokenised list), `package.json`,
+`.github/workflows/quality-checks.yml`.
+
+**The three functions were rebuilt from `pg_get_functiondef` on the live
+project, not from the migrations that created them** — the same discipline 8c
+recorded. It mattered again: `get_explorer_social_feed` is `SECURITY INVOKER`
+since `20260804013508`, not the definer the original file declared, and
+`start_live_checkin` had gained listing-name lookups and two-decimal rounding
+that the 20260802211600 text knows nothing about. Copying either file's source
+would have reverted work silently. 8c's self-endorsement block and the
+activity-club `status in ('open','full')` widening both survive, and the gate
+fails if either disappears.
+
+**Ten checks demonstrated failing before being kept:**
+
+| Broke | Message |
+|---|---|
+| left `explorer_moments_public_read` in place | `policies OR together, so every friends-only Moment would stay publicly readable` |
+| dropped the friends filter from the feed RPC | `RLS is the first lock and this is the second` |
+| stopped checking the official poster manages the listing | `missing required contract "You do not manage this listing"` |
+| reverted 8c's self-endorsement block while rebuilding the trigger | `missing required contract "You cannot mark your own review as useful"` |
+| seeded `preston park` as an alias for Brighton | `it must stay unmatched for a person to decide` |
+| opened every follow row to any signed-in Explorer | `a follow list is a movement history, only the follower may read theirs` |
+| defaulted a Moment to public | `missing required contract DEFAULT_MOMENT_VISIBILITY="friends"` |
+| offered official posting to anyone | `without comparing the viewer to the listing's manager` |
+| removed the row-changed check from the admin save | `an RLS refusal returns no error, only zero rows` |
+| let a typed check-in name keep a canonical id | `the id and the text could disagree` |
+
+**One of those checks was weak and was rewritten.** The admin row-changed check
+matched `if(!data || !data.length)` anywhere in the file — and the file has two
+write paths, so deleting the check from `save()` left the one in `hide()` and
+the gate stayed green. It now counts occurrences. **That is the sixth time in
+this project a check has looked convincing and proved nothing**, and again it
+was found by trying to break it rather than by reading it.
+
+**Ran:** `npm run test:ci` → **334 passed** (317 before, +17); `verify:places`
+132; markers 296; taxonomy 143; place layout 96; cards 16; discover 30;
+reputation 32; social 92; live 152 + 39; linkup nav 20; title-only 28; seed 3;
+screen gates 72; `npx expo-doctor` 20/20; `npm audit --audit-level=moderate` 0
+vulnerabilities; `npx expo export --platform web` succeeded, with
+`/linkups/create`, the public places screen and `explorer_entity_follows` all
+confirmed present in the bundle.
+
+**Stopped because:** finished, to the limit of what can be finished without a
+database. One packet per session.
+
+**Exact next step:** apply the four migrations, in filename order, to
+`yzpthslwsvesgndzdqai`, then work `docs/PLACE_FOLLOW_TEST_PLAN.md` — section 4
+first, because that is the friends-only privacy boundary and it is the one
+thing here that would be expensive to get wrong. Only after that is 8d
+(Memories) available.
+
+**Unverified — and this list is longer than usual, on purpose:**
+- **No migration has been applied and no SQL in this packet has ever run.**
+  Every statement is verified by reading. A syntax error, a constraint that
+  rejects existing rows, or a trigger that fires in the wrong order would all
+  show up on first apply, not here. There is no local Postgres in this
+  environment and the live project was explicitly out of bounds.
+- The backfill is expected to match `Hastings`, `Brighton`, `St Leonards` and
+  `Hastings, East Sussex` against today's rows, and to leave the other eight
+  values null. **That expectation comes from a read-only query of the live
+  data, not from running the backfill.**
+- `start_live_checkin` was dropped and recreated with an eleventh defaulted
+  argument rather than added as an overload, because two candidates differing
+  only by a default is how PostgREST ends up unable to choose (PGRST203). An
+  older client sending the original ten arguments should still resolve. **Not
+  proven against a running PostgREST.**
+- Nobody has opened `/places`, `/places/[id]` or `/admin/public-places`. Eleven
+  packets in, the screens are still `Verified: renders. Unverified: behaves`.
+- The Moment audience default is asserted as a constant and as a rendered
+  label. **No test drives a publish end to end**, because that needs a media
+  upload; the audience actually written to the row is covered by the gate
+  reading the insert payload, which is a source check, not a behaviour one.
+- `businesses.area_id` and `properties.area_id` exist and are empty. Until
+  something sets them, a Moment attached to a business snapshots a null area,
+  and location follows will not surface business content. That is deliberate —
+  parsing a town out of a postal address is guessing — but it is a real gap and
+  an admin screen for it is not in this packet.
+- The `geo_area_aliases` table has an admin write policy and **no admin screen**.
+  New aliases are a SQL statement today.
+- Brighton is seeded with no parent area. It is a unitary authority and whether
+  it sits under East Sussex is a real question that was left to the owner
+  rather than settled in a migration.
 
 ---
 

@@ -1,5 +1,5 @@
 import React,{useCallback,useState} from "react";
-import {Text,Pressable,StyleSheet,Linking} from "react-native";
+import {Text,Pressable,StyleSheet,Linking,View} from "react-native";
 import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {PROPERTY_TYPE_LABEL} from "../../utils/markers";
@@ -8,6 +8,7 @@ import {nearestFirst} from "../../utils/geo";
 import PlaceLayout from "../../components/PlaceLayout";
 import ClaimButton from "../../components/ClaimButton";
 import FavouriteButton from "../../components/FavouriteButton";
+import EntityFollowButton from "../../components/EntityFollowButton";
 
 // Packet 5a. The twin of app/business/[id].js, and the reason the layout was
 // worth extracting: the two screens were 236 and 240 lines of nearly identical
@@ -105,12 +106,22 @@ export default function PropertyDetails(){
         average,
         count:reviews.length,
         favourite:(
-          <FavouriteButton
-            targetType="property"
-            targetId={property.id}
-            targetName={property.name}
-            targetImageUrl={photos[0] || null}
-          />
+          // Save is private and for you; Follow is how its updates reach your
+          // feed. Two different promises, so two controls rather than one.
+          <View style={styles.placeActions}>
+            <FavouriteButton
+              targetType="property"
+              targetId={property.id}
+              targetName={property.name}
+              targetImageUrl={photos[0] || null}
+            />
+            <EntityFollowButton
+              targetType="property"
+              targetId={property.id}
+              targetName={property.name}
+              compact
+            />
+          </View>
         )
       } : null}
       ownerAction={isOwner ? (
@@ -173,6 +184,7 @@ export default function PropertyDetails(){
 
 
 const styles=StyleSheet.create({
+  placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
   editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
   editText:{color:INK.ink,fontWeight:"800"},
   primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginBottom:10},

@@ -7,6 +7,7 @@ import {EVENT_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
 import PlaceLayout from "../../components/PlaceLayout";
 import FavouriteButton from "../../components/FavouriteButton";
+import EntityFollowButton from "../../components/EntityFollowButton";
 
 // Packet 5b. An event is a dated thing, so it is a place page with a clock on
 // it: the same hero, rating, reviews and photo viewer as a business, plus a
@@ -127,12 +128,22 @@ export default function EventDetails(){
         average,
         count:reviews.length,
         favourite:(
-          <FavouriteButton
-            targetType="event"
-            targetId={event.id}
-            targetName={event.name}
-            targetImageUrl={event.image_url}
-          />
+          // Save is private and for you; Follow is how its updates reach your
+          // feed. Two different promises, so two controls rather than one.
+          <View style={styles.placeActions}>
+            <FavouriteButton
+              targetType="event"
+              targetId={event.id}
+              targetName={event.name}
+              targetImageUrl={event.image_url}
+            />
+            <EntityFollowButton
+              targetType="event"
+              targetId={event.id}
+              targetName={event.name}
+              compact
+            />
+          </View>
         )
       } : null}
       actions={event ? (
@@ -209,6 +220,7 @@ function normaliseReview(row){
 }
 
 const styles=StyleSheet.create({
+  placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
   primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginBottom:10},
   primaryText:{color:INK.card,fontWeight:"800"},
   primaryInline:{flex:1,minHeight:48,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:10},

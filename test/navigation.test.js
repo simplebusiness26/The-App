@@ -112,7 +112,12 @@ describe("no route was lost",()=>{
     "saved","scan","settings","social-comments/[id]"
   ];
 
-  const ADDED=["create","discover"];
+  // Packet 3 added the two tab roots. Packet 8e added the three screens a
+  // canonical public place needs to exist at all: a way in, the place's own
+  // page, and the administrator screen that creates one. Named here rather
+  // than folded into BEFORE, so a route that appears without being named
+  // still fails.
+  const ADDED=["create","discover","places/index","places/[id]","admin/public-places"];
 
   // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
   // old menu page once every link has a new home." Every link did -- that is
