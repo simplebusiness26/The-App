@@ -233,3 +233,35 @@ export function markerForClub(){
     claimed:true
   });
 }
+
+// Packet 8b: a Memory on your own map.
+//
+// A Memory's two phases are NOT a marker state. It would be easy to give an
+// archived Memory a different ink and call that state, but the three inks mean
+// what is true of a *place* -- it exists, something is scheduled there, an offer
+// is running -- and a Memory's phase is a fact about who may read a row. Adding
+// a fourth meaning to the palette to express it would break the rule the whole
+// packet-2 gate exists to hold. My Map says live or archived in words instead,
+// which is also the only form a screen reader gets.
+//
+// It is blue because the place it records exists. Solid border: this is your own
+// record and there is nothing unclaimed about it.
+export const MEMORY_TYPE_LABEL="Memory";
+
+// The Memory row carries `target_type` but not a business's category or type, so
+// there is no classification to look up here. Only the two types whose glyph is
+// fixed rather than assigned can be drawn honestly; everything else falls back
+// to the ring, which already means "a place located but not described yet".
+const MEMORY_GLYPHS={
+  property:"home",
+  activity_club:"people"
+};
+
+export function markerForMemory(memory){
+  return buildMarker({
+    glyph:MEMORY_GLYPHS[memory?.target_type] || "ring",
+    state:MARKER_STATES.EXISTS,
+    typeSentence:`${MEMORY_TYPE_LABEL}.`,
+    claimed:true
+  });
+}

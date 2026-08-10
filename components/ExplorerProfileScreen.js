@@ -11,6 +11,7 @@ import {
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import EndorseButton from "./EndorseButton";
+import MyMap from "./MyMap";
 
 function dateLabel(value){
   if(!value) return "";
@@ -292,6 +293,17 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
           )}
         </View>
       )}
+
+      {/*
+        Packet 8b. Mounted only for the owner, which is the first of two locks --
+        MyMap refuses again on the same comparison, and get_explorer_memories is
+        SECURITY INVOKER so row level security refuses a third time. The 8b
+        privacy review's conclusion was that a personal map exposes nothing
+        "provided it is never given a share control", so this is deliberately
+        absent for other viewers rather than rendered empty: a section that was
+        never mounted cannot be accidentally populated later.
+      */}
+      {isOwner && <MyMap ownerId={resolvedId} viewerId={currentUser?.id}/>}
 
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Memories</Text><Text style={styles.sectionCount}>{memories.length}</Text></View>
       {memories.length ? (

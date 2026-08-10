@@ -56,7 +56,7 @@ boundary — the whole reason 8d exists — is verified against real accounts.
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
 or pull request was created.
-**Packet order from here:** 8b → 8f1 → 8f2. The owner split the ledger's old
+**Packet order from here:** 8f1 → 8f2. 8b is done. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
@@ -128,7 +128,7 @@ Nothing else should change.
 | 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
 | 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
 | 8a | Profile: three figures and tabs | not started | | |
-| 8b | Profile: My Map, sourced from Memories | not started — genuinely unblocked now: `explorer_memories` and `get_explorer_memories` exist **in the database**, not only in a file | | |
+| 8b | Profile: My Map, sourced from Memories | done | | 21-check gate; 12 tests; 10 red-then-green demonstrations; three independent owner locks; **never opened by a person** |
 | 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
 | 8d | Memories (two-phase lifecycle, private archive) | done, **applied and verified live** | `42b695d` | 57-check gate; 13 tests; 409 total; migration + 1 forward correction applied to `yzpthslwsvesgndzdqai`; the phase boundary proved from 4 callers with RLS on, including a friend losing access at expiry |
 | 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
@@ -166,6 +166,68 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 8b — My Map, owner-only
+
+**Did:** Built My Map on the profile, sourced from Memories. The 2026-08-04
+privacy review is the spec, and its three rules are now source contracts rather
+than a paragraph in this file: own profile only, never `live_checkins`, and no
+publication flag, share control or sort order.
+
+**Absent, not empty.** A visitor gets no element — `tree.toJSON()` is null, and
+the request is never issued. An empty section is a thing a later change can
+accidentally populate; a section that was never mounted is not.
+
+**Three locks, deliberately redundant.** `ExplorerProfileScreen` mounts it only
+for the owner; `MyMap` compares `viewerId` to `ownerId` again and returns null;
+`get_explorer_memories` is SECURITY INVOKER so RLS refuses a third time. Any one
+suffices, which is exactly why the gate fails if either client lock is removed.
+
+**A Memory's phase is not a fourth ink.** It would have been easy to colour an
+archived Memory differently, but the three inks describe what is true of a
+*place*, and a Memory's phase is a fact about who may read a row. It is said in
+words, which is also the only form a screen reader gets.
+
+**Files:** `components/MyMap.js`, `scripts/verify-my-map.cjs` (21 checks),
+`test/my-map.test.js` (12 tests) — all new. Changed: `utils/markers.js`
+(`markerForMemory`, `MEMORY_TYPE_LABEL`), `components/ExplorerProfileScreen.js`
+(the owner-gated mount), `scripts/verify-marker-assignment.cjs` (MyMap joins the
+tokenised list), `package.json`, `.github/workflows/quality-checks.yml`.
+
+**Ten checks demonstrated failing before being kept**, including both locks
+removed independently, the scope narrowed to the profile shelf, an `is_public`
+flag introduced, the maps-key fallback deleted, and the source swapped to
+`live_checkins`.
+
+**Two of those first demonstrations proved nothing, and both were my fault.**
+One was a bad demonstration — the substitution hit a comment, so the code never
+changed. The other was a genuinely weak check: `markerForMemory` matched the
+*import line*, so deleting every call site left the gate green. It counts call
+sites now. **That is the eighth time in this project a check has looked
+convincing and proved nothing**, and again it was found by trying to break it
+rather than by reading it.
+
+**A real bug, caught by a test rather than by review.** `hasCoordinates` used
+`Number.isFinite(Number(row.latitude))`, and `Number(null)` is `0`, which is
+finite — so a Memory with no location was plotted at 0,0 in the Gulf of Guinea.
+A private Memory is allowed to have no location, so that null is the common case
+here, not the edge one. **`app/map.js` has the same shape and the same bug** for
+businesses, properties and clubs with null coordinates; it is recorded here and
+deliberately not fixed in this packet, which does not own that file.
+
+**Ran:** `npm run test:ci` → **421 passed across 20 suites** (409 before, +12);
+my-map 21; memories 57; screens 342; markers 330; places 136; social 92; live
+152 + 39; taxonomy 153; place 96; cards 16; discover 30; reputation 32.
+
+**Stopped because:** finished.
+
+**Unverified:** nobody has opened a profile and looked at My Map. The map
+branch in particular is `Verified: renders` only — `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`
+is not set, so the **list fallback is the shipping path** and the MapView branch
+has never rendered on a device. No Memory exists in the live database, so every
+assertion here is against fixtures, not real rows.
 
 ---
 

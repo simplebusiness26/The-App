@@ -68,6 +68,9 @@ jobs:
       - name: Verify the Memory lifecycle and its archive defaults
         run: npm run verify:memories
 
+      - name: Verify My Map stays the owner's alone
+        run: npm run verify:mymap
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

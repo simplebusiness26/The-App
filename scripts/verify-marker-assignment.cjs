@@ -179,7 +179,9 @@ const TOKENISED=[
   "app/places/[id].js",
   "app/admin/public-places.js",
   "app/memories/create.js",
-  "app/memories/[id].js"
+  "app/memories/[id].js",
+  // Packet 8b's My Map was built to the token table from the start.
+  "components/MyMap.js"
 ];
 
 for(const source of TOKENISED){
