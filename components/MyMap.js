@@ -1,11 +1,8 @@
 import React,{useCallback,useState} from "react";
-import {View,Text,StyleSheet,Pressable,ScrollView,ActivityIndicator} from "react-native";
+import {View,Text,StyleSheet,Pressable,ActivityIndicator} from "react-native";
 import {router,useFocusEffect} from "expo-router";
-import MapView,{Marker} from "react-native-maps";
 import {supabase} from "../services/supabase";
-import PlaceMarker from "./PlaceMarker";
-import {markerForMemory} from "../utils/markers";
-import {phaseLabel} from "../utils/memories";
+import MemoryPins from "./MemoryPins";
 import {INK} from "../utils/tokens";
 
 // Packet 8b: My Map.
@@ -67,42 +64,11 @@ function unplottableNote(count){
     : `${count} Memories have no location, so they are not on the map.`;
 }
 
-function regionFor(memories){
-  const first=memories[0];
-  return {
-    latitude:Number(first.latitude),
-    longitude:Number(first.longitude),
-    latitudeDelta:0.12,
-    longitudeDelta:0.12
-  };
-}
-
-function MemoryRow({memory,onPress}){
-  return(
-    <Pressable
-      style={styles.row}
-      accessibilityRole="button"
-      accessibilityLabel={`Open ${memory.title || memory.target_name || "this Memory"}`}
-      onPress={onPress}
-    >
-      <PlaceMarker marker={markerForMemory(memory)}/>
-      <View style={styles.rowBody}>
-        <Text style={styles.rowTitle} numberOfLines={1}>{memory.title || memory.target_name || "A Memory"}</Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>{phaseLabel(memory)}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
 export default function MyMap({ownerId,viewerId}){
   const [memories,setMemories]=useState([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
-  // Read inside the component rather than at module scope, matching app/map.js,
-  // so a test can exercise both the map and the list fallback. The brief is
-  // explicit: do not assume a map.
-  const apiKey=process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
   const isOwner=!!viewerId && !!ownerId && viewerId===ownerId;
 
   useFocusEffect(useCallback(()=>{
@@ -164,37 +130,13 @@ export default function MyMap({ownerId,viewerId}){
         </View>
       )}
 
-      {!loading && !error && !!plottable.length && (
-        apiKey
-          ? (
-            // initialRegion and never `region`, per Packet 6: a controlled region
-            // drags the map back to a fixed point on every re-render.
-            <MapView style={styles.map} initialRegion={regionFor(plottable)}>
-              {plottable.map(memory=>(
-                <Marker
-                  key={memory.id}
-                  coordinate={{latitude:Number(memory.latitude),longitude:Number(memory.longitude)}}
-                  title={memory.title || memory.target_name || "A Memory"}
-                  description={phaseLabel(memory)}
-                  onPress={()=>router.push(`/memories/${memory.id}`)}
-                >
-                  <PlaceMarker marker={markerForMemory(memory)}/>
-                </Marker>
-              ))}
-            </MapView>
-          )
-          : (
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-              {plottable.map(memory=>(
-                <MemoryRow
-                  key={memory.id}
-                  memory={memory}
-                  onPress={()=>router.push(`/memories/${memory.id}`)}
-                />
-              ))}
-            </ScrollView>
-          )
-      )}
+      {/*
+        MemoryPins is platform-split. react-native-maps has no web build, so the
+        import must not be reachable from a web route -- see MemoryPins.web.js.
+        Importing MapView here is what took every profile on web to a blank
+        screen after 8b.
+      */}
+      {!loading && !error && !!plottable.length && <MemoryPins memories={plottable}/>}
 
       {!loading && !error && !!note && <Text style={styles.note}>{note}</Text>}
     </View>
@@ -207,13 +149,6 @@ const styles=StyleSheet.create({
   title:{color:INK.card,fontSize:23,fontWeight:"900"},
   count:{color:INK.blue,fontWeight:"900"},
   subtitle:{color:INK.inkSoft,fontSize:12,fontWeight:"700",marginBottom:11},
-  map:{height:280,borderRadius:14,overflow:"hidden"},
-  list:{maxHeight:320},
-  listContent:{paddingBottom:4},
-  row:{flexDirection:"row",alignItems:"center",gap:11,backgroundColor:INK.ink,borderColor:INK.inkSoft,borderWidth:1,borderRadius:14,padding:12,marginBottom:9},
-  rowBody:{flex:1},
-  rowTitle:{color:INK.card,fontWeight:"900",fontSize:15},
-  rowMeta:{color:INK.inkSoft,fontSize:12,marginTop:3},
   card:{backgroundColor:INK.ink,borderColor:INK.inkSoft,borderWidth:1,borderRadius:14,padding:18},
   body:{color:INK.hair,lineHeight:20},
   action:{backgroundColor:INK.blue,borderRadius:11,paddingVertical:12,alignItems:"center",marginTop:13},

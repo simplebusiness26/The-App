@@ -81,6 +81,24 @@ for(const [file,source] of [[MAP,map],[LIST,list]]){
   );
 }
 
+// app/map.web.js is what the WEB actually renders -- Metro's platform extension
+// means app/map.js never loads there. It is legal for it to carry no living
+// layer of its own only because it delegates entirely to PlacesList, which has
+// one. If it ever grows its own implementation, the living map silently stops
+// existing on the only platform currently in use.
+const MAP_WEB="app/map.web.js";
+const mapWeb=code(read(MAP_WEB));
+
+check(
+  /<PlacesList/.test(mapWeb),
+  `${MAP_WEB}: does not delegate to PlacesList — the web map must not be a second implementation without the living layer`
+);
+
+check(
+  !/MapView|react-native-maps/.test(mapWeb),
+  `${MAP_WEB}: references the native map — react-native-maps has no web build`
+);
+
 // ---------------------------------------------------------------------------
 // 2. No second read model
 // ---------------------------------------------------------------------------

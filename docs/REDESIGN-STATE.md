@@ -169,6 +169,79 @@ the person reading it has no memory of this session, because they don't.
 
 ---
 
+### 2026-08-10 — Blank profile screen — investigated in a browser, not guessed
+
+**The owner reported that profiles open to a blank screen with nothing
+accessible.** This entry records the investigation because two confident
+diagnoses were wrong before the right one, and the method that found it is
+worth more than the fix.
+
+**Wrong diagnosis 1: the `activity_memberships` query 8a added.** Checked
+against the live project — the foreign key to `activity_clubs` exists, RLS is
+on with 5 policies, and `get_explorer_leaderboard`, `get_explorer_memories` and
+`get_explorer_review_reputation` all exist and are executable. The query
+returns rows or `[]`; it does not throw.
+
+**Wrong diagnosis 2: `react-native-maps` in the web bundle.** `app/map.web.js`
+exists precisely so the web map never imports it, and 8b imported `MapView`
+straight into `components/MyMap.js`, which the profile imports. That looked
+conclusive. **It was not:** building with and without the import produced
+byte-identical bundles — `AIRMap` appears either way, and `50.8225` (unique to
+`app/map.js`) and `initialRegion` are both absent, so neither native map file
+is bundled for web at all. The import was never the cause.
+
+**What actually found it: loading the built page in Chromium.** The profile
+route rendered its header and tab bar and then nothing — no message, no
+spinner text, nothing to tap. `loadProfile` had **no `try`/`catch`**, so any
+rejected or never-settling promise skipped `setLoading(false)` and left the
+screen on a textless spinner permanently. That is indistinguishable from a
+blank screen, and it is a defect that predates 8a — 8a only added another
+await to an already unprotected chain.
+
+**Fixed, and confirmed in the browser under the original failing conditions:**
+the same page now reads "Profile unavailable / This profile could not be
+loaded. / Try again" instead of rendering nothing.
+
+- Every await is inside a `try`, with `setLoading(false)` in `finally`.
+- A 15s timeout, because a request that never settles fires nothing at all —
+  a rejection is not the only route to a blank screen.
+- The timeout is cleared in `finally`. Left running it outlived every
+  successful load and kept Jest from exiting, which is how the leak was found.
+- The error state gained a **Try again** control; it previously offered no way
+  out at all.
+- The Clubs read is caught separately: one tab failing must not cost the whole
+  profile.
+
+**Also done, and kept even though it was not the cause.** `MyMap` no longer
+imports `react-native-maps`; the map moved to a platform-split
+`MemoryPins.js` / `MemoryPins.web.js` with a shared `MemoryRow.js`, matching the
+`app/map.web.js` convention the repo already had. The gate now enforces the
+general rule: **a file may import `react-native-maps` only if a `.web.js`
+sibling exists**, over every file in `app/` and `components/`. Demonstrated by
+deleting `app/map.web.js` and by putting the import back into `MyMap.js`.
+
+**The lesson worth keeping: jest cannot catch this class at all.**
+`test/setup.js` mocks `react-native-maps`, and the mock is what makes a
+native-only import look fine. Every profile test passed throughout. A screen
+that renders in `react-test-renderer` has not been shown to render in a
+browser, and this project has twelve packets of screens in that state.
+
+**Files:** `components/MemoryPins.js`, `components/MemoryPins.web.js`,
+`components/MemoryRow.js` — new. Changed: `components/ExplorerProfileScreen.js`,
+`components/MyMap.js`, `scripts/verify-my-map.cjs`,
+`scripts/verify-living-map.cjs`, `test/profile-scrapbook.test.js`.
+
+**Ran:** `npm run test:ci` → **455 passed across 22 suites** (451 before, +4);
+every gate green; production web export succeeds.
+
+**Unverified:** the owner's exact failure was never reproduced with a working
+network — with real data the profile renders correctly in Chromium with zero
+console errors. The fix addresses the failure *class* that produces this
+symptom. **If profiles are still blank after this, the next step is the browser
+console from the owner's device, not another change from me.**
+
+---
+
 ### 2026-08-10 — Packet 8a — three honest figures and the scrapbook
 
 **Did:** Replaced the profile's two ambiguous pills with three separately

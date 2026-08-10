@@ -136,13 +136,21 @@ check(
 
 // `markerForMemory` on its own also matches the import line, so deleting every
 // call site left this green the first time it was demonstrated. It counts calls
-// instead: the component draws a pin in two places (the map marker and the
-// fallback row) and both must derive it.
-const markerCalls=[...map.matchAll(/markerForMemory\s*\(/g)].length;
+// instead, and across both pin renderers -- the native map marker and the
+// shared row -- because the platform split moved them out of MyMap.js.
+const pinSources=["components/MemoryRow.js","components/MemoryPins.js"]
+  .map((file)=>code(read(file)))
+  .join("\n");
+const markerCalls=[...pinSources.matchAll(/markerForMemory\s*\(/g)].length;
 
 check(
   markerCalls>=2,
-  `${MAP}: derives its marker from utils/markers.js in ${markerCalls} place(s), expected both the map pin and the list row`
+  `components/MemoryRow.js + components/MemoryPins.js: derive their marker from utils/markers.js in ${markerCalls} place(s), expected both the map pin and the list row`
+);
+
+check(
+  !/markerForMemory|PlaceMarker/.test(map),
+  `${MAP}: draws a pin itself — it owns the data and the guards, the platform-split renderers own the drawing`
 );
 
 check(
@@ -162,10 +170,10 @@ check(
   "utils/markers.js: markerForMemory does not use an existing marker state — a Memory's phase must not become a fourth ink"
 );
 
-// The phase is rendered as words somewhere in the component.
+// The phase is rendered as words wherever a Memory is drawn.
 check(
-  /phaseLabel/.test(map),
-  `${MAP}: does not render the phase in words — colour is never the only carrier of meaning`
+  /phaseLabel\s*\(/.test(pinSources),
+  "components/MemoryRow.js + components/MemoryPins.js: do not render the phase in words — colour is never the only carrier of meaning"
 );
 
 // ---------------------------------------------------------------------------
@@ -176,15 +184,79 @@ check(
 // ledger records that no key is set, which makes the fallback the shipping
 // path. A My Map that only renders inside MapView would be blank in production.
 
+// The key check lives in the native pin renderer now, not here.
+const PINS="components/MemoryPins.js";
+const PINS_WEB="components/MemoryPins.web.js";
+const pins=code(read(PINS));
+
 check(
-  /EXPO_PUBLIC_GOOGLE_MAPS_API_KEY/.test(map),
-  `${MAP}: does not check for a maps key — the brief is explicit that a map must not be assumed`
+  /EXPO_PUBLIC_GOOGLE_MAPS_API_KEY/.test(pins),
+  `${PINS}: does not check for a maps key — the brief is explicit that a map must not be assumed`
 );
 
 check(
-  /apiKey\s*\n?\s*\?/.test(map) || /apiKey\s*\?/.test(map),
-  `${MAP}: has no fallback branch for a missing maps key`
+  /if\(!apiKey\)/.test(pins),
+  `${PINS}: has no fallback branch for a missing maps key`
 );
+
+// ---------------------------------------------------------------------------
+// 6. react-native-maps must never be reachable from a web route
+// ---------------------------------------------------------------------------
+//
+// This is the check that would have saved a broken profile screen.
+//
+// react-native-maps declares no `browser` entry, so importing it from anything
+// the web bundle reaches pulls a native-only module into web. `app/map.web.js`
+// has existed for exactly that reason since the map was built. 8b imported
+// MapView directly into components/MyMap.js, ExplorerProfileScreen imports
+// MyMap, and every profile on web went blank.
+//
+// Jest could not catch it: test/setup.js mocks react-native-maps, and the mock
+// is precisely what makes the native-only import look fine. So this is a source
+// rule, not a test.
+
+check(
+  !/react-native-maps/.test(map),
+  `${MAP}: imports react-native-maps — it has no web build, and this file is reachable from a web route. Put the map in a platform-split component (see ${PINS_WEB})`
+);
+
+check(
+  !/react-native-maps/.test(code(read(PINS_WEB))),
+  `${PINS_WEB}: imports react-native-maps — the whole point of the .web.js split is that this file does not`
+);
+
+check(
+  /react-native-maps/.test(pins),
+  `${PINS}: no longer renders a real map — if the native map is gone, delete the split rather than leaving an empty half`
+);
+
+// Any component the profile can reach must be clean. A future MyMap that
+// imports a map helper which imports react-native-maps would reintroduce this.
+// The general rule, over every screen and component: a file may import
+// react-native-maps ONLY if a .web.js sibling exists to replace it on web.
+// app/map.js is legal because app/map.web.js exists; MemoryPins.js is legal
+// because MemoryPins.web.js exists. Anything else is the 8b bug again.
+function jsFilesUnder(dir){
+  const found=[];
+  for(const entry of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){
+    const rel=`${dir}/${entry.name}`;
+    if(entry.isDirectory()) found.push(...jsFilesUnder(rel));
+    else if(entry.name.endsWith(".js")) found.push(rel);
+  }
+  return found;
+}
+
+for(const file of [...jsFilesUnder("app"),...jsFilesUnder("components")]){
+  if(file.endsWith(".web.js")) continue;
+  const source=code(read(file));
+  if(!/from\s+["']react-native-maps["']/.test(source)) continue;
+
+  const sibling=file.replace(/\.js$/,".web.js");
+  check(
+    fs.existsSync(path.join(root,sibling)),
+    `${file}: imports react-native-maps but has no ${sibling} — it has no web build, so a web route reaching this file renders a blank screen`
+  );
+}
 
 // An empty state is an instruction, not a mood. design-system.md bans the mood.
 check(

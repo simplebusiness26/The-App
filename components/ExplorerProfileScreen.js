@@ -61,6 +61,10 @@ function EmptyCard({children}){
 // shows strictly less than your own" true by construction rather than by a
 // screen remembering to hide something. A visitor is not shown an empty My Map;
 // the tab is not in their list at all.
+// Long enough that a slow connection still loads, short enough that a person
+// is told something rather than left watching a spinner.
+const LOAD_TIMEOUT_MS=15000;
+
 const SCRAPBOOK_TABS=[
   {key:"adventures",label:"Adventures"},
   {key:"reviews",label:"Reviews"},
@@ -95,9 +99,46 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
     loadProfile();
   },[profileId,ownProfile]));
 
+  // Every await below is inside the try. Before this, a single rejected promise
+  // -- a dropped connection, an RPC that throws rather than returning an error,
+  // an auth call that fails -- skipped setLoading(false) entirely, and the
+  // screen sat on a spinner with no message, no retry and nothing to tap. That
+  // is indistinguishable from a blank screen, and it is what a person saw.
+  //
+  // `finally` is the point: the screen must always leave the loading state,
+  // whatever happened. A caught failure gets a real error and a way out.
   async function loadProfile(){
     setLoading(true);
     setError("");
+
+    // A rejected call is not the only way to get a blank screen -- a request
+    // that never settles is worse, because nothing fires at all and the spinner
+    // has no text, no message and nothing to tap. Reproduced in a real browser:
+    // with the network black-holed, the profile rendered its header and then
+    // nothing, indefinitely.
+    //
+    // The timer is cleared in `finally`. Left running it would outlive every
+    // successful load, hold the app awake and keep Jest from exiting -- which
+    // is exactly how this leak was found.
+    let timer=null;
+
+    try{
+      await Promise.race([
+        loadProfileInner(),
+        new Promise((_,reject)=>{
+          timer=setTimeout(()=>reject(new Error("Profile load timed out")),LOAD_TIMEOUT_MS);
+        })
+      ]);
+    }catch(loadError){
+      console.log("Profile load failed",loadError);
+      setError("This profile could not be loaded.");
+    }finally{
+      if(timer) clearTimeout(timer);
+      setLoading(false);
+    }
+  }
+
+  async function loadProfileInner(){
 
     const {data:{user}}=await supabase.auth.getUser();
     setCurrentUser(user || null);
@@ -124,7 +165,6 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
 
     if(profileResult.error || !profileResult.data){
       setError("This profile could not be loaded.");
-      setLoading(false);
       return;
     }
 
@@ -159,13 +199,20 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
     // Packet 8a's Clubs tab. Approved memberships only: a pending application is
     // this Explorer asking, not a Club they are in, and putting it on a profile
     // any visitor can read would publish a request that was never accepted.
-    const clubResult=await supabase
-      .from("activity_memberships")
-      .select("id,club_id,status,activity_clubs(id,name,category,location,status)")
-      .eq("user_id",id)
-      .eq("status","approved");
+    // One tab failing must not cost the whole profile, so this is caught
+    // separately: an empty Clubs tab is a far better outcome than no profile.
+    try{
+      const clubResult=await supabase
+        .from("activity_memberships")
+        .select("id,club_id,status,activity_clubs(id,name,category,location,status)")
+        .eq("user_id",id)
+        .eq("status","approved");
 
-    setClubs((clubResult.data || []).filter(row=>row.activity_clubs));
+      setClubs((clubResult.data || []).filter(row=>row.activity_clubs));
+    }catch(clubError){
+      console.log("Clubs could not be loaded",clubError);
+      setClubs([]);
+    }
 
     if(profileResult.data.account_type==="explorer"){
       const reputationResult=await supabase.rpc("get_explorer_review_reputation",{p_user_id:id});
@@ -200,8 +247,6 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
       setMonthlyNationalRank(null);
       setMonthlyLocalRank(null);
     }
-
-    setLoading(false);
   }
 
   async function logout(){
@@ -234,7 +279,20 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
   }
 
   if(error || !profile){
-    return <View style={styles.center}><Text style={styles.errorTitle}>Profile unavailable</Text><Text style={styles.errorText}>{error}</Text></View>;
+    return(
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>Profile unavailable</Text>
+        <Text style={styles.errorText}>{error || "This profile could not be loaded."}</Text>
+        <Pressable
+          style={styles.primaryButton}
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          onPress={loadProfile}
+        >
+          <Text style={styles.primaryButtonText}>Try again</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   if(profile.account_type!=="explorer"){

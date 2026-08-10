@@ -46,6 +46,17 @@ async function render(element){
   return tree;
 }
 
+// Without the providers. The failure tests below break the Supabase client on
+// purpose, and NotificationContext shares that client and has the same
+// unprotected-await problem -- so wrapping would fail the test in a component
+// this suite is not about. ExplorerProfileScreen uses no context of its own.
+async function renderBare(element){
+  let tree;
+  await act(async()=>{tree=create(element);});
+  mountedTrees.push(tree);
+  return tree;
+}
+
 function press(tree,label){
   const hit=tree.root.findAll(
     (node)=>node.props?.accessibilityLabel===label && typeof node.props?.onPress==="function",
@@ -197,5 +208,60 @@ describe("the Clubs tab",()=>{
 
     // Otherwise this throws on row.activity_clubs.name.
     expect(textOf(tree.toJSON())).toContain("Join a Club");
+  });
+});
+
+describe("a failing load is never a blank screen",()=>{
+  // Reproduced in a real browser before this was written: with the Supabase
+  // calls failing at the network layer, the profile rendered the header and the
+  // tab bar and then NOTHING -- no message, no retry, nothing to tap. The
+  // loader had no try/catch, so a rejected promise skipped setLoading(false)
+  // and the screen sat on a textless spinner forever.
+
+  test("a rejected auth call shows an error and a way out",async()=>{
+    installFixture({user:{id:OWNER},tables:baseTables(),rpc:{}});
+    supabase.auth.getUser.mockImplementation(()=>Promise.reject(new Error("network down")));
+
+    const tree=await renderBare(React.createElement(ExplorerProfileScreen,{profileId:OWNER}));
+    const text=textOf(tree.toJSON());
+
+    expect(text).toContain("Profile unavailable");
+    expect(labelsOf(tree.toJSON())).toContain("Try again");
+  });
+
+  test("a rejected table read shows an error rather than an endless spinner",async()=>{
+    installFixture({user:{id:OWNER},tables:baseTables(),rpc:{}});
+    supabase.from.mockImplementation(()=>{throw new Error("boom");});
+
+    const tree=await renderBare(React.createElement(ExplorerProfileScreen,{profileId:OWNER}));
+
+    expect(textOf(tree.toJSON())).toContain("Profile unavailable");
+  });
+
+  test("the Clubs read failing does not cost the whole profile",async()=>{
+    installFixture({user:{id:OWNER},tables:baseTables(),rpc:{}});
+    const realFrom=supabase.from.getMockImplementation();
+    supabase.from.mockImplementation((name)=>{
+      if(name==="activity_memberships") throw new Error("clubs down");
+      return realFrom(name);
+    });
+
+    const tree=await render(React.createElement(ExplorerProfileScreen,{profileId:OWNER}));
+    const text=textOf(tree.toJSON());
+
+    // One tab failing is not worth a whole profile.
+    expect(text).not.toContain("Profile unavailable");
+    expect(text).toContain("Ada");
+  });
+  test("a request that never settles still ends in an error, not a spinner",async()=>{
+    jest.useFakeTimers();
+    installFixture({user:{id:OWNER},tables:baseTables(),rpc:{}});
+    supabase.auth.getUser.mockImplementation(()=>new Promise(()=>{}));   // never settles
+
+    const tree=await renderBare(React.createElement(ExplorerProfileScreen,{profileId:OWNER}));
+    await act(async()=>{jest.advanceTimersByTime(16000);});
+
+    expect(textOf(tree.toJSON())).toContain("Profile unavailable");
+    jest.useRealTimers();
   });
 });
