@@ -169,6 +169,63 @@ the person reading it has no memory of this session, because they don't.
 
 ---
 
+### 2026-08-10 — A browser gate, closing the hole every packet fell through
+
+**Did:** Built `scripts/verify-browser.cjs`. It serves the exported bundle,
+drives real Chromium, loads **42 routes** and fails on an uncaught render error.
+
+**This is the check that was missing for twelve packets.** Every packet has
+shipped screens marked "Verified: renders. Unverified: behaves", and the
+`react-native-maps` crash survived all of them while 455 tests passed. It could
+not have been otherwise: `test/setup.js` **mocks** `react-native-maps`, because
+the module cannot load under Node — and that mock is exactly what makes a
+native-only import look healthy. Jest was structurally incapable of seeing it.
+
+**Zero new dependencies.** Node 22 ships a WebSocket client, so it drives Chrome
+DevTools Protocol directly. Adding puppeteer or playwright needs asking, and a
+verification tool that itself needs a new dependency tends never to get run.
+`playwright-core` is present in this container but absent from `package.json`,
+so depending on it would have broken on the next `npm ci`.
+
+**It caught the real bug.** Reintroducing the `react-native-maps` import into
+`MyMap` fails the gate on `/profile` and `/profile/[id]` — the exact two routes,
+from the exact defect that produced the black screen.
+
+**Two versions of this gate proved nothing, and both were caught before it
+shipped.**
+
+1. The first run reported 13 CORS failures that were entirely the harness's own
+   doing: the stub answered no preflight. A gate that cries wolf gets switched
+   off. Fixed by echoing the requested headers rather than enumerating them —
+   enumerating broke again the moment supabase-js sent `x-supabase-api-version`.
+2. **The more dangerous one: it passed 42 routes while rendering the login page
+   twenty times.** With no session, every signed-in route redirects to
+   `/auth/login`. The giveaway was identical 285-character bodies. It now
+   installs a session before the first script runs, and **fails any non-auth
+   route that lands on the login screen** — the trap is now the assertion.
+
+Also: the admin gate asks the database, not the profile row, so all eight admin
+screens rendered the same 121-character "Admin access required" notice and none
+of their content was exercised. The stub answers `guestbook_is_admin` as true;
+those screens now render 252–846 characters of real content.
+
+**Wired in** as `npm run verify:browser` and a CI step (`DIST_DIR=dist-ci`). It
+**skips loudly** when no Chromium is found rather than failing the build, since
+this runner's browser availability is unconfirmed. **Set `REQUIRE_BROWSER=1` in
+the workflow once that is checked** — until then this is a gate that can be
+silently absent, which is the weakness it exists to remove.
+
+**Ran:** 42/42 routes render with no uncaught error, against the same bundle the
+published deployment serves.
+
+**Unverified:** it asserts a screen does not *throw*; it does not assert a screen
+is *correct*. Content still needs a person. The stub returns one generic row
+shape for every table, so a screen can pass here and still be wrong about real
+data — as `/live` showed, where a stub row missing `item_type` produced a crash
+the real RPC could never cause.
+
+---
+
 ### 2026-08-10 — The preview was never rebuilt, and that cost a whole session
 
 **Three rounds of "still blank" were spent on a preview running old code.**

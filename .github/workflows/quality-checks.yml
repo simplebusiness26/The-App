@@ -100,6 +100,19 @@ jobs:
       - name: Verify create route in web bundle
         run: grep -R --fixed-strings "/linkups/create" dist-ci >/dev/null
 
+      # The half of the harness that was missing for twelve packets: load every
+      # route in a real browser and fail on an uncaught render error. Jest
+      # cannot cover this -- test/setup.js mocks react-native-maps, and that
+      # mock is exactly what made a native-only import look healthy while every
+      # profile rendered a black screen.
+      #
+      # Set REQUIRE_BROWSER=1 once the runner is confirmed to ship a browser;
+      # until then this skips loudly rather than failing the build.
+      - name: Verify every route renders in a browser
+        env:
+          DIST_DIR: dist-ci
+        run: npm run verify:browser
+
       - name: Upload web build
         uses: actions/upload-artifact@v4
         with:
