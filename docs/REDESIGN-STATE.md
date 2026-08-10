@@ -56,7 +56,7 @@ boundary — the whole reason 8d exists — is verified against real accounts.
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
 or pull request was created.
-**Packet order from here:** the 8-track is complete in code. 8f2's migration is the only thing outstanding, and it is written and validated but **not applied**. The owner split the ledger's old
+**Packet order from here:** 9b (Leaderboard UI), then 10 (Manager Hub) and 11 (design system pass). **Two migrations are written, validated and unapplied** — 8f2's and 9a's. Both were compiled against the live schema inside rolled-back transactions; neither has been applied. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
@@ -134,7 +134,7 @@ Nothing else should change.
 | 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
 | 8f1 | Shared activity read model + living-map integration | done | | 36-check gate; 21 tests; 9 red-then-green demonstrations; no migration needed — the read model already existed; live shape confirmed on `yzpthslwsvesgndzdqai` |
 | 8f2 | Feed ranking and trending (source reasons, place activity) | done in code, **migration not applied** | | 29-check gate; 23 tests; 9 red-then-green demonstrations; both functions compiled against the live schema inside a rolled-back transaction |
-| 9a | Scoring engine | not started | | |
+| 9a | Scoring engine | done in code, **migration not applied** | | 22-check gate; 7 red-then-green demonstrations; diminishing returns measured on live data (10/5/2/1); privacy review recorded |
 | 9b | Leaderboard UI | not started | | |
 | 10 | Manager Hub | not started | | |
 | 11 | Design system pass | not started | | |
@@ -166,6 +166,82 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 9a — the scoring engine, and three agents that were never installed
+
+**Did:** Built the Explorer Score engine, backend only. Packets 0–8 are green,
+which is the condition the brief set for starting Packet 9.
+
+**Found first: `privacy-reviewer` has never been runnable.** The brief makes a
+`privacy-reviewer` pass a mandatory acceptance criterion for anything touching
+location, and the ledger records several of them. `privacy-reviewer.md` was at
+the **repository root**; Claude Code loads agents from `.claude/agents/`, which
+contained only `navigator.md`. So every "privacy-reviewer pass" in this project,
+including the 2026-08-04 My Map review, was a hand-written analysis imitating an
+agent that could not run. `designer` and `scope-warden` were in the same state —
+which also explains `DOC-AMENDMENTS.md` Blocker 3. All three are now installed.
+
+**The privacy review, and what it changed about the design.** The existing
+`get_explorer_leaderboard` holds up: opt-in via `leaderboard_opt_in`, `area`
+only when `show_area`, no coordinate, no timestamp, no contact field.
+
+The new risk is **arithmetic, not a column** — privacy-reviewer's check 7,
+"leakage through the back door". Once a check-in earns points, a per-source
+breakdown ("142 points, 60 from check-ins") **is a visit count**, and a *local*
+leaderboard is scoped to an area, so the same figure says "this Explorer was in
+this area roughly this many times this week". Neither needs a location column to
+reconstruct movement. So:
+
+1. The public figure is **one opaque total**. The breakdown is
+   `get_explorer_score_breakdown()`, SECURITY INVOKER, filtered to `auth.uid()`,
+   and takes **no user id** — there is no way to ask for somebody else's split.
+2. `place_key` exists solely to apply diminishing returns and is returned by
+   nothing. It is the one column that could rebuild movement.
+3. Check-in points diminish sharply, so the total cannot be read back as a count.
+
+**Points are awarded server-side only.** `authenticated` has no insert, update
+or delete on the ledger at all; the triggers are SECURITY DEFINER and write
+regardless. A client with a valid session cannot write itself a score.
+
+**Measured on live data inside a rolled-back transaction**, rather than reasoned
+about — the brief's criterion is that the 5th check-in at a place scores less
+than the 1st:
+
+| visit to the same place | 1st | 2nd | 3rd | 4th | 5th |
+|---|---|---|---|---|---|
+| points | 10 | 5 | 2 | 1 | 1 |
+
+**That run also caught a false claim in my own comment.** It said the curve
+"floored at zero ... eventually stops paying at all". It bottoms out at 1,
+because `10/16` rounds to 1. The comment is corrected rather than the code — a
+small floor is the better behaviour, since somebody's local should still be
+worth something without being worth farming.
+
+**Files:** `supabase/migrations/20260810040000_explorer_score_engine.sql`,
+`scripts/verify-score-engine.cjs` (22 checks) — new. Moved:
+`privacy-reviewer.md`, `designer.md`, `scope-warden.md` into `.claude/agents/`.
+Changed: `package.json`, the workflow.
+
+**Seven checks demonstrated failing**, including a client granted insert on the
+ledger, the weekly cap removed, a deleted review keeping its points, the public
+score split by source, and `place_key` escaping through the breakdown.
+
+**Ran:** 490 tests across 25 suites; score gate 22; every other gate green.
+
+**Exact next step:** apply the two outstanding migrations, in filename order,
+with the owner watching:
+`20260810030000_feed_source_reasons_and_trending.sql` then
+`20260810040000_explorer_score_engine.sql`. **9a backfills nothing** — the
+triggers fire on new contributions only, so every existing Explorer starts at
+zero. Whether history should be backfilled is a product decision, not a
+technical one, and it is deliberately not made here.
+
+**Unverified:** no score has ever been awarded by a trigger — the diminishing
+curve and the caps were exercised by calling the functions directly, not by
+inserting a real review or check-in. The leaderboard still ranks on review
+points; 9b is what makes Explorer Score visible, and it is not built.
 
 ---
 

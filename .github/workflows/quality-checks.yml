@@ -77,6 +77,9 @@ jobs:
       - name: Verify the trending formula and source reasons
         run: npm run verify:trending
 
+      - name: Verify the scoring engine cannot be written by a client
+        run: npm run verify:score
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
