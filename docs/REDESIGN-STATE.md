@@ -169,6 +169,36 @@ the person reading it has no memory of this session, because they don't.
 
 ---
 
+### 2026-08-10 — The preview was never rebuilt, and that cost a whole session
+
+**Three rounds of "still blank" were spent on a preview running old code.**
+
+`serve-preview.cjs` serves a static `dist/`. Pulling the branch does nothing;
+restarting the preview does nothing. Only `expo export` changes what is served,
+and `replit.md` says so plainly at line 60. Nobody checked.
+
+It was settled the moment `/health` returned `{"status":"ready"}` with no
+`commit` and no `builtAt` — fields added in `356eea3`. The preview was not just
+serving a stale bundle, it was running a stale *server process*, so none of the
+fix, the error boundary or the build stamp had ever been on that device.
+
+**The rule this earns:** before debugging any reported screen failure, confirm
+which commit the preview is serving. `/health` now answers that in one tap.
+A bug report from an unknown build is not evidence.
+
+**Second lesson, about verification.** Two wrong diagnoses were reached by
+reading code and one by a bundle-diff that could not have detected the problem.
+The thing that actually worked, both times, was building the real web bundle and
+loading it in Chromium — which is available in this environment and had never
+been used in twelve packets. Jest mounting a component proves it does not throw
+in Node with mocked native modules. It says nothing about a browser.
+
+**The owner published the app** at the end of this session so future verification
+has a stable URL that can be fetched directly, rather than depending on
+screenshots of a workspace preview that is only alive while the tab is open.
+
+---
+
 ### 2026-08-10 — Blank profile screen — investigated in a browser, not guessed
 
 **The owner reported that profiles open to a blank screen with nothing
