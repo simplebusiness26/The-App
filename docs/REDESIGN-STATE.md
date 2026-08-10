@@ -56,7 +56,7 @@ boundary — the whole reason 8d exists — is verified against real accounts.
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
 or pull request was created.
-**Packet order from here:** 10 (Manager Hub), then 11 (design system pass). 9b is **in progress, not done** — three of its four parts are blocked on things that do not exist. **Two migrations are written, validated and unapplied** — 8f2's and 9a's. Both were compiled against the live schema inside rolled-back transactions; neither has been applied. The owner split the ledger's old
+**Packet order from here:** 10's hub build, then 11 (design system pass). 9b and 10 are both **in progress, not done**, and the entries below say exactly which parts and why. **Two migrations are written, validated and unapplied** — 8f2's and 9a's. Both were compiled against the live schema inside rolled-back transactions; neither has been applied. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
@@ -136,7 +136,7 @@ Nothing else should change.
 | 8f2 | Feed ranking and trending (source reasons, place activity) | done in code, **migration not applied** | | 29-check gate; 23 tests; 9 red-then-green demonstrations; both functions compiled against the live schema inside a rolled-back transaction |
 | 9a | Scoring engine | done in code, **migration not applied** | | 22-check gate; 7 red-then-green demonstrations; diminishing returns measured on live data (10/5/2/1); privacy review recorded |
 | 9b | Leaderboard UI | **in progress** — rank card done; category and community filters and achievements are blocked, see entry | | 5 tests; 4 red-then-green demonstrations |
-| 10 | Manager Hub | not started | | |
+| 10 | Manager Hub | **in progress** — 2 of 3 acceptance criteria verified; the hub build (capability cards, listing form, QR management) is not started | | 116-check gate; manager boundary proved live against a real non-manager |
 | 11 | Design system pass | not started | | |
 
 Status values: `not started` / `in progress` / `blocked` / `done`.
@@ -166,6 +166,69 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 10 — two criteria verified, and two stale facts corrected
+
+**Did:** Verified the two Packet 10 acceptance criteria that can be verified
+today, and gated the one that can regress. The hub itself — capability cards,
+listing management form, QR management — is **not built**, and this entry does
+not pretend otherwise.
+
+**Criterion: "Manager access enforced at the database boundary, tested with a
+non-manager account." VERIFIED against the live project**, with a real Explorer
+who manages nothing (`ea41cf34`), inside a transaction that ended in
+`RAISE EXCEPTION` so it could not commit:
+
+| attempt | result |
+|---|---|
+| rename a business they do not manage | **REFUSED** — 0 rows changed |
+| seize ownership of that business | **REFUSED** — 0 rows changed |
+| make themselves an administrator | **REFUSED** — permission denied for `profiles` |
+
+The third is Stage 1's `admin_security_foundation` doing its job, two months
+after it was written.
+
+**Criterion: "QR codes not surfaced on public place pages." VERIFIED and now
+gated.** A QR code is the proof-of-presence mechanism behind verified reviews
+and claims; if it appears on a page anybody can open, a screenshot forges a
+visit and the verification it backs is worth nothing. The failure would be
+silent — the page renders beautifully with the code on it. Today it appears only
+on four manager surfaces; `scripts/verify-manager-boundary.cjs` fails if it
+reaches any other file, and separately if `/scan` ever gains the ability to
+*mint* a code rather than read one.
+
+**Criterion: the claim flow requiring full details before verification** — not
+checked. It needs walking the claim flow on a device, which is the owner's.
+
+**Two "known constraints" in CLAUDE.md were no longer true**, and were repeated
+in every context load until somebody checked:
+
+- `app/business/dashboard.js` and `app/property/dashboard.js` are **not**
+  unreachable. Packet 4's Quick Access drawer added them, gated on the Manager
+  capability. The gate now fails if either is dropped again — a fully
+  implemented dashboard nobody can reach is not shipped, and it stayed that way
+  for several packets.
+- `app/admin/claims.js` and `app/admin/dashboard.js` are **not** duplicate
+  implementations. The admin workstream made the dashboard an overview and left
+  claims as the one review screen.
+
+Both corrected in place, with the correction dated and its reasoning kept, so
+the next reader knows they were checked rather than assumed.
+
+**Files:** `scripts/verify-manager-boundary.cjs` (116 checks) — new. Changed:
+`CLAUDE.md`, `package.json`, the workflow.
+
+**Two checks demonstrated failing:** a QR added to the public business page, and
+the business dashboard dropped from the drawer.
+
+**Ran:** 495 tests across 26 suites; every gate green.
+
+**Unverified:** the Manager Hub is not built. The listing management form with a
+marker preview, capability cards and QR management are all still ahead, and
+Packet 10 stays `in progress` rather than `done` on the strength of two verified
+criteria — RULES.md: there is no `mostly done`.
 
 ---
 

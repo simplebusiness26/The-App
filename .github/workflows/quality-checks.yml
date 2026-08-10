@@ -80,6 +80,9 @@ jobs:
       - name: Verify the scoring engine cannot be written by a client
         run: npm run verify:score
 
+      - name: Verify QR codes stay off public pages and manager tools stay reachable
+        run: npm run verify:manager
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

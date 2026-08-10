@@ -25,7 +25,8 @@
     "verify:livingmap": "node scripts/verify-living-map.cjs",
     "verify:browser": "node scripts/verify-browser.cjs",
     "verify:trending": "node scripts/verify-trending.cjs",
-    "verify:score": "node scripts/verify-score-engine.cjs"
+    "verify:score": "node scripts/verify-score-engine.cjs",
+    "verify:manager": "node scripts/verify-manager-boundary.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",

@@ -218,7 +218,14 @@ Never reset, force-push or discard commits to solve divergence.
   version-controlled like the rest. Older tables have incomplete RLS
   (flagged in `docs/LINKUPS_LIVE_STATUS.md` as a deferred audit).
   `app/place.js` and `app/saved.js` are dead/stub screens not linked
-  from any nav. `app/business/dashboard.js` and
-  `app/property/dashboard.js` are unreachable from nav despite being
-  fully implemented. `app/admin/claims.js` and `app/admin/dashboard.js`
-  are duplicate implementations of claims review.
+  from any nav.
+
+  Two entries that used to be here are **no longer true**, corrected
+  2026-08-10 after checking rather than repeating them:
+  `app/business/dashboard.js` and `app/property/dashboard.js` are
+  reachable — Packet 4's Quick Access drawer added them, gated on the
+  Manager capability, and `scripts/verify-manager-boundary.cjs` now
+  fails if either is dropped again. `app/admin/claims.js` and
+  `app/admin/dashboard.js` are no longer duplicates: the admin
+  workstream made the dashboard an overview and left claims as the one
+  review screen.
