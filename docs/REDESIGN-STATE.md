@@ -39,18 +39,22 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 8d — Memories (code only, migration not applied)
-**Admin dashboard workstream:** Stage 3's searchable listing catalogue and its
-read policies are **live and verified**. Stage 2's overview passed its
-Replit/device test, and Stage 1's security foundation remains live. Stage 3's
-screen still needs its own Replit/device test after pulling `main2.0-Dev`.
-**Last session:** Applied and verified Admin dashboard Stage 3. Live testing
-caught an anonymous-policy error in the first migration, so a second versioned
-migration split signed-out and signed-in reads before completion. Administrator,
-ordinary Explorer and signed-out database checks now pass. 8d remains built
-end-to-end in code, but **8d's migration has not been applied.**
-**Branch:** `main2.0-Dev` — the only development branch now. `AGENTS.md` was
-rewritten this session: no feature branches, no pull requests, work directly
-on `main2.0-Dev`. The old `main` is outdated and must not be used.
+**Admin dashboard workstream:** Stages 1–3 are live and verified. Stages 4–7
+are complete in code on `main2.0-Dev`: audited claim and Manager-capability
+decisions, recoverable club/Event state changes, privacy-bounded moderation,
+the Explorer directory, areas/data-quality reporting and append-only audit
+history. **The five new migrations have not been applied.**
+**Last session:** Resumed the unfinished admin-dashboard work after inspecting
+the repository, branch history and live Xplorer database. The already-complete
+Stage 1–3 migrations were not replayed. Built and checkpointed Stages 4–7,
+updated the transitive `nanoid` dependency past its new advisory, ran the full
+quality workflow locally and prepared one consolidated live-migration approval
+request. 8d remains built end-to-end in code, but **8d's migration has not been
+applied.**
+**Branch:** `main2.0-Dev` — the only development branch. Before new development,
+the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
+owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
+or pull request was created.
 **Packet order from here:** 8b → 8f1 → 8f2. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
@@ -161,6 +165,92 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Admin dashboard Stages 4–7 — code complete, migrations not applied
+
+**Did:** Inspected the clean `main2.0-Dev` checkout, its latest commits and the
+live Xplorer Supabase project `yzpthslwsvesgndzdqai` before changing anything.
+The live migration history already contained the verified Stage 1 security
+foundation and Stage 3 catalogue policies, so none was repeated. The live data
+survey found 19 Explorers, 4 administrators, 3 approved claims, 1 pending
+Manager-capability request, 26 businesses, 9 properties, 1 public Place,
+8 activity clubs and 9 Events. It also found one historical approved business
+claim whose listing still has no owner and is not marked claimed; this is now
+reported as a data-quality issue and was deliberately not repaired silently.
+
+Before development, moved the confirmed `ba97d32` contents of `main2.0-Dev` to
+both `main2.0` and `main`, as requested, and verified both comparisons were
+0 commits ahead / 0 behind. New development then stayed on `main2.0-Dev`.
+
+Published the implementation as `8a3c497` on `main2.0-Dev`, containing these
+five tested checkpoints from the local development history:
+
+- Stage 4: claim and Manager-capability decisions now require a 3–500
+  character reason and confirmation, run as atomic SECURITY DEFINER RPCs and
+  create append-only audit records. Direct claim/capability decision writes are
+  removed from Data API clients.
+- Stage 5: administrators can publish, hide, close, reopen or cancel clubs
+  and Events through one audited RPC. No activity is deleted.
+- Stage 6: one moderation screen reads the two report systems the app already
+  uses, excludes Link-up meeting points, attendee data, coordinates and contact
+  fields, and records dismiss/action decisions atomically. Added a read-only,
+  paginated Explorer directory with batched Manager capabilities.
+- Stage 7: added read-only canonical-area, unmatched-value and ownership
+  integrity reports plus a paginated append-only audit view. Reports never
+  guess or auto-repair data, and the audit screen does not select arbitrary
+  JSON details.
+- Dependency checkpoint: moved transitive `nanoid` from vulnerable 3.3.16 to patched
+  3.3.18 after the final dependency audit surfaced a new advisory.
+
+**Files changed:** new routes `app/admin/activities.js`,
+`app/admin/moderation.js`, `app/admin/explorers.js`, `app/admin/areas.js` and
+`app/admin/audit.js`; refactored `app/admin/claims.js` and expanded
+`app/admin/dashboard.js`; navigation/drawer registrations; five versioned
+admin migrations; five new behaviour suites plus expanded dashboard,
+navigation and drawer coverage; the screen/security verifier; `package-lock.json`;
+and this ledger.
+
+**Acceptance criteria:** PASS for the feature code. Each stage was tested before
+its commit. Final `npm run test:ci` passes 19 suites / 408 tests. The screen and
+route gate passes 342 checks. Every other workflow source gate passes; Expo
+Doctor passes 20/20; the production web export succeeds and contains
+`/linkups/create`.
+
+The dependency audit is **BLOCKED upstream**, not green: after fixing `nanoid`,
+`npm audit --audit-level=moderate` reports 15 high findings, all flowing from
+Metro's `image-size` dependency and advisories `GHSA-w3rx-r6r6-pgpr` and
+`GHSA-5p2g-fcmc-qvqq`. The newest published `image-size` is 2.0.2 and the
+advisories cover every version through 2.0.2. npm's only proposed complete fix
+would downgrade Expo from SDK 57 to SDK 53, a breaking and incompatible change,
+so it was not applied. CI will remain blocked at its audit step until Expo/Metro
+publishes a compatible patched dependency or the project deliberately changes
+SDK after a separate compatibility review.
+
+**Stopped because:** all repository work that can be completed safely is done.
+Applying the five live migrations requires the owner's explicit approval, and
+the remaining audit finding has no compatible published fix.
+
+**Exact next step:** with explicit owner approval, apply these migrations to
+Xplorer project `yzpthslwsvesgndzdqai`, in order, one at a time:
+
+1. `20260809235500_admin_claim_decisions.sql`
+2. `20260810001000_admin_capability_decisions.sql`
+3. `20260810003000_admin_activity_states.sql`
+4. `20260810005000_admin_moderation.sql`
+5. `20260810007000_admin_data_quality.sql`
+
+After each application, verify its migration-history row and contract; after
+all five, simulate administrator/non-administrator/signed-out roles, confirm
+audit records cannot be forged through the Data API, run security and
+performance advisors, then device-test every new admin route. Separately,
+rerun `npm audit` when Expo/Metro publishes an `image-size` fix.
+
+**Unverified:** none of the five migrations is live, so the new decision,
+moderation, data-quality and audit RPCs have not run against Postgres. The new
+screens are `Verified: renders. Unverified: behaves` on a real device. No live
+row or schema was changed in this session.
 
 ---
 
