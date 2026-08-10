@@ -38,22 +38,20 @@ are the single largest source of wasted usage.
 ## Current position
 
 **Packet in progress:** none
-**Last completed packet:** 8d — Memories (code only, migration not applied)
+**Last completed packet:** 8d — Memories, **applied and verified live**
 **Admin dashboard workstream:** Stages 1–7 are live and database-verified.
 Stages 4–7 provide audited claim and Manager-capability decisions, recoverable
 Club/Event State changes, privacy-bounded moderation, the read-only Explorer
 directory, areas/data-quality reporting and append-only audit history. The five
 planned migrations and one forward correction are applied to Xplorer. The new
 screens still need the owner's start-to-finish device test.
-**Last session:** Applied the approved Stage 4–7 migrations one at a time and
-verified every history row and security contract. The first live data-quality
-call caught an assumption that businesses had `created_at`; added a separate
-forward correction, applied it, and added a regression test rather than
-replaying or editing the recorded migration. Administrator success paths were
-exercised inside a rolled-back transaction, while ordinary Explorer and
-signed-out paths were proved blocked. No live content or audit row changed.
-Added `docs/ADMIN-DASHBOARD-TEST-PLAN.md` for the remaining device test. 8d
-remains built end-to-end in code, but **8d's migration has not been applied.**
+**Last session:** Reconciled this ledger against the repository and the live
+database after the admin workstream, then applied 8d. The reconciliation found
+the ledger wrong on one point: it claimed 8d's was the only unapplied migration
+in the repository, and **there were two** — `20260805140000_pin_search_path_on_
+place_helpers.sql` had been committed on `c9356c2` and never applied or
+recorded here. Both are now live, plus one forward correction. The archive
+boundary — the whole reason 8d exists — is verified against real accounts.
 **Branch:** `main2.0-Dev` — the only development branch. Before new development,
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
@@ -130,9 +128,9 @@ Nothing else should change.
 | 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
 | 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
 | 8a | Profile: three figures and tabs | not started | | |
-| 8b | Profile: My Map, sourced from Memories | not started — 8d is done, so no longer blocked | | |
+| 8b | Profile: My Map, sourced from Memories | not started — genuinely unblocked now: `explorer_memories` and `get_explorer_memories` exist **in the database**, not only in a file | | |
 | 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
-| 8d | Memories (two-phase lifecycle, private archive) | done in code, **migration not applied** | `42b695d` | 57-check gate; 13 new tests; 351 total; 6 red-then-green demonstrations; every gate, expo-doctor and the web export run. **Nothing verified against a database** |
+| 8d | Memories (two-phase lifecycle, private archive) | done, **applied and verified live** | `42b695d` | 57-check gate; 13 tests; 409 total; migration + 1 forward correction applied to `yzpthslwsvesgndzdqai`; the phase boundary proved from 4 callers with RLS on, including a friend losing access at expiry |
 | 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
 | 8f1 | Shared activity read model + living-map integration | designed, not started | | |
 | 8f2 | Feed ranking and trending (source reasons, place activity) | designed, not started | | |
@@ -168,6 +166,134 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 8d — applied live, archive boundary verified
+
+**Did:** Reconciled this ledger against the repository and the live project
+after the admin workstream, then applied 8d. No admin work was repeated,
+reverted or re-applied; the two workstreams touch no common file.
+
+**The reconciliation found one thing this ledger had wrong.** It said 8d's was
+the only unapplied migration in the repository. There were two:
+`20260805140000_pin_search_path_on_place_helpers.sql` landed on commit
+`c9356c2` as an 8e follow-up and was never applied, never recorded, and never
+mentioned again. It was found by comparing every repository migration against
+live history rather than by trusting this file — the two 8e helpers still had
+`proconfig = null` on the live project, which is exactly the condition that
+migration exists to remove.
+
+**A defect fixed before applying, not after.** `guestbook_private.memory_is_live`
+was declared `immutable` while calling `now()`. That is wrong by definition and
+Postgres does not check it, so it would have applied silently. Harmless in
+today's call paths — the argument always comes from a row, never a constant —
+but a wrongly-immutable function is legal in an index predicate or a generated
+column, where the planner may cache one answer permanently, and 8f1 is slated
+to query `explorer_memories_live_public_idx`. Changed to `stable` in the file
+before it ran, which is the last moment editing it is allowed.
+
+**Applied, in order, each verified before the next:**
+
+| Migration | Recorded live as |
+|---|---|
+| `20260805130000_explorer_memories.sql` | `20260810015402_explorer_memories` |
+| `20260805140000_pin_search_path_on_place_helpers.sql` | `20260810015412_pin_search_path_on_place_helpers` |
+| `20260810020000_pin_search_path_on_memory_is_live.sql` (new) | `20260810015710_pin_search_path_on_memory_is_live` |
+
+**The third one is a forward correction, and 8d caused it.** Pinning the two 8e
+helpers closed both `function_search_path_mutable` findings, and the advisor run
+immediately reported a third: `memory_is_live` had no `search_path` either.
+`can_read_memory` in the same migration has one; this was missed the same way
+the 8e pair was. `20260805130000` had already run and was **not** edited —
+a new forward migration pins it, on the same reasoning `20260805140000` already
+recorded.
+
+**Every column and function the migration touches was checked against the live
+schema before it ran** — `businesses.image`/`photos`, all five
+`area_id`/`latitude`/`longitude` sets, `are_friends`, `is_explorer`. This is the
+check that would have caught the admin workstream's `businesses.created_at`
+assumption, and it is cheap.
+
+**Acceptance criteria: the phase boundary, proved from four callers with RLS on.**
+Real accounts, one transaction, no commit path — it ends in a deliberate
+`RAISE EXCEPTION` carrying the results, so it cannot be a `commit;`/`rollback;`
+typo. Owner `198295b9`, Friend `b91375b3` (real mutual follow), Follower
+`7ccc2494` (one-way, created inside the transaction because no real one-way
+follower of the Owner exists), and signed out.
+
+| Memory state | Owner | Friend | Follower | Signed out |
+|---|---|---|---|---|
+| live, `visibility=public` | 1 | 1 | 1 | 1 |
+| live, `visibility=friends` | 1 | 1 | **0** | 0 |
+| archived, `archive=private` | **1** | **0** | **0** | **0** |
+| archived, `archive=friends` | 1 | 1 | 0 | 0 |
+| archived, `archive=public` | 1 | 1 | 1 | 1 |
+
+Row 3 is the packet. A Memory everyone could read a minute earlier is nobody's
+but its creator's, with no one having done anything. Row 2 confirms a one-way
+follow is not a friendship. The creator never loses their own, in any phase.
+
+Also refused, with the exact messages the screens rely on: a shared Memory with
+no expiry (`A Memory other people can see needs an end date for its live
+period`) and a non-owner adding themselves to the selected list (`Only the
+Memory's owner can choose who sees it`).
+
+**The transaction left nothing behind:** 0 Memories, 0 shares, the probe follow
+row gone, follows back to 34, 0 audit records, 19 Explorers.
+
+**Files changed:** `supabase/migrations/20260805130000_explorer_memories.sql`
+(volatility label, before applying),
+`supabase/migrations/20260810020000_pin_search_path_on_memory_is_live.sql`
+(new), and this ledger.
+
+**Also ran:** `npm run test:ci` → **409 passed across 19 suites**; memories 57;
+screens 342; social 92; live 152 + 39; taxonomy 152; markers 327; place 96;
+cards 16; discover 30; reputation 32; places 136; `npx expo export --platform
+web` succeeded with `explorer_memories` and `/linkups/create` both present in
+the bundle.
+
+**Two recorded numbers did not reproduce, and neither is a regression:**
+
+- **Expo Doctor is 19/20, not 20/20.** Four *patch* drifts inside SDK 57
+  (`expo` 57.0.10 vs ~57.0.11, plus `expo-image-picker`, `expo-location`,
+  `expo-router`). Expo published these after the last session; `package.json`
+  and `package-lock.json` are untouched. Bumping them is a dependency decision
+  and was not taken unasked.
+- The marker gate reports **327** checks; the previous handoff said 326. The
+  gate reads screens, not migrations, so nothing this session could move it —
+  327 is what `0d5f166` already produced.
+
+`npm audit` is unchanged and still blocked upstream: 15 high findings through
+Metro's `image-size`, whose only complete npm fix is the incompatible Expo
+57 → 53 downgrade. Not applied.
+
+**Stopped because:** 8d is finished — applied, verified and recorded. One packet
+per session, and 8b is a new packet.
+
+**Exact next step:** 8b (My Map). It is now genuinely unblocked:
+`get_explorer_memories` exists in the database, not just in a file. Read
+`components/ExplorerProfileScreen.js`, `utils/memories.js`, `app/memories/[id].js`,
+the Packet 8 section of `docs/REDESIGN-BRIEF.md` and the 2026-08-04 privacy
+review below before writing anything. That review's conclusion is a hard
+constraint on 8b: My Map renders **only on your own profile** — absent for other
+viewers, not empty — with no `is_public` flag and no share control.
+
+**Unverified:**
+- **Nobody has opened `/memories/create` or `/memories/[id]`.** The screens are
+  `Verified: renders. Unverified: behaves`. Sections 1, 6, 7 and 8 of
+  `docs/MEMORIES_TEST_PLAN.md` (default-private UI, show-on-profile as a filter,
+  the location snapshot surviving a business edit, and delete) are proved by
+  gate and test, not by a person.
+- Sections 3–5 are proved at the database boundary from real sessions, which is
+  where the privacy promise actually lives, but not through the app.
+- The Memories section on `components/ExplorerProfileScreen.js:104` was calling
+  `get_explorer_memories` against a database where it did not exist, on every
+  profile load, since `42b695d`. It degraded quietly to an empty list rather
+  than breaking the screen. That is fixed by this migration existing, but it
+  means the profile's Memories section has never once returned a real row.
+- `guestbook_private.memory_is_live` is `stable` and pinned, but no test asserts
+  either property; a future `create or replace` could drop both silently.
 
 ---
 

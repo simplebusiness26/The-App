@@ -4,9 +4,18 @@ The gate proves the contracts are written down and the tests prove the screens
 render. Neither proves that a friend loses access when a Memory expires, which
 is the whole reason this packet exists. That is what this plan is for.
 
-**The migration has not been applied.** `20260805130000_explorer_memories.sql`
-is committed and has never run. Nothing below works until it does, and applying
-it needs explicit approval.
+**The migration is live.** `20260805130000_explorer_memories.sql` was applied on
+2026-08-10 and recorded as `20260810015402_explorer_memories`, together with the
+forward correction `20260810020000_pin_search_path_on_memory_is_live.sql`.
+
+Sections 2, 3, 4 and 5 have since been verified at the database boundary from
+four real callers with RLS on, inside a rolled-back transaction — see the
+2026-08-10 Packet 8d entry in `docs/REDESIGN-STATE.md` for the result table.
+That is where the privacy promise is enforced, so it is the part worth having
+proved first. **Sections 1, 6, 7 and 8 have not been run by a person**, and no
+one has yet opened `/memories/create` or `/memories/[id]`. Re-running the
+database sections against the app is still worthwhile: it checks that the
+screens ask the questions this plan assumes they ask.
 
 ## Accounts
 

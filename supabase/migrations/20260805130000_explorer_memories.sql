@@ -138,10 +138,16 @@ create index if not exists explorer_memory_shares_user_idx
 -- 2. The phase, and who may read
 -- ---------------------------------------------------------------------------
 
+-- STABLE, not IMMUTABLE: this reads now(), so its answer changes with the
+-- clock and is only fixed within a single statement. Postgres does not verify
+-- volatility labels, so an IMMUTABLE label here would apply cleanly and then
+-- permit this function in an index predicate or a generated column, where the
+-- planner may cache one answer forever. 8f1 will query the live-phase index;
+-- this is the label that stops it being built on a lie.
 create or replace function guestbook_private.memory_is_live(p_live_until timestamptz)
 returns boolean
 language sql
-immutable
+stable
 as $$
   select p_live_until is not null and p_live_until > now();
 $$;
