@@ -127,7 +127,7 @@ Nothing else should change.
 | 5c | Place layout: link-ups (privacy gate) | done | `26cb608` | Privacy review verified in SQL (creator sees 1 row, non-member 0); 42 place-page tests; 96-check layout gate; 7 red-then-green demonstrations |
 | 6 | Map bottom cards | done | `f4a02da` | 19 map-card tests; 16-check gate; map position asserted from MapView's own props; 6 red-then-green demonstrations |
 | 7 | Discover screen | done | `6d95c5a` | 24 discover tests; 30-check gate; 8 red-then-green demonstrations |
-| 8a | Profile: three figures and tabs | not started | | |
+| 8a | Profile: three figures and tabs | done | | 9 tests; 8 red-then-green demonstrations; Explorer Score deliberately absent until 9a builds it |
 | 8b | Profile: My Map, sourced from Memories | done | | 21-check gate; 12 tests; 10 red-then-green demonstrations; three independent owner locks; **never opened by a person** |
 | 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
 | 8d | Memories (two-phase lifecycle, private archive) | done, **applied and verified live** | `42b695d` | 57-check gate; 13 tests; 409 total; migration + 1 forward correction applied to `yzpthslwsvesgndzdqai`; the phase boundary proved from 4 callers with RLS on, including a friend losing access at expiry |
@@ -166,6 +166,78 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 8a — three honest figures and the scrapbook
+
+**Did:** Replaced the profile's two ambiguous pills with three separately
+labelled figures, and its flat run of sections with the brief's five scrapbook
+tabs.
+
+**Explorer Score is deliberately not one of them.** The brief names Explorer
+Score, Average Review Score and Review Reputation. Explorer Score does not
+exist — it belongs to 9a, which builds the scoring engine and awards points
+server-side. `total_points` is review points and nothing else, so labelling it
+"Explorer Score" would name a thing 9a then has to contradict. The three
+shipped are **Avg score given**, **Review points** and **Review reputation**,
+each saying exactly what it counts. The brief's criterion is "three figures
+visually distinct and individually labelled", which this meets; its *naming* of
+the third is what 9a still owes.
+
+"Avg score given" carries the brief's other instruction. An Explorer cannot
+receive a review — RULES.md: reviews attach to places, clubs and events — so
+"AVG RATING" was ambiguous in a way that mattered.
+
+**The tabs:** Adventures (Memories + Moments), Reviews (gallery, reviews, video
+reviews), My Map, Collections, Clubs. The old Videos/Moments toggle is gone;
+Moments belong with Adventures and videos with Reviews, and the toggle was a
+third navigation idea on a screen that now has one.
+
+**My Map is `ownerOnly` in the tab list**, which is how "a profile of another
+Explorer shows strictly less than your own" holds by construction. A visitor is
+not shown an empty My Map — the tab is not in their list.
+
+**Clubs reads approved memberships only.** A pending application is this
+Explorer asking, not a Club they are in; listing it on a profile any visitor can
+read would publish a request that was never accepted.
+
+**Files:** `test/profile-scrapbook.test.js` (9 tests) — new. Changed:
+`components/ExplorerProfileScreen.js`.
+
+**Eight checks demonstrated failing before being kept.** Three of the first
+attempts proved nothing: two substitutions hit an explanatory comment rather
+than the rendered label, and one perl escaping error meant the file was never
+modified at all — a demonstration that "passes" because the mutation silently
+failed is worse than none, because it reads as evidence.
+
+**One test was genuinely weak and was rewritten.** It asserted the third figure
+by looking for "REVIEW REPUTATION" anywhere in the page text — and the
+reputation *card* further down carries that same phrase, so deleting the figure
+entirely left it green. The three figures now each carry their own
+`accessibilityLabel` and the test asserts those. **That is the twelfth time in
+this project a check has looked convincing and proved nothing.** The rewrite
+also gave the figures spoken labels they should have had anyway.
+
+**A structural near-miss worth recording.** The first attempt at this refactor
+was made as a sequence of Edits and left the file with a duplicated render
+block — 1004 lines, two `return(` for the same branch — while `routes.test.js`
+still passed 77 of 79. It was thrown away with `git checkout` and redone as one
+scripted pass with asserted anchors and an ordering check. **A large JSX
+restructure done as incremental string edits is not reviewable and the smoke
+tests do not catch it.**
+
+**Ran:** `npm run test:ci` → **451 passed across 22 suites** (442 before, +9);
+every gate green; `npx expo export --platform web` succeeded.
+
+**Stopped because:** finished.
+
+**Unverified:** nobody has opened a profile. The tabs, the three figures and the
+Clubs list are `Verified: renders` only. `activity_memberships` has **no rows
+for any test account**, so the Clubs tab is proved by fixture and has never
+returned a real Club. The reputation card below the figures now repeats the
+endorsement total that the third pill shows — that is duplication a designer
+should look at, not a defect.
 
 ---
 

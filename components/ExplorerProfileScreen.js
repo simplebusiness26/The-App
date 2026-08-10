@@ -55,6 +55,20 @@ function EmptyCard({children}){
   return <View style={styles.emptyCard}><Text style={styles.emptyText}>{children}</Text></View>;
 }
 
+// Packet 8a: the scrapbook, in the brief's order.
+//
+// My Map is `ownerOnly`, which is what makes "a profile of another Explorer
+// shows strictly less than your own" true by construction rather than by a
+// screen remembering to hide something. A visitor is not shown an empty My Map;
+// the tab is not in their list at all.
+const SCRAPBOOK_TABS=[
+  {key:"adventures",label:"Adventures"},
+  {key:"reviews",label:"Reviews"},
+  {key:"mymap",label:"My Map",ownerOnly:true},
+  {key:"collections",label:"Collections"},
+  {key:"clubs",label:"Clubs"}
+];
+
 export default function ExplorerProfileScreen({profileId,ownProfile=false}){
   const [resolvedId,setResolvedId]=useState(profileId || null);
   const [profile,setProfile]=useState(null);
@@ -69,8 +83,11 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
   const [currentUser,setCurrentUser]=useState(null);
   const [monthlyNationalRank,setMonthlyNationalRank]=useState(null);
   const [monthlyLocalRank,setMonthlyLocalRank]=useState(null);
+  const [clubs,setClubs]=useState([]);
   const [sort,setSort]=useState("recent");
-  const [mediaTab,setMediaTab]=useState("videos");
+  // Packet 8a: Adventures first, because the profile's job is to show what this
+  // Explorer has actually done.
+  const [scrapbookTab,setScrapbookTab]=useState("adventures");
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -138,6 +155,17 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
     setFavourites(favouritesResult.data || []);
     setMoments(momentsResult.data || []);
     setMemories(memoriesResult.data || []);
+
+    // Packet 8a's Clubs tab. Approved memberships only: a pending application is
+    // this Explorer asking, not a Club they are in, and putting it on a profile
+    // any visitor can read would publish a request that was never accepted.
+    const clubResult=await supabase
+      .from("activity_memberships")
+      .select("id,club_id,status,activity_clubs(id,name,category,location,status)")
+      .eq("user_id",id)
+      .eq("status","approved");
+
+    setClubs((clubResult.data || []).filter(row=>row.activity_clubs));
 
     if(profileResult.data.account_type==="explorer"){
       const reputationResult=await supabase.rpc("get_explorer_review_reputation",{p_user_id:id});
@@ -228,14 +256,35 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.profileCard}>
+        {/*
+          Packet 8a: three separately labelled figures.
+
+          The brief names them Explorer Score, Average Review Score and Review
+          Reputation. **Explorer Score does not exist yet** -- it belongs to
+          Packet 9a, which builds the scoring engine and awards points
+          server-side. `total_points` is review points and nothing else, so
+          labelling it "Explorer Score" here would name a thing 9a has to build
+          and then contradict.
+
+          These are the three honest figures today's data supports. Each says
+          what it counts, which is the point the brief was making: the old pair
+          read AVG RATING and REVIEW POINTS, and neither said whose ratings or
+          what the points were for.
+        */}
         <View style={styles.topScoreRow}>
-          <View style={styles.scorePill}>
+          <View style={styles.scorePill} accessibilityLabel={`Average review score given: ${Number(stats?.average_rating_given || 0).toFixed(1)} out of 5`}>
             <Text style={styles.scoreNumber}>{Number(stats?.average_rating_given || 0).toFixed(1)}</Text>
-            <Text style={styles.scoreLabel}>AVG RATING</Text>
+            {/* "given", explicitly. An Explorer cannot receive a review --
+                RULES.md: reviews attach to places, clubs and events. */}
+            <Text style={styles.scoreLabel}>AVG SCORE GIVEN</Text>
           </View>
-          <View style={[styles.scorePill,styles.pointsPill]}>
+          <View style={[styles.scorePill,styles.pointsPill]} accessibilityLabel={`Review points: ${stats?.total_points || 0}`}>
             <Text style={styles.pointsNumber}>{stats?.total_points || 0}</Text>
             <Text style={styles.scoreLabel}>REVIEW POINTS</Text>
+          </View>
+          <View style={[styles.scorePill,styles.reputationPill]} accessibilityLabel={`Review reputation: ${Number(reputation?.total_endorsements || 0)} endorsements`}>
+            <Text style={styles.reputationNumber}>{Number(reputation?.total_endorsements || 0)}</Text>
+            <Text style={styles.scoreLabel}>REVIEW REPUTATION</Text>
           </View>
         </View>
 
@@ -295,16 +344,33 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
       )}
 
       {/*
+        Packet 8a: the scrapbook tabs, replacing the flat run of sections the
+        profile used to be. My Map appears in the list only for the owner, so a
+        visitor is not offered a tab that would be empty for them -- they are
+        not offered the tab at all.
+      */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrapbookTabRow} contentContainerStyle={styles.scrapbookTabContent}>
+        {SCRAPBOOK_TABS.filter(tab=>!tab.ownerOnly || isOwner).map(tab=>(
+          <Pressable
+            key={tab.key}
+            style={[styles.scrapbookTab,scrapbookTab===tab.key && styles.scrapbookTabActive]}
+            accessibilityRole="button"
+            accessibilityLabel={`Show ${tab.label}`}
+            onPress={()=>setScrapbookTab(tab.key)}
+          >
+            <Text style={[styles.scrapbookTabText,scrapbookTab===tab.key && styles.scrapbookTabTextActive]}>{tab.label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/*
         Packet 8b. Mounted only for the owner, which is the first of two locks --
         MyMap refuses again on the same comparison, and get_explorer_memories is
-        SECURITY INVOKER so row level security refuses a third time. The 8b
-        privacy review's conclusion was that a personal map exposes nothing
-        "provided it is never given a share control", so this is deliberately
-        absent for other viewers rather than rendered empty: a section that was
-        never mounted cannot be accidentally populated later.
+        SECURITY INVOKER so row level security refuses a third time.
       */}
-      {isOwner && <MyMap ownerId={resolvedId} viewerId={currentUser?.id}/>}
+      {scrapbookTab==="mymap" && isOwner && <MyMap ownerId={resolvedId} viewerId={currentUser?.id}/>}
 
+      {scrapbookTab==="adventures" && <>
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Memories</Text><Text style={styles.sectionCount}>{memories.length}</Text></View>
       {memories.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
@@ -330,19 +396,26 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
         </EmptyCard>
       )}
 
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Favourite places</Text><Text style={styles.sectionCount}>{favourites.length}</Text></View>
-      {favourites.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
-          {favourites.map(item=>(
-            <Pressable key={item.id} style={styles.favouriteCard} onPress={()=>router.push(listingRoute(item))}>
-              {item.target_image_url ? <Image source={{uri:item.target_image_url}} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>📍</Text></View>}
-              <Text style={styles.favouriteName} numberOfLines={2}>{item.target_name}</Text>
-              <Text style={styles.favouriteType}>{item.target_type.replace("_"," ")}</Text>
+      {isOwner && <Pressable style={styles.createMomentWide} onPress={()=>router.push("/moments/create")}><Text style={styles.createMomentWideText}>＋ Share a new Moment</Text></Pressable>}
+      {moments.length ? (
+        <View style={styles.momentGrid}>
+          {moments.map(moment=>(
+            <Pressable key={moment.id} style={styles.momentCard} onPress={()=>router.push(`/moments/${moment.id}`)}>
+              <View style={styles.momentMediaWrap}>
+                <Image source={{uri:moment.thumbnail_url || moment.target_image_url || moment.media_url}} style={styles.momentImage}/>
+                {moment.media_type==="video" && <View style={styles.momentPlay}><Text style={styles.momentPlayText}>▶</Text></View>}
+              </View>
+              <View style={styles.momentBody}>
+                <Text style={styles.momentCaption} numberOfLines={2}>{moment.caption || "Moment"}</Text>
+                <Text style={styles.momentMeta} numberOfLines={1}>{moment.target_name || dateLabel(moment.created_at)}</Text>
+              </View>
             </Pressable>
           ))}
-        </ScrollView>
-      ) : <EmptyCard>No favourite places have been shared yet.</EmptyCard>}
+        </View>
+      ) : <EmptyCard>{isOwner ? "Share your first Moment from the button above." : "No Moments have been shared yet."}</EmptyCard>}
+      </>}
 
+      {scrapbookTab==="reviews" && <>
       <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Review gallery</Text><Text style={styles.sectionCount}>{imageMedia.length}</Text></View>
       {imageMedia.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
@@ -415,53 +488,62 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
         );
       }) : <EmptyCard>No reviews have been published yet.</EmptyCard>}
 
-      <View style={styles.mediaTabRow}>
-        <Pressable style={[styles.mediaTab,mediaTab==="videos" && styles.mediaTabActive]} onPress={()=>setMediaTab("videos")}>
-          <Text style={[styles.mediaTabText,mediaTab==="videos" && styles.mediaTabTextActive]}>Videos</Text>
-        </Pressable>
-        <Pressable style={[styles.mediaTab,mediaTab==="moments" && styles.mediaTabActive]} onPress={()=>setMediaTab("moments")}>
-          <Text style={[styles.mediaTabText,mediaTab==="moments" && styles.mediaTabTextActive]}>Moments</Text>
-        </Pressable>
-      </View>
-
-      {mediaTab==="videos" ? (
-        videoMedia.length ? videoMedia.map(item=>{
-          const review=reviews.find(row=>row.id===item.review_id);
-          return(
-            <Pressable key={item.id} style={styles.videoCard} onPress={()=>review && router.push(`/social-comments/${review.id}`)}>
-              <View style={styles.videoPoster}>
-                {item.thumbnail_url || review?.target_image_url ? <Image source={{uri:item.thumbnail_url || review?.target_image_url}} style={styles.videoPosterImage}/> : <Text style={styles.largePlay}>▶</Text>}
-                <View style={styles.playOverlay}><Text style={styles.playOverlayText}>▶</Text></View>
-              </View>
-              <View style={styles.videoCardBody}>
-                <Text style={styles.videoCardTitle}>{review?.title || review?.target_name || "Video review"}</Text>
-                <Text style={styles.videoCardPlace}>{review?.target_name}</Text>
-                <Text style={styles.videoCardMeta}>{review ? `${review.rating}/5 · ${dateLabel(review.created_at)} · Open comments` : "Video review"}</Text>
-              </View>
-            </Pressable>
-          );
-        }) : <EmptyCard>Video reviews will appear here.</EmptyCard>
-      ) : (
-        <>
-          {isOwner && <Pressable style={styles.createMomentWide} onPress={()=>router.push("/moments/create")}><Text style={styles.createMomentWideText}>＋ Share a new Moment</Text></Pressable>}
-          {moments.length ? (
-            <View style={styles.momentGrid}>
-              {moments.map(moment=>(
-                <Pressable key={moment.id} style={styles.momentCard} onPress={()=>router.push(`/moments/${moment.id}`)}>
-                  <View style={styles.momentMediaWrap}>
-                    <Image source={{uri:moment.thumbnail_url || moment.target_image_url || moment.media_url}} style={styles.momentImage}/>
-                    {moment.media_type==="video" && <View style={styles.momentPlay}><Text style={styles.momentPlayText}>▶</Text></View>}
-                  </View>
-                  <View style={styles.momentBody}>
-                    <Text style={styles.momentCaption} numberOfLines={2}>{moment.caption || "Moment"}</Text>
-                    <Text style={styles.momentMeta} numberOfLines={1}>{moment.target_name || dateLabel(moment.created_at)}</Text>
-                  </View>
-                </Pressable>
-              ))}
+      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Video reviews</Text><Text style={styles.sectionCount}>{videoMedia.length}</Text></View>
+      {videoMedia.length ? videoMedia.map(item=>{
+        const review=reviews.find(row=>row.id===item.review_id);
+        return(
+          <Pressable key={item.id} style={styles.videoCard} onPress={()=>review && router.push(`/social-comments/${review.id}`)}>
+            <View style={styles.videoPoster}>
+              {item.thumbnail_url || review?.target_image_url ? <Image source={{uri:item.thumbnail_url || review?.target_image_url}} style={styles.videoPosterImage}/> : <Text style={styles.largePlay}>▶</Text>}
+              <View style={styles.playOverlay}><Text style={styles.playOverlayText}>▶</Text></View>
             </View>
-          ) : <EmptyCard>{isOwner ? "Share your first Moment from the button above." : "No Moments have been shared yet."}</EmptyCard>}
-        </>
+            <View style={styles.videoCardBody}>
+              <Text style={styles.videoCardTitle}>{review?.title || review?.target_name || "Video review"}</Text>
+              <Text style={styles.videoCardPlace}>{review?.target_name}</Text>
+              <Text style={styles.videoCardMeta}>{review ? `${review.rating}/5 · ${dateLabel(review.created_at)} · Open comments` : "Video review"}</Text>
+            </View>
+          </Pressable>
+        );
+      }) : <EmptyCard>Video reviews will appear here.</EmptyCard>}
+      </>}
+
+      {scrapbookTab==="collections" && <>
+      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Favourite places</Text><Text style={styles.sectionCount}>{favourites.length}</Text></View>
+      {favourites.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
+          {favourites.map(item=>(
+            <Pressable key={item.id} style={styles.favouriteCard} onPress={()=>router.push(listingRoute(item))}>
+              {item.target_image_url ? <Image source={{uri:item.target_image_url}} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>📍</Text></View>}
+              <Text style={styles.favouriteName} numberOfLines={2}>{item.target_name}</Text>
+              <Text style={styles.favouriteType}>{item.target_type.replace("_"," ")}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : <EmptyCard>No favourite places have been shared yet.</EmptyCard>}
+
+      </>}
+
+      {scrapbookTab==="clubs" && <>
+      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Clubs</Text><Text style={styles.sectionCount}>{clubs.length}</Text></View>
+      {clubs.length ? clubs.map(row=>(
+        <Pressable
+          key={row.id}
+          style={styles.reviewCard}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${row.activity_clubs.name}`}
+          onPress={()=>router.push(`/activity-clubs/${row.activity_clubs.id}`)}
+        >
+          <Text style={styles.reviewPlace}>{row.activity_clubs.name}</Text>
+          <Text style={styles.reviewType}>{row.activity_clubs.category} · {row.activity_clubs.location}</Text>
+        </Pressable>
+      )) : (
+        <EmptyCard>
+          {isOwner
+            ? "Join a Club and the ones you are part of will be listed here."
+            : "This Explorer is not part of any Club yet."}
+        </EmptyCard>
       )}
+      </>}
 
       {isOwner && <Pressable style={styles.logoutButton} onPress={logout}><Text style={styles.primaryButtonText}>Logout</Text></Pressable>}
     </ScrollView>
@@ -476,8 +558,10 @@ const styles=StyleSheet.create({
   errorText:{color:"#b8b8c0",textAlign:"center",marginTop:8},
   profileCard:{backgroundColor:"#222226",borderColor:"#45454c",borderWidth:1,borderRadius:20,padding:20,alignItems:"center"},
   managerProfileCard:{backgroundColor:"#222226",borderColor:"#45454c",borderWidth:1,borderRadius:20,padding:25,alignItems:"center"},
-  topScoreRow:{width:"100%",flexDirection:"row",justifyContent:"space-between",marginBottom:12},
-  scorePill:{minWidth:92,backgroundColor:"#303036",borderRadius:15,paddingHorizontal:13,paddingVertical:9,alignItems:"center"},
+  topScoreRow:{width:"100%",flexDirection:"row",justifyContent:"space-between",gap:6,marginBottom:12},
+  scorePill:{flex:1,minWidth:82,backgroundColor:"#303036",borderRadius:15,paddingHorizontal:8,paddingVertical:9,alignItems:"center"},
+  reputationPill:{backgroundColor:"#152a1e",borderColor:"#286640",borderWidth:1},
+  reputationNumber:{color:"#83e0a5",fontSize:20,fontWeight:"900"},
   pointsPill:{backgroundColor:"#2a2145",borderColor:"#5f4994",borderWidth:1},
   scoreNumber:{color:"white",fontSize:20,fontWeight:"900"},
   pointsNumber:{color:"#c8b6ff",fontSize:20,fontWeight:"900"},
@@ -555,6 +639,12 @@ const styles=StyleSheet.create({
   reviewActions:{flexDirection:"row",alignItems:"center",gap:9,marginTop:13},
   commentsLink:{paddingHorizontal:11,paddingVertical:9},
   commentsLinkText:{color:"#bca8ff",fontWeight:"900",fontSize:12},
+  scrapbookTabRow:{marginTop:26,maxHeight:52},
+  scrapbookTabContent:{gap:7},
+  scrapbookTab:{backgroundColor:"#222226",borderColor:"#3f3f46",borderWidth:1,borderRadius:20,paddingHorizontal:15,paddingVertical:11},
+  scrapbookTabActive:{backgroundColor:"#3212b6",borderColor:"#5b3de0"},
+  scrapbookTabText:{color:"#aaaab2",fontWeight:"900",fontSize:13},
+  scrapbookTabTextActive:{color:"white"},
   mediaTabRow:{flexDirection:"row",backgroundColor:"#222226",borderRadius:13,padding:4,marginTop:28,marginBottom:12},
   mediaTab:{flex:1,padding:11,borderRadius:10,alignItems:"center"},
   mediaTabActive:{backgroundColor:"#3212b6"},
