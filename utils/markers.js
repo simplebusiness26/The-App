@@ -17,6 +17,7 @@
 
 import {classificationLabel,glyphForClassification,UNCLASSIFIED} from "./taxonomy";
 import {INK} from "./tokens";
+import {ACTIVITY_STATE_SENTENCE} from "./liveActivity";
 
 // The three inks, and what each one means. These are the design system's, not
 // this file's -- do not add a fourth.
@@ -154,7 +155,14 @@ export function glyphPrimitives(name){
 // .md gives it a dashed border on a card fill, "an invitation, not an error".
 // The state is still recorded, so the pin can say what it is while saying that
 // nobody manages it yet.
-function buildMarker({glyph,state,typeSentence,claimed}){
+// `stateSentence` is deliberately NOT an override in the sense the gate bans.
+// It cannot change the fill, the glyph or the state -- those are still derived
+// here and nowhere else. It exists because Packet 8f1 needs to say "Happening
+// now" and "Starting soon" on a pin whose ink is, correctly, the one ink the
+// design system has for "something is scheduled here". The palette has three
+// inks; the product describes four event states. Words carry the difference the
+// colour cannot, which is the accessibility floor's position anyway.
+function buildMarker({glyph,state,typeSentence,claimed,stateSentence}){
   const fill=claimed ? MARKER_STATE_INK[state] : INK.card;
   const glyphInk=GLYPH_INK_ON_WHITE_SAFE.includes(fill) ? INK.card : INK.ink;
 
@@ -168,7 +176,7 @@ function buildMarker({glyph,state,typeSentence,claimed}){
     // Colour is never the only carrier of state (design-system.md,
     // accessibility floor). Every pin ships the sentence a screen reader gets.
     label:claimed
-      ? `${typeSentence} ${MARKER_STATE_SENTENCE[state]}`
+      ? `${typeSentence} ${stateSentence || MARKER_STATE_SENTENCE[state]}`
       : `${typeSentence} Nobody manages this yet.`
   };
 }
@@ -255,6 +263,47 @@ export const MEMORY_TYPE_LABEL="Memory";
 const MEMORY_GLYPHS={
   property:"home",
   activity_club:"people"
+};
+
+// Packet 8f1: something happening, on the living map.
+//
+// THE INK PROBLEM, STATED PLAINLY RATHER THAN SOLVED QUIETLY.
+// design-system.md gives three inks and reserves one for offers, so there are
+// two available for places and activity. CLAUDE.md describes events moving
+// through "upcoming, starting soon, live, busy, finished" -- five states, and
+// Link-ups, check-ins and club sessions have their own. Five into two does not
+// go, and inventing a fourth ink is the one thing the palette rule forbids.
+//
+// So every activity pin is pink: something is scheduled or happening here,
+// which is true of all of them and is exactly what that ink means. Whether it
+// is live now, starting soon or later is carried by the pin's spoken label and
+// by the card, never by colour alone. That is not a workaround -- the
+// accessibility floor already requires the words -- but it does mean the map
+// cannot currently show "live" and "later" apart at a glance, and that is a
+// real product limitation the owner should decide on rather than something to
+// paper over with a fourth colour.
+export function markerForActivity(activity){
+  return buildMarker({
+    glyph:ACTIVITY_GLYPHS[activity?.kind] || "ring",
+    state:MARKER_STATES.SCHEDULED,
+    typeSentence:`${ACTIVITY_TYPE_LABEL[activity?.kind] || "Activity"}.`,
+    claimed:true,
+    stateSentence:ACTIVITY_STATE_SENTENCE[activity?.state]
+  });
+}
+
+const ACTIVITY_GLYPHS={
+  linkup:"people",
+  checkin:"people",
+  event:"star",
+  activity:"people"
+};
+
+const ACTIVITY_TYPE_LABEL={
+  linkup:LINKUP_TYPE_LABEL,
+  checkin:"Explorer here now",
+  event:EVENT_TYPE_LABEL,
+  activity:CLUB_TYPE_LABEL
 };
 
 export function markerForMemory(memory){

@@ -1,10 +1,33 @@
 import React,{useEffect,useState} from "react";
 import {View,Text,StyleSheet,Pressable,TextInput,ScrollView} from "react-native";
+import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import PlaceMarker from "./PlaceMarker";
 import PlaceCards from "./PlaceCards";
 import {CARD_KINDS,cardsAround,toCard} from "../utils/placeCards";
 import {classificationLabel} from "../utils/taxonomy";
+import {markerForActivity} from "../utils/markers";
+import {
+  ACTIVITY_STATE_SENTENCE,
+  DEFAULT_TIME_WINDOW,
+  TIME_WINDOWS,
+  activitiesInWindow,
+  toActivities
+} from "../utils/liveActivity";
+
+// Packet 8f1 lands here as well as on app/map.js, and this is the copy that
+// matters today. EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is not set, so this list IS
+// the map as far as anybody using the app is concerned. Putting the living
+// layer only in the MapView branch would have closed the gap in a file nobody
+// currently renders and left the shipping path exactly as it was.
+
+// Each window gets its own sentence. "Nothing here yet" is banned, and a single
+// generic line would be the same mood in three costumes.
+function emptyActivityInstruction(timeWindow){
+  if(timeWindow==="tonight") return "Nothing is on tonight yet. Start a Link-up and it will show here.";
+  if(timeWindow==="weekend") return "The weekend is open. Create an Event or a Link-up to put something on it.";
+  return "Nothing is happening this minute. Check in somewhere or start a Link-up to change that.";
+}
 
 export default function PlacesList({header}){
   const [businesses,setBusinesses]=useState([]);
@@ -18,7 +41,10 @@ export default function PlacesList({header}){
   // opens the same card the map would, and the card opens the full page.
   const [openKey,setOpenKey]=useState(null);
 
-  useEffect(()=>{loadPlaces();},[]);
+  const [activities,setActivities]=useState([]);
+  const [timeWindow,setTimeWindow]=useState(DEFAULT_TIME_WINDOW);
+
+  useEffect(()=>{loadPlaces();loadActivity();},[]);
 
   async function loadPlaces(){
     const [businessResult,propertyResult,clubResult]=await Promise.all([
@@ -30,6 +56,35 @@ export default function PlacesList({header}){
     setBusinesses(businessResult.data || []);
     setProperties(propertyResult.data || []);
     setActivityClubs(clubResult.data || []);
+  }
+
+  // get_live_discovery is SECURITY DEFINER and refuses a signed-out caller, so
+  // it is not asked. A signed-out visitor keeps the static list they had
+  // before -- the living layer is an addition, never a gate.
+  async function loadActivity(){
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user){
+      setActivities([]);
+      return;
+    }
+
+    const {data,error}=await supabase.rpc("get_live_discovery",{
+      p_area:null,
+      p_latitude:null,
+      p_longitude:null,
+      p_radius_km:25,
+      p_window_hours:168
+    });
+
+    // A failed live read must not empty the list. The places are a separate
+    // query and stay exactly as they were.
+    if(error){
+      console.log(error);
+      setActivities([]);
+      return;
+    }
+
+    setActivities(toActivities(data));
   }
 
   // Packet 1 turned businesses.category into a key, so a search for the word a
@@ -57,6 +112,11 @@ export default function PlacesList({header}){
 
   const tapped=cards.find((card)=>card.key===openKey) || null;
 
+  // The time filter narrows what is happening, never what exists. "Tonight"
+  // does not make a pub stop being a pub.
+  const visibleActivity=activitiesInWindow(activities,timeWindow)
+    .filter(item=>matches({name:item.title,category:item.subtitle,location:item.area}));
+
   return(
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {header}
@@ -72,6 +132,54 @@ export default function PlacesList({header}){
           <Text style={typeFilter===value ? styles.selectedCategoryText : styles.categoryText}>{label}</Text>
         </Pressable>)}
       </ScrollView>
+
+      {/*
+        Packet 8f1. First, deliberately. CLAUDE.md's ordering asks "What is
+        around me?" then "What is happening now?", and until this packet the
+        second question had no answer anywhere on the map. A section below the
+        business list would technically answer it and would never be seen.
+      */}
+      <Text style={styles.section}>Happening</Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categories}>
+        {TIME_WINDOWS.map(({key,label})=>(
+          <Pressable
+            key={key}
+            style={[styles.category,timeWindow===key && styles.selectedCategory]}
+            accessibilityRole="button"
+            accessibilityLabel={`Show what is happening ${label.toLowerCase()}`}
+            onPress={()=>setTimeWindow(key)}
+          >
+            <Text style={timeWindow===key ? styles.selectedCategoryText : styles.categoryText}>{label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {visibleActivity.length
+        ? visibleActivity.map(item=>(
+          <Pressable
+            key={item.key}
+            style={styles.card}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.title}. ${ACTIVITY_STATE_SENTENCE[item.state]}`}
+            onPress={()=>item.deepLink && router.push(item.deepLink)}
+          >
+            <View style={styles.cardRow}>
+              <PlaceMarker marker={markerForActivity(item)} size={30}/>
+              <View style={styles.cardText}>
+                <Text style={styles.name}>{item.title}</Text>
+                <Text>{ACTIVITY_STATE_SENTENCE[item.state]}</Text>
+                <Text style={styles.address}>{item.subtitle}</Text>
+              </View>
+            </View>
+          </Pressable>
+        ))
+        : (
+          // An empty state is an instruction, not a mood (design-system.md).
+          <View style={styles.card}>
+            <Text>{emptyActivityInstruction(timeWindow)}</Text>
+          </View>
+        )}
 
       {(typeFilter==="all" || typeFilter==="business") && <>
         <Text style={styles.section}>Businesses</Text>

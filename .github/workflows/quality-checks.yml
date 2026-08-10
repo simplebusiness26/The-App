@@ -71,6 +71,9 @@ jobs:
       - name: Verify My Map stays the owner's alone
         run: npm run verify:mymap
 
+      - name: Verify the living map reaches both surfaces
+        run: npm run verify:livingmap
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

@@ -1,12 +1,21 @@
 import React,{useEffect,useState} from "react";
 import {StyleSheet,View,TextInput,Pressable,Text,ScrollView} from "react-native";
 import MapView,{Marker} from "react-native-maps";
+import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import PlacesList from "../components/PlacesList";
 import PlaceMarker from "../components/PlaceMarker";
 import PlaceCards from "../components/PlaceCards";
 import {CARD_KINDS,cardsAround,toCard} from "../utils/placeCards";
 import {classificationLabel} from "../utils/taxonomy";
+import {markerForActivity} from "../utils/markers";
+import {
+  ACTIVITY_STATE_SENTENCE,
+  DEFAULT_TIME_WINDOW,
+  TIME_WINDOWS,
+  activitiesInWindow,
+  toActivities
+} from "../utils/liveActivity";
 
 export default function MapScreen(){
   // Read inside the component rather than at module scope, so a test can
@@ -29,7 +38,12 @@ function NativeMap(){
   const [typeFilter,setTypeFilter]=useState("all");
   const [openKey,setOpenKey]=useState(null);
 
-  useEffect(()=>{loadPlaces();},[]);
+  // Packet 8f1. The living map: what is happening, not only what is there.
+  const [activities,setActivities]=useState([]);
+  const [timeWindow,setTimeWindow]=useState(DEFAULT_TIME_WINDOW);
+  const [showLive,setShowLive]=useState(true);
+
+  useEffect(()=>{loadPlaces();loadActivity();},[]);
 
   async function loadPlaces(){
     const [businessResult,propertyResult,clubResult]=await Promise.all([
@@ -45,6 +59,41 @@ function NativeMap(){
     setBusinesses(businessResult.data || []);
     setProperties(propertyResult.data || []);
     setActivityClubs(clubResult.data || []);
+  }
+
+  // The live layer, from the read model that already existed. This is the whole
+  // of 8f1's data path: get_live_discovery has returned Link-ups, check-ins,
+  // events and club sessions in one shape since 20260802211700, and until now
+  // only /live called it.
+  //
+  // It is SECURITY DEFINER and raises 'Explorer account required.' when
+  // auth.uid() is null, so a signed-out visitor is not asked. They still get the
+  // static map, which is what they got before this packet -- the living layer is
+  // an addition, not a gate on the map.
+  async function loadActivity(){
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user){
+      setActivities([]);
+      return;
+    }
+
+    const {data,error}=await supabase.rpc("get_live_discovery",{
+      p_area:null,
+      p_latitude:null,
+      p_longitude:null,
+      p_radius_km:25,
+      p_window_hours:168
+    });
+
+    // A failed live read must not empty the map. The static pins are a separate
+    // query and stay exactly as they were.
+    if(error){
+      console.log(error);
+      setActivities([]);
+      return;
+    }
+
+    setActivities(toActivities(data));
   }
 
   // Packet 1 turned businesses.category into a key, so a search for the word a
@@ -81,6 +130,13 @@ function NativeMap(){
 
   const tapped=cards.find((card)=>card.key===openKey) || null;
 
+  // The time filter applies to the living layer only. Narrowing "Tonight"
+  // would not make a pub stop existing, so the static pins ignore it -- the
+  // question the filter answers is "what is happening", not "what is there".
+  const visibleActivity=showLive
+    ? activitiesInWindow(activities,timeWindow).filter(item=>matchesSearch({name:item.title,category:item.subtitle,location:item.area}))
+    : [];
+
   return(
     <View style={styles.container}>
       <View style={styles.top}>
@@ -94,6 +150,36 @@ function NativeMap(){
           ].map(([value,label])=><Pressable key={value} style={[styles.filterButton,typeFilter===value && styles.selectedFilter]} onPress={()=>setTypeFilter(value)}>
             <Text style={typeFilter===value ? styles.selectedFilterText : styles.filterText}>{label}</Text>
           </Pressable>)}
+        </ScrollView>
+
+        {/*
+          Packet 8f1: Now / Tonight / Weekend. A separate row from the type
+          filters on purpose -- one asks what kind of place, the other asks
+          when, and collapsing them into one strip would make "Tonight" look
+          like a kind of listing.
+        */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
+          <Pressable
+            style={[styles.filterButton,showLive && styles.selectedFilter]}
+            accessibilityRole="button"
+            accessibilityLabel={showLive ? "Hide what is happening" : "Show what is happening"}
+            onPress={()=>setShowLive(!showLive)}
+          >
+            <Text style={showLive ? styles.selectedFilterText : styles.filterText}>Happening</Text>
+          </Pressable>
+
+          {TIME_WINDOWS.map(({key,label})=>(
+            <Pressable
+              key={key}
+              style={[styles.filterButton,showLive && timeWindow===key && styles.selectedFilter]}
+              accessibilityRole="button"
+              accessibilityLabel={`Show what is happening ${label.toLowerCase()}`}
+              disabled={!showLive}
+              onPress={()=>setTimeWindow(key)}
+            >
+              <Text style={showLive && timeWindow===key ? styles.selectedFilterText : styles.filterText}>{label}</Text>
+            </Pressable>
+          ))}
         </ScrollView>
       </View>
 
@@ -142,6 +228,25 @@ function NativeMap(){
           onPress={()=>setOpenKey(`${CARD_KINDS.CLUB}-${club.id}`)}
         >
           <PlaceMarker marker={toCard(CARD_KINDS.CLUB,club).marker}/>
+        </Marker>)}
+
+        {/*
+          Packet 8f1. The pins this map existed without: a Link-up, a check-in,
+          an event and a club session are now on the same map as the places they
+          happen at, which is what "open the map and see your local world come
+          alive" asks for.
+
+          Rendered after the static pins so a live thing draws on top of the
+          place it is happening at, rather than under it.
+        */}
+        {visibleActivity.map(item=><Marker
+          key={item.key}
+          coordinate={{latitude:item.latitude,longitude:item.longitude}}
+          title={item.title}
+          description={`${ACTIVITY_STATE_SENTENCE[item.state]} ${item.subtitle}`.trim()}
+          onPress={()=>item.deepLink && router.push(item.deepLink)}
+        >
+          <PlaceMarker marker={markerForActivity(item)}/>
         </Marker>)}
       </MapView>
 

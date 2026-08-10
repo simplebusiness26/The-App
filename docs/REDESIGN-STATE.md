@@ -56,7 +56,7 @@ boundary — the whole reason 8d exists — is verified against real accounts.
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
 or pull request was created.
-**Packet order from here:** 8f1 → 8f2. 8b is done. The owner split the ledger's old
+**Packet order from here:** 8f2. 8b and 8f1 are done. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
@@ -132,7 +132,7 @@ Nothing else should change.
 | 8c | Review reputation and endorsements | done | `93baa0e` | 32-check gate; 5 jest tests; 6 red-then-green demonstrations; self-endorsement block, duplicate rejection, live figures and cleanup verified against real rows on `yzpthslwsvesgndzdqai`; CI run 38 `success` |
 | 8d | Memories (two-phase lifecycle, private archive) | done, **applied and verified live** | `42b695d` | 57-check gate; 13 tests; 409 total; migration + 1 forward correction applied to `yzpthslwsvesgndzdqai`; the phase boundary proved from 4 callers with RLS on, including a friend losing access at expiry |
 | 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
-| 8f1 | Shared activity read model + living-map integration | designed, not started | | |
+| 8f1 | Shared activity read model + living-map integration | done | | 36-check gate; 21 tests; 9 red-then-green demonstrations; no migration needed — the read model already existed; live shape confirmed on `yzpthslwsvesgndzdqai` |
 | 8f2 | Feed ranking and trending (source reasons, place activity) | designed, not started | | |
 | 9a | Scoring engine | not started | | |
 | 9b | Leaderboard UI | not started | | |
@@ -166,6 +166,96 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 8f1 — the living map, with no migration
+
+**Did:** Closed the gap `CLAUDE.md` calls the highest-priority fix in the
+project: live data "lives on a separate `/live` screen and never reaches the
+main map".
+
+**The read model already existed, and finding that out changed the packet.**
+`get_live_discovery` has returned Link-ups, check-ins, events and club sessions
+in one uniform shape — type, position, start, end, status, deep link — since
+`20260802211700`. Nothing needed building in the database. What was missing was
+a normaliser and the map calling it. **So 8f1 ships with no migration at all.**
+Writing a second RPC for data the first one already returns would have been
+RULES.md's "second table for the same noun", one layer up.
+
+**The part that would have been easy to get wrong.** `EXPO_PUBLIC_GOOGLE_MAPS_
+API_KEY` is not set, so `app/map.js` renders `PlacesList` and the `MapView`
+branch never runs. Adding the living layer only to `app/map.js` would have
+closed the gap in a file nobody renders, passed every test, and left the
+shipping path exactly as it was. **Both surfaces get it, and the gate fails if
+either loses it.**
+
+**Verified against the live project before trusting the shape.** Called
+`get_live_discovery` as a real Explorer inside a rolled-back transaction: 4
+Link-ups, 3 Events, 1 club session — all with positions and start times — and
+**15 `place` rows with positions and no start time**. Those 15 are businesses
+the map already draws statically, so without the `STATIC_KINDS` exclusion the
+map would have stacked a second pin on fifteen existing ones and called each
+duplicate "happening". That exclusion is the difference between a living map
+and a visibly broken one, and it was confirmed by real data rather than reasoned
+about.
+
+**The ink problem is real and is not solved, only stated.** design-system.md
+gives three inks and reserves one for offers. `CLAUDE.md` describes events
+moving through "upcoming, starting soon, live, busy, finished". Five into two
+does not go. Every activity pin is therefore pink — "something is scheduled or
+happening here", which is true of all of them — and live / soon / scheduled is
+carried by the pin's spoken label and the row, never by colour. The
+accessibility floor already required those words. **But the map cannot show
+"live now" and "on Saturday" apart at a glance, and that is a product decision
+the owner has to make, not one to paper over with a fourth colour.** See the
+question at the end of this entry.
+
+**Files:** `utils/liveActivity.js`, `scripts/verify-living-map.cjs` (36 checks),
+`test/living-map.test.js` (21 tests) — all new. Changed: `app/map.js` and
+`components/PlacesList.js` (the living layer and the Now/Tonight/Weekend
+filters), `utils/markers.js` (`markerForActivity`, and `buildMarker` gained an
+optional `stateSentence` that cannot touch fill, glyph or state),
+`package.json`, `.github/workflows/quality-checks.yml`.
+
+**Nine checks demonstrated failing before being kept**, the load-bearing one
+being the living layer removed from the shipping path while `app/map.js` kept
+it.
+
+**Three of those first demonstrations proved nothing, all the same weakness.**
+`get_live_discovery` still matched inside `get_live_discovery_DISABLED`, and
+`toActivities` and `ACTIVITY_STATE_SENTENCE` were each satisfied by the import
+line alone after every call site was deleted. All three now match a *use* —
+`rpc("...")`, `name(`, `NAME[` — not a mention. **That is the ninth, tenth and
+eleventh time a check in this project has looked convincing and proved
+nothing.** Every one was found by trying to break it.
+
+**Every time window takes an injected clock.** A time filter that reads the wall
+clock passes on a Tuesday and fails on a Saturday. The gate asserts that the
+only readings of `Date.now()` in the model are default parameter values.
+
+**Ran:** `npm run test:ci` → **442 passed across 21 suites** (421 before, +21);
+living-map 36; my-map 21; memories 57; screens 342; markers 330; taxonomy 154;
+places 136; social 92; live 152 + 39; place 96; cards 16; discover 30;
+reputation 32; `npx expo export --platform web` succeeded with
+`get_live_discovery` present in the bundle.
+
+**Stopped because:** finished.
+
+**Unverified:**
+- **Nobody has opened the map since this landed.** Both surfaces are `Verified:
+  renders` only, and the `MapView` branch has never rendered at all because no
+  key is set.
+- The map does **not** call `refresh_live_system()` before reading, although
+  `app/live.js` does. That function writes, and a write on a map read path is
+  the wrong trade; expiry is enforced by `get_live_discovery`'s own
+  `expires_at > now()` predicates. If stale rows ever appear on the map and not
+  on `/live`, this is the difference.
+- Distance is not used. The map passes `p_latitude`/`p_longitude` as null, so
+  the 25km radius never applies and the window is the full 168 hours. Location
+  permission on the map is its own piece of work.
+- No check-in appeared in the live sample, so the `checkin` branch of the
+  normaliser is proved by fixture only.
 
 ---
 
