@@ -8,6 +8,9 @@ import PlaceMarker from "../components/PlaceMarker";
 import PlaceCards from "../components/PlaceCards";
 import {CARD_KINDS,cardsAround,toCard} from "../utils/placeCards";
 import {classificationLabel} from "../utils/taxonomy";
+// Number(null) is 0 and Number.isFinite(0) is true, so the version this replaced
+// plotted any listing with no location at 0,0. See utils/coordinates.js.
+import {hasCoordinates} from "../utils/coordinates";
 import {markerForActivity} from "../utils/markers";
 import {
   ACTIVITY_STATE_SENTENCE,
@@ -105,10 +108,6 @@ function NativeMap(){
     return [item.name,item.category,item.address,item.location,extraText]
       .filter(Boolean)
       .some(value=>String(value).toLowerCase().includes(clean));
-  }
-
-  function hasCoordinates(item){
-    return Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
   }
 
   const filteredBusinesses=businesses.filter(item=>matchesSearch(item,classificationLabel(item)) && hasCoordinates(item));

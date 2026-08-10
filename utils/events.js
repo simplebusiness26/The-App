@@ -1,3 +1,4 @@
+import {coordinate} from "./coordinates";
 function pad(value){
   return String(value).padStart(2,"0");
 }
@@ -165,8 +166,11 @@ export function validateEventForm(form){
 
   if(
     !String(form.address || "").trim()
-    || !Number.isFinite(Number(form.latitude))
-    || !Number.isFinite(Number(form.longitude))
+    // coordinate(), not Number.isFinite(Number(x)): an empty field is
+    // Number("")===0, which is finite, so this guard used to accept a missing
+    // location and place the Event at 0,0.
+    || coordinate(form.latitude)===null
+    || coordinate(form.longitude)===null
   ){
     return{error:"Search for the event address and choose the correct result."};
   }

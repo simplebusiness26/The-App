@@ -8,6 +8,7 @@ import {
   ActivityIndicator
 } from "react-native";
 import {supabase} from "../services/supabase";
+import {coordinate} from "../utils/coordinates";
 
 export default function LocationPicker({
   initialAddress="",
@@ -27,8 +28,10 @@ export default function LocationPicker({
 
     if(
       initialAddress &&
-      Number.isFinite(Number(initialLatitude)) &&
-      Number.isFinite(Number(initialLongitude))
+      // Number("")===0 is finite, so the old check treated a listing with no
+      // coordinates as one sitting at 0,0 and centred the picker there.
+      coordinate(initialLatitude)!==null &&
+      coordinate(initialLongitude)!==null
     ){
       setSelected({
         address:initialAddress,

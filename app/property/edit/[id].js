@@ -13,6 +13,7 @@ import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
 import LocationPicker from "../../../components/LocationPicker";
 import {useFeedback} from "../../../context/FeedbackContext";
+import {coordinate} from "../../../utils/coordinates";
 
 export default function EditProperty(){
   const {id}=useLocalSearchParams();
@@ -77,7 +78,9 @@ export default function EditProperty(){
   async function save(){
     if(!property || saving) return;
 
-    if(!address || !Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))){
+    // See utils/coordinates.js: Number("")===0 is finite, so the old guard let
+    // an empty coordinate through and saved the listing at 0,0.
+    if(!address || coordinate(latitude)===null || coordinate(longitude)===null){
       Alert.alert("Choose a location","Search for the property address and select the correct result.");
       return;
     }

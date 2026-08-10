@@ -20,6 +20,8 @@
 // a time filter whose behaviour depends on the wall clock is a time filter that
 // cannot be tested.
 
+import {coordinate} from "./coordinates";
+
 // `place` rows are businesses with reviews. The map already draws every
 // business as a static pin, so letting them through would put a second pin on
 // top of the first and call the duplicate "live". Dropped here, once, rather
@@ -65,15 +67,6 @@ function time(value){
   if(!value) return null;
   const parsed=new Date(value).getTime();
   return Number.isNaN(parsed) ? null : parsed;
-}
-
-// Number(null) is 0 and Number.isFinite(0) is true, so the obvious version of
-// this accepts a null coordinate and plots it off the coast of Africa. Packet
-// 8b hit the same thing on Memories.
-function coordinate(value){
-  if(value===null || value===undefined || value==="") return null;
-  const parsed=Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function activityState(item,now=Date.now()){

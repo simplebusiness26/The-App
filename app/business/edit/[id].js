@@ -15,6 +15,7 @@ import LocationPicker from "../../../components/LocationPicker";
 import ClassificationPicker from "../../../components/ClassificationPicker";
 import {UNCLASSIFIED} from "../../../utils/taxonomy";
 import {useFeedback} from "../../../context/FeedbackContext";
+import {coordinate} from "../../../utils/coordinates";
 
 export default function EditBusiness(){
   const {id}=useLocalSearchParams();
@@ -82,7 +83,10 @@ export default function EditBusiness(){
   async function save(){
     if(!business || saving) return;
 
-    if(!address || !Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))){
+    // coordinate() rather than Number.isFinite(Number(x)): an empty field is
+    // Number("")===0, which is finite, so the old guard passed validation and
+    // saved the listing at 0,0 in the Gulf of Guinea.
+    if(!address || coordinate(latitude)===null || coordinate(longitude)===null){
       Alert.alert("Choose a location","Search for the business address and select the correct result.");
       return;
     }

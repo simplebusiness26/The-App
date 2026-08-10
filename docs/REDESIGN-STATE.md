@@ -169,6 +169,61 @@ the person reading it has no memory of this session, because they don't.
 
 ---
 
+### 2026-08-10 — The 0,0 bug, found in the save paths as well as the reads
+
+**Did:** Extracted `utils/coordinates.js` and fixed the same defect in eight
+places. `Number(null)` and `Number("")` are both `0`, and `Number.isFinite(0)`
+is true, so the obvious coordinate check —
+
+```js
+Number.isFinite(Number(row.latitude)) && Number.isFinite(Number(row.longitude))
+```
+
+— accepts a row with **no** location and treats it as one sitting in the Gulf of
+Guinea.
+
+**The reads were the half already known.** Packet 8b hit it on Memories and
+recorded that `app/map.js` carried the same shape. Three copies existed, which
+is exactly the point RULES.md says to extract at.
+
+**The save paths were not known, and are worse.** Four guards existed
+specifically to stop a listing being written without a location, and none of
+them worked:
+
+| File | What it let through |
+|---|---|
+| `app/business/edit/[id].js` | an empty coordinate field saved the business at 0,0 |
+| `app/property/edit/[id].js` | same, for a property |
+| `app/activity-clubs/edit/[id].js` | same, for a Club |
+| `utils/events.js` | same, for an Event |
+| `components/LocationPicker.js` | centred the picker at 0,0 for a listing with no location |
+
+A guard that does not guard is worse than no guard, because it is the reason
+nobody looks again.
+
+**The distinction the helper exists to hold:** `0` is a real coordinate and must
+be kept; the *absence* of a value must be rejected. After `Number()` those are
+indistinguishable, which is the whole trap.
+
+**Live data check before deciding severity:** businesses, properties, activity
+clubs and events all have complete coordinates today, so nothing is currently
+mis-plotted. One `public_place` has none, and no map surface renders public
+places yet. **This was a landmine, not an active fault** — recorded that way
+rather than claimed as a live fix.
+
+**Files:** `utils/coordinates.js`, `test/coordinates.test.js` (10 tests) — new.
+Changed: `app/map.js`, `components/MyMap.js`, `utils/liveActivity.js`,
+`components/LocationPicker.js`, `utils/events.js`, and the three edit screens.
+
+**Two red demonstrations:** restoring the naive `coordinate()` fails 3 tests;
+restoring the old Event guard fails the one that matters — an empty coordinate
+being accepted.
+
+**Ran:** `npm run test:ci` → **465 passed across 23 suites** (455 before, +10);
+every source gate green; the browser gate passes 42/42 routes.
+
+---
+
 ### 2026-08-10 — A browser gate, closing the hole every packet fell through
 
 **Did:** Built `scripts/verify-browser.cjs`. It serves the exported bundle,

@@ -4,6 +4,7 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import MemoryPins from "./MemoryPins";
 import {INK} from "../utils/tokens";
+import {hasCoordinates} from "../utils/coordinates";
 
 // Packet 8b: My Map.
 //
@@ -35,24 +36,6 @@ import {INK} from "../utils/tokens";
 // The database is a third lock and the only one that matters to a determined
 // caller: get_explorer_memories is SECURITY INVOKER, so row level security
 // decides what comes back regardless of what this file asks for.
-
-// `Number(null)` is 0 and `Number.isFinite(0)` is true, so the obvious version
-// of this -- Number.isFinite(Number(row.latitude)) -- accepts a null coordinate
-// and plots it at 0,0, in the Gulf of Guinea. A private Memory is allowed to
-// have no location at all, so that null is the common case here, not the edge
-// one. Null and empty string are rejected before the conversion.
-//
-// app/map.js has the same shape and therefore the same bug; it is left alone
-// here because this packet does not own that file.
-function coordinate(value){
-  if(value===null || value===undefined || value==="") return null;
-  const parsed=Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function hasCoordinates(memory){
-  return coordinate(memory?.latitude)!==null && coordinate(memory?.longitude)!==null;
-}
 
 // A private Memory may legitimately have no coordinates at all, so some of what
 // a person kept cannot be drawn. Saying so is better than silently showing a
