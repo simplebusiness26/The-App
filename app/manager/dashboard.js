@@ -242,8 +242,7 @@ export default function ManagerDashboard(){
         status:"pending",
         request_note:`Access requested for ${label}`,
         requested_at:now,
-        updated_at:now,
-        decided_at:null
+        updated_at:now
       },{onConflict:"user_id,capability"});
 
     setWorkingId(null);

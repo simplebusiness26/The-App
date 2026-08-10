@@ -12,11 +12,17 @@ import {INK} from "../../utils/tokens";
 // profiles relationship: claims.user_id points to auth.users, not profiles.
 const OVERVIEW=[
   {key:"claims",table:"claims",label:"Pending claims",status:"pending",route:"/admin/claims"},
+  {key:"capabilityRequests",table:"manager_capability_requests",label:"Access requests",status:"pending",route:"/admin/claims"},
   {key:"businesses",table:"businesses",label:"Businesses",route:"/admin/listings?type=businesses"},
   {key:"properties",table:"properties",label:"Properties",route:"/admin/listings?type=properties"},
   {key:"publicPlaces",table:"public_places",label:"Public places",route:"/admin/listings?type=public_places"},
   {key:"activityClubs",table:"activity_clubs",label:"Activity clubs",route:"/admin/listings?type=activity_clubs"},
-  {key:"events",table:"events",label:"Events",route:"/admin/listings?type=events"}
+  {key:"events",table:"events",label:"Events",route:"/admin/listings?type=events"},
+  {key:"socialReports",table:"social_reports",label:"Open social reports",status:"open",route:"/admin/moderation"},
+  {key:"safetyReports",table:"live_safety_reports",label:"Open safety reports",status:"open",route:"/admin/moderation"},
+  {key:"explorers",table:"profiles",label:"Explorers",route:"/admin/explorers"},
+  {key:"geoAreas",table:"geo_areas",label:"Canonical areas",route:"/admin/areas"},
+  {key:"auditEntries",table:"admin_audit_log",label:"Audit records",route:"/admin/audit"}
 ];
 
 export default function AdminDashboard(){
@@ -119,7 +125,7 @@ export default function AdminDashboard(){
                 onPress={()=>router.push(item.route)}
                 style={({pressed})=>[
                   styles.metricCard,
-                  item.key==="claims" && styles.claimMetric,
+                  ["claims","capabilityRequests","socialReports","safetyReports"].includes(item.key) && styles.claimMetric,
                   pressed && styles.pressed
                 ]}
               >
@@ -146,15 +152,82 @@ export default function AdminDashboard(){
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Review pending claims"
+            accessibilityLabel="Review claims and Manager access"
             onPress={()=>router.push("/admin/claims")}
             style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
           >
             <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Review pending claims</Text>
+              <Text style={styles.toolTitle}>Review claims & Manager access</Text>
               <Text style={styles.toolDetail}>
-                {counts.claims===1 ? "1 claim is waiting for a decision." : `${counts.claims} claims are waiting for a decision.`}
+                {`${counts.claims} ${counts.claims===1 ? "claim" : "claims"} and ${counts.capabilityRequests} ${counts.capabilityRequests===1 ? "access request" : "access requests"} are waiting.`}
               </Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Manage clubs and events"
+            onPress={()=>router.push("/admin/activities")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>Manage clubs & events</Text>
+              <Text style={styles.toolDetail}>Publish, hide, close or cancel activity with an audit reason.</Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Review moderation reports"
+            onPress={()=>router.push("/admin/moderation")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>Review moderation reports</Text>
+              <Text style={styles.toolDetail}>
+                {`${counts.socialReports+counts.safetyReports} open ${counts.socialReports+counts.safetyReports===1 ? "report" : "reports"} need review.`}
+              </Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Browse Explorer directory"
+            onPress={()=>router.push("/admin/explorers")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>Browse Explorer directory</Text>
+              <Text style={styles.toolDetail}>Inspect account roles and active Manager capabilities without private contact fields.</Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Inspect areas and data quality"
+            onPress={()=>router.push("/admin/areas")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>Inspect areas & data quality</Text>
+              <Text style={styles.toolDetail}>Find unmatched area and Place values or inconsistent listing ownership without automatic repairs.</Text>
+            </View>
+            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="View admin audit history"
+            onPress={()=>router.push("/admin/audit")}
+            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
+          >
+            <View style={styles.toolCopy}>
+              <Text style={styles.toolTitle}>View audit history</Text>
+              <Text style={styles.toolDetail}>{`${counts.auditEntries} recorded admin ${counts.auditEntries===1 ? "decision" : "decisions"}.`}</Text>
             </View>
             <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
           </Pressable>

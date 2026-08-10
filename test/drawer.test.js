@@ -144,6 +144,11 @@ describe("admin is a separate fact from being an Explorer",()=>{
     expect(rows).toContain("/admin/dashboard");
     expect(rows).toContain("/admin/listings");
     expect(rows).toContain("/admin/claims");
+    expect(rows).toContain("/admin/activities");
+    expect(rows).toContain("/admin/moderation");
+    expect(rows).toContain("/admin/explorers");
+    expect(rows).toContain("/admin/areas");
+    expect(rows).toContain("/admin/audit");
     expect(rows).toContain("/feed");
     expect(rows).toContain("/profile");
   });
@@ -155,6 +160,11 @@ describe("admin is a separate fact from being an Explorer",()=>{
     expect(rows).not.toContain("/admin/dashboard");
     expect(rows).not.toContain("/admin/listings");
     expect(rows).not.toContain("/admin/claims");
+    expect(rows).not.toContain("/admin/activities");
+    expect(rows).not.toContain("/admin/moderation");
+    expect(rows).not.toContain("/admin/explorers");
+    expect(rows).not.toContain("/admin/areas");
+    expect(rows).not.toContain("/admin/audit");
   });
 });
 

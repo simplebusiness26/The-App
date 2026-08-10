@@ -103,8 +103,13 @@ export default function Layout(){
           <Stack.Screen name="events/review/[id]"/>
 
           <Stack.Screen name="admin/claims"/>
+          <Stack.Screen name="admin/activities"/>
+          <Stack.Screen name="admin/areas"/>
+          <Stack.Screen name="admin/audit"/>
           <Stack.Screen name="admin/dashboard"/>
+          <Stack.Screen name="admin/explorers"/>
           <Stack.Screen name="admin/listings"/>
+          <Stack.Screen name="admin/moderation"/>
           <Stack.Screen name="admin/public-places"/>
         </Stack>
             </View>

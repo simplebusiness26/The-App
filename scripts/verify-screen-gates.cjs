@@ -168,12 +168,368 @@ for(const {file,table,column} of reviewActions){
   );
 }
 
-// The dedicated claim-review screen performs claim approvals on three tables.
+// Stage 4a replaces the former three-request claim approval with one database
+// transaction. The screen gathers an auditable reason, confirms the action and
+// calls only that RPC; listing assignment and claim state must never drift into
+// separate client writes again.
 const claimsScreen=read("app/admin/claims.js");
-for(const marker of ["updatedBusiness","updatedProperty","updatedClaim"]){
+const claimsScreenCode=readCode("app/admin/claims.js");
+for(const needle of [
+  "useFeedback",
+  "Alert.alert(",
+  'rpc("admin_decide_claim"',
+  "p_claim_id:claim.id",
+  "p_decision:decision",
+  "p_reason:reason",
+  'rpc("admin_decide_capability_request"',
+  "p_request_id:request.id",
+  "Decision reason for",
+  "Access requests could not be loaded"
+]){
   check(
-    claimsScreen.includes(`!${marker} || ${marker}.length===0`),
-    `app/admin/claims.js: ${marker} must be checked for an empty result`
+    claimsScreen.includes(needle),
+    `app/admin/claims.js: Stage 4a expected to contain ${JSON.stringify(needle)}`
+  );
+}
+
+const capabilityDecisionMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_capability_decisions.sql"));
+check(
+  capabilityDecisionMigrations.length===1,
+  `supabase/migrations: expected one Stage 4b capability-decision migration, found ${capabilityDecisionMigrations.length}`
+);
+if(capabilityDecisionMigrations.length===1){
+  const relative=`supabase/migrations/${capabilityDecisionMigrations[0]}`;
+  const migration=read(relative);
+  const migrationCode=migration.toLowerCase();
+
+  contains(relative,[
+    "add column if not exists decided_by uuid",
+    "create policy manager_capability_requests_read_authenticated",
+    "create policy manager_capabilities_read_authenticated",
+    "revoke insert,update,delete on public.manager_capabilities from anon,authenticated",
+    "revoke insert,update,delete on public.manager_capability_requests from anon,authenticated",
+    "create or replace function public.reset_resubmitted_capability_request()",
+    "create or replace function public.admin_decide_capability_request(",
+    "security definer",
+    "set search_path=''",
+    "for update",
+    "insert into public.manager_capabilities(user_id)",
+    "update public.manager_capabilities",
+    "update public.manager_capability_requests",
+    "insert into public.admin_audit_log",
+    "grant execute on function public.admin_decide_capability_request(uuid,text,text)"
+  ]);
+  check(
+    /revoke\s+all\s+on\s+function\s+public\.admin_decide_capability_request\(uuid,text,text\)[\s\S]*?from\s+public\s*,\s*anon\s*,\s*authenticated/i.test(migration),
+    `${relative}: capability-decision RPC must start with no Data API execution grants`
+  );
+
+  for(const operation of ["insert","update"]){
+    const grant=migration.match(
+      new RegExp(`grant\\s+${operation}\\s*\\(([^)]+)\\)\\s+on\\s+public\\.manager_capability_requests\\s+to\\s+authenticated`,"i")
+    );
+    check(!!grant,`${relative}: expected a column-scoped capability-request ${operation.toUpperCase()} grant`);
+    if(grant){
+      const columns=grant[1].split(",").map((column)=>column.trim().toLowerCase());
+      check(!columns.includes("admin_note"),`${relative}: Explorers must not write admin_note`);
+      check(!columns.includes("decided_by"),`${relative}: Explorers must not write decided_by`);
+    }
+  }
+
+  check(
+    migrationCode.trimStart().includes("begin;") && migrationCode.trimEnd().endsWith("commit;"),
+    `${relative}: Stage 4b schema changes must be one migration transaction`
+  );
+}
+
+check(
+  !readCode("app/manager/dashboard.js").includes("decided_at:null"),
+  "app/manager/dashboard.js: resubmission metadata must be reset by the database trigger"
+);
+for(const forbidden of [".update(",".insert(",".delete(",'select("*")']){
+  check(
+    !claimsScreenCode.includes(forbidden),
+    `app/admin/claims.js: claim decisions must not use client ${JSON.stringify(forbidden)}`
+  );
+}
+
+const claimDecisionMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_claim_decisions.sql"));
+check(
+  claimDecisionMigrations.length===1,
+  `supabase/migrations: expected one Stage 4a claim-decision migration, found ${claimDecisionMigrations.length}`
+);
+if(claimDecisionMigrations.length===1){
+  const relative=`supabase/migrations/${claimDecisionMigrations[0]}`;
+  const migration=read(relative);
+  const migrationCode=migration.toLowerCase();
+
+  contains(relative,[
+    "create table public.admin_audit_log",
+    "alter table public.admin_audit_log enable row level security",
+    "revoke all on public.admin_audit_log from public,anon,authenticated",
+    "grant select on public.admin_audit_log to authenticated",
+    "create or replace function public.admin_decide_claim(",
+    "security definer",
+    "set search_path=''",
+    "for update",
+    "update public.businesses",
+    "update public.properties",
+    "update public.claims",
+    "insert into public.admin_audit_log",
+    "revoke update on public.claims from authenticated",
+    "grant execute on function public.admin_decide_claim(uuid,text,text)"
+  ]);
+  check(
+    !/grant\s+insert[\s\S]*?on\s+public\.admin_audit_log\s+to\s+(anon|authenticated)/i.test(migration),
+    `${relative}: Data API roles must not be able to forge audit records`
+  );
+  check(
+    /revoke\s+all\s+on\s+function\s+public\.admin_decide_claim\(uuid,text,text\)[\s\S]*?from\s+public\s*,\s*anon\s*,\s*authenticated/i.test(migration),
+    `${relative}: claim-decision RPC must start with no Data API execution grants`
+  );
+  check(
+    migrationCode.trimStart().includes("begin;") && migrationCode.trimEnd().endsWith("commit;"),
+    `${relative}: Stage 4a schema changes must be one migration transaction`
+  );
+}
+
+// Stage 5 keeps clubs and events recoverable: administrators change only the
+// public state through one audited RPC, never delete activity from the client.
+const adminActivities=read("app/admin/activities.js");
+const adminActivitiesCode=readCode("app/admin/activities.js");
+contains("app/admin/activities.js",[
+  "useAdminGate",
+  "useFeedback",
+  "Alert.alert(",
+  'rpc("admin_set_activity_state"',
+  "p_target_type:type.targetType",
+  "p_target_id:row.id",
+  "p_state:nextState",
+  "p_reason:reason",
+  '.range(from,from+PAGE_SIZE-1)',
+  "Activities could not be loaded",
+  "Decision reason required"
+]);
+for(const forbidden of [".update(",".insert(",".delete(",'select("*")']){
+  check(
+    !adminActivitiesCode.includes(forbidden),
+    `app/admin/activities.js: activity administration must not use client ${JSON.stringify(forbidden)}`
+  );
+}
+
+const activityStateMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_activity_states.sql"));
+check(
+  activityStateMigrations.length===1,
+  `supabase/migrations: expected one Stage 5 activity-state migration, found ${activityStateMigrations.length}`
+);
+if(activityStateMigrations.length===1){
+  const relative=`supabase/migrations/${activityStateMigrations[0]}`;
+  const migration=read(relative);
+  const migrationCode=migration.toLowerCase();
+
+  contains(relative,[
+    "create or replace function public.admin_set_activity_state(",
+    "security definer",
+    "set search_path=''",
+    "for update",
+    "update public.activity_clubs",
+    "update public.events",
+    "insert into public.admin_audit_log",
+    "grant execute on function public.admin_set_activity_state(text,uuid,text,text)"
+  ]);
+  check(
+    /revoke\s+all\s+on\s+function\s+public\.admin_set_activity_state\(text,uuid,text,text\)[\s\S]*?from\s+public\s*,\s*anon\s*,\s*authenticated/i.test(migration),
+    `${relative}: activity-state RPC must start with no Data API execution grants`
+  );
+  check(
+    migrationCode.trimStart().includes("begin;") && migrationCode.trimEnd().endsWith("commit;"),
+    `${relative}: Stage 5 schema changes must be one migration transaction`
+  );
+}
+
+// Stage 6 reviews the two report systems already used by the app through one
+// bounded RPC, then records every decision through a second atomic RPC. The
+// Explorer directory is read-only and deliberately omits contact fields.
+const adminModeration=read("app/admin/moderation.js");
+const adminModerationCode=readCode("app/admin/moderation.js");
+contains("app/admin/moderation.js",[
+  "useAdminGate",
+  "useFeedback",
+  "Alert.alert",
+  'rpc("admin_get_moderation_queue"',
+  'rpc("admin_decide_report"',
+  "p_limit:PAGE_SIZE",
+  "p_offset:page*PAGE_SIZE",
+  "Decision reason required",
+  "Moderation reports could not be loaded",
+  "Private meeting points and attendee lists are never loaded here."
+]);
+for(const forbidden of [".from(",".update(",".insert(",".delete("]){
+  check(
+    !adminModerationCode.includes(forbidden),
+    `app/admin/moderation.js: report reads and decisions must use the bounded RPC, not ${JSON.stringify(forbidden)}`
+  );
+}
+
+const adminExplorers=read("app/admin/explorers.js");
+const adminExplorersCode=readCode("app/admin/explorers.js");
+contains("app/admin/explorers.js",[
+  "useAdminGate",
+  'const PAGE_SIZE=25',
+  'const PROFILE_COLUMNS="id,full_name,is_admin,account_type"',
+  'const CAPABILITY_COLUMNS="user_id,businesses_status,properties_status,activity_clubs_status,events_status"',
+  '.from("manager_capabilities")',
+  '.in("user_id",ids)',
+  ".range(from,from+PAGE_SIZE-1)",
+  "without exposing contact or private-location fields",
+  "Explorers could not be loaded"
+]);
+for(const forbidden of ['select("*")',".update(",".insert(",".delete(","email,","phone,","area,"]){
+  check(
+    !adminExplorersCode.includes(forbidden),
+    `app/admin/explorers.js: read-only safe directory must not contain ${JSON.stringify(forbidden)}`
+  );
+}
+
+const moderationMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_moderation.sql"));
+check(
+  moderationMigrations.length===1,
+  `supabase/migrations: expected one Stage 6 moderation migration, found ${moderationMigrations.length}`
+);
+if(moderationMigrations.length===1){
+  const relative=`supabase/migrations/${moderationMigrations[0]}`;
+  const migration=read(relative);
+  const migrationCode=migration
+    .split("\n")
+    .filter((line)=>!line.trim().startsWith("--"))
+    .join("\n")
+    .toLowerCase();
+
+  contains(relative,[
+    "alter table public.social_reports",
+    "alter table public.live_safety_reports",
+    "drop policy if exists social_reports_admin_update",
+    "revoke update on public.social_reports from authenticated",
+    "create or replace function public.admin_get_moderation_queue(",
+    "create or replace function public.admin_decide_report(",
+    "security definer",
+    "set search_path=''",
+    "for update",
+    "update public.explorer_moments set status='removed'",
+    "update public.social_comments set status='removed'",
+    "update public.linkups set status='cancelled'",
+    "update public.linkup_messages",
+    "update public.live_checkins",
+    "insert into public.admin_audit_log",
+    "grant execute on function public.admin_get_moderation_queue(text,integer,integer)",
+    "grant execute on function public.admin_decide_report(text,uuid,text,text)"
+  ]);
+  for(const privateField of [
+    "linkup_private_details","linkup_attendees","meeting_point","latitude","longitude","email","phone"
+  ]){
+    check(
+      !migrationCode.includes(privateField),
+      `${relative}: moderation queue must not read private field/table ${privateField}`
+    );
+  }
+  check(
+    /revoke\s+all\s+on\s+function\s+public\.admin_get_moderation_queue\(text,integer,integer\)[\s\S]*?from\s+public\s*,\s*anon\s*,\s*authenticated/i.test(migration),
+    `${relative}: moderation-read RPC must start with no Data API execution grants`
+  );
+  check(
+    /revoke\s+all\s+on\s+function\s+public\.admin_decide_report\(text,uuid,text,text\)[\s\S]*?from\s+public\s*,\s*anon\s*,\s*authenticated/i.test(migration),
+    `${relative}: moderation-decision RPC must start with no Data API execution grants`
+  );
+  check(
+    migrationCode.trimStart().includes("begin;") && migrationCode.trimEnd().endsWith("commit;"),
+    `${relative}: Stage 6 schema changes must be one migration transaction`
+  );
+}
+
+// Stage 7 exposes data discrepancies and the audit trail without adding a
+// client-side repair path. Area reports remain grouped and read-only, while
+// audit rows omit the free-form JSON details field from the screen query.
+const adminAreas=read("app/admin/areas.js");
+const adminAreasCode=readCode("app/admin/areas.js");
+contains("app/admin/areas.js",[
+  "useAdminGate",
+  'const AREA_COLUMNS="id,name,area_type,parent_area_id,slug,status"',
+  '.from("geo_areas")',
+  'rpc("get_unmatched_area_report")',
+  'rpc("get_unmatched_public_place_report")',
+  'rpc("admin_get_data_quality_report")',
+  "They never guess an area or repair ownership automatically.",
+  "Data-quality reports could not be loaded"
+]);
+for(const forbidden of ['select("*")',".update(",".insert(",".delete("]){
+  check(
+    !adminAreasCode.includes(forbidden),
+    `app/admin/areas.js: Stage 7 report must remain read-only and not contain ${JSON.stringify(forbidden)}`
+  );
+}
+
+const adminAudit=read("app/admin/audit.js");
+const adminAuditCode=readCode("app/admin/audit.js");
+contains("app/admin/audit.js",[
+  "useAdminGate",
+  'const PAGE_SIZE=25',
+  'const AUDIT_COLUMNS="id,actor_id,action,target_type,target_id,reason,created_at"',
+  '.from("admin_audit_log")',
+  '.from("profiles").select("id,full_name")',
+  ".range(from,from+PAGE_SIZE-1)",
+  "append-only history of admin decisions",
+  "Audit history could not be loaded"
+]);
+for(const forbidden of ['select("*")',".update(",".insert(",".delete(","details,","email","phone"]){
+  check(
+    !adminAuditCode.includes(forbidden),
+    `app/admin/audit.js: append-only safe history must not contain ${JSON.stringify(forbidden)}`
+  );
+}
+
+const dataQualityMigrations=fs.readdirSync(migrationDirectory)
+  .filter((name)=>name.endsWith("_admin_data_quality.sql"));
+check(
+  dataQualityMigrations.length===1,
+  `supabase/migrations: expected one Stage 7 data-quality migration, found ${dataQualityMigrations.length}`
+);
+if(dataQualityMigrations.length===1){
+  const relative=`supabase/migrations/${dataQualityMigrations[0]}`;
+  const migration=read(relative);
+  const migrationCode=migration
+    .split("\n")
+    .filter((line)=>!line.trim().startsWith("--"))
+    .join("\n")
+    .toLowerCase();
+
+  contains(relative,[
+    "create or replace function public.admin_get_data_quality_report()",
+    "stable",
+    "security definer",
+    "set search_path=''",
+    "b.owner_id is distinct from c.user_id",
+    "p.owner_id is distinct from c.user_id",
+    "'business_owner_state'",
+    "'ownership_issues'",
+    "'missing_area_counts'",
+    "revoke all on function public.admin_get_data_quality_report()",
+    "grant execute on function public.admin_get_data_quality_report()"
+  ]);
+  check(
+    !/\b(?:update|insert\s+into|delete\s+from)\s+public\./i.test(migrationCode),
+    `${relative}: data-quality RPC must not repair or mutate live rows`
+  );
+  check(
+    /revoke\s+all\s+on\s+function\s+public\.admin_get_data_quality_report\(\)[\s\S]*?from\s+public\s*,\s*anon\s*,\s*authenticated/i.test(migration),
+    `${relative}: data-quality RPC must start with no Data API execution grants`
+  );
+  check(
+    migrationCode.trimStart().includes("begin;") && migrationCode.trimEnd().endsWith("commit;"),
+    `${relative}: Stage 7 schema changes must be one migration transaction`
   );
 }
 
@@ -182,7 +538,11 @@ for(const marker of ["updatedBusiness","updatedProperty","updatedClaim"]){
 // the approval writes that belong to /admin/claims again.
 const adminDashboard=read("app/admin/dashboard.js");
 const adminDashboardCode=readCode("app/admin/dashboard.js");
-for(const table of ["claims","businesses","properties","public_places","activity_clubs","events"]){
+for(const table of [
+  "claims","manager_capability_requests","businesses","properties","public_places",
+  "activity_clubs","events","social_reports","live_safety_reports","profiles",
+  "geo_areas","admin_audit_log"
+]){
   check(
     adminDashboard.includes(`table:"${table}"`),
     `app/admin/dashboard.js: Stage 2 overview must count ${table}`
@@ -192,6 +552,11 @@ contains("app/admin/dashboard.js",[
   'select("id",{count:"exact",head:true})',
   'router.push("/admin/claims")',
   'router.push("/admin/listings")',
+  'router.push("/admin/activities")',
+  'router.push("/admin/moderation")',
+  'router.push("/admin/explorers")',
+  'router.push("/admin/areas")',
+  'router.push("/admin/audit")',
   'router.push("/admin/public-places")',
   "Overview could not be loaded"
 ]);

@@ -19,11 +19,17 @@ const AdminDashboard=require("../app/admin/dashboard").default;
 
 const LIVE_STAGE_2_COUNTS={
   claims:1,
+  manager_capability_requests:1,
   businesses:26,
   properties:9,
   public_places:1,
   activity_clubs:8,
-  events:9
+  events:9,
+  social_reports:2,
+  live_safety_reports:1,
+  profiles:19,
+  geo_areas:4,
+  admin_audit_log:12
 };
 
 function wrap(element){
@@ -79,21 +85,27 @@ describe("Admin Dashboard Stage 2",()=>{
     jest.clearAllMocks();
   });
 
-  it("shows the six real overview totals without a relational claims join",async()=>{
+  it("shows the twelve real overview totals without a relational claims join",async()=>{
     const queries=installAdminOverview();
     const tree=await renderDashboard();
     const text=textOf(tree.toJSON());
 
     for(const phrase of [
       "1 Pending claims",
+      "1 Access requests",
       "26 Businesses",
       "9 Properties",
       "1 Public places",
       "8 Activity clubs",
-      "9 Events"
+      "9 Events",
+      "2 Open social reports",
+      "1 Open safety reports",
+      "19 Explorers",
+      "4 Canonical areas",
+      "12 Audit records"
     ]) expect(text).toContain(phrase);
 
-    expect(queries).toHaveLength(6);
+    expect(queries).toHaveLength(12);
     for(const query of queries){
       expect(query.select).toHaveBeenCalledWith("id",{count:"exact",head:true});
       expect(query.select.mock.calls.flat().join(" ")).not.toContain("profiles:user_id");
@@ -101,13 +113,19 @@ describe("Admin Dashboard Stage 2",()=>{
 
     const claims=queries.find((query)=>query.table==="claims");
     expect(claims.eq).toHaveBeenCalledWith("status","pending");
+    const access=queries.find((query)=>query.table==="manager_capability_requests");
+    expect(access.eq).toHaveBeenCalledWith("status","pending");
+    const socialReports=queries.find((query)=>query.table==="social_reports");
+    expect(socialReports.eq).toHaveBeenCalledWith("status","open");
+    const safetyReports=queries.find((query)=>query.table==="live_safety_reports");
+    expect(safetyReports.eq).toHaveBeenCalledWith("status","open");
   });
 
   it("opens the dedicated claim-review screen",async()=>{
     installAdminOverview();
     const tree=await renderDashboard();
 
-    await act(async()=>{pressable(tree,"Review pending claims").props.onPress();});
+    await act(async()=>{pressable(tree,"Review claims and Manager access").props.onPress();});
 
     expect(router.push).toHaveBeenCalledWith("/admin/claims");
   });
@@ -119,6 +137,51 @@ describe("Admin Dashboard Stage 2",()=>{
     await act(async()=>{pressable(tree,"Manage public places").props.onPress();});
 
     expect(router.push).toHaveBeenCalledWith("/admin/public-places");
+  });
+
+  it("opens the audited activity manager",async()=>{
+    installAdminOverview();
+    const tree=await renderDashboard();
+
+    await act(async()=>{pressable(tree,"Manage clubs and events").props.onPress();});
+
+    expect(router.push).toHaveBeenCalledWith("/admin/activities");
+  });
+
+  it("opens the privacy-bounded moderation queue",async()=>{
+    installAdminOverview();
+    const tree=await renderDashboard();
+
+    await act(async()=>{pressable(tree,"Review moderation reports").props.onPress();});
+
+    expect(router.push).toHaveBeenCalledWith("/admin/moderation");
+  });
+
+  it("opens the read-only Explorer directory",async()=>{
+    installAdminOverview();
+    const tree=await renderDashboard();
+
+    await act(async()=>{pressable(tree,"Browse Explorer directory").props.onPress();});
+
+    expect(router.push).toHaveBeenCalledWith("/admin/explorers");
+  });
+
+  it("opens the read-only areas and data-quality report",async()=>{
+    installAdminOverview();
+    const tree=await renderDashboard();
+
+    await act(async()=>{pressable(tree,"Inspect areas and data quality").props.onPress();});
+
+    expect(router.push).toHaveBeenCalledWith("/admin/areas");
+  });
+
+  it("opens the append-only audit history",async()=>{
+    installAdminOverview();
+    const tree=await renderDashboard();
+
+    await act(async()=>{pressable(tree,"View admin audit history").props.onPress();});
+
+    expect(router.push).toHaveBeenCalledWith("/admin/audit");
   });
 
   it("opens the Stage 3 listing catalogue",async()=>{
