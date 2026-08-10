@@ -34,6 +34,29 @@ function currentCommit(){
   }
 }
 
+// The commit is the answer everyone wants, but a deployment has no .git and no
+// git binary, so `replit-start.sh` records "unknown" there too. The bundle
+// filename is the identity that always survives: Expo hashes it from the built
+// content, so two servers reporting the same `bundle` are running byte-identical
+// code, and a stale preview reports a different one. That comparison is what
+// finally proved a deployment matched a locally verified build.
+function entryBundle(){
+  try{
+    const dir=path.join(root,"_expo","static","js","web");
+    return fs.readdirSync(dir).find(name=>name.startsWith("entry-") && name.endsWith(".js")) || null;
+  }catch{
+    return null;
+  }
+}
+
+function recordedBuild(){
+  try{
+    return JSON.parse(fs.readFileSync(path.join(root,"build-info.json"),"utf8"));
+  }catch{
+    return {};
+  }
+}
+
 function buildInfo(){
   let builtAt=null;
   try{
@@ -42,9 +65,15 @@ function buildInfo(){
     builtAt=null;
   }
 
+  const recorded=recordedBuild();
+  const commit=currentCommit();
+
   return {
     status:fs.existsSync(indexFile) ? "ready" : "building",
-    commit:currentCommit(),
+    // .git when it exists (workspace), otherwise whatever the build recorded.
+    commit:commit==="unknown" ? (recorded.commit || "unknown") : commit,
+    branch:recorded.branch || null,
+    bundle:entryBundle(),
     builtAt
   };
 }

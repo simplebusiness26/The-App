@@ -193,9 +193,29 @@ loading it in Chromium — which is available in this environment and had never
 been used in twelve packets. Jest mounting a component proves it does not throw
 in Node with mocked native modules. It says nothing about a browser.
 
-**The owner published the app** at the end of this session so future verification
-has a stable URL that can be fetched directly, rather than depending on
-screenshots of a workspace preview that is only alive while the tab is open.
+**The owner published the app**, and that settled it. The deployment serves
+`entry-235a23372d0408d9149c9f0e3903ad58.js` — **byte-identical to the bundle
+built and crawled locally in Chromium**, where `/profile` renders correctly. It
+contains every marker of the fixes (`Something broke on this screen`,
+`Only you can see this map`, `AVG SCORE GIVEN`, `Happening`).
+
+So the fix was live and working the whole time on the deployment. The URL being
+tested was the workspace preview, whose long-running node process still had the
+old `serve-preview.cjs` — which is why its `/health` had no `commit` field.
+
+**`/health` now reports the entry bundle filename as well.** A deployment has no
+`.git` and no git binary, so both `.git` and `replit-start.sh` record the commit
+as "unknown" there. Expo hashes the bundle name from built content, so it always
+survives and is the identity that actually matters: two servers reporting the
+same `bundle` are running byte-identical code. That comparison is what proved
+the deployment matched a verified build, and it is now available in one request.
+
+**Every route was crawled in a real browser for the first time.** 26 routes
+loaded against the production bundle; all render. The one crash the crawl
+produced (`/live`, `item.item_type.replace`) came from the crawl's own stub
+rows omitting `item_type`, which `get_live_discovery` always sets — a fixture
+artifact, not a live defect, and recorded as such rather than "fixed". The
+error boundary caught it and printed it, which is the boundary doing its job.
 
 ---
 
