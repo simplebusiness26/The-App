@@ -182,13 +182,29 @@ on with 5 policies, and `get_explorer_leaderboard`, `get_explorer_memories` and
 `get_explorer_review_reputation` all exist and are executable. The query
 returns rows or `[]`; it does not throw.
 
-**Wrong diagnosis 2: `react-native-maps` in the web bundle.** `app/map.web.js`
-exists precisely so the web map never imports it, and 8b imported `MapView`
-straight into `components/MyMap.js`, which the profile imports. That looked
-conclusive. **It was not:** building with and without the import produced
-byte-identical bundles — `AIRMap` appears either way, and `50.8225` (unique to
-`app/map.js`) and `initialRegion` are both absent, so neither native map file
-is bundled for web at all. The import was never the cause.
+**Diagnosis 2 was right, and the test of it was wrong — twice over.**
+`app/map.web.js` exists precisely so the web map never imports
+`react-native-maps`, and 8b imported `MapView` straight into
+`components/MyMap.js`, which the profile imports. I then "disproved" it by
+building with and without the import and finding byte-identical bundles, and
+moved on.
+
+**That test was meaningless.** Metro *bundles* a module but only *evaluates* it
+when something requires it. `react-native-maps` is in the web bundle either
+way, via the route manifest; it only runs when an imported module pulls it in —
+and `MyMap` did. Comparing bundle contents could never have shown that.
+
+Proven properly afterwards, by loading the built page in Chromium with
+`MapView` actually used in `MyMap`:
+
+```
+TypeError: (0 , r(...).codegenNativeComponent) is not a function
+```
+
+react-native-maps evaluating on web and failing. With the platform split in
+place the same page renders the full profile with zero console errors. **That
+crash is the black screen**, and it explains the symptom exactly: React 18
+unmounts the whole root, so the header and tab bar disappear too.
 
 **What actually found it: loading the built page in Chromium.** The profile
 route rendered its header and tab bar and then nothing — no message, no
@@ -212,8 +228,7 @@ loaded. / Try again" instead of rendering nothing.
 - The Clubs read is caught separately: one tab failing must not cost the whole
   profile.
 
-**Also done, and kept even though it was not the cause.** `MyMap` no longer
-imports `react-native-maps`; the map moved to a platform-split
+**The fix.** `MyMap` no longer imports `react-native-maps`; the map moved to a platform-split
 `MemoryPins.js` / `MemoryPins.web.js` with a shared `MemoryRow.js`, matching the
 `app/map.web.js` convention the repo already had. The gate now enforces the
 general rule: **a file may import `react-native-maps` only if a `.web.js`
@@ -234,11 +249,18 @@ browser, and this project has twelve packets of screens in that state.
 **Ran:** `npm run test:ci` → **455 passed across 22 suites** (451 before, +4);
 every gate green; production web export succeeds.
 
-**Unverified:** the owner's exact failure was never reproduced with a working
-network — with real data the profile renders correctly in Chromium with zero
-console errors. The fix addresses the failure *class* that produces this
-symptom. **If profiles are still blank after this, the next step is the browser
-console from the owner's device, not another change from me.**
+**An error boundary now exists, and there was none anywhere before.** React 18
+unmounts the entire root when a render throws uncaught, which is why a crash on
+one screen produced a completely black page — no header, no tab bar, no
+message, nothing to tap, and no way for the person looking at it to report
+anything more useful than "it's blank". `components/ErrorBoundary.js` wraps the
+app in `app/_layout.js` and prints the error and the component stack as
+selectable text. It is deliberately plain so it cannot itself throw. It is the
+floor under everything that gets missed, not a substitute for handling errors
+where they happen.
+
+**Unverified:** the owner has not yet confirmed the fix on their device. The
+crash and the fix are both reproduced in Chromium against the real bundle.
 
 ---
 

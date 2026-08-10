@@ -8,6 +8,7 @@ import QuickAccessDrawer from "../components/QuickAccessDrawer";
 import {FeedbackProvider} from "../context/FeedbackContext";
 import {NotificationProvider} from "../context/NotificationContext";
 import {DrawerProvider} from "../context/DrawerContext";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 export const unstable_settings={initialRouteName:"index"};
 
@@ -18,6 +19,14 @@ export const unstable_settings={initialRouteName:"index"};
 export default function Layout(){
   return(
     <SafeAreaProvider>
+      {/*
+        Outermost, and above the providers on purpose: React 18 unmounts the
+        whole root when a render throws with nothing to catch it, which is why a
+        crash on one screen showed as a completely black page with no header,
+        no tab bar and nothing to tap. A blank screen is the worst possible
+        failure report; this makes a crash name itself.
+      */}
+      <ErrorBoundary>
       <FeedbackProvider>
         <NotificationProvider>
           <DrawerProvider>
@@ -120,6 +129,7 @@ export default function Layout(){
           </DrawerProvider>
         </NotificationProvider>
       </FeedbackProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
