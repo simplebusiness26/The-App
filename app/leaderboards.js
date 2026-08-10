@@ -87,6 +87,11 @@ export default function Leaderboards(){
 
   const needsArea=scope==="local" && (!profile?.show_area || !profile?.area?.trim());
 
+  // From the rows already loaded. A second query would be a second thing to
+  // keep in step, and this page has no need to ask the database anything the
+  // list has not already answered.
+  const ownRow=rows.find(row=>row.user_id===profile?.id) || null;
+
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.eyebrow}>EXPLORER RANKINGS</Text>
@@ -111,6 +116,44 @@ export default function Leaderboards(){
 
       {scope==="local" && profile?.show_area && !!profile?.area?.trim() && (
         <View style={styles.areaPill}><Text style={styles.areaText}>📍 {profile.area.trim()}</Text></View>
+      )}
+
+      {/*
+        Packet 9b: the rank card.
+
+        The list shows the top of the board. Everybody who is not on it learns
+        nothing, which is the majority of people and exactly the ones a
+        leaderboard should be telling where they stand. This says it plainly,
+        including when the honest answer is "not yet".
+
+        It is derived from the rows already fetched -- no second query, and
+        therefore nothing new exposed. When the viewer is outside the fetched
+        window the card says so rather than inventing a position.
+      */}
+      {!needsArea && !loading && !error && (
+        <View style={styles.rankCard} accessibilityLabel={ownRow
+          ? `You are ranked ${ownRow.rank} with ${ownRow.points} point${ownRow.points===1 ? "" : "s"}`
+          : "You are not ranked in this period yet"}>
+          <Text style={styles.rankEyebrow}>WHERE YOU STAND</Text>
+          {ownRow ? (
+            <>
+              <Text style={styles.rankValue}>#{ownRow.rank}</Text>
+              <Text style={styles.rankMeta}>
+                {ownRow.points} point{ownRow.points===1 ? "" : "s"} · {ownRow.review_count} review{ownRow.review_count===1 ? "" : "s"} this {period==="monthly" ? "month" : "week"}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.rankValue}>—</Text>
+              {/* An instruction, not a mood. design-system.md bans the mood. */}
+              <Text style={styles.rankMeta}>
+                {profile?.leaderboard_opt_in===false
+                  ? "You have opted out of leaderboards. Turn it on in your profile to appear here."
+                  : "Publish a review of somewhere you went and you will appear here."}
+              </Text>
+            </>
+          )}
+        </View>
       )}
 
       {needsArea ? (
@@ -164,6 +207,10 @@ export default function Leaderboards(){
 }
 
 const styles=StyleSheet.create({
+  rankCard:{backgroundColor:"#221d30",borderColor:"#50416e",borderWidth:1,borderRadius:16,padding:18,marginBottom:14,alignItems:"center"},
+  rankEyebrow:{color:"#a993ed",fontSize:10,fontWeight:"900",letterSpacing:0.7},
+  rankValue:{color:"white",fontSize:38,fontWeight:"900",marginTop:6},
+  rankMeta:{color:"#c9b9f7",fontSize:13,textAlign:"center",marginTop:6,lineHeight:19},
   screen:{flex:1,backgroundColor:"#18181b"},
   content:{padding:18,paddingBottom:60},
   eyebrow:{color:"#aa96ee",fontSize:11,fontWeight:"900",letterSpacing:0.8},

@@ -56,7 +56,7 @@ boundary — the whole reason 8d exists — is verified against real accounts.
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
 or pull request was created.
-**Packet order from here:** 9b (Leaderboard UI), then 10 (Manager Hub) and 11 (design system pass). **Two migrations are written, validated and unapplied** — 8f2's and 9a's. Both were compiled against the live schema inside rolled-back transactions; neither has been applied. The owner split the ledger's old
+**Packet order from here:** 10 (Manager Hub), then 11 (design system pass). 9b is **in progress, not done** — three of its four parts are blocked on things that do not exist. **Two migrations are written, validated and unapplied** — 8f2's and 9a's. Both were compiled against the live schema inside rolled-back transactions; neither has been applied. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
@@ -135,7 +135,7 @@ Nothing else should change.
 | 8f1 | Shared activity read model + living-map integration | done | | 36-check gate; 21 tests; 9 red-then-green demonstrations; no migration needed — the read model already existed; live shape confirmed on `yzpthslwsvesgndzdqai` |
 | 8f2 | Feed ranking and trending (source reasons, place activity) | done in code, **migration not applied** | | 29-check gate; 23 tests; 9 red-then-green demonstrations; both functions compiled against the live schema inside a rolled-back transaction |
 | 9a | Scoring engine | done in code, **migration not applied** | | 22-check gate; 7 red-then-green demonstrations; diminishing returns measured on live data (10/5/2/1); privacy review recorded |
-| 9b | Leaderboard UI | not started | | |
+| 9b | Leaderboard UI | **in progress** — rank card done; category and community filters and achievements are blocked, see entry | | 5 tests; 4 red-then-green demonstrations |
 | 10 | Manager Hub | not started | | |
 | 11 | Design system pass | not started | | |
 
@@ -166,6 +166,62 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 9b — the rank card, and three parts that cannot be built
+
+**Did:** Built the rank card. Did **not** build the other three parts of 9b,
+and this entry is mostly about why, because "leaderboard UI: done" would have
+been the wrong thing to write.
+
+The brief's 9b is "filters (area / community / time / category), rank card,
+achievements". Area and time already existed. Of the rest:
+
+| Part | Status | Why |
+|---|---|---|
+| Rank card | **built** | Real, and buildable from data already fetched |
+| Category filter | blocked | `get_explorer_leaderboard` has no category parameter — a migration, and one whose privacy needs thinking about, since points-by-category is a weaker version of the per-source split 9a just refused |
+| **Community filter** | **blocked, and should be questioned** | **There is no community concept anywhere in this app.** RULES.md lists the nouns — Explorer, Manager, Place, Club, Event, State — and says "If you need a new noun, ask before inventing it." Building a filter for a thing that does not exist means inventing it silently |
+| Achievements | blocked | No table, no definition, no list of what they would be. That is a product decision, not a coding task |
+
+**The rank card is worth having on its own.** The list shows the top of the
+board; everybody not on it learns nothing, which is most people and precisely
+the ones a leaderboard exists to tell where they stand. It says "#2, 25 points,
+3 reviews this week", or says plainly that you are not ranked yet.
+
+Three details that are the whole value:
+
+- It **never invents a position**. Somebody outside the fetched window gets "—"
+  and an instruction, not a guess from the top row.
+- An **opted-out Explorer is told the real reason**. Telling somebody who turned
+  leaderboards off to "publish a review" is advice that cannot work, which is
+  worse than no advice.
+- It **asks the database nothing** the list has not already answered — derived
+  from rows already loaded, so no second query and no second surface to review
+  for what it exposes.
+
+**A real bug found by a test that was itself wrong first.** The assertions
+looked for `"#2"` and `"25 points"` in the page text; `textOf` joins React's
+text nodes with spaces, so the page reads `"# 2"` and `"25  point s"` and the
+test failed against correct markup. Rewritten to assert the card's spoken
+label — which then exposed a genuine defect: the label said **"1 points"**. The
+page text could never have shown that, because the spacing hides the boundary
+entirely. **Accessibility labels are the honest thing to assert on in this
+project**, and that is now the third suite to arrive at it independently.
+
+**Files:** `test/leaderboard-rank.test.js` (5 tests) — new. Changed:
+`app/leaderboards.js`.
+
+**Four checks demonstrated failing**, including the card inventing a rank from
+the top row and the plural regression in the spoken label.
+
+**Ran:** 495 tests across 26 suites; every gate green; browser gate 42/42.
+
+**Unverified:** the card ranks on **review points**, because Explorer Score does
+not exist until 9a's migration is applied. Once it is, this screen should show
+the Score and not review points, and that is a one-line change plus a decision
+about which figure the board ranks on.
 
 ---
 
