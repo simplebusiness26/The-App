@@ -23,7 +23,8 @@
     "verify:memories": "node scripts/verify-memories.cjs",
     "verify:mymap": "node scripts/verify-my-map.cjs",
     "verify:livingmap": "node scripts/verify-living-map.cjs",
-    "verify:browser": "node scripts/verify-browser.cjs"
+    "verify:browser": "node scripts/verify-browser.cjs",
+    "verify:trending": "node scripts/verify-trending.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",

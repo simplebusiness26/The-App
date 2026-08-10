@@ -4,6 +4,7 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import LikeButton from "../components/LikeButton";
 import EndorseButton from "../components/EndorseButton";
+import {reasonsFor} from "../utils/trending";
 
 function timeLabel(value){
   if(!value) return "";
@@ -162,6 +163,24 @@ export default function Feed(){
               </View>
             </Pressable>
 
+            {/*
+              Packet 8f2. "Why am I seeing this?" as a list rather than one
+              lossy label -- an item can be here because you follow the poster
+              AND because it is at a place you follow, and collapsing that to a
+              single reason throws away the more interesting half.
+
+              reasonsFor() returns [] when the row has no source_reasons, which
+              is the case until the 8f2 migration is applied. The row simply
+              shows nothing rather than breaking or inventing a reason.
+            */}
+            {reasonsFor(item).length>0 && (
+              <View style={styles.reasonRow}>
+                {reasonsFor(item).map(reason=>(
+                  <Text key={reason} style={styles.reason}>{reason}</Text>
+                ))}
+              </View>
+            )}
+
             <Pressable onPress={()=>openItem(item)}>
               {!!item.caption && <Text style={styles.caption}>{item.caption}</Text>}
 
@@ -229,6 +248,8 @@ export default function Feed(){
 }
 
 const styles=StyleSheet.create({
+  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:8},
+  reason:{color:"#bca8ff",backgroundColor:"#241d3a",borderRadius:20,paddingHorizontal:9,paddingVertical:4,fontSize:11,fontWeight:"800",overflow:"hidden"},
   screen:{flex:1,backgroundColor:"#18181b"},
   content:{padding:18,paddingBottom:70},
   headingRow:{marginBottom:16},

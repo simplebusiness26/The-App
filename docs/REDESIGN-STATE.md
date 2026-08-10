@@ -56,7 +56,7 @@ boundary — the whole reason 8d exists — is verified against real accounts.
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
 or pull request was created.
-**Packet order from here:** 8f2. 8b and 8f1 are done. The owner split the ledger's old
+**Packet order from here:** the 8-track is complete in code. 8f2's migration is the only thing outstanding, and it is written and validated but **not applied**. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
@@ -133,7 +133,7 @@ Nothing else should change.
 | 8d | Memories (two-phase lifecycle, private archive) | done, **applied and verified live** | `42b695d` | 57-check gate; 13 tests; 409 total; migration + 1 forward correction applied to `yzpthslwsvesgndzdqai`; the phase boundary proved from 4 callers with RLS on, including a friend losing access at expiry |
 | 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
 | 8f1 | Shared activity read model + living-map integration | done | | 36-check gate; 21 tests; 9 red-then-green demonstrations; no migration needed — the read model already existed; live shape confirmed on `yzpthslwsvesgndzdqai` |
-| 8f2 | Feed ranking and trending (source reasons, place activity) | designed, not started | | |
+| 8f2 | Feed ranking and trending (source reasons, place activity) | done in code, **migration not applied** | | 29-check gate; 23 tests; 9 red-then-green demonstrations; both functions compiled against the live schema inside a rolled-back transaction |
 | 9a | Scoring engine | not started | | |
 | 9b | Leaderboard UI | not started | | |
 | 10 | Manager Hub | not started | | |
@@ -166,6 +166,87 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Packet 8f2 — the formula, and a migration validated but not applied
+
+**Did:** Built the trending formula and source reasons. The owner's instruction
+was that the formula be **defined before any trending code is written**, so
+`utils/trending.js` is the deliverable and all eight named inputs are separate,
+named, tested functions: recency, engagement velocity, distinct posters,
+distinct engagers, geographic relevance, moderation signals, anti-spam, and
+public content only.
+
+**The shape of the decision.** Ranking lives in JavaScript, not SQL. Ranking
+inside a function can only be changed by a migration and can only be checked
+against production; this takes rows and returns an order, so every rule has a
+test that fails when the rule changes. The migration's whole job is to return
+**honest counts** — and specifically the counts only a database can establish:
+how many *different* Explorers posted and engaged.
+
+**What the formula refuses to do.** There is no factor for engagement on its
+own, because that rewards posting. Moderation, privacy and anti-spam are
+**gates, not weights** — each returns 0 outright, so no amount of engagement can
+outvote them. Proximity **multiplies** rather than adds, so trending in another
+town cannot be compensated for. An unknown distance is neutral rather than near,
+because guessing "close" is exactly what something with no location would want.
+One account's repeat posting is capped; ten people once each beats one person
+forty times, and there is a test that says so.
+
+**Source reasons are a list.** A Moment can be in your feed because you follow
+the poster AND because it is at a place you follow; collapsing that to one label
+throws away the more interesting half. Deduplicated, ordered most-specific
+first, and **the feed tolerates their absence** — which is every row until the
+migration is applied, so this ships working today and improves when it lands.
+
+**THE MIGRATION IS WRITTEN AND VALIDATED, NOT APPLIED.** It was compiled against
+the live schema inside transactions that end in `RAISE EXCEPTION`, so there was
+no path on which they could commit. That found two real errors that would
+otherwise have been discovered by applying a broken migration:
+
+| Error | Cause |
+|---|---|
+| `column f.actor_id does not exist` | the feed's CTEs select positional columns, so the union had no usable names — the original relied on `RETURNS TABLE` mapping by position |
+| `function min(uuid) does not exist` | place attributes are snapshots; taking the most recent with `array_agg(... order by ...)[1]` is both type-safe and more correct |
+
+After fixing both, `get_trending_places` compiled and returned **4 real trending
+places** on live data, and `get_explorer_social_feed` compiled with
+`source_reasons` present. Then rolled back: the live project still has 35
+migrations, no `get_trending_places`, and no `source_reasons` column.
+
+**The body was rebuilt from `pg_get_functiondef` on the live project**, not from
+the migration that created it — 8c and 8e both record that copying an older
+file's text silently reverts later patches.
+
+**Files:** `utils/trending.js`, `test/trending.test.js` (23 tests),
+`scripts/verify-trending.cjs` (29 checks),
+`supabase/migrations/20260810030000_feed_source_reasons_and_trending.sql` — all
+new. Changed: `app/feed.js`, `package.json`, the workflow.
+
+**Nine checks demonstrated failing before being kept.** Two proved nothing at
+first, both the same class as every previous instance: one matched a *second*
+`return 0.5` elsewhere in the same function, the other matched the **feed**
+function's `visibility='public'` while trending's own filter was deleted. Both
+are now scoped to the branch and the function body they are about. **That is the
+thirteenth and fourteenth time a check in this project has looked convincing and
+proved nothing**, and both were found by trying to break them.
+
+**Ran:** `npm run test:ci` → **490 passed across 25 suites** (467 before, +23);
+trending gate 29; every other gate green; browser gate 42/42 in binding mode.
+
+**Exact next step:** apply
+`20260810030000_feed_source_reasons_and_trending.sql`. It is the only unapplied
+migration in the repository. It drops and recreates
+`get_explorer_social_feed` — the argument signature is unchanged, so no client
+call changes, but it is a live function and the owner should be watching.
+
+**Unverified:** the source reasons have never been seen on a real feed row,
+because nothing returns them until the migration is applied. Trending has no
+screen yet — the formula and the counts exist and are tested, but no surface
+renders a "Trending near you" section. That is the natural next packet and was
+deliberately not started, because a ranking nobody has looked at is not worth
+designing a screen around.
 
 ---
 
