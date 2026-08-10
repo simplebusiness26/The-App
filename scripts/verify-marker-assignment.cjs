@@ -137,6 +137,39 @@ check(
   `${MARKERS}: accepts an override`
 );
 
+// ---------------------------------------------------------------------------
+// 4b. The overprint is a channel, not a colour
+// ---------------------------------------------------------------------------
+//
+// design-system.md: "a place hosting something. A second pink disc sits behind
+// ... Deliberate misregistration". It exists because the product names more
+// states than the palette has inks, and the alternative was a fourth colour --
+// the one thing the palette rule forbids. So it must stay derived, and it must
+// never introduce an ink of its own.
+
+check(
+  /overprint:hosting===true/.test(markers),
+  `${MARKERS}: the overprint is not derived — a caller must not be able to switch the signature on`
+);
+
+const pinSource=code(read(PIN));
+
+check(
+  /marker\.overprint===true/.test(pinSource),
+  `${PIN}: does not read the derived overprint flag`
+);
+
+check(
+  /fill=\{marker\.fill\}/.test(pinSource),
+  `${PIN}: the overprint disc does not reuse the marker's own ink — it must not introduce a colour`
+);
+
+// design-system.md, Pins: "Don't add a second signature."
+check(
+  !/(pulse|glow|halo|shadowRadius)/i.test(pinSource),
+  `${PIN}: adds a second signature — the overprint is the only one, and a glow is banned outright`
+);
+
 const pin=code(read(PIN));
 
 // PlaceMarker draws a descriptor and decides nothing. If it starts reading a

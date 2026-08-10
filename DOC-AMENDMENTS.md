@@ -98,7 +98,39 @@ are opposites:
 fails any blurred `box-shadow`. Under the current docs, **every screen
 in this redesign is a defect.**
 
-### Do this
+### RESOLVED 2026-08-10 — riso stays
+
+The owner deferred the call. **Riso is kept**, which is what this document
+already recommended, and the reasoning has only got stronger since it was
+written: twelve packets are now built on that token table, and
+`utils/tokens.js`, `scripts/verify-marker-assignment.cjs` and every tokenised
+screen encode it. Switching would invalidate all of them to gain a palette this
+document itself calls "like every other local app".
+
+The brief's *structural* ideas were already ported — marker taxonomy, bottom map
+cards, drawer, tab bar. Its colours were not, and now will not be.
+
+**The one live consequence, and how it is paid.** The product names more states
+than the palette has inks: an Event moves through upcoming, starting soon, live,
+busy and finished, and there are three inks with one reserved for offers. Until
+now the map could not show "happening right now" apart from "on Saturday" at
+all.
+
+That is now carried by the **overprint** — which `docs/design-system.md` had
+specified from the start and nothing had ever implemented:
+
+> "a place hosting something. A second pink disc sits behind, offset
+> `translate(4px, -4px)` ... Deliberate misregistration."
+
+Same ink, second channel. The brief wanted "pulse/glow on active markers"; a
+glow is banned outright (no blurred shadows), and the overprint is the
+riso-native form of that idea — so the brief's intent survives in the design
+system's own vocabulary rather than against it.
+
+**To overturn this,** change `MARKER_STATE_INK` in `utils/markers.js` and the
+table in `docs/design-system.md` together; the marker gate fails if they drift.
+
+### The original decision, kept as the record
 
 Pick one. Then rewrite `docs/design-system.md` to match. Do not run both.
 

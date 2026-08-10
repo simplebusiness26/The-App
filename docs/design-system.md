@@ -81,6 +81,18 @@ A pin is a state, not a dot.
 The overprint is the one memorable thing in this design. Everything else
 stays quiet so it lands. Don't add a second signature.
 
+**Implemented 2026-08-10**, in `components/PlaceMarker.js`, and it is what
+carries "happening right now". The palette has three inks and the product names
+five Event states, so liveness is a second *channel* rather than a fourth
+colour. `react-native-svg` has no `mix-blend-mode`, so the multiply is
+approximated with opacity — the ink itself is unchanged, which is what keeps it
+inside the table. Only pins that carry it get the extra 4px of canvas, so every
+other pin keeps its exact geometry.
+
+It is derived in `utils/markers.js` and cannot be switched on by a caller;
+`scripts/verify-marker-assignment.cjs` fails if that changes, if the disc stops
+reusing the marker's own ink, or if a glow or pulse appears.
+
 ## Motion
 
 Almost none. Pin select scales to 1.16 on

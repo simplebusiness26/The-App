@@ -61,10 +61,10 @@ or pull request was created.
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
 `explorer_memories`, which exists.
-**Blocked on:** the two decisions in `DOC-AMENDMENTS.md` — stage model and
-palette. Neither is a coding task. Both are yours. The file is now
-committed at the repo root; it was missing entirely until 2026-08-04, so
-this blocker could not previously be read, only referenced.
+**Blocked on:** the stage-model decision in `DOC-AMENDMENTS.md`. **The palette
+decision is resolved as of 2026-08-10 — riso stays**, the owner having deferred
+the call; see that file and the entry below. Nothing in the redesign is blocked
+on colour any more.
 
 Packet 2 proceeded despite the palette decision being open, because the
 brief specifies the marker set under the riso rules explicitly and
@@ -166,6 +166,64 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Palette resolved, and the overprint finally built
+
+**Did:** Closed the palette blocker that has been open since 2026-08-04, and
+implemented the signature `docs/design-system.md` has specified from the start
+and nothing had ever drawn.
+
+**The decision: riso stays.** The owner deferred it. That is what
+`DOC-AMENDMENTS.md` already recommended, and the case has only strengthened —
+twelve packets are built on that token table, and `utils/tokens.js`, the marker
+gate and every tokenised screen encode it. Switching would invalidate all of
+them to gain a palette the document itself calls "like every other local app".
+The brief's structural ideas were already ported; its colours now never will be.
+
+**The consequence, and how it is paid.** The product names more states than the
+palette has inks — an Event moves through upcoming, starting soon, live, busy,
+finished, and there are three inks with one reserved for offers. 8f1 shipped
+with every activity pin the same pink, and recorded honestly that the map
+therefore could not show "happening right now" apart from "on Saturday".
+
+**The answer was already written down.** `design-system.md` line 77:
+
+> "**Overprint** — a place hosting something. A second pink disc sits behind,
+> offset `translate(4px, -4px)` ... Deliberate misregistration, like a flyer run
+> through the press twice."
+
+Named there as "the one memorable thing in this design", and never built. So
+liveness is a second **channel**, not a fourth colour: same ink, offset disc.
+The redesign brief wanted "pulse/glow on active markers" — a glow is banned
+outright — so the brief's intent survives in the design system's own vocabulary
+rather than against it.
+
+**Built in `components/PlaceMarker.js`.** `react-native-svg` has no
+`mix-blend-mode`, so the multiply is approximated with opacity; the ink is
+unchanged, which is what keeps it inside the table. Only pins carrying the
+overprint get the extra 4px of canvas, so **every existing pin keeps its exact
+geometry** rather than being nudged for a feature it does not use.
+
+Derived in `utils/markers.js` from `state === "live"`, never passed in. Four new
+gate checks: the flag must be derived, the pin must read it, the disc must reuse
+the marker's own ink, and no pulse/glow/halo may appear.
+
+**Also:** `REQUIRE_BROWSER=1` is now set in CI. The browser gate could
+previously skip silently when no Chromium was found, which is precisely the
+weakness it exists to remove. GitHub's ubuntu runners ship Chrome; if one ever
+does not, this now fails loudly, which is the right way to learn that.
+
+**Ran:** `npm run test:ci` → **467 passed across 23 suites**; marker gate 342;
+every other gate green; browser gate 42/42 in binding mode.
+
+**Unverified:** **nobody has seen the overprint.** It is asserted as a descriptor
+flag and as SVG structure, not looked at. Whether 4px of offset at 0.55 opacity
+reads as deliberate misregistration or as a rendering fault is a judgement only
+the owner can make, and it is the first visual change in this project that is
+purely aesthetic. The opacity is one number in `PlaceMarker.js` if it wants
+tuning.
 
 ---
 

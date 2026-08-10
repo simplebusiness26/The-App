@@ -218,6 +218,26 @@ describe("the activity marker",()=>{
     expect(scheduled.label).toContain("Scheduled here.");
   });
 
+  test("happening now is told apart by the overprint, not by a colour",()=>{
+    const live=markerForActivity({kind:"linkup",state:ACTIVITY_STATES.LIVE});
+    const soon=markerForActivity({kind:"linkup",state:ACTIVITY_STATES.SOON});
+    const later=markerForActivity({kind:"linkup",state:ACTIVITY_STATES.SCHEDULED});
+
+    // design-system.md's overprint: "a place hosting something". The palette
+    // has three inks and the product names five event states, so liveness is a
+    // second channel. If this ever becomes a fill difference, the three-ink
+    // rule has quietly grown a fourth meaning.
+    expect(live.overprint).toBe(true);
+    expect(soon.overprint).toBe(false);
+    expect(later.overprint).toBe(false);
+    expect(live.fill).toBe(later.fill);
+  });
+
+  test("a caller cannot force the signature on",()=>{
+    const forced=markerForActivity({kind:"linkup",state:ACTIVITY_STATES.SCHEDULED,overprint:true,hosting:true});
+    expect(forced.overprint).toBe(false);
+  });
+
   test("a caller cannot force a colour or a glyph",()=>{
     const forced=markerForActivity({kind:"linkup",state:"live",fill:"#FFC61A",glyph:"star"});
 

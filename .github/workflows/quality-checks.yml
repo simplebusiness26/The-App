@@ -106,11 +106,14 @@ jobs:
       # mock is exactly what made a native-only import look healthy while every
       # profile rendered a black screen.
       #
-      # Set REQUIRE_BROWSER=1 once the runner is confirmed to ship a browser;
-      # until then this skips loudly rather than failing the build.
+      # REQUIRE_BROWSER=1 makes this binding: GitHub's ubuntu runners ship
+      # Chrome, and a gate that can silently skip is the exact weakness this one
+      # exists to remove. If a runner ever lacks a browser this step fails
+      # loudly, which is the right way to find that out.
       - name: Verify every route renders in a browser
         env:
           DIST_DIR: dist-ci
+          REQUIRE_BROWSER: "1"
         run: npm run verify:browser
 
       - name: Upload web build

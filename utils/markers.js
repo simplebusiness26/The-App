@@ -22,6 +22,16 @@ import {ACTIVITY_STATE_SENTENCE} from "./liveActivity";
 // The three inks, and what each one means. These are the design system's, not
 // this file's -- do not add a fourth.
 //
+// Resolved 2026-08-10, the palette decision DOC-AMENDMENTS.md had left open:
+// **riso stays**. Twelve packets are built on this table, the marker semantics
+// here are better thought through than the brief's, and switching would
+// invalidate the token table, this file and every tokenised screen. The brief's
+// structural ideas were already ported; its colours were not.
+//
+// The cost of keeping three inks is that the product describes more states than
+// there are colours. That is paid by the overprint (a second channel) and by
+// every pin carrying a spoken sentence -- never by a fourth ink.
+//
 // Nothing in the repository currently produces `offer`: no table records one.
 // It is defined because the state vocabulary is design-system.md's and is
 // meaningless with a third of it missing, and because MARKER_STATE_INK is what
@@ -162,7 +172,7 @@ export function glyphPrimitives(name){
 // design system has for "something is scheduled here". The palette has three
 // inks; the product describes four event states. Words carry the difference the
 // colour cannot, which is the accessibility floor's position anyway.
-function buildMarker({glyph,state,typeSentence,claimed,stateSentence}){
+function buildMarker({glyph,state,typeSentence,claimed,stateSentence,hosting}){
   const fill=claimed ? MARKER_STATE_INK[state] : INK.card;
   const glyphInk=GLYPH_INK_ON_WHITE_SAFE.includes(fill) ? INK.card : INK.ink;
 
@@ -173,6 +183,11 @@ function buildMarker({glyph,state,typeSentence,claimed,stateSentence}){
     glyphInk,
     border:INK.ink,
     borderStyle:claimed ? "solid" : "dashed",
+    // design-system.md's overprint: "a place hosting something". It is a second
+    // channel rather than a fourth ink, which is how the map can show "happening
+    // now" apart from "on Saturday" without growing the palette. Derived here
+    // like everything else -- a caller cannot switch it on.
+    overprint:hosting===true,
     // Colour is never the only carrier of state (design-system.md,
     // accessibility floor). Every pin ships the sentence a screen reader gets.
     label:claimed
@@ -288,7 +303,11 @@ export function markerForActivity(activity){
     state:MARKER_STATES.SCHEDULED,
     typeSentence:`${ACTIVITY_TYPE_LABEL[activity?.kind] || "Activity"}.`,
     claimed:true,
-    stateSentence:ACTIVITY_STATE_SENTENCE[activity?.state]
+    stateSentence:ACTIVITY_STATE_SENTENCE[activity?.state],
+    // Happening right now gets the overprint. Starting soon and scheduled do
+    // not: the signature has to mean one thing, and "on at this moment" is the
+    // distinction the map could not previously draw at all.
+    hosting:activity?.state==="live"
   });
 }
 
