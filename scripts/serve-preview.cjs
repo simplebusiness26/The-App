@@ -7,6 +7,48 @@ const port=Number(process.env.PORT || 5000);
 const root=path.resolve(process.cwd(),"dist");
 const indexFile=path.join(root,"index.html");
 
+// Which commit is this preview actually serving?
+//
+// `serve-preview.cjs` serves a static `dist/`, so pulling new code changes
+// nothing until `expo export` runs again. That produced a long and expensive
+// debugging session: a screen was reported broken, fixed, verified in a real
+// browser, and reported broken again -- with no way to tell whether the preview
+// had ever run the new code.
+//
+// Read from .git rather than by spawning git, so this cannot fail or hang the
+// server. Reported by /health alongside when dist was actually built.
+function currentCommit(){
+  try{
+    const head=fs.readFileSync(path.resolve(process.cwd(),".git/HEAD"),"utf8").trim();
+    if(!head.startsWith("ref: ")) return head.slice(0,7);
+
+    const ref=head.slice(5).trim();
+    const refFile=path.resolve(process.cwd(),".git",ref);
+    if(fs.existsSync(refFile)) return fs.readFileSync(refFile,"utf8").trim().slice(0,7);
+
+    const packed=fs.readFileSync(path.resolve(process.cwd(),".git/packed-refs"),"utf8");
+    const line=packed.split("\n").find(row=>row.endsWith(` ${ref}`));
+    return line ? line.slice(0,7) : "unknown";
+  }catch{
+    return "unknown";
+  }
+}
+
+function buildInfo(){
+  let builtAt=null;
+  try{
+    builtAt=fs.statSync(indexFile).mtime.toISOString();
+  }catch{
+    builtAt=null;
+  }
+
+  return {
+    status:fs.existsSync(indexFile) ? "ready" : "building",
+    commit:currentCommit(),
+    builtAt
+  };
+}
+
 const mimeTypes={
   ".html":"text/html; charset=utf-8",
   ".js":"text/javascript; charset=utf-8",
@@ -96,9 +138,8 @@ const server=http.createServer((req,res)=>{
   }
 
   if(pathname==="/health"){
-    const ready=fs.existsSync(indexFile);
     res.writeHead(200,noCacheHeaders("application/json; charset=utf-8"));
-    res.end(JSON.stringify({status:ready ? "ready" : "building"}));
+    res.end(JSON.stringify(buildInfo()));
     return;
   }
 
