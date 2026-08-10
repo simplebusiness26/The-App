@@ -39,18 +39,21 @@ are the single largest source of wasted usage.
 
 **Packet in progress:** none
 **Last completed packet:** 8d — Memories (code only, migration not applied)
-**Admin dashboard workstream:** Stages 1–3 are live and verified. Stages 4–7
-are complete in code on `main2.0-Dev`: audited claim and Manager-capability
-decisions, recoverable club/Event state changes, privacy-bounded moderation,
-the Explorer directory, areas/data-quality reporting and append-only audit
-history. **The five new migrations have not been applied.**
-**Last session:** Resumed the unfinished admin-dashboard work after inspecting
-the repository, branch history and live Xplorer database. The already-complete
-Stage 1–3 migrations were not replayed. Built and checkpointed Stages 4–7,
-updated the transitive `nanoid` dependency past its new advisory, ran the full
-quality workflow locally and prepared one consolidated live-migration approval
-request. 8d remains built end-to-end in code, but **8d's migration has not been
-applied.**
+**Admin dashboard workstream:** Stages 1–7 are live and database-verified.
+Stages 4–7 provide audited claim and Manager-capability decisions, recoverable
+Club/Event State changes, privacy-bounded moderation, the read-only Explorer
+directory, areas/data-quality reporting and append-only audit history. The five
+planned migrations and one forward correction are applied to Xplorer. The new
+screens still need the owner's start-to-finish device test.
+**Last session:** Applied the approved Stage 4–7 migrations one at a time and
+verified every history row and security contract. The first live data-quality
+call caught an assumption that businesses had `created_at`; added a separate
+forward correction, applied it, and added a regression test rather than
+replaying or editing the recorded migration. Administrator success paths were
+exercised inside a rolled-back transaction, while ordinary Explorer and
+signed-out paths were proved blocked. No live content or audit row changed.
+Added `docs/ADMIN-DASHBOARD-TEST-PLAN.md` for the remaining device test. 8d
+remains built end-to-end in code, but **8d's migration has not been applied.**
 **Branch:** `main2.0-Dev` — the only development branch. Before new development,
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
@@ -165,6 +168,92 @@ Template:
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
+
+---
+
+### 2026-08-10 — Admin dashboard Stages 4–7 — migrations live and verified
+
+**Did:** Received the owner's approval and applied the five prepared migrations
+to Xplorer project `yzpthslwsvesgndzdqai` in order. Supabase recorded them as:
+
+1. `20260810005302_admin_claim_decisions`
+2. `20260810005338_admin_capability_decisions`
+3. `20260810005416_admin_activity_states`
+4. `20260810005443_admin_moderation`
+5. `20260810005740_admin_data_quality`
+
+The first execution of the final report found that `businesses` has no
+`created_at` column. No data had changed. Preserved the applied migration and
+added the forward-only
+`20260810008000_admin_data_quality_business_timestamp_fix.sql`, recorded live
+as `20260810005923_admin_data_quality_business_timestamp_fix`. It gives
+business-owner-State findings an explicit null sort timestamp and sorts those
+after dated claim findings. Added a regression assertion so the unsupported
+column cannot return unnoticed.
+
+Added `docs/ADMIN-DASHBOARD-TEST-PLAN.md`, a plain-English Parts 1–10 test from
+branch/build checks through access, overview, catalogue, decisions, activity,
+moderation/privacy, directory, data quality, audit and ordinary-app regression.
+It separates safe read-only checks from actions that must use disposable data
+because real admin actions leave permanent audit history.
+
+**Files changed:**
+`supabase/migrations/20260810008000_admin_data_quality_business_timestamp_fix.sql`,
+`test/admin-areas.test.js`, `docs/ADMIN-DASHBOARD-TEST-PLAN.md` and this ledger.
+
+**Acceptance criteria:** live database checks pass.
+
+- Final repository verification passes 19 suites / 409 tests, the 342-check
+  screen gate, every other workflow source gate, Expo Doctor 20/20 and a
+  production web export containing `/linkups/create`.
+- All six new history rows exist exactly once. All six admin RPCs are
+  `SECURITY DEFINER`, use an empty `search_path`, deny `anon` execute and run an
+  administrator check before reading or changing data.
+- A real ordinary Explorer was refused by every read and write admin RPC; a
+  signed-out caller was also refused. These access checks created no audit row.
+- Successful claim rejection, capability approval, Club State, Event State and
+  moderation-dismiss paths were exercised against real table shapes inside one
+  explicit transaction. Each changed all of its related rows and added exactly
+  one audit record inside the transaction. The transaction was rolled back;
+  claim, request, Club, Event, report and audit counts were all restored.
+- Direct authenticated writes cannot decide claims, grants or social reports
+  and cannot insert, update or delete audit history. Audit RLS is enabled.
+- The moderation function definitions contain none of the private Link-up
+  meeting, attendee, coordinate, email or phone fields.
+- The read-only data-quality RPC now executes successfully and reports 1 known
+  ownership inconsistency plus 6 groups containing 62 rows without canonical
+  areas. It contains no table mutation statement.
+- Live data remained 3 approved claims, 1 pending capability request, 8 open
+  Clubs, 9 published Events, 0 open social reports, 1 open safety report and 0
+  audit records after verification.
+- Supabase advisors were run after the DDL. The six admin functions receive the
+  generic authenticated-`SECURITY DEFINER` warning by design: the Data API must
+  let a signed-in caller reach the function, then the function checks
+  `guestbook_is_admin()`; the real non-admin simulation proved the second gate.
+  No admin function has the mutable-search-path warning and the audit table has
+  an RLS policy. Performance advice also identifies two pre-existing
+  per-row-auth policies on capability-request submission/resubmission and marks
+  the three newly unused indexes as informational while the tables are nearly
+  empty. See the Supabase linter references for
+  [authenticated SECURITY DEFINER](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable),
+  [RLS init plans](https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan)
+  and [unused indexes](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index).
+- `npm audit --audit-level=moderate` still reports the same 15 high findings
+  through Metro's `image-size`. Its proposed full fix still requires the
+  incompatible Expo 57 → 53 downgrade, so no forced dependency change was made.
+
+**Stopped because:** database implementation and non-destructive verification
+are complete. The remaining work is the owner's real-device test; actions in
+that test should use disposable records because audit history is append-only.
+
+**Exact next step:** rebuild App Preview from `main2.0-Dev`, then follow
+`docs/ADMIN-DASHBOARD-TEST-PLAN.md` from Part 1 through Part 10. Record any
+failure with its screen, account role, record, exact steps, expected result,
+actual result, screenshot/video and test time.
+
+**Unverified:** the new screens are still `Verified: renders. Unverified:
+behaves` on a real device. No genuine production admin decision has been made,
+so the live audit history is correctly empty.
 
 ---
 

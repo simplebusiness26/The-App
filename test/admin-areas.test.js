@@ -1,6 +1,8 @@
 /* eslint-env jest */
 
 const React=require("react");
+const fs=require("fs");
+const path=require("path");
 const {act,create}=require("react-test-renderer");
 const {SafeAreaProvider}=require("react-native-safe-area-context");
 const {router}=require("expo-router");
@@ -99,6 +101,20 @@ describe("Admin Dashboard Stage 7 areas and data quality",()=>{
       await act(async()=>tree.unmount());
       tree=null;
     }
+  });
+
+  it("keeps the live-schema timestamp correction in the forward migration",()=>{
+    const migration=fs.readFileSync(
+      path.join(
+        __dirname,
+        "../supabase/migrations/20260810008000_admin_data_quality_business_timestamp_fix.sql"
+      ),
+      "utf8"
+    );
+
+    expect(migration).toContain("null::timestamp without time zone as created_at");
+    expect(migration).toContain("order by issue.created_at desc nulls last");
+    expect(migration).not.toContain("b.created_at");
   });
 
   it("loads all read-only reports and renders the known issue without guessing",async()=>{
