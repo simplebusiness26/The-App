@@ -5,13 +5,9 @@ When the two conflict, CLAUDE.md wins.
 
 ## Before writing any code
 
-1. **Name the stage.** Say out loud which stage the request belongs to.
-   If it's Stage Two or later, stop and say so before writing anything.
-2. **Name the loop step.** See / Decide / Join / Get There / Experience /
-   Share. If a change serves none of them, say that instead of building it.
-3. **Read the files you're about to change.** Quote the lines you're
+1. **Read the files you're about to change.** Quote the lines you're
    relying on. Don't infer a file's contents from its name.
-4. **One feature at a time.** If the request contains two features, build
+2. **One thing at a time.** If the request contains two features, build
    the first and say what's left. Never leave a second one half-wired.
 
 ## Vocabulary — use these exact words in code, copy and commits
@@ -23,6 +19,9 @@ Inconsistent naming across files is the main way this codebase will rot.
 - **Manager** — an Explorer with unlocked tools for a place, club or
   event. Never "owner", never "business account", never a separate role
   table that forks the identity.
+- **Friend** — two Explorers who follow each other. There is no friend
+  request. **Close friend** — a friend hand-picked onto a smaller list,
+  one-way.
 - **Place** — anything with a fixed position. Types: `business`,
   `property`, `park`. A park is a place, not its own concept.
 - **Club** — a recurring thing. Has **sessions**. A session is not an event.
@@ -30,9 +29,11 @@ Inconsistent naming across files is the main way this codebase will rot.
 - **Claim** — the act of asserting you manage something.
   **Verified** — that claim confirmed by QR scan on site. Different words,
   different states, never used interchangeably.
-- **Visit** — a private, verified presence at a place (Stage One, via QR).
-  **Check-in** — a public, opt-in, expiring presence (Stage Two).
-  These are different features. Do not let visit code grow into check-in code.
+- **Check-in** — a public, opt-in presence at a park.
+- **Moment** — a photo pinned to where it was taken. **Memory** — the same
+  post once it's past. One table, one component, wording changes with age.
+- **Endorsement** — likes and comments on a review, counting towards the
+  reviewer.
 - **State** — what a pin currently is. Not `status`, not `mode`.
 
 If you need a new noun, ask before inventing it.
@@ -51,6 +52,8 @@ Explorer's whereabouts is safety-critical. For these:
   movement history, even if the current screen doesn't display it.
 - Precision is a setting, not a constant. Don't hardcode exact coordinates
   into anything shared.
+- Location visibility is enforced on the server. Never rely on the app
+  choosing not to draw a pin.
 
 ## Verification and honesty
 
@@ -66,13 +69,11 @@ Explorer's whereabouts is safety-critical. For these:
 
 ## Scope discipline
 
-- No placeholder UI for later stages. No greyed-out "Book" buttons, no
-  disabled RSVP, no coming-soon states. If it isn't buildable now, the
-  screen ends without it.
+- No placeholder UI for things not being built. No greyed-out buttons,
+  no coming-soon states. If it isn't buildable now, the screen ends
+  without it.
 - No mock or seed data left in application code. Fixtures live in test
   files only.
-- No speculative abstraction. Two similar things stay duplicated until
-  there are three.
 - Ask before adding a dependency. Ask before adding a new top-level
   directory. Ask before changing the build setup.
 
@@ -82,7 +83,7 @@ Explorer's whereabouts is safety-critical. For these:
   already run.
 - Every entity above needs one canonical table. If you find yourself
   writing a second table for the same noun, you've misread the model.
-- Reviews attach to places, clubs and events — not to Explorers.
+- Reviews attach to places, clubs and events — never to Explorers.
 - Never delete an Explorer's content as a side effect of another change.
 
 ## Git
@@ -98,9 +99,5 @@ Explorer's whereabouts is safety-critical. For these:
 - No summary markdown files after a task. No `IMPLEMENTATION_NOTES.md`,
   no `SUMMARY.md`. Tell me in the chat.
 - No new docs unless I ask for them.
-
-  Exception: `docs/REDESIGN-STATE.md` is a required ledger for the
-  redesign. Update it at the end of every packet. It is the only new
-  doc permitted without asking.
 - Point to specific files and lines when explaining a change.
 - Blunt, short, no preamble. Skip the recap of what I just asked for.
