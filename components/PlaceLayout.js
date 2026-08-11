@@ -278,7 +278,36 @@ function PlaceReview({review,onPhoto}){
         </Pressable>
       )}
 
-      {!!review.user_id && <Text style={styles.profileHint}>Tap to view Explorer profile →</Text>}
+      {/*
+        The manager's reply, if there is one. It lives on the review row itself
+        now -- before Packet 10 these columns existed only on a legacy copy, so
+        a reply written about a property was stored in a column called
+        business_response and no place page ever showed it.
+      */}
+      {!!review.manager_response && (
+        <View style={styles.managerReply}>
+          <Text style={styles.managerReplyLabel}>REPLY FROM THE MANAGER</Text>
+          <Text style={styles.managerReplyText}>{review.manager_response}</Text>
+        </View>
+      )}
+
+      {/*
+        Reply and report, on the page the review is actually on. Until now the
+        only way to reach either was to find the review in the news feed and tap
+        it there, which meant the reviews on a place page -- the ones people
+        actually read -- could not be answered at all.
+      */}
+      <View style={styles.reviewActions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Reply to this review"
+          style={styles.reviewAction}
+          onPress={(event)=>{event?.stopPropagation?.();router.push(`/social-comments/${review.id}`);}}
+        >
+          <Text style={styles.reviewActionText}>Reply</Text>
+        </Pressable>
+        {!!review.user_id && <Text style={styles.profileHint}>Tap the card to view the Explorer →</Text>}
+      </View>
     </Pressable>
   );
 }
@@ -350,6 +379,12 @@ const styles=StyleSheet.create({
   emptyStars:{color:INK.hair},
   reviewTitle:{color:INK.ink,fontSize:17,fontWeight:"800",marginTop:9},
   reviewComment:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:6},
+  managerReply:{marginTop:11,borderLeftWidth:3,borderLeftColor:INK.ink,paddingLeft:11},
+  managerReplyLabel:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:0.8},
+  managerReplyText:{color:INK.ink,fontSize:14,lineHeight:20,marginTop:3},
+  reviewActions:{flexDirection:"row",alignItems:"center",gap:10,marginTop:12},
+  reviewAction:{borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:14,paddingVertical:6,backgroundColor:INK.card},
+  reviewActionText:{color:INK.ink,fontWeight:"800",fontSize:12},
   reviewPhotoRow:{paddingTop:12},
   reviewPhoto:{width:120,height:120,borderRadius:10,borderWidth:2,borderColor:INK.ink,marginRight:8},
   videoButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,padding:12,marginTop:12},
