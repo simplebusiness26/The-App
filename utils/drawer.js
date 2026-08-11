@@ -43,7 +43,11 @@ export const SECTIONS=[
     rows:[
       {label:"Explorer feed",route:"/feed",gate:GATES.SIGNED_IN},
       {label:"Find Explorers",route:"/explorers",gate:GATES.SIGNED_IN},
-      {label:"Leaderboards",route:"/leaderboards",gate:GATES.ALWAYS},
+      // Signed in only. app/leaderboards.js has always redirected a signed-out
+      // visitor to the log-in screen, so listing it as always-available offered
+      // a row that dead-ended on tap. The ranking is about Explorers and is not
+      // for people without an account.
+      {label:"Leaderboards",route:"/leaderboards",gate:GATES.SIGNED_IN},
       {label:"Notifications",route:"/notifications",gate:GATES.SIGNED_IN}
     ]
   },

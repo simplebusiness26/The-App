@@ -28,12 +28,10 @@ export const TABS=[
   {key:"camera",label:"Camera",route:"/moments/create",glyph:"camera",signedIn:true},
   {key:"feed",label:"News Feed",route:"/feed",glyph:"feed",signedIn:true},
   {key:"map",label:"Map",route:"/map",glyph:"map",raised:true},
-  // Marked as needing an account because app/leaderboards.js:42 redirects a
-  // signed-out visitor to the log-in screen. The drawer lists the same screen
-  // as always-available (utils/drawer.js), so one of the two is wrong -- the
-  // ranking is public data and arguably should open for anybody. Until that is
-  // settled the bar tells the truth about what actually happens rather than
-  // dead-ending on a tap.
+  // Signed in only, and settled deliberately rather than inherited. The ranking
+  // is about Explorers and is not shown to somebody without an account. The
+  // screen has always redirected a signed-out visitor (leaderboards.js:42);
+  // utils/drawer.js now agrees, so all three say the same thing.
   {key:"score",label:"Explorer Score",route:"/leaderboards",glyph:"trophy",signedIn:true},
   {key:"profile",label:"Profile",route:"/profile",glyph:"person",signedIn:true}
 ];
