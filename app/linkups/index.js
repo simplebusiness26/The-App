@@ -102,7 +102,7 @@ export default function LinkupsIndex(){
               <Text style={styles.creator}>By {creator?.full_name || "Explorer"}</Text>
               <Text style={styles.capacity}>{item.attendee_count}/{item.max_attendees} joined</Text>
             </View>
-            {item.visibility==="followers" && <Text style={styles.followersOnly}>Followers only</Text>}
+            {item.visibility==="followers" && <Text style={styles.followersOnly}>Friends only</Text>}
           </Pressable>
         );
       })}

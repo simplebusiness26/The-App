@@ -137,7 +137,7 @@ export default function LinkupDetail(){
       ]}
       stats={linkup ? [
         {value:`${linkup.attendee_count}/${linkup.max_attendees}`,label:"joined"},
-        {value:linkup.visibility==="followers" ? "Followers" : "Public",label:"who can see it"}
+        {value:linkup.visibility==="followers" ? "Friends" : "Public",label:"who can see it"}
       ] : null}
       beforeActions={linkup ? (
         <View style={styles.stack}>

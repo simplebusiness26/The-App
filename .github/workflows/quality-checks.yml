@@ -89,6 +89,9 @@ jobs:
       - name: Verify one permission check point
         run: npm run verify:permissions
 
+      - name: Verify friends-only means both people
+        run: npm run verify:friends
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
