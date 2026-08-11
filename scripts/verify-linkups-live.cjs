@@ -115,7 +115,13 @@ contains("app/checkins/create.js",[
   'rpc("start_live_checkin"',
   "requestForegroundPermissionsAsync",
   "[30,60,120,240]",
-  'p_visibility:visibility',
+  // Rebuild Packet 8 removed the per-check-in visibility choice. Who can see a
+  // check-in is one setting on the profile, and it is a ceiling -- with no
+  // setting value above Friends, a Public button here could not do anything.
+  // The screen sends the narrowest value the RPC still accepts; the setting
+  // decides the rest.
+  'p_visibility:"followers"',
+  'location_sharing',
   'Only use public places',
   'customActivity',
   'activity==="Other"?customActivity.trim():activity.trim()'

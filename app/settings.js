@@ -37,6 +37,15 @@ function CapabilityRow({label,status}){
   );
 }
 
+// Three answers, and no fourth. Each carries the sentence a person reads back
+// once they have chosen it -- privacy controls read as sentences about people,
+// per docs/design-system.md.
+const LOCATION_CHOICES=[
+  {key:"nobody",label:"Nobody",sentence:"Nobody can see where you are."},
+  {key:"friends",label:"Friends",sentence:"People you and they both follow can see where you are."},
+  {key:"close_friends",label:"Close friends",sentence:"Only the people on your close friends list can see where you are."}
+];
+
 export default function Settings(){
   const {showFeedback}=useFeedback();
 
@@ -49,6 +58,7 @@ export default function Settings(){
   const [area,setArea]=useState("");
   const [showArea,setShowArea]=useState(false);
   const [leaderboardOptIn,setLeaderboardOptIn]=useState(true);
+  const [locationSharing,setLocationSharing]=useState("nobody");
   const [capabilities,setCapabilities]=useState(null);
 
   const load=useCallback(async()=>{
@@ -60,7 +70,7 @@ export default function Settings(){
 
     const {data:profile,error:profileError}=await supabase
       .from("profiles")
-      .select("email,area,show_area,leaderboard_opt_in")
+      .select("email,area,show_area,leaderboard_opt_in,location_sharing")
       .eq("id",user.id)
       .maybeSingle();
 
@@ -83,6 +93,13 @@ export default function Settings(){
     setArea(profile.area || "");
     setShowArea(!!profile.show_area);
     setLeaderboardOptIn(profile.leaderboard_opt_in!==false);
+    // Anything unrecognised reads as nobody. A location control that fails open
+    // on a value it does not understand is the wrong way round.
+    setLocationSharing(
+      ["friends","close_friends"].includes(profile.location_sharing)
+        ? profile.location_sharing
+        : "nobody"
+    );
 
     // There is no manager role to check. 20260803120000_unify_account_model
     // retired it: everyone is an Explorer, and managing places is a capability
@@ -123,7 +140,8 @@ export default function Settings(){
       .update({
         area:area.trim(),
         show_area:showArea,
-        leaderboard_opt_in:leaderboardOptIn
+        leaderboard_opt_in:leaderboardOptIn,
+        location_sharing:locationSharing
       })
       .eq("id",user.id)
       .select();
@@ -223,6 +241,39 @@ export default function Settings(){
         editable={!savingPrivacy}
       />
 
+      {/*
+        Reads as a sentence about people, per the copy rules -- "Nobody can see
+        where you are", never "Location sharing: disabled". Three choices and no
+        fourth: there is deliberately no way to share your position with
+        everybody, which is why the Public option is gone from the check-in
+        screen in this same packet.
+      */}
+      <View style={styles.settingBlock}>
+        <Text style={styles.settingTitle}>Who can see where you are</Text>
+        <Text style={styles.settingText}>
+          This covers check-ins and anything else that shows your position. It starts at nobody
+          and only you can change it.
+        </Text>
+        <View style={styles.choiceRow}>
+          {LOCATION_CHOICES.map((choice)=>(
+            <Pressable
+              key={choice.key}
+              accessibilityRole="radio"
+              accessibilityState={{checked:locationSharing===choice.key}}
+              accessibilityLabel={choice.sentence}
+              style={[styles.choice,locationSharing===choice.key && styles.choiceActive]}
+              onPress={()=>setLocationSharing(choice.key)}
+              disabled={savingPrivacy}
+            >
+              <Text style={[styles.choiceTitle,locationSharing===choice.key && styles.choiceTitleActive]}>{choice.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.settingText}>
+          {LOCATION_CHOICES.find((choice)=>choice.key===locationSharing)?.sentence}
+        </Text>
+      </View>
+
       <View style={styles.settingRow}>
         <View style={styles.settingTextWrap}>
           <Text style={styles.settingTitle}>Display my area</Text>
@@ -317,6 +368,12 @@ const styles=StyleSheet.create({
   linkTitle:{color:"white",fontWeight:"900",fontSize:16},
   linkText:{color:"#9999a2",fontSize:12,lineHeight:18,marginTop:4},
   chevron:{color:"#85858e",fontSize:26,fontWeight:"900"},
+  settingBlock:{paddingVertical:14,borderBottomWidth:1,borderBottomColor:"#2c2c33"},
+  choiceRow:{flexDirection:"row",gap:8,marginTop:11,marginBottom:9},
+  choice:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:11,paddingVertical:11,alignItems:"center"},
+  choiceActive:{backgroundColor:"#2d2152",borderColor:"#644be0"},
+  choiceTitle:{color:"#aaaab3",fontWeight:"800",fontSize:12},
+  choiceTitleActive:{color:"white"},
   capabilityCard:{backgroundColor:"#1e1e22",borderColor:"#3a3a42",borderWidth:1,borderRadius:14,padding:6,marginBottom:11},
   capabilityRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingHorizontal:10,paddingVertical:9},
   capabilityLabel:{color:"#d5d5dc",fontSize:14,fontWeight:"700"},

@@ -14,6 +14,14 @@ const TYPES=[
 ];
 const ACTIVITIES=["Walking","Running","Coffee","Eating","Sport","Relaxing","Exploring","Other"];
 
+// What the check-in screen tells you about who will see it. Read from the
+// profile setting rather than chosen here -- one control, on Settings.
+const AUDIENCE_SENTENCE={
+  nobody:"Nobody can see where you are, so this check-in will be visible only to you. Change that in Settings if you want friends to see it.",
+  friends:"People you and they both follow will see this.",
+  close_friends:"Only the people on your close friends list will see this."
+};
+
 export default function CreateCheckin(){
   const {showFeedback}=useFeedback();
   const [user,setUser]=useState(null);
@@ -27,7 +35,7 @@ export default function CreateCheckin(){
   const [activity,setActivity]=useState("Walking");
   const [customActivity,setCustomActivity]=useState("");
   const [message,setMessage]=useState("");
-  const [visibility,setVisibility]=useState("followers");
+  const [locationSharing,setLocationSharing]=useState("nobody");
   const [minutes,setMinutes]=useState(120);
   const [places,setPlaces]=useState([]);
   const [query,setQuery]=useState("");
@@ -43,8 +51,15 @@ export default function CreateCheckin(){
   async function loadUser(){
     const {data:{user:currentUser}}=await supabase.auth.getUser();
     if(!currentUser){router.replace("/auth/login");return;}
-    const {data:profile}=await supabase.from("profiles").select("area").eq("id",currentUser.id).maybeSingle();
-    setUser(currentUser);setArea(profile?.area || "");setLoading(false);
+    const {data:profile}=await supabase.from("profiles").select("area,location_sharing").eq("id",currentUser.id).maybeSingle();
+    setUser(currentUser);
+    setArea(profile?.area || "");
+    setLocationSharing(
+      ["friends","close_friends"].includes(profile?.location_sharing)
+        ? profile.location_sharing
+        : "nobody"
+    );
+    setLoading(false);
   }
 
   // Packet 8e: a park is a row now, not a spelling. Choosing one from this list
@@ -110,13 +125,15 @@ export default function CreateCheckin(){
     const {error:checkinError}=await supabase.rpc("start_live_checkin",{
       p_place_type:placeType,p_target_id:targetId,p_place_name:placeName.trim(),p_area:area.trim(),
       p_latitude:latitude,p_longitude:longitude,p_activity:selectedActivity,p_message:message.trim(),
-      p_visibility:visibility,p_minutes:minutes,p_public_place_id:publicPlaceId
+      p_visibility:"followers",p_minutes:minutes,p_public_place_id:publicPlaceId
     });
     setWorking(false);
     if(checkinError){setError(checkinError.message);return;}
     showFeedback("Your check-in will expire automatically.","success","You are checked in");
     router.replace("/live");
   }
+
+  const audienceSentence=AUDIENCE_SENTENCE[locationSharing] || AUDIENCE_SENTENCE.nobody;
 
   if(loading) return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
 
@@ -142,7 +159,18 @@ export default function CreateCheckin(){
       <Text style={styles.label}>Short message <Text style={styles.optional}>(optional)</Text></Text><TextInput value={message} onChangeText={setMessage} maxLength={240} multiline textAlignVertical="top" placeholder="What should nearby Explorers know?" placeholderTextColor="#74747d" style={[styles.input,styles.textarea]}/><Text style={styles.counter}>{message.length}/240</Text>
 
       <Text style={styles.label}>Visible for</Text><View style={styles.durationRow}>{[30,60,120,240].map(value=><Pressable key={value} style={[styles.duration,minutes===value&&styles.durationActive]} onPress={()=>setMinutes(value)}><Text style={[styles.durationText,minutes===value&&styles.durationTextActive]}>{value<60?`${value}m`:`${value/60}h`}</Text></Pressable>)}</View>
-      <Text style={styles.label}>Visibility</Text><View style={styles.visibilityRow}><Pressable style={[styles.visibility,visibility==="followers"&&styles.visibilityActive]} onPress={()=>setVisibility("followers")}><Text style={styles.visibilityTitle}>Friends</Text><Text style={styles.visibilityHint}>Only people you both follow (recommended)</Text></Pressable><Pressable style={[styles.visibility,visibility==="public"&&styles.visibilityActive]} onPress={()=>setVisibility("public")}><Text style={styles.visibilityTitle}>Public</Text><Text style={styles.visibilityHint}>Any Explorer nearby</Text></Pressable></View>
+      {/*
+        No Public option, and no visibility choice here at all. Who can see a
+        check-in is one setting on your profile -- Settings, "Who can see where
+        you are" -- and it is a ceiling: a check-in can never reach further than
+        it. With no setting value above Friends, a Public button here would be a
+        control that changes nothing, which is worse than no button.
+      */}
+      <View style={styles.safetyCard}>
+        <Text style={styles.safetyTitle}>Who will see this</Text>
+        <Text style={styles.safetyText}>{audienceSentence}</Text>
+        <Pressable onPress={()=>router.push("/settings")}><Text style={styles.changeAudience}>Change who can see where you are</Text></Pressable>
+      </View>
 
       <View style={styles.safetyCard}><Text style={styles.safetyTitle}>Location safety</Text><Text style={styles.safetyText}>Only use public places. Xplorer rounds coordinates to roughly neighbourhood-level accuracy and removes this status automatically.</Text></View>
       <Pressable style={[styles.submit,working&&styles.disabled]} disabled={working} onPress={publish}>{working?<ActivityIndicator color="white"/>:<Text style={styles.submitText}>Start check-in</Text>}</Pressable>
@@ -151,5 +179,5 @@ export default function CreateCheckin(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:"white",fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:"#aaaab3",lineHeight:21,marginTop:7},errorCard:{backgroundColor:"#431f26",borderColor:"#7e3541",borderWidth:1,borderRadius:12,padding:12,marginTop:14},errorText:{color:"#ffc1c9"},label:{color:"white",fontWeight:"900",marginTop:18,marginBottom:8},optional:{color:"#85858e"},input:{backgroundColor:"#242429",borderColor:"#44444c",borderWidth:1,borderRadius:12,color:"white",paddingHorizontal:13,paddingVertical:12},textarea:{minHeight:90},counter:{color:"#777780",fontSize:10,textAlign:"right",marginTop:4},areaHelp:{color:"#85858e",fontSize:11,lineHeight:16,marginTop:6},wrap:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:18,paddingHorizontal:11,paddingVertical:8},chipActive:{backgroundColor:"#3212b6",borderColor:"#654ce2"},chipText:{color:"#aaaab3",fontWeight:"800",fontSize:11},chipTextActive:{color:"white"},placePicker:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:10,marginTop:11},placeRow:{flexDirection:"row",alignItems:"center",padding:9,borderRadius:10,marginTop:4},placeRowActive:{backgroundColor:"#302655"},placeText:{flex:1},placeName:{color:"white",fontWeight:"900"},placeAddress:{color:"#85858e",fontSize:10,marginTop:3},check:{color:"#cdbfff",fontWeight:"900",fontSize:18},locationButton:{backgroundColor:"#29233d",borderColor:"#554777",borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:10},locationText:{color:"#d9ceff",fontWeight:"900"},removeLocation:{color:"#a899d1",fontWeight:"800",textAlign:"center",paddingVertical:9},durationRow:{flexDirection:"row",gap:7},duration:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:10,padding:11,alignItems:"center"},durationActive:{backgroundColor:"#164c3a",borderColor:"#2f8063"},durationText:{color:"#aaaab3",fontWeight:"900"},durationTextActive:{color:"#c5f5df"},visibilityRow:{flexDirection:"row",gap:9},visibility:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:12,padding:13},visibilityActive:{backgroundColor:"#2d2152",borderColor:"#644be0"},visibilityTitle:{color:"white",fontWeight:"900"},visibilityHint:{color:"#85858e",fontSize:10,marginTop:3},safetyCard:{backgroundColor:"#1f332b",borderColor:"#315e4c",borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:"#b9f5d6",fontWeight:"900"},safetyText:{color:"#a7d2ba",fontSize:12,lineHeight:18,marginTop:5},submit:{backgroundColor:"#3212b6",borderRadius:14,padding:16,alignItems:"center",marginTop:20},submitText:{color:"white",fontWeight:"900",fontSize:15},disabled:{opacity:.6}
+  screen:{flex:1,backgroundColor:"#18181b"},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:"white",fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:"#aaaab3",lineHeight:21,marginTop:7},errorCard:{backgroundColor:"#431f26",borderColor:"#7e3541",borderWidth:1,borderRadius:12,padding:12,marginTop:14},errorText:{color:"#ffc1c9"},label:{color:"white",fontWeight:"900",marginTop:18,marginBottom:8},optional:{color:"#85858e"},input:{backgroundColor:"#242429",borderColor:"#44444c",borderWidth:1,borderRadius:12,color:"white",paddingHorizontal:13,paddingVertical:12},textarea:{minHeight:90},counter:{color:"#777780",fontSize:10,textAlign:"right",marginTop:4},areaHelp:{color:"#85858e",fontSize:11,lineHeight:16,marginTop:6},wrap:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:18,paddingHorizontal:11,paddingVertical:8},chipActive:{backgroundColor:"#3212b6",borderColor:"#654ce2"},chipText:{color:"#aaaab3",fontWeight:"800",fontSize:11},chipTextActive:{color:"white"},placePicker:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:10,marginTop:11},placeRow:{flexDirection:"row",alignItems:"center",padding:9,borderRadius:10,marginTop:4},placeRowActive:{backgroundColor:"#302655"},placeText:{flex:1},placeName:{color:"white",fontWeight:"900"},placeAddress:{color:"#85858e",fontSize:10,marginTop:3},check:{color:"#cdbfff",fontWeight:"900",fontSize:18},locationButton:{backgroundColor:"#29233d",borderColor:"#554777",borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:10},locationText:{color:"#d9ceff",fontWeight:"900"},removeLocation:{color:"#a899d1",fontWeight:"800",textAlign:"center",paddingVertical:9},durationRow:{flexDirection:"row",gap:7},duration:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:10,padding:11,alignItems:"center"},durationActive:{backgroundColor:"#164c3a",borderColor:"#2f8063"},durationText:{color:"#aaaab3",fontWeight:"900"},durationTextActive:{color:"#c5f5df"},visibilityRow:{flexDirection:"row",gap:9},visibility:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:12,padding:13},visibilityActive:{backgroundColor:"#2d2152",borderColor:"#644be0"},visibilityTitle:{color:"white",fontWeight:"900"},visibilityHint:{color:"#85858e",fontSize:10,marginTop:3},changeAudience:{color:"#b9f5d6",fontWeight:"900",marginTop:9,textDecorationLine:"underline"},safetyCard:{backgroundColor:"#1f332b",borderColor:"#315e4c",borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:"#b9f5d6",fontWeight:"900"},safetyText:{color:"#a7d2ba",fontSize:12,lineHeight:18,marginTop:5},submit:{backgroundColor:"#3212b6",borderRadius:14,padding:16,alignItems:"center",marginTop:20},submitText:{color:"white",fontWeight:"900",fontSize:15},disabled:{opacity:.6}
 });

@@ -107,27 +107,104 @@ for(const surface of surfaces){
     `${latestFile}: ${surface.label} decides visibility with a one-way follow lookup -- anybody who follows you, unanswered, can see where you are`
   );
 
+  // Packet 8 moved the answer up one level. can_see_location is now the single
+  // predicate, and it calls are_friends internally -- so either name is
+  // acceptable here, and neither being present is not.
   check(
-    /are_friends/.test(latest),
-    `${latestFile}: ${surface.label} does not use guestbook_private.are_friends, so "friends only" does not mean friends here`
+    /are_friends|can_see_location/.test(latest),
+    `${latestFile}: ${surface.label} decides visibility without are_friends or can_see_location, so who can see a position is being worked out somewhere new`
   );
 }
 
 // ---------------------------------------------------------------------------
-// 2. Public still means public
+// 2. The setting is a ceiling, and it starts at nobody
 // ---------------------------------------------------------------------------
-// Narrowing somebody who deliberately chose Public down to friends would be
-// deciding for them in the opposite direction. Both surfaces must still honour
-// the choice they were given.
+// This assertion used to be the opposite: that a deliberate Public check-in was
+// still honoured. Packet 8 removed public location sharing entirely -- there is
+// no setting value above 'friends', so a Public check-in cannot reach past the
+// owner's setting, and the button that offered it was removed rather than left
+// as a control that changes nothing.
+//
+// What must hold now is the direction of failure: an Explorer who has never
+// touched the setting shares with nobody.
 
-for(const label of ["live_checkins_select_visible","get_live_discovery"]){
-  const holder=[...migrations].reverse().find((migration)=>
-    new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).test(migration.body)
-  );
-  if(!holder) continue;
+const settingDef=[...migrations].reverse().find((migration)=>
+  /add\s+column\s+if\s+not\s+exists\s+location_sharing/i.test(migration.body)
+);
+
+check(settingDef!==undefined,"supabase/migrations: profiles.location_sharing is never created");
+
+if(settingDef){
   check(
-    /visibility='public'/.test(holder.body),
-    `${holder.name}: ${label} no longer honours a deliberate Public choice`
+    /location_sharing\s+text\s+not\s+null\s+default\s+'nobody'/i.test(settingDef.body),
+    `${settingDef.name}: location_sharing does not default to 'nobody' -- an opt-in that arrives switched on is not opt-in`
+  );
+  check(
+    /check\s*\(location_sharing\s+in\s*\('nobody','friends','close_friends'\)\)/i.test(settingDef.body),
+    `${settingDef.name}: location_sharing accepts values outside the three the product offers`
+  );
+}
+
+const predicate=[...migrations].reverse().find((migration)=>
+  /create\s+or\s+replace\s+function\s+guestbook_private\.can_see_location/i.test(migration.body)
+);
+
+check(predicate!==undefined,"supabase/migrations: guestbook_private.can_see_location is never defined");
+
+if(predicate){
+  const at=predicate.body.search(/create\s+or\s+replace\s+function\s+guestbook_private\.can_see_location/i);
+  const body=predicate.body.slice(at,predicate.body.indexOf("$$;",predicate.body.indexOf("$$",at)+2));
+
+  // The default branch decides what happens to somebody who never chose. It
+  // must be false, and it must be reached by anything unrecognised.
+  check(
+    /else\s+false/i.test(body),
+    `${predicate.name}: can_see_location does not fall through to false, so an unknown setting would share a position`
+  );
+  check(
+    /security\s+definer/i.test(body),
+    `${predicate.name}: can_see_location is not SECURITY DEFINER, so it cannot read close_friends without exposing it`
+  );
+  check(
+    /revoke\s+all\s+on\s+function\s+guestbook_private\.can_see_location\(uuid,uuid\)\s+from\s+public\s*,\s*anon/i
+      .test(predicate.body),
+    `${predicate.name}: can_see_location is not revoked from anon`
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 2b. The close friends list is never readable by the people on it
+// ---------------------------------------------------------------------------
+// A list you can read is a ranking of your friendships. The only select policy
+// must be the owner's own.
+
+const listDef=[...migrations].reverse().find((migration)=>
+  /create\s+table\s+if\s+not\s+exists\s+public\.close_friends/i.test(migration.body)
+);
+
+check(listDef!==undefined,"supabase/migrations: public.close_friends is never created");
+
+if(listDef){
+  const selectPolicies=[...listDef.body.matchAll(
+    /create\s+policy\s+\w+\s+on\s+public\.close_friends\s*\n?\s*for\s+select[\s\S]*?;/gi
+  )];
+  check(
+    selectPolicies.length===1,
+    `${listDef.name}: close_friends has ${selectPolicies.length} select policies -- exactly one, the owner's own, is correct`
+  );
+  if(selectPolicies.length===1){
+    check(
+      /owner_id\s*=\s*\(?\s*select\s+auth\.uid\(\)/i.test(selectPolicies[0][0]),
+      `${listDef.name}: the close_friends select policy is not scoped to the owner -- somebody could read who added them`
+    );
+  }
+  check(
+    /are_friends\(owner_id,friend_id\)/.test(listDef.body),
+    `${listDef.name}: anybody can be added as a close friend, not only an actual friend`
+  );
+  check(
+    /enable\s+row\s+level\s+security/i.test(listDef.body),
+    `${listDef.name}: close_friends has no row level security`
   );
 }
 

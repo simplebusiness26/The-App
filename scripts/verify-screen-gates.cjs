@@ -769,7 +769,10 @@ check(
 // unapplied migration, so every role-gated entry disappeared.
 const profileColumns=new Set([
   "id","full_name","email","phone","bio","profile_photo",
-  "account_type","is_admin","area","show_area","leaderboard_opt_in"
+  "account_type","is_admin","area","show_area","leaderboard_opt_in",
+  // Rebuild Packet 8. The ceiling on who may see this Explorer's position,
+  // added by 20260811170000 and defaulting to 'nobody'.
+  "location_sharing"
 ]);
 
 for(const file of ["components/QuickAccessDrawer.js","app/settings.js","app/profile/edit.js"]){
