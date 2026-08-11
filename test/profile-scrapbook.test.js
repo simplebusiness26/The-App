@@ -98,10 +98,22 @@ describe("three separately labelled figures",()=>{
     installFixture({user:{id:OWNER},tables:baseTables(),rpc:{}});
 
     const tree=await render(React.createElement(ExplorerProfileScreen,{profileId:OWNER}));
+    const labels=labelsOf(tree.toJSON());
 
-    // Explorer Score belongs to Packet 9a and does not exist yet. Naming it
-    // here would label a thing 9a has to build and then contradict.
-    expect(textOf(tree.toJSON())).not.toMatch(/Explorer Score/i);
+    // What this protects has not changed: total_points is review points, and
+    // calling that figure an Explorer Score would name it after something it
+    // is not. The three stat figures must each say what they count.
+    //
+    // The assertion used to be "Explorer Score appears nowhere on this page",
+    // which was right while the phrase named nothing. Rebuild Packet 19 gave
+    // it a meaning -- it is the ranking, on /leaderboards -- and the rank card
+    // on this page links to exactly that. So the check now looks at the stat
+    // labels rather than the whole page, which is what it was always about.
+    const statLabels=labels.filter((label)=>/^(Average review score|Review points|Review reputation)/.test(label));
+    expect(statLabels.length).toBeGreaterThan(0);
+    for(const label of statLabels){
+      expect(label).not.toMatch(/Explorer Score/i);
+    }
   });
 
   test("the average is labelled as scores this Explorer gave",async()=>{

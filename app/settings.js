@@ -284,8 +284,8 @@ export default function Settings(){
 
       <View style={styles.settingRow}>
         <View style={styles.settingTextWrap}>
-          <Text style={styles.settingTitle}>Appear on leaderboards</Text>
-          <Text style={styles.settingText}>Turn this off to keep earning profile points without appearing in public rankings.</Text>
+          <Text style={styles.settingTitle}>Appear in Explorer Score</Text>
+          <Text style={styles.settingText}>Turn this off to keep earning points without appearing in the public ranking.</Text>
         </View>
         <Switch value={leaderboardOptIn} onValueChange={setLeaderboardOptIn} disabled={savingPrivacy}/>
       </View>

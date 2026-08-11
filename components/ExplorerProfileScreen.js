@@ -368,7 +368,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
       <Pressable style={styles.rankCard} onPress={()=>router.push("/leaderboards")}>
         <View>
           <Text style={styles.sectionEyebrow}>MONTHLY LEADERBOARD</Text>
-          <Text style={styles.rankTitle}>See where this Explorer ranks</Text>
+          <Text style={styles.rankTitle}>Explorer Score ranking</Text>
         </View>
         <View style={styles.rankValues}>
           <Text style={styles.rankText}>Local {monthlyLocalRank ? `#${monthlyLocalRank}` : "—"}</Text>
