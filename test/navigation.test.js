@@ -126,7 +126,21 @@ describe("no route was lost",()=>{
   // what test/drawer.test.js asserts, row by row, against the menu as it was.
   // Listing the removal here rather than editing BEFORE keeps the deletion
   // deliberate: a route that vanishes without being named still fails.
-  const REMOVED=["menu"];
+  //
+  // Rebuild Packet 3 deleted six more, each confirmed to have zero inbound
+  // links from app/, components/, utils/ or hooks/ first:
+  //
+  //   saved, place       -- stubs from before public places existed
+  //   guest/[id]         -- the old public profile, superseded by profile/[id]
+  //   business/reviews   -- a review list nothing linked to. Its property twin
+  //                         IS linked (property/dashboard.js:225) and stays
+  //   business/edit      -- the edit form with no listing to edit. Every caller
+  //   property/edit         reaches business/edit/[id] and property/edit/[id],
+  //                         which are the real screens and are untouched
+  const REMOVED=[
+    "menu",
+    "saved","place","guest/[id]","business/reviews","business/edit","property/edit"
+  ];
 
   it("keeps every route that existed before, except the one deliberately removed",()=>{
     const missing=BEFORE.filter((route)=>!onDisk.includes(route) && !REMOVED.includes(route));

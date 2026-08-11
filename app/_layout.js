@@ -40,7 +40,6 @@ export default function Layout(){
           <Stack.Screen name="create"/>
           <Stack.Screen name="scan"/>
           <Stack.Screen name="qr/[code]"/>
-          <Stack.Screen name="saved"/>
           <Stack.Screen name="profile"/>
           <Stack.Screen name="profile/[id]"/>
           <Stack.Screen name="profile/edit"/>
@@ -77,23 +76,18 @@ export default function Layout(){
           <Stack.Screen name="business/[id]"/>
           <Stack.Screen name="business/dashboard"/>
           <Stack.Screen name="business/add"/>
-          <Stack.Screen name="business/edit"/>
           <Stack.Screen name="business/edit/[id]"/>
-          <Stack.Screen name="business/reviews"/>
           <Stack.Screen name="business/review/[id]"/>
           <Stack.Screen name="business/review-action"/>
 
           <Stack.Screen name="property/[id]"/>
           <Stack.Screen name="property/dashboard"/>
           <Stack.Screen name="property/add"/>
-          <Stack.Screen name="property/edit"/>
           <Stack.Screen name="property/edit/[id]"/>
           <Stack.Screen name="property/reviews"/>
           <Stack.Screen name="property/review/[id]"/>
           <Stack.Screen name="property/review-action"/>
 
-          <Stack.Screen name="guest/[id]"/>
-          <Stack.Screen name="place"/>
 
           <Stack.Screen name="places/index"/>
           <Stack.Screen name="places/[id]"/>
