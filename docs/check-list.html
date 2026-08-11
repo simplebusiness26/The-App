@@ -1,0 +1,774 @@
+<title>Xplorer — what to check</title>
+<style>
+/* ---------------------------------------------------------------------------
+   Riso, per docs/design-system.md. Three inks, and they mean something: here
+   they carry the state of each check rather than decorating it.
+
+   Single visual world on purpose. The design system's palette table is closed
+   ("Never introduce a colour outside this list") and a dark ground would need a
+   value that is not in it. So this commits to the paper stock and paints every
+   colour explicitly, which holds on either host theme.
+   --------------------------------------------------------------------------- */
+:root{
+  --paper:#E7E8E1;
+  --card:#F3F3ED;
+  --ink:#16181C;
+  --ink-soft:#63686F;
+  --hair:#C9CBC2;
+  --blue:#2B4BE8;
+  --pink:#FF3D6E;
+  --yellow:#FFC61A;
+
+  /* Three faces, three jobs. No webfont: the artifact CSP blocks font CDNs and
+     a silent fallback is worse than an honest system stack. The mono/sans split
+     is what matters and it survives. */
+  --display:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --body:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --data:"Martian Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{
+  max-width:940px;
+  margin:0 auto;
+  padding:40px 22px 90px;
+}
+
+/* --- header ------------------------------------------------------------- */
+
+header{
+  display:flex;
+  flex-direction:column;
+  gap:22px;
+  padding-bottom:30px;
+  border-bottom:2px solid var(--ink);
+}
+
+.mark-row{display:flex;align-items:center;gap:16px;}
+
+/* The overprint: a second disc offset translate(4px,-4px), multiplied. It is
+   the one signature in this design system, so it appears once, as the page's
+   mark, and nowhere else. */
+.mark{position:relative;width:34px;height:34px;flex:none;}
+.mark span{
+  position:absolute;inset:0;border-radius:50%;
+  border:2px solid var(--ink);
+}
+.mark .under{background:var(--pink);transform:translate(4px,-4px);mix-blend-mode:multiply;}
+.mark .over{background:var(--blue);}
+
+h1{
+  font-family:var(--display);
+  font-weight:800;
+  font-size:clamp(30px,5.6vw,46px);
+  letter-spacing:-0.02em;
+  line-height:1.02;
+  margin:0;
+  text-wrap:balance;
+}
+
+.standfirst{
+  margin:0;
+  max-width:62ch;
+  font-size:16px;
+  color:var(--ink);
+}
+
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px;
+  font-family:var(--data);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+}
+.meta b{
+  display:inline-block;
+  font-weight:400;
+  border:1.5px solid var(--ink);
+  border-radius:99px;
+  padding:5px 11px;
+  background:var(--card);
+}
+
+/* --- key ---------------------------------------------------------------- */
+
+.key{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:12px;
+  margin:30px 0 8px;
+}
+.key div{
+  border:1.5px solid var(--ink);
+  border-radius:11px;
+  background:var(--card);
+  padding:12px 14px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+.key i{
+  width:15px;height:15px;flex:none;margin-top:3px;
+  border:1.5px solid var(--ink);border-radius:50%;
+}
+.key .t{
+  font-family:var(--data);
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:0.11em;
+  display:block;
+}
+.key .d{font-size:13.5px;color:var(--ink-soft);line-height:1.4;}
+
+.tally{
+  font-family:var(--data);
+  font-size:10px;
+  letter-spacing:0.11em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  margin:16px 0 0;
+}
+
+/* --- sections ----------------------------------------------------------- */
+
+section{margin-top:46px;}
+
+h2{
+  font-family:var(--display);
+  font-weight:800;
+  font-size:22px;
+  letter-spacing:-0.01em;
+  margin:0 0 6px;
+  text-wrap:balance;
+}
+.lede{
+  margin:0 0 18px;
+  max-width:64ch;
+  color:var(--ink-soft);
+  font-size:14px;
+}
+
+.checks{display:flex;flex-direction:column;gap:14px;}
+
+/* --- a check ------------------------------------------------------------ */
+
+.check{
+  border:2px solid var(--ink);
+  border-radius:13px;
+  background:var(--card);
+  box-shadow:3px 3px 0 var(--ink);
+  padding:16px 18px 17px;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:0 14px;
+  align-items:start;
+}
+
+.check > input{
+  appearance:none;-webkit-appearance:none;
+  width:22px;height:22px;margin:2px 0 0;
+  border:2px solid var(--ink);
+  border-radius:6px;
+  background:var(--paper);
+  cursor:pointer;
+  grid-row:1 / span 3;
+  flex:none;
+}
+.check > input:checked{background:var(--blue);}
+.check > input:checked::after{
+  content:"";
+  display:block;
+  width:5px;height:10px;
+  margin:2px 0 0 5px;
+  border:solid var(--paper);
+  border-width:0 2.5px 2.5px 0;
+  transform:rotate(45deg);
+}
+.check > input:focus-visible{outline:3px solid var(--yellow);outline-offset:3px;}
+
+.eyebrow{
+  font-family:var(--data);
+  font-size:9.5px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-bottom:5px;
+}
+.eyebrow .n{color:var(--ink);}
+.eyebrow .dot{
+  width:9px;height:9px;border-radius:50%;
+  border:1.5px solid var(--ink);
+  display:inline-block;
+}
+.eyebrow code{
+  font-family:var(--data);
+  font-size:9.5px;
+  letter-spacing:0.04em;
+  text-transform:none;
+  border:1.5px solid var(--hair);
+  border-radius:5px;
+  padding:1px 5px;
+  background:var(--paper);
+}
+
+.check h3{
+  font-family:var(--display);
+  font-weight:700;
+  font-size:16.5px;
+  letter-spacing:-0.005em;
+  line-height:1.28;
+  margin:0 0 6px;
+  text-wrap:balance;
+}
+
+.check p{margin:0;max-width:66ch;font-size:14.5px;}
+.check p + p{margin-top:8px;}
+
+.check .why{
+  color:var(--ink-soft);
+  font-size:13.5px;
+  border-left:2px solid var(--hair);
+  padding-left:11px;
+  margin-top:9px;
+}
+
+.check input:checked ~ .body h3{text-decoration:line-through;text-decoration-thickness:2px;}
+.check input:checked ~ .body{opacity:.55;}
+
+.blue .dot{background:var(--blue);}
+.pink .dot{background:var(--pink);}
+.yellow .dot{background:var(--yellow);}
+.pink{box-shadow:3px 3px 0 var(--pink);}
+.yellow{box-shadow:3px 3px 0 var(--yellow);}
+
+/* --- accounts table ------------------------------------------------------ */
+
+.tablewrap{
+  overflow-x:auto;
+  border:2px solid var(--ink);
+  border-radius:13px;
+  box-shadow:3px 3px 0 var(--ink);
+  background:var(--card);
+}
+table{border-collapse:collapse;width:100%;min-width:520px;}
+th,td{
+  text-align:left;
+  padding:9px 14px;
+  border-bottom:1.5px solid var(--hair);
+  font-size:14px;
+  vertical-align:top;
+}
+th{
+  font-family:var(--data);
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:0.11em;
+  font-weight:400;
+  border-bottom:2px solid var(--ink);
+}
+tr:last-child td{border-bottom:none;}
+td.mono{font-family:var(--data);font-size:11px;letter-spacing:0.02em;}
+
+/* --- footer -------------------------------------------------------------- */
+
+footer{
+  margin-top:56px;
+  padding-top:22px;
+  border-top:2px solid var(--ink);
+  color:var(--ink-soft);
+  font-size:13.5px;
+  max-width:64ch;
+}
+footer code{
+  font-family:var(--data);
+  font-size:11.5px;
+  background:var(--card);
+  border:1.5px solid var(--hair);
+  border-radius:5px;
+  padding:1px 5px;
+}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+@media (max-width:560px){
+  .check{padding:14px 15px 15px;gap:0 11px;}
+  .wrap{padding:28px 16px 70px;}
+}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="mark-row">
+    <div class="mark"><span class="under"></span><span class="over"></span></div>
+    <div class="meta">
+      <b>main2.0-Dev</b>
+      <b>e695329</b>
+      <b>495 tests · 25 suites</b>
+      <b>19 source gates</b>
+      <b>browser gate 42 routes</b>
+    </div>
+  </div>
+
+  <h1>What to check</h1>
+
+  <p class="standfirst">Everything built since the admin dashboard, in the order it makes
+  sense to look at it. The database now has content in it — reviews with photos, Moments,
+  follows, a populated leaderboard, live check-ins and Link-ups — so these screens have
+  something to render rather than empty state.</p>
+</header>
+
+<div class="key">
+  <div><i style="background:#2B4BE8"></i><span><span class="t">Go and look</span><span class="d">Built, live, and there is data behind it.</span></span></div>
+  <div><i style="background:#FFC61A"></i><span><span class="t">Will read thin</span><span class="d">Built, but expect it to look sparse — and here is why.</span></span></div>
+  <div><i style="background:#FF3D6E"></i><span><span class="t">Needs you</span><span class="d">Waiting on a decision only you can make.</span></span></div>
+</div>
+
+<p class="tally">25 checks · 6 need a decision from you</p>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>Start here — the screen that was broken</h2>
+  <p class="lede">A profile opened to a black page with nothing on it. Two diagnoses were
+  wrong before the real one, so this is the first thing worth confirming with your own eyes.</p>
+
+  <div class="checks">
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">01</span> <span>Go and look</span> <code>/profile/&lt;id&gt;</code></div>
+        <h3>A profile opens instead of going black</h3>
+        <p>Open your own profile, then somebody else's from the Feed or the leaderboard.
+        Both should render.</p>
+        <p class="why">The cause was <code>react-native-maps</code> being reached on web,
+        where it has no build — <code>codegenNativeComponent is not a function</code>, thrown
+        during render, caught by nothing. The fix is a platform split:
+        <code>components/MemoryPins.web.js</code> contains no native map at all. An earlier
+        "proof" that maps were innocent compared two bundles byte-for-byte and found them
+        identical, which proved nothing — Metro bundles a module whether or not anything
+        evaluates it.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">02</span> <span>Go and look</span> <code>components/ErrorBoundary.js</code></div>
+        <h3>A crash now shows the error, not a blank screen</h3>
+        <p>Hard to trigger deliberately, which is the point. If any screen ever fails again
+        you should see selectable text with the message and component stack, not an empty page.</p>
+        <p class="why">There was no error boundary anywhere in the app before this. That is
+        why a single thrown exception could present as a black rectangle with no way in.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">03</span> <span>Go and look</span> <code>/health</code></div>
+        <h3>The preview reports which build it is serving</h3>
+        <p>Load <code>/health</code>. It returns the commit, branch, entry bundle and build
+        time. If a fix seems not to have landed, check this before re-debugging the fix.</p>
+        <p class="why">You reported the blank profile as unfixed twice. The deployment had the
+        fix both times — the preview was running a stale server process, and
+        <code>/health</code> returned <code>{"status":"ready"}</code> with nothing to catch it.</p>
+      </div>
+    </label>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>The profile</h2>
+  <p class="lede">Your account now has a picture, eight Memories and a set of reviews behind it,
+  so every tab has something in it.</p>
+
+  <div class="checks">
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">04</span> <span>Go and look</span></div>
+        <h3>Three figures, and each says what it is</h3>
+        <p>Avg score given · Review points · Review reputation. Three different things that were
+        previously easy to read as one number.</p>
+        <p class="why">Each carries a spoken label for screen readers. A test asserting on page
+        text passed against markup that read "1 points" — the label is where the plural bug
+        actually showed.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">05</span> <span>Go and look</span></div>
+        <h3>Scrapbook tabs: Adventures, Reviews, My Map, Collections, Clubs</h3>
+        <p>Clubs lists approved memberships only — not pending, not rejected. Collections should
+        show saved places; there are now around 79 saves spread across the demo accounts.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">06</span> <span>Go and look</span> <code>components/MyMap.js</code></div>
+        <h3>My Map is yours alone — check it is absent on someone else's profile</h3>
+        <p>Eight Memories are seeded on your account, so your My Map has pins on it. Now open
+        another Explorer's profile: the My Map tab must not be there at all.</p>
+        <p class="why">Three locks, not one: the tab is owner-only, the component requests
+        <code>p_scope:"all"</code> and nothing else, and there is no share, sort or
+        <code>is_public</code> path into it. <code>npm run verify:mymap</code> fails if any of
+        the three is removed.</p>
+      </div>
+    </label>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>The map and what is happening on it</h2>
+  <p class="lede">The gap flagged in CLAUDE.md as highest priority: live data existed but lived
+  on a separate <code>/live</code> screen and never reached the map. It reaches both surfaces now.</p>
+
+  <div class="checks">
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">07</span> <span>Go and look</span> <code>app/map.js</code> <code>components/PlacesList.js</code></div>
+        <h3>Live state reaches the map and the list, not just one of them</h3>
+        <p>Check both. <code>PlacesList</code> is the shipping path, so a change that only lands
+        on <code>map.js</code> is a change nobody sees.</p>
+        <p class="why">No migration was needed — <code>get_live_discovery</code> already existed
+        and had never been called from the map.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">08</span> <span>Go and look</span></div>
+        <h3>Now / Tonight / Weekend filters change what you see</h3>
+        <p>Eight Link-ups are seeded across the next six days, so each window should hold a
+        different set. Nothing at all in "Now" is expected between check-ins.</p>
+      </div>
+    </label>
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">09</span> <span>Needs you</span> <code>components/PlaceMarker.js</code></div>
+        <h3>Eyeball the overprint and tell me if it is too subtle</h3>
+        <p>A place hosting something gets a second pink disc behind it, offset four pixels up
+        and right — deliberate misregistration, like a flyer run through the press twice. It is
+        the one signature in the design system and it had never been built.</p>
+        <p class="why"><code>react-native-svg</code> has no <code>mix-blend-mode</code>, so the
+        multiply is approximated with <code>fillOpacity 0.55</code>. The ink itself is unchanged,
+        which keeps it inside the closed palette. It may read as too quiet on a small screen —
+        that is a judgement call, and it is yours.</p>
+      </div>
+    </label>
+
+    <label class="check yellow">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">10</span> <span>Will read thin</span> <code>scripts/demo-seed/seed.sql</code></div>
+        <h3>Live check-ins will have expired by the time you read this</h3>
+        <p>Eight were seeded, each expiring within four hours, because that is what a check-in
+        <em>is</em> — one active per Explorer, gone on its own. To light the map up again, re-run
+        section 8 of <code>seed.sql</code>.</p>
+        <p class="why">Everything else in the seed persists. This is the one part with a
+        deliberate shelf life.</p>
+      </div>
+    </label>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>The social layer</h2>
+  <p class="lede">62 follows between the eleven usable accounts, 38 public Moments with photos,
+  231 likes and 41 comments. The Feed and the boards have real shape now.</p>
+
+  <div class="checks">
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">11</span> <span>Go and look</span> <code>/feed</code></div>
+        <h3>The Feed has Moments in it, with pictures and comments</h3>
+        <p>Every seeded Moment is attached to a real listing and set to public. Several places
+        have two or three different people posting from them.</p>
+        <p class="why">Moments default to <code>friends</code>, not public. A seed that took the
+        default would have produced a Feed that looked broken rather than private.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">12</span> <span>Go and look</span> <code>/leaderboards</code></div>
+        <h3>All three boards have names on them</h3>
+        <p>Weekly, monthly, and local for Hastings all return people. Nadia Brett and Craig lead
+        the week; Maya Whitfield and Callum lead the month.</p>
+        <p class="why">The first pass at the seed dated reviews one to twenty-six days back and
+        every board came back empty. <code>get_explorer_leaderboard</code> understands only
+        <code>weekly</code> and <code>monthly</code> and measures from <code>date_trunc</code>,
+        not a rolling window — the week had turned over eight hours earlier, so "three days ago"
+        was outside it. Timestamps are now spread across all three periods on purpose.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">13</span> <span>Go and look</span> <code>app/leaderboards.js</code></div>
+        <h3>"Where you stand" tells you your rank, or says plainly that you have none</h3>
+        <p>The list only shows the top. Everybody outside it — which is most people — used to
+        learn nothing. Check all three states: ranked, not ranked, and opted out.</p>
+        <p class="why">The card never invents a position for somebody outside the fetched window,
+        and it makes no second database call. An Explorer who opted out is told that, rather
+        than told to publish a review — advice that could not work.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">14</span> <span>Go and look</span></div>
+        <h3>You cannot mark your own review as useful</h3>
+        <p>Open one of your own reviews and try. The database refuses it, not just the button.</p>
+      </div>
+    </label>
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">15</span> <span>Needs you</span> <code>20260810030000_feed_source_reasons_and_trending.sql</code></div>
+        <h3>Feed items will show no reason line until this migration is applied</h3>
+        <p>Every recommendation is supposed to say why it is there. The client side is built and
+        guarded, so it degrades quietly to showing nothing — which is exactly what you will see
+        until you approve the migration.</p>
+        <p class="why">Validated against the live schema by running the DDL inside a transaction
+        that ends in <code>RAISE EXCEPTION</code>, so it compiled for real and rolled back
+        guaranteed. Two genuine errors were found and fixed that way: a CTE with positional
+        column names, and <code>min(uuid)</code>, which does not exist.</p>
+      </div>
+    </label>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>Link-ups</h2>
+
+  <div class="checks">
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">16</span> <span>Go and look</span> <code>/linkups</code></div>
+        <h3>Eight Link-ups, with attendee counts that differ</h3>
+        <p>Quiz night is 5 of 6 and Street food night is 5 of 6, so you can see what a nearly
+        full one looks like. Beach swim is 2 of 10.</p>
+        <p class="why"><code>attendee_count</code> is maintained by the join and leave RPCs, not
+        by a trigger, so writing attendees directly leaves it stale. The seed brings it back in
+        step explicitly.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">17</span> <span>Go and look</span> <code>/linkups/create</code></div>
+        <h3>Creating a Link-up still works end to end</h3>
+        <p>Title-only creation and the navigation into it both have their own gates; worth one
+        manual pass now there is other data in the table.</p>
+      </div>
+    </label>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>Manager tools</h2>
+
+  <div class="checks">
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">18</span> <span>Go and look</span> <code>utils/drawer.js</code></div>
+        <h3>The dashboards are reachable, and only with the Manager capability</h3>
+        <p>Quick Access should offer the business, property and manager dashboards to an account
+        that manages something, and not to one that does not.</p>
+        <p class="why">Two entries in CLAUDE.md claimed these screens were unreachable. They
+        were checked rather than repeated, found to be reachable, and the file corrected.
+        <code>npm run verify:manager</code> now fails if either is dropped from the drawer again.</p>
+      </div>
+    </label>
+
+    <label class="check blue">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">19</span> <span>Go and look</span></div>
+        <h3>No QR code on any public place page</h3>
+        <p>Open a business page as an ordinary Explorer. There must be no QR code anywhere on it.</p>
+        <p class="why">A QR code backs verified reviews and claims. On a page anybody can open,
+        a screenshot is enough to forge a visit — and the page renders beautifully either way,
+        so nothing about the failure looks wrong.</p>
+      </div>
+    </label>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>Waiting on you</h2>
+  <p class="lede">Nothing here is blocked on work. Each one is a decision I deliberately did not
+  make on your behalf.</p>
+
+  <div class="checks">
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">20</span> <span>Needs you</span> <code>supabase/migrations/</code></div>
+        <h3>Two migrations are written and validated but not applied</h3>
+        <p>The live project is on 35 migrations. Feed source reasons and trending is one; the
+        Explorer Score engine is the other. Both compiled against the real schema; neither has
+        been run.</p>
+        <p class="why">You asked to be told before another migration goes near the live project,
+        and that any correction be a new forward migration rather than an edit to one that has
+        already run. Both of these are new files. Say the word and they go on.</p>
+      </div>
+    </label>
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">21</span> <span>Needs you</span> <code>20260810040000_explorer_score_engine.sql</code></div>
+        <h3>Should the Explorer Score count what already happened?</h3>
+        <p>Points are awarded by trigger from the moment it is applied. Existing reviews and
+        check-ins score nothing unless we backfill them deliberately. Everybody starting from
+        zero is defensible; so is crediting what people have already done.</p>
+        <p class="why">The leaderboard shows one opaque total on purpose. A per-source breakdown
+        is a visit count, and a local board is scoped to an area — together they would say "this
+        Explorer was in this area roughly this many times this week" without exposing a single
+        coordinate. The breakdown is the owner's alone, and check-in points halve on repeat
+        visits to the same place so the total cannot be read back as a count.</p>
+      </div>
+    </label>
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">22</span> <span>Needs you</span></div>
+        <h3>The preview is building from a repository this one cannot see</h3>
+        <p><code>/health</code> reports commit <code>64b7c4c</code>, which does not exist in
+        <code>The-App</code>'s history. Replit is keeping its own git copy. The served bundle
+        does contain the current work — I checked it directly for the rank card and the profile
+        figures — but the two trees can drift apart without either side noticing.</p>
+        <p class="why">Worth deciding how you want the preview fed: pulled from
+        <code>origin/main2.0-Dev</code> on each build, or left as its own copy that you sync by
+        hand.</p>
+      </div>
+    </label>
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">23</span> <span>Needs you</span></div>
+        <h3>Your own account still has no home area set</h3>
+        <p>Every demo account got one. Yours did not, because <code>area</code> and
+        <code>show_area</code> publish a real person's town on a public leaderboard. One tap in
+        the app if you want to appear on the local board.</p>
+      </div>
+    </label>
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">24</span> <span>Needs you</span> <code>scripts/demo-seed/undo.sql</code></div>
+        <h3>Six demo accounts were renamed — say if you want them back</h3>
+        <p>The leaderboard read "Property, Property, Test business owner". Emails are unchanged,
+        so every login works exactly as before. <code>undo.sql</code> restores the original names
+        and removes every seeded row in one transaction.</p>
+      </div>
+    </label>
+
+    <label class="check pink">
+      <input type="checkbox">
+      <div class="body">
+        <div class="eyebrow"><span class="dot"></span><span class="n">25</span> <span>Needs you</span> <code>app/auth/signup.js</code></div>
+        <h3>Signup still forces a binary Explorer / Manager choice</h3>
+        <p>CLAUDE.md says there is one identity with unlocked capabilities, and that parallel
+        user types must not be built. <code>profiles.account_type</code> at signup is exactly the
+        model that rule forbids. Not touched, because unpicking it reaches into the claim flow
+        and the manager gates.</p>
+        <p class="why">Worth scoping as its own piece of work rather than folding into something
+        else. Flagging it so it does not quietly become permanent.</p>
+      </div>
+    </label>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section>
+  <h2>Who is who</h2>
+  <p class="lede">The eleven accounts the leaderboard can see. Accounts on <code>@test.com</code>
+  are excluded from every board by design, so none of them carry seeded content.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Shows as</th><th>Sign in with</th><th>Area</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Callum</td><td class="mono">hmpchelsea@gmail.com</td><td>—</td><td>Yours. Picture only; 8 Memories on My Map.</td></tr>
+        <tr><td>Testy the tester</td><td class="mono">radband98@gmail.com</td><td>Hastings</td><td>Yours. Name left alone.</td></tr>
+        <tr><td>Admin</td><td class="mono">admin@gustbook.com</td><td>Hastings</td><td>Name left alone — it is the admin account.</td></tr>
+        <tr><td>Maya Whitfield</td><td class="mono">business@business.com</td><td>Brighton</td><td>Renamed from "Test business owner".</td></tr>
+        <tr><td>Tom Ellery</td><td class="mono">business@teser.com</td><td>St Leonards</td><td>Renamed from "Business tester".</td></tr>
+        <tr><td>Priya Raman</td><td class="mono">guest@guestbook.com</td><td>Brighton</td><td>Renamed from "Guest test".</td></tr>
+        <tr><td>Jen Hollis</td><td class="mono">ladnlord@landlord.com</td><td>St Leonards</td><td>Renamed from "Property".</td></tr>
+        <tr><td>Sam Okoro</td><td class="mono">property@property.com</td><td>Hastings</td><td>Renamed from "Property".</td></tr>
+        <tr><td>Nadia Brett</td><td class="mono">tester@guestbook.com</td><td>Hastings</td><td>Renamed from "Account with phone".</td></tr>
+        <tr><td>Callum</td><td class="mono">callum@guest.co.uk</td><td>Hastings</td><td>Already a name; left alone.</td></tr>
+        <tr><td>Craig</td><td class="mono">guestbooker1@gmail.com</td><td>Hastings</td><td>Already a name; left alone.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <p>Everything seeded carries a <code>deadbeef-…</code> UUID prefix, so
+  <code>scripts/demo-seed/undo.sql</code> removes exactly this and nothing else — no delete keyed
+  on content, none keyed on a date range. Businesses and properties were left as they were; this
+  added the life on top of them.</p>
+</footer>
+
+</div>
