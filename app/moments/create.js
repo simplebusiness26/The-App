@@ -90,18 +90,6 @@ export default function CreateMoment(){
       return;
     }
 
-    const {data:profile,error:profileError}=await supabase
-      .from("profiles")
-      .select("account_type")
-      .eq("id",currentUser.id)
-      .single();
-
-    if(profileError || profile?.account_type!=="explorer"){
-      setError("Only Explorer accounts can publish Moments.");
-      setLoading(false);
-      return;
-    }
-
     setUser(currentUser);
     setLoading(false);
   }

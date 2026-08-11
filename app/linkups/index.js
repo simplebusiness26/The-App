@@ -24,18 +24,11 @@ export default function LinkupsIndex(){
 
     await supabase.rpc("refresh_live_system");
     const [profileResult,linkupResult,attendeeResult]=await Promise.all([
-      supabase.from("profiles").select("account_type,area").eq("id",currentUser.id).maybeSingle(),
+      supabase.from("profiles").select("area").eq("id",currentUser.id).maybeSingle(),
       supabase.from("linkups").select("*").order("starts_at",{ascending:true}).limit(100),
       supabase.from("linkup_attendees").select("linkup_id,status").eq("user_id",currentUser.id).eq("status","joined")
     ]);
 
-    if(profileResult.error || profileResult.data?.account_type!=="explorer"){
-      setError("Only Explorer accounts can use Link-ups.");
-      setProfile(profileResult.data || null);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
     setProfile(profileResult.data);
     if(linkupResult.error){setError(linkupResult.error.message);setItems([]);}
     else{

@@ -17,9 +17,7 @@ export default function CreateLinkup(){
   async function checkAccess(){
     const {data:{user}}=await supabase.auth.getUser();
     if(!user){router.replace("/auth/login");return;}
-    const {data,error:profileError}=await supabase.from("profiles").select("account_type").eq("id",user.id).maybeSingle();
-    if(profileError || data?.account_type!=="explorer") setError("Only Explorer accounts can create Link-ups.");
-    else setAllowed(true);
+    setAllowed(true);
     setLoading(false);
   }
 

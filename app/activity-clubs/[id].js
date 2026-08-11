@@ -60,7 +60,7 @@ export default function ActivityClubProfile(){
 
     let profileRow=null;
     if(currentUser){
-      const {data}=await supabase.from("profiles").select("full_name,account_type").eq("id",currentUser.id).single();
+      const {data}=await supabase.from("profiles").select("full_name").eq("id",currentUser.id).single();
       profileRow=data || null;
     }
     setProfile(profileRow);
@@ -108,10 +108,6 @@ export default function ActivityClubProfile(){
       router.push("/auth/login");
       return;
     }
-    if(profile?.account_type!=="explorer"){
-      Alert.alert("Explorer account required","Only Explorer accounts can apply to join activity clubs.");
-      return;
-    }
     if((stats?.spaces_remaining ?? club?.member_limit ?? 0)<=0){
       Alert.alert("Club full","This Activity Club has reached its member limit.");
       return;
@@ -155,10 +151,6 @@ export default function ActivityClubProfile(){
   function openReview(){
     if(!user){
       router.push("/auth/login");
-      return;
-    }
-    if(profile?.account_type!=="explorer"){
-      Alert.alert("Explorer account required","Only Explorer accounts can leave reviews and earn points.");
       return;
     }
     if(!membership || !["approved","left","removed"].includes(membership.status)){

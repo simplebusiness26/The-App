@@ -40,7 +40,7 @@ export default function VerifiedReviewQR(){
 
     let profileRow=null;
     if(currentUser){
-      const {data}=await supabase.from("profiles").select("account_type").eq("id",currentUser.id).single();
+      const {data}=await supabase.from("profiles").select("id").eq("id",currentUser.id).single();
       profileRow=data || null;
     }
     setProfile(profileRow);
@@ -81,10 +81,6 @@ export default function VerifiedReviewQR(){
     const next=`/qr/${encodeURIComponent(code)}`;
     if(!user){
       router.push({pathname:"/auth/login",params:{next}});
-      return;
-    }
-    if(profile?.account_type!=="explorer"){
-      setError("Only Explorer accounts can claim verified review points.");
       return;
     }
 

@@ -43,9 +43,8 @@ export default function CreateCheckin(){
   async function loadUser(){
     const {data:{user:currentUser}}=await supabase.auth.getUser();
     if(!currentUser){router.replace("/auth/login");return;}
-    const {data:profile}=await supabase.from("profiles").select("account_type,area").eq("id",currentUser.id).maybeSingle();
-    if(profile?.account_type!=="explorer"){setError("Only Explorer accounts can check in.");setLoading(false);return;}
-    setUser(currentUser);setArea(profile.area || "");setLoading(false);
+    const {data:profile}=await supabase.from("profiles").select("area").eq("id",currentUser.id).maybeSingle();
+    setUser(currentUser);setArea(profile?.area || "");setLoading(false);
   }
 
   // Packet 8e: a park is a row now, not a spelling. Choosing one from this list

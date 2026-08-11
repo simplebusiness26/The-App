@@ -1,6 +1,7 @@
 import {useEffect,useState} from "react";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
+import {isAdministrator} from "../utils/permissions";
 
 // Client-side gate for every /admin screen. The database is the real control:
 // this calls the same guestbook_is_admin() helper used by RLS instead of
@@ -22,13 +23,12 @@ export function useAdminGate(){
         return;
       }
 
-      const {data:isAdmin,error:adminError}=await supabase
-        .rpc("guestbook_is_admin");
+      const {allowed:isAdmin,error:adminError,refusal}=await isAdministrator();
 
       if(!active) return;
 
-      if(adminError) setError("Your admin access could not be confirmed.");
-      else if(isAdmin!==true) setError("An admin account is required to open this screen.");
+      if(adminError) setError(adminError);
+      else if(!isAdmin) setError(refusal);
       else setAllowed(true);
 
       setChecking(false);

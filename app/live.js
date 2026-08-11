@@ -34,9 +34,8 @@ export default function LiveDiscovery(){
     const {data:{user:currentUser}}=await supabase.auth.getUser();
     if(!currentUser){router.replace("/auth/login");return;}
     setUser(currentUser);
-    const {data:profile}=await supabase.from("profiles").select("account_type,area").eq("id",currentUser.id).maybeSingle();
-    if(profile?.account_type!=="explorer"){setError("Only Explorer accounts can use Live Nearby.");setLoading(false);setRefreshing(false);return;}
-    const profileArea=profile.area || "";
+    const {data:profile}=await supabase.from("profiles").select("area").eq("id",currentUser.id).maybeSingle();
+    const profileArea=profile?.area || "";
     const nextArea=options.area!==undefined?options.area:(areaFilter||profileArea);
     if(profileArea){
       setAreaDraft(current=>current||profileArea);

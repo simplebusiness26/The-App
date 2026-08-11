@@ -7,7 +7,6 @@ import {useFeedback} from "../context/FeedbackContext";
 export default function FavouriteButton({targetType,targetId,targetName,targetImageUrl,compact=false}){
   const {showFeedback}=useFeedback();
   const [user,setUser]=useState(null);
-  const [isExplorer,setIsExplorer]=useState(false);
   const [favourite,setFavourite]=useState(null);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
@@ -26,13 +25,15 @@ export default function FavouriteButton({targetType,targetId,targetName,targetIm
       return;
     }
 
-    const [profileResult,favouriteResult]=await Promise.all([
-      supabase.from("profiles").select("account_type").eq("id",currentUser.id).single(),
-      supabase.from("explorer_favourites").select("*").eq("user_id",currentUser.id).eq("target_type",targetType).eq("target_id",targetId).maybeSingle()
-    ]);
+    const {data:favouriteRow}=await supabase
+      .from("explorer_favourites")
+      .select("*")
+      .eq("user_id",currentUser.id)
+      .eq("target_type",targetType)
+      .eq("target_id",targetId)
+      .maybeSingle();
 
-    setIsExplorer(profileResult.data?.account_type==="explorer");
-    setFavourite(favouriteResult.data || null);
+    setFavourite(favouriteRow || null);
     setLoading(false);
   }
 
@@ -42,11 +43,6 @@ export default function FavouriteButton({targetType,targetId,targetName,targetIm
       router.push("/auth/login");
       return;
     }
-    if(!isExplorer){
-      showFeedback("Only Explorer accounts can save favourite places.","error","Explorer account required");
-      return;
-    }
-
     setSaving(true);
     if(favourite){
       const {error}=await supabase.from("explorer_favourites").delete().eq("id",favourite.id).eq("user_id",user.id);

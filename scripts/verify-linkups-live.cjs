@@ -80,9 +80,14 @@ contains("components/LinkupForm.js",[
   "limit<2 || limit>50"
 ]);
 
+// Rebuild Packet 4 removed the account_type check that used to be asserted
+// here. Every account is an Explorer -- 20260803120000:10 retired the other
+// value -- so the test could not fail, and pinning it in a gate is what kept
+// the parallel-user-type model alive. The requirement underneath it was
+// "refuse somebody who is not signed in", which is what is checked instead.
 contains("app/linkups/create.js",[
   'rpc("create_linkup"',
-  'account_type!=="explorer"',
+  'router.replace("/auth/login")',
   'router.replace(`/linkups/${data}`)'
 ]);
 

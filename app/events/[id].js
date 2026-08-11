@@ -41,7 +41,7 @@ export default function EventDetails(){
 
     let profileRow=null;
     if(currentUser){
-      const {data}=await supabase.from("profiles").select("account_type").eq("id",currentUser.id).single();
+      const {data}=await supabase.from("profiles").select("id").eq("id",currentUser.id).single();
       profileRow=data || null;
     }
     setProfile(profileRow);
@@ -81,10 +81,6 @@ export default function EventDetails(){
   function openReview(){
     if(!user){
       router.push("/auth/login");
-      return;
-    }
-    if(profile?.account_type!=="explorer"){
-      Alert.alert("Explorer account required","Only Explorer accounts can leave reviews and earn points.");
       return;
     }
     if(new Date(event.starts_at)>new Date()){

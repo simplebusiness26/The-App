@@ -48,11 +48,11 @@ export default function Connections(){
 
     const ownerResult=await supabase
       .from("profiles")
-      .select("id,full_name,profile_photo,account_type")
+      .select("id,full_name,profile_photo")
       .eq("id",profileId)
       .maybeSingle();
 
-    if(ownerResult.error || !ownerResult.data || ownerResult.data.account_type!=="explorer"){
+    if(ownerResult.error || !ownerResult.data){
       setError("Explorer profile not found.");
       setLoading(false);
       return;
@@ -83,9 +83,8 @@ export default function Connections(){
 
     const {data:profiles,error:profilesError}=await supabase
       .from("profiles")
-      .select("id,full_name,profile_photo,bio,area,show_area,account_type")
-      .in("id",ids)
-      .eq("account_type","explorer");
+      .select("id,full_name,profile_photo,bio,area,show_area")
+      .in("id",ids);
 
     if(profilesError){
       console.log(profilesError);

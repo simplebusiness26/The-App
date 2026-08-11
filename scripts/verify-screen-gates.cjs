@@ -50,11 +50,23 @@ function readCode(relative){
 // 1. Every admin screen runs the shared database-backed gate
 // ---------------------------------------------------------------------------
 
+// Rebuild Packet 4 moved the RPC itself into utils/permissions.js, so there is
+// one definition of "is an administrator" rather than one per caller. The
+// requirement is unchanged -- the answer still comes from the database helper
+// the RLS policies use -- so the assertion follows the indirection instead of
+// being dropped.
 contains("hooks/useAdminGate.js",[
   "export function useAdminGate",
   "auth.getUser()",
   "router.replace(\"/auth/login\")",
-  "rpc(\"guestbook_is_admin\")"
+  "isAdministrator()"
+]);
+
+contains("utils/permissions.js",[
+  "export async function isAdministrator",
+  "rpc(\"guestbook_is_admin\")",
+  "export async function managesAnyListing",
+  "rpc(\"manages_any_listing\")"
 ]);
 
 const adminRouteDirectory=path.join(root,"app/admin");
@@ -709,8 +721,8 @@ contains("utils/drawer.js",[
 // The Manage section is the one with an entitlement behind it, and the
 // entitlement must be the database's answer rather than the client's guess.
 check(
-  /supabase\.rpc\("manages_any_listing"\)/.test(drawerCode),
-  "components/QuickAccessDrawer.js: the Manage section must be decided by the manages_any_listing() RPC"
+  /managesAnyListing\(\)/.test(drawerCode),
+  "components/QuickAccessDrawer.js: the Manage section must be decided by managesAnyListing(), which asks the database rather than letting the client guess"
 );
 
 for(const screen of ["app/business/dashboard.js","app/property/dashboard.js","app/manager/requests.js"]){

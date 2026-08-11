@@ -12,6 +12,7 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import EndorseButton from "./EndorseButton";
 import MyMap from "./MyMap";
+import {managesAnyListing} from "../utils/permissions";
 
 function dateLabel(value){
   if(!value) return "";
@@ -84,6 +85,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
   const [memories,setMemories]=useState([]);
   const [reviewLikes,setReviewLikes]=useState({});
   const [reputation,setReputation]=useState(null);
+  const [managesSomething,setManagesSomething]=useState(false);
   const [currentUser,setCurrentUser]=useState(null);
   const [monthlyNationalRank,setMonthlyNationalRank]=useState(null);
   const [monthlyLocalRank,setMonthlyLocalRank]=useState(null);
@@ -152,7 +154,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
     }
 
     const [profileResult,statsResult,reviewsResult,favouritesResult,momentsResult,memoriesResult]=await Promise.all([
-      supabase.from("profiles").select("id,full_name,email,phone,profile_photo,bio,account_type,area,show_area,leaderboard_opt_in,is_admin").eq("id",id).single(),
+      supabase.from("profiles").select("id,full_name,email,phone,profile_photo,bio,area,show_area,leaderboard_opt_in,is_admin").eq("id",id).single(),
       supabase.from("explorer_profile_stats").select("*").eq("user_id",id).maybeSingle(),
       supabase.from("explorer_reviews").select("*").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}),
       supabase.from("explorer_favourites").select("*").eq("user_id",id).eq("is_public",true).order("sort_order",{ascending:true}).order("created_at",{ascending:false}),
@@ -214,14 +216,19 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
       setClubs([]);
     }
 
-    if(profileResult.data.account_type==="explorer"){
-      const reputationResult=await supabase.rpc("get_explorer_review_reputation",{p_user_id:id});
-      setReputation((reputationResult.data && reputationResult.data[0]) || null);
+    const reputationResult=await supabase.rpc("get_explorer_review_reputation",{p_user_id:id});
+    setReputation((reputationResult.data && reputationResult.data[0]) || null);
+
+    // Only asked for your own profile: manages_any_listing() answers for the
+    // caller, so it says nothing about somebody else's page.
+    if(user && user.id===id){
+      const {allowed}=await managesAnyListing();
+      setManagesSomething(allowed);
     }else{
-      setReputation(null);
+      setManagesSomething(false);
     }
 
-    if(profileResult.data.account_type==="explorer" && profileResult.data.leaderboard_opt_in!==false){
+    if(profileResult.data.leaderboard_opt_in!==false){
       const nationalResult=await supabase.rpc("get_explorer_leaderboard",{
         p_period:"monthly",
         p_scope:"national",
@@ -295,22 +302,6 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
     );
   }
 
-  if(profile.account_type!=="explorer"){
-    return(
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <View style={styles.managerProfileCard}>
-          <Avatar profile={profile} size={104}/>
-          <Text style={styles.profileName}>{profile.full_name || "Manager"}</Text>
-          <Text style={styles.managerBadge}>MANAGER ACCOUNT</Text>
-          {!!profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
-        </View>
-        {isOwner && <Pressable style={styles.primaryButton} onPress={()=>router.push("/profile/edit")}><Text style={styles.primaryButtonText}>Edit Profile</Text></Pressable>}
-        {isOwner && <Pressable style={styles.darkButton} onPress={()=>router.push("/manager/dashboard")}><Text style={styles.primaryButtonText}>Open Manager Dashboard</Text></Pressable>}
-        {isOwner && <Pressable style={styles.logoutButton} onPress={logout}><Text style={styles.primaryButtonText}>Logout</Text></Pressable>}
-      </ScrollView>
-    );
-  }
-
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.profileCard}>
@@ -355,6 +346,14 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
           <View style={styles.ownerActions}>
             <Pressable style={styles.editProfileButton} onPress={()=>router.push("/profile/edit")}><Text style={styles.editProfileText}>Edit profile</Text></Pressable>
             <Pressable style={styles.newMomentButton} onPress={()=>router.push("/moments/create")}><Text style={styles.newMomentText}>＋ New Moment</Text></Pressable>
+            {/*
+              This was the one thing the separate Manager screen had that this
+              one did not. It is now shown to anybody who actually manages
+              something, which is the real question -- the old screen showed it
+              on account_type, so a Manager who ran nothing still got the
+              button and an Explorer who ran a club did not.
+            */}
+            {managesSomething && <Pressable style={styles.managerDashboardButton} onPress={()=>router.push("/manager/dashboard")}><Text style={styles.editProfileText}>Manager dashboard</Text></Pressable>}
           </View>
         )}
       </View>
@@ -615,7 +614,6 @@ const styles=StyleSheet.create({
   errorTitle:{color:"white",fontSize:23,fontWeight:"900"},
   errorText:{color:"#b8b8c0",textAlign:"center",marginTop:8},
   profileCard:{backgroundColor:"#222226",borderColor:"#45454c",borderWidth:1,borderRadius:20,padding:20,alignItems:"center"},
-  managerProfileCard:{backgroundColor:"#222226",borderColor:"#45454c",borderWidth:1,borderRadius:20,padding:25,alignItems:"center"},
   topScoreRow:{width:"100%",flexDirection:"row",justifyContent:"space-between",gap:6,marginBottom:12},
   scorePill:{flex:1,minWidth:82,backgroundColor:"#303036",borderRadius:15,paddingHorizontal:8,paddingVertical:9,alignItems:"center"},
   reputationPill:{backgroundColor:"#152a1e",borderColor:"#286640",borderWidth:1},
@@ -629,9 +627,9 @@ const styles=StyleSheet.create({
   profileName:{color:"white",fontSize:30,fontWeight:"900",textAlign:"center",marginTop:13},
   area:{color:"#c5b6f5",fontSize:15,marginTop:6},
   bio:{color:"#b9b9c1",fontSize:15,lineHeight:22,textAlign:"center",marginTop:10,maxWidth:520},
-  managerBadge:{backgroundColor:"#163d70",color:"#a9d0ff",paddingHorizontal:12,paddingVertical:6,borderRadius:20,overflow:"hidden",fontWeight:"900",fontSize:11,marginTop:9},
   ownerActions:{flexDirection:"row",gap:9,marginTop:15},
   editProfileButton:{borderColor:"#6852a5",borderWidth:1,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
+  managerDashboardButton:{borderColor:"#6852a5",borderWidth:1,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
   editProfileText:{color:"#d9cefa",fontWeight:"900"},
   newMomentButton:{backgroundColor:"#3212b6",borderRadius:11,paddingHorizontal:16,paddingVertical:10},
   newMomentText:{color:"white",fontWeight:"900"},
@@ -730,7 +728,6 @@ const styles=StyleSheet.create({
   momentCaption:{color:"white",fontSize:13,fontWeight:"800",lineHeight:18},
   momentMeta:{color:"#92929b",fontSize:10,marginTop:5},
   primaryButton:{backgroundColor:"#3212b6",padding:16,borderRadius:12,marginTop:15},
-  darkButton:{backgroundColor:"#050505",padding:16,borderRadius:12,marginTop:12},
   logoutButton:{backgroundColor:"#8f171d",padding:16,borderRadius:12,marginTop:25},
   primaryButtonText:{color:"white",fontWeight:"900",textAlign:"center"}
 });

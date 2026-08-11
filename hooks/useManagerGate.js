@@ -1,6 +1,7 @@
 import {useEffect,useState} from "react";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
+import {managesAnyListing} from "../utils/permissions";
 
 // Packet 4: "Check entitlement server-side, not just by hiding the section."
 //
@@ -33,17 +34,13 @@ export function useManagerGate(){
         return;
       }
 
-      const {data,error:rpcError}=await supabase.rpc("manages_any_listing");
+      const {allowed:manages,error:gateError,refusal}=await managesAnyListing();
 
       if(!active) return;
 
-      if(rpcError){
-        setError("Whether you manage anything could not be confirmed. Try again in a moment.");
-      }else if(data!==true){
-        setError("This screen is for managing a place, club or event you already manage. Request the tools from the manager dashboard first.");
-      }else{
-        setAllowed(true);
-      }
+      if(gateError) setError(gateError);
+      else if(!manages) setError(refusal);
+      else setAllowed(true);
 
       setChecking(false);
     }

@@ -27,7 +27,8 @@
     "verify:trending": "node scripts/verify-trending.cjs",
     "verify:score": "node scripts/verify-score-engine.cjs",
     "verify:manager": "node scripts/verify-manager-boundary.cjs",
-    "verify:listings": "node scripts/verify-listing-creation-gate.cjs"
+    "verify:listings": "node scripts/verify-listing-creation-gate.cjs",
+    "verify:permissions": "node scripts/verify-one-permission-point.cjs"
   },
   "dependencies": {
     "@react-navigation/native": "^7.3.14",

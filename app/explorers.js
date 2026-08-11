@@ -37,8 +37,7 @@ export default function Explorers(){
 
     const {data,error:profileError}=await supabase
       .from("profiles")
-      .select("id,full_name,profile_photo,bio,area,show_area,account_type,is_admin")
-      .eq("account_type","explorer")
+      .select("id,full_name,profile_photo,bio,area,show_area,is_admin")
       .or("is_admin.is.null,is_admin.eq.false")
       .order("full_name",{ascending:true})
       .limit(150);

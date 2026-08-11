@@ -64,9 +64,14 @@ contains("utils/drawer.js",[
   'route:"/explorers"'
 ]);
 
+// Rebuild Packet 4 removed the account_type check that used to be asserted
+// here. Every account is an Explorer -- 20260803120000:10 retired the other
+// value -- so the test could not fail, and pinning it in a gate is what kept
+// the parallel-user-type model alive. The requirement underneath it was
+// "refuse somebody who is not signed in", which is what is checked instead.
 contains("app/feed.js",[
   'rpc("get_explorer_social_feed"',
-  'profile?.account_type!=="explorer"',
+  'router.replace("/auth/login")',
   '<LikeButton',
   'type:"video_review"',
   'router.push(`/moments/${item.item_id}`)',
@@ -74,7 +79,7 @@ contains("app/feed.js",[
 ]);
 
 contains("app/moments/create.js",[
-  'profile?.account_type!=="explorer"',
+  'router.replace("/auth/login")',
   'mediaTypes:["images"]',
   'mediaTypes:["videos"]',
   'videoMaxDuration:30',

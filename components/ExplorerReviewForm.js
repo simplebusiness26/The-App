@@ -112,18 +112,12 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
     }
 
     const [profileResult,targetResult]=await Promise.all([
-      supabase.from("profiles").select("id,full_name,account_type").eq("id",user.id).single(),
+      supabase.from("profiles").select("id,full_name").eq("id",user.id).single(),
       supabase.from(config.table).select(config.select).eq("id",cleanTargetId).single()
     ]);
 
     if(profileResult.error || !profileResult.data){
       setError("Your Explorer profile could not be loaded.");
-      setLoading(false);
-      return;
-    }
-
-    if(profileResult.data.account_type!=="explorer"){
-      setError("Only Explorer accounts can leave reviews and earn review points.");
       setLoading(false);
       return;
     }

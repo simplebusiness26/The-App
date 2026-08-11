@@ -14,6 +14,7 @@ import {supabase} from "../services/supabase";
 import {useDrawer} from "../context/DrawerContext";
 import {visibleSections} from "../utils/drawer";
 import {INK} from "../utils/tokens";
+import {managesAnyListing} from "../utils/permissions";
 
 // Packet 4: the Quick Access drawer. Replaces the /menu page.
 //
@@ -54,7 +55,7 @@ export default function QuickAccessDrawer(){
 
     const [profileResult,managesResult]=await Promise.all([
       supabase.from("profiles").select("is_admin").eq("id",user.id).maybeSingle(),
-      supabase.rpc("manages_any_listing")
+      managesAnyListing()
     ]);
 
     const messages=[];
@@ -65,13 +66,13 @@ export default function QuickAccessDrawer(){
           : "No profile was found for this account. Some screens will ask you to finish setting it up."
       );
     }
-    if(managesResult.error) messages.push("Whether you manage anything could not be checked.");
+    if(managesResult.error) messages.push(managesResult.error);
 
     setNotice(messages.join(" "));
     setViewer({
       signedIn:true,
       isAdmin:!!profileResult.data?.is_admin,
-      isManager:managesResult.data===true
+      isManager:managesResult.allowed
     });
   },[]);
 

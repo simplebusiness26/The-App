@@ -51,20 +51,6 @@ export default function Feed(){
     }
     setViewerId(user.id);
 
-    const {data:profile,error:profileError}=await supabase
-      .from("profiles")
-      .select("account_type")
-      .eq("id",user.id)
-      .single();
-
-    if(profileError || profile?.account_type!=="explorer"){
-      setError("The Explorer feed is available to Explorer accounts.");
-      setItems([]);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
     const {data,error:feedError}=await supabase.rpc("get_explorer_social_feed",{
       p_limit:40,
       p_offset:0

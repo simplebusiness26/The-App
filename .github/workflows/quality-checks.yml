@@ -86,6 +86,9 @@ jobs:
       - name: Verify only unlocked managers can create businesses and properties
         run: npm run verify:listings
 
+      - name: Verify one permission check point
+        run: npm run verify:permissions
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
