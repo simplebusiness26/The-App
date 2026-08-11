@@ -1,449 +1,1031 @@
-# Screen Inventory
+# Screen inventory
 
-Every route in the app, what renders it, what it does, what you can press, and
-what it requires to open.
+What is actually in `app/` as of commit `36535e9`. Every entry below was read
+from the route file or its shared component. Where a screen's behaviour is
+decided elsewhere — `utils/drawer.js`, `utils/navigation.js`,
+`hooks/useAdminGate.js`, `hooks/useManagerGate.js`, `components/PlaceLayout.js`
+— that file was read too and is named.
 
-Compiled by reading `app/_layout.js`, all 66 route files under `app/`, and the
-shared components under `components/`. The route graph, the orphan list and the
-broken-link list were computed from the source rather than eyeballed: routes were
-derived from the `app/` file tree using expo-router's file-based conventions, and
-link targets were extracted from every `router.push` / `router.replace` /
-`pathname:` / `href=` in `app/` and `components/`, then matched segment by segment.
+This describes the code. It does not describe the brief, and where the two
+disagree the code is what is written down.
 
-**Nothing here has been exercised at runtime.** Every Status cell reads UNTESTED
-by design — this document records what the code says, not what the app does.
-
-- Compiled at commit: `ddd27be`
-- Routes: 64 (66 files; `map.js`/`map.web.js` share one route)
-- Navigation calls found: 212
-
-Findings that have since been acted on are marked **Fixed** in place, with the
-original observation left intact above the remediation, so the record still
-reads as it stood when it was taken.
-
-## How to read the Auth column
-
-| Value | Meaning in code |
-|---|---|
-| **Public** | No user lookup. Renders for anyone. |
-| **Reads user** | Calls `auth.getUser()` and changes what it shows, but never redirects. Signed-out users still get the screen. |
-| **Auth — prompt** | Signed-out users see the screen with a "Log in" call to action, or are pushed to login only when they act. |
-| **Auth — redirect** | `router.replace("/auth/login")` on load when there is no session. |
-| **+ owner** | Additionally compares the row's `manager_id` / `creator_id` / `user_id` against the current user to decide what renders. |
-| **+ manager** | Additionally requires `profiles.account_type === "manager"`. |
-| **+ admin** | Additionally requires `profiles.is_admin`. |
-
-Roles come from two fields on `profiles`: `account_type`, set at signup to either
-`explorer` or `manager` (`app/auth/signup.js:20-26`), and the separate boolean
-`is_admin`.
-
-## The global header
-
-`app/_layout.js` renders `components/Header.js` as the header for **every screen
-except `/`**, which sets `headerShown:false` and draws its own. So three controls
-exist on nearly every row below and are not repeated in each one:
-
-| Control | Goes to |
-|---|---|
-| `←` Go back | `router.back()`, falling back to `/` when there is no history |
-| `🔔` Notifications (with unread badge) | `/notifications` |
-| `☰` Open menu | `/menu` |
+**77 routes** across **78 route files** (`app/` holds 79 `.js` files; `_layout.js`
+is not a route, and `app/map.js` + `app/map.web.js` are one route).
 
 ---
 
-## Shell
+## 1. Navigation configuration
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/` | `app/index.js` | Landing screen and entry point; `unstable_settings.initialRouteName`. | `🔔` → `/notifications` · `🎉` Events → `/events` · `🗺️` Map → `/map` · `Open Menu` → `/menu` · `Log in` → `/auth/login` *(signed out only)* · `Create account` → `/auth/signup` *(signed out only)* · `⚙️` → `/admin/dashboard` *(rendered only when `is_admin`)* | Auth — prompt | UNTESTED |
-| `/menu` | `app/menu.js` | Primary navigation list; entries are gated by account type. | `🗺 Map` → `/map` · `🏃 Explore Activity Clubs` → `/activity-clubs` · `🎉 Explore Events` → `/events` · `👤 Profile` → `/profile` · `📡 Live Nearby` → `/live` · `🤝 Link-ups` → `/linkups` · `📍 Check in` → `/checkins/create` · `✨ Explorer Feed` → `/feed` · `🧭 Find Explorers` → `/explorers` · `📷 Scan Verified Review QR` → `/scan` · `🏆 Explorer Leaderboards` → `/leaderboards` · `🛡️ Blocked Explorers` → `/safety/blocked` · `📊 Manager Dashboard` → `/manager/dashboard` *(manager only)* · `⚙️ Admin Dashboard` → `/admin/claims` *(admin only)* · `Login` → `/auth/login` · `Create Account` → `/auth/signup` · `Logout` → signs out, then `/` | Auth — prompt | UNTESTED |
+### `app/_layout.js`
 
----
+A single Expo Router `Stack` with `initialRouteName: "index"`. Every route is
+declared explicitly as a `<Stack.Screen>`; there is no `(tabs)` group and no
+nested layout file anywhere in `app/`.
 
-## Auth
+Wrapper order, outermost first:
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/auth/login` | `app/auth/login.js` | Email/password sign-in; redirects to a `next` destination when supplied. | `Login` → runs `login()`, then `router.replace(destination)` · `Forgot password?` → `/auth/forgot-password` · `Don't have an account? Create one` → `/auth/signup` · `Manager` / `Explorer` / `E2` → `quickLogin()` **test-account shortcuts** | Public | UNTESTED |
-| `/auth/signup` | `app/auth/signup.js` | Account creation; choice of Explorer or Manager sets `profiles.account_type`. | Account-type tiles → `setAccountType()` · `Create Account` → `signup()`, then `/auth/login` (or `/` when a session is returned) | Public | UNTESTED |
-| `/auth/forgot-password` | `app/auth/forgot-password.js` | Requests a password-reset email. | `Send reset link` → `sendResetEmail()` · `Send another email` → resets the form · `Back to login` → `/auth/login` (both states) | Public | UNTESTED |
-| `/auth/update-password` | `app/auth/update-password.js` | Sets a new password from a reset link; validates the recovery session. | `Update and verify password` → `savePassword()` · `Return to login` → `/auth/login` · `Request a new link` → `/auth/forgot-password` | Public (needs a recovery session) | UNTESTED |
+1. `SafeAreaProvider`
+2. `ErrorBoundary`
+3. `FeedbackProvider`
+4. `NotificationProvider`
+5. `DrawerProvider`
+6. `View` → `Stack`, then `TabBar`, then `QuickAccessDrawer` as siblings
 
----
+`screenOptions={{headerShown:true, header:()=> <Header/>}}` — every screen gets
+the custom header except `index`, which sets `headerShown:false`.
 
-## Places — businesses
+The `TabBar` sits **below** the `Stack`, not around it, so it survives every
+push rather than only appearing on five tab roots.
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/business/:id` | `app/business/[id].js` | Public business profile: photos, details, reviews. | `Edit` → `/business/edit/:id` *(owner only)* · `📞 Call` → dialler · `🌐 Website` → external browser · `⭐ Leave a Business Review` → `/business/review/:id` · each review card → `/profile/:user_id` · photo thumbnails → lightbox · `Play video review` → inline player | Reads user + owner | UNTESTED |
-| `/business/add` | `app/business/add.js` | Creates a business listing. | `Create Business Listing` → `addBusiness()`, then `/manager/dashboard` | Reads user | UNTESTED |
-| `/business/edit/:id` | `app/business/edit/[id].js` | Edits a business by id — the flow the manager dashboard uses. | `Save Changes` → `save()`, then `/manager/dashboard` · `Delete Business` → `deleteBusiness()`, then `/manager/dashboard` | Reads user + owner | UNTESTED |
-| `/business/edit` | `app/business/edit.js` | Legacy edit screen that finds the business through the `claims` table instead of a route param. Superseded — see Abandoned. | `Save Changes` → `save()` | Reads user | UNTESTED |
-| `/business/dashboard` | `app/business/dashboard.js` | Standalone business-owner dashboard with listings and a customer QR code. Superseded by `/manager/dashboard` — see Abandoned. | `View Public Profile` → `/business/:id` · `Edit Business` → `/business/edit/:id` · `➕ Add Business Listing` → `/business/add` | Reads user + owner | UNTESTED |
-| `/business/reviews` | `app/business/reviews.js` | Lists customer reviews for the owner's businesses. Unreachable — see Abandoned. | `Manage Review` → `/business/review-action?id=:reviewId` | Reads user | UNTESTED |
-| `/business/review-action` | `app/business/review-action.js` | Owner replies to, or challenges, a single review. Takes `?id=`. | `Save Reply` → `saveResponse()` · `Challenge Review` → `challenge()` · both confirm the write, then `router.back()` | Auth — redirect + owner | UNTESTED |
-| `/business/review/:id` | `app/business/review/[id].js` | Review submission form; thin wrapper over `ExplorerReviewForm` with `targetType="business"`. Accepts `?qr=` for verified visits. | Form controls only; the shared form redirects to `/auth/login` when signed out (`components/ExplorerReviewForm.js:110`) | Auth — redirect *(enforced in the shared form)* | UNTESTED |
+### `components/Header.js`
 
-## Places — properties
+Rendered on every screen except `/`. Three elements, left to right:
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/property/:id` | `app/property/[id].js` | Public property profile: photos, details, reviews. | `Edit` → `/property/edit/:id` *(owner only)* · `Open Booking Page` → external browser · `⭐ Leave a Property Review` → `/property/review/:id` · `Open Printable Verified-Review QR` → `/manager/qr/property/:id` *(owner only)* · each review card → `/profile/:user_id` · photo thumbnails → lightbox · `Play video review` → inline player | Reads user + owner | UNTESTED |
-| `/property/add` | `app/property/add.js` | Creates a property listing. | `Create Property Listing` → `addProperty()`, then `/manager/dashboard` | Auth — redirect | UNTESTED |
-| `/property/edit/:id` | `app/property/edit/[id].js` | Edits a property by id — the flow the manager dashboard uses. | `Save Changes` → `save()`, then `/manager/dashboard` · `Delete Property` → `deleteProperty()`, then `/manager/dashboard` | Auth — redirect + owner | UNTESTED |
-| `/property/edit` | `app/property/edit.js` | Legacy edit screen resolving the property through `claims`. Superseded — see Abandoned. | `Save Changes` → `save()` | Reads user | UNTESTED |
-| `/property/dashboard` | `app/property/dashboard.js` | Standalone property-owner dashboard with a guest review QR. Superseded by `/manager/dashboard` — see Abandoned. | `View Public Profile` → `/property/:id` · `Manage Reviews` → **`/property/reviews/:id` — broken, see Broken links** · `Edit Property` → `/property/edit/:id` · `➕ Add Property Listing` → `/property/add` | Reads user | UNTESTED |
-| `/property/reviews` | `app/property/reviews.js` | Lists guest reviews for the owner's properties. Unreachable — see Abandoned. | `Manage Review` → `/property/review-action?id=:reviewId` | Reads user | UNTESTED |
-| `/property/review-action` | `app/property/review-action.js` | Owner replies to, or challenges, a guest review. Takes `?id=`. | `Save Reply` → `saveResponse()` · `Challenge Review` → `challenge()` · both confirm the write, then `router.back()` | Auth — redirect + owner | UNTESTED |
-| `/property/review/:id` | `app/property/review/[id].js` | Review submission form; wrapper over `ExplorerReviewForm` with `targetType="property"`. Accepts `?qr=`. | Form controls only; shared form redirects when signed out | Auth — redirect *(in shared form)* | UNTESTED |
-| `/guest/:id` | `app/guest/[id].js` | Guest welcome screen for a property stay. Unreachable — see Abandoned. | `🏠 View Property` → `/property/:id` · `⭐ Leave Review` → `/property/review/:id` · `📍 Explore Local Area` → `/map` | Public | UNTESTED |
+- **Back** (`←`, `accessibilityLabel="Go back"`). On web uses
+  `window.history.back()` when `history.length>1`, else `router.replace("/")`.
+  On native uses `router.canGoBack()`, else `router.replace("/")`. No-op at `/`.
+- **Title**: the literal string **`Guestbook`**. Not "Xplorer", and not derived
+  from the route.
+- **Bell** (`🔔`, "Open notifications") → `/notifications`, with a red count
+  badge when `unreadCount>0`, capped at `99+`.
+- **Hamburger** (`☰`, "Open quick access") → opens the drawer.
 
-## Places — static leftovers
+### `components/TabBar.js` + `utils/navigation.js`
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/place` | `app/place.js` | Hardcoded mock of a single venue ("The Coffee House", 4.8 stars). No data layer. See Abandoned. | `Leave Review`, `Get Directions`, `Visit Website` — all three are `TouchableOpacity` with **no `onPress`**, so they do nothing | Public | UNTESTED |
-| `/saved` | `app/saved.js` | Placeholder for saved/favourite places. Renders a heading and the sentence "Your favourite places will appear here". See Abandoned. | None | Public | UNTESTED |
+Five tabs, in this order, from `TABS`:
 
----
+| Label | Route | Glyph | Notes |
+|---|---|---|---|
+| Map | `/map` | map | |
+| Discover | `/discover` | compass | |
+| Create | `/create` | plus | `raised:true` — drawn outside the bar, above it |
+| Leaderboard | `/leaderboards` | trophy | |
+| Profile | `/profile` | person | |
 
-## Clubs
+Active state is carried by a 3px bar, icon colour and bold label, plus
+`accessibilityState={{selected}}`.
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/activity-clubs` | `app/activity-clubs/index.js` | Browsable list of activity clubs. | Each club card → `/activity-clubs/:id` | Public | UNTESTED |
-| `/activity-clubs/:id` | `app/activity-clubs/[id].js` | Public club profile with membership state machine (apply / pending / approved / rejected / removed / full). | `Open Manager Dashboard` → `/manager/dashboard` *(manager only)* · `Apply to join` → `applyToJoin()` *(hidden when full)* · `Open Members' Message Board` → `/activity-clubs/message-board/:id` *(manager or approved member)* · `⭐ Leave an Activity Club Review` → `openReview()` → `/activity-clubs/review/:id` *(non-managers with approved/left/removed membership)* · each review card → `/profile/:user_id` · `Play video review` → inline player | Auth — prompt + owner | UNTESTED |
-| `/activity-clubs/add` | `app/activity-clubs/add.js` | Creates a club. | `Create Activity Club` → `createClub()`, then `/manager/dashboard` | Auth — redirect | UNTESTED |
-| `/activity-clubs/edit/:id` | `app/activity-clubs/edit/[id].js` | Edits a club, including its open/full/closed status. | Status options → `setStatus()` · `Save Changes` → `saveClub()`, then `/manager/dashboard` | Auth — redirect + owner | UNTESTED |
-| `/activity-clubs/message-board/:id` | `app/activity-clubs/message-board/[id].js` | Private members' message board. | `Post` → `postMessage()` · `Return to Public Profile` → `/activity-clubs/:id` | Auth — redirect + owner | UNTESTED |
-| `/activity-clubs/review/:id` | `app/activity-clubs/review/[id].js` | Club review form; wrapper over `ExplorerReviewForm`. | Form controls only; shared form redirects when signed out | Auth — redirect *(in shared form)* | UNTESTED |
+`FULL_SCREEN_ROUTES=["/scan"]` — the tab bar is hidden on `/scan` and nowhere
+else. `activeTabKey` lights a tab for any path that starts with the tab route
+plus `/`, so detail screens keep their tab lit.
 
----
+### `components/QuickAccessDrawer.js` + `utils/drawer.js`
 
-## Events
+A right-hand `Modal` sheet, 86% wide / max 380px, `animationType="slide"`
+(`"none"` when reduce-motion is on). Contents: title **"Quick access"**, a close
+`×`, an optional notice, then the sections below.
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/events` | `app/events/index.js` | Upcoming events list. | Each event card → `/events/:id` · `Try again` → `loadEvents()` | Public | UNTESTED |
-| `/events/:id` | `app/events/[id].js` | Public event detail with manager controls when you own it. | `Browse Events` → `/events` *(error state)* · `Open booking website` → external browser · `⭐ Leave a review` → `openReview()` → `/events/review/:id`, or `/auth/login` when signed out · `Edit event` → `/events/edit/:id` *(manager only)* · `Dashboard` → `/manager/dashboard` *(manager only)* · each review card → `/profile/:user_id` · `Play video review` → inline player | Auth — prompt + owner | UNTESTED |
-| `/events/add` | `app/events/add.js` | Creates an event. | `Create Event` → `createEvent()`, then `/events/:id` | Auth — redirect | UNTESTED |
-| `/events/edit/:id` | `app/events/edit/[id].js` | Edits or deletes an event. | `Save Changes` → `saveEvent()`, then `/manager/dashboard` · `Delete` → `confirmDelete()`, then `/manager/dashboard` | Auth — redirect + owner | UNTESTED |
-| `/events/review/:id` | `app/events/review/[id].js` | Event review form; wrapper over `ExplorerReviewForm`. | Form controls only; shared form redirects when signed out | Auth — redirect *(in shared form)* | UNTESTED |
+Gates are evaluated against `{signedIn, isManager, isAdmin}`, where `isAdmin`
+comes from `profiles.is_admin` and `isManager` from the
+`manages_any_listing()` RPC. **An unknown gate shows the row** — the drawer
+fails open by design, and shows a notice when either lookup fails.
 
----
+| Section | Row | Route | Gate |
+|---|---|---|---|
+| Explore | Map | `/map` | always |
+| | Discover | `/discover` | always |
+| | Live nearby | `/live` | signed in |
+| | Events | `/events` | always |
+| | Activity clubs | `/activity-clubs` | always |
+| | Public places | `/places` | always |
+| | Link-ups | `/linkups` | signed in |
+| Community | Explorer feed | `/feed` | signed in |
+| | Find Explorers | `/explorers` | signed in |
+| | Leaderboards | `/leaderboards` | always |
+| | Notifications | `/notifications` | signed in |
+| My app | Profile | `/profile` | signed in |
+| | Check in | `/checkins/create` | signed in |
+| | Keep a memory | `/memories/create` | signed in |
+| | Scan a review code | `/scan` | signed in |
+| | Manager tools | `/manager/dashboard` | **non-manager** |
+| Manage | Manager dashboard | `/manager/dashboard` | manager |
+| *(section gated on manager)* | Club join requests | `/manager/requests` | manager |
+| | Business dashboard | `/business/dashboard` | manager |
+| | Property dashboard | `/property/dashboard` | manager |
+| Account and safety | Settings | `/settings` | signed in |
+| | Blocked Explorers | `/safety/blocked` | signed in |
+| | Admin dashboard | `/admin/dashboard` | admin |
+| | Listing catalogue | `/admin/listings` | admin |
+| | Claims & Manager access | `/admin/claims` | admin |
+| | Manage activities | `/admin/activities` | admin |
+| | Review reports | `/admin/moderation` | admin |
+| | Explorer directory | `/admin/explorers` | admin |
+| | Areas & data quality | `/admin/areas` | admin |
+| | Audit history | `/admin/audit` | admin |
+| | Manage public places | `/admin/public-places` | admin |
+| | Log in | `/auth/login` | signed out |
+| | Create account | `/auth/signup` | signed out |
+| | Log out | *(action, not a route)* | signed in |
 
-## Map
+### Where gating is actually enforced
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/map` | `app/map.js` (native) · `app/map.web.js` (web) | Map of businesses, properties and clubs. **Native branches on `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`**: with a key it renders `MapView` with markers; without one it falls back to `components/PlacesList`, which is also what the web build always renders. | *Map mode:* category filter chips → `setTypeFilter()` · business marker callout → `/business/:id` · property marker callout → `/property/:id` · club marker callout → `/activity-clubs/:id`. *List mode (`PlacesList`):* search field · `All` / `Businesses` / `Properties` / `Activity Clubs` filters · business card → `/business/:id` · property card → `/property/:id` · club card → `/activity-clubs/:id` | Public | UNTESTED |
-
----
-
-## Social
-
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/feed` | `app/feed.js` | Activity feed of moments and video reviews from people you follow. | `＋ New Moment` → `/moments/create` · `Find Explorers` → `/explorers` (header and empty state) · actor row → `/profile/:actor_id` · feed item → `/moments/:id` or `/social-comments/:id` · `💬` → comments · `Open place` → the item's listing route | Auth — redirect | UNTESTED |
-| `/explorers` | `app/explorers.js` | Directory of explorer profiles; excludes admins. | Each profile card → `/profile/:id` | Auth — redirect | UNTESTED |
-| `/profile` | `app/profile.js` | Own profile. Composes `ProfileSocialBar` + `ExplorerProfileScreen`. | Via the shared components: `Edit Profile` / `Edit profile` → `/profile/edit` · `Open Manager Dashboard` → `/manager/dashboard` · `＋ New Moment` / `＋ Share a new Moment` → `/moments/create` · rank card → `/leaderboards` · followers count → `/connections/:id?tab=followers` · following count → `/connections/:id?tab=following` · `Find Explorers` → `/explorers` · favourite cards → the listing route · review cards → the listing route · `💬 Comments` → `/social-comments/:reviewId` · moment cards → `/moments/:id` | Auth — redirect *(in `ExplorerProfileScreen`)* | UNTESTED |
-| `/profile/:id` | `app/profile/[id].js` | Someone else's profile. Adds `ProfileSafetyActions` (block/report) to the same composition. | Same as `/profile`, minus the owner-only actions, plus follow and block/report controls | Auth — redirect *(in `ExplorerProfileScreen`)* | UNTESTED |
-| `/profile/edit` | `app/profile/edit.js` | Edits display name, bio, area, photo and privacy toggles. | `Choose Profile Photo` → `pickImage()` · `Save Profile` → `saveProfile()` | Auth — redirect | UNTESTED |
-| `/connections/:id` | `app/connections/[id].js` | Followers/following lists; opens on the tab given by `?tab=`. | `Followers` / `Following` tabs → `setActiveTab()` · `Find Explorers` → `/explorers` *(following tab)* · each profile card → `/profile/:id` | Auth — redirect | UNTESTED |
-| `/moments/create` | `app/moments/create.js` | Composes a moment with optional photo/video and an attached place. | `Photo / camera` → `pickImage()` · `Video / camera` → `pickVideo()` · `Remove selected media` → `clearAsset()` · place-type chips incl. `None` → `choosePlaceType()` · place results → `setSelectedPlace()` · `Publish Moment` → `publish()`, then `/moments/:id` | Auth — redirect | UNTESTED |
-| `/moments/:id` | `app/moments/[id].js` | Single moment with comments, report and delete. | Author row → `/profile/:user_id` · place card → the listing route · `Report` → report sheet → reason options → `Submit report` · `Cancel` → closes sheet · `Delete` → confirm → `Delete permanently` → `deleteMoment()`, then `/feed` · `Keep Moment` → cancels · comment authors → `/profile/:user_id` | Auth — prompt | UNTESTED |
-| `/social-comments/:id` | `app/social-comments/[id].js` | Comment thread on a video review. | Author row → `/profile/:user_id` · place card → the listing route · comment authors → `/profile/:user_id` (via `CommentThread`, which pushes `/auth/login` when signed out) | Reads user | UNTESTED |
-| `/leaderboards` | `app/leaderboards.js` | Explorer rankings by period and scope. | Period options → `setPeriod()` · scope options → `setScope()` · `Edit Profile` → `/profile/edit` · each row → `/profile/:user_id` | Auth — redirect | UNTESTED |
-| `/notifications` | `app/notifications.js` | Notification centre with category tabs; each notification carries its own destination. | `Log in` → `/auth/login` *(signed out)* · `Mark all read` → `markAllRead()` · category tabs → `setActiveCategory()` · each notification → its stored `destination` (suppressed when that is `/notifications`) | Auth — prompt | UNTESTED |
-| `/safety/blocked` | `app/safety/blocked.js` | Lists blocked explorers and unblocks them. | Each profile row → `/profile/:blocked_id` · `Unblock` → `unblock()` | Auth — redirect | UNTESTED |
-
----
-
-## Link-ups
-
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/linkups` | `app/linkups/index.js` | Browse link-ups with status filters. | `＋ Create Link-up` → `/linkups/create` *(expo-router `<Link>`)* · filter tabs → `setFilter()` · each card → `/linkups/:id` · `📡 Open Live Nearby` → `/live` | Auth — redirect | UNTESTED |
-| `/linkups/create` | `app/linkups/create.js` | Creates a link-up. Renders `LinkupForm` in `titleOnly` mode — title is the only required field. | `LinkupForm` submit → `create()`, then `/linkups/:id` | Auth — redirect | UNTESTED |
-| `/linkups/:id` | `app/linkups/[id].js` | Link-up detail: attendees, join/leave, organiser controls, safety actions. | `Back to Link-ups` → `/linkups` *(error state)* · organiser card → `/profile/:creator_id` · `Join Link-up` / `Leave Link-up` → `callRpc()` · `💬 Open private board` → `/linkups/board/:id` *(when open)* · `Edit Link-up` → `/linkups/edit/:id` *(owner, not cancelled/completed)* · `Cancel Link-up` → confirm → `Cancel it` / `Keep it` · attendee rows → `/profile/:user_id` · `Remove` → `remove_linkup_attendee` *(owner)* · `Report Link-up` → reason picker → `Submit report` · `Block organiser` → `blockCreator()` | Auth — redirect + owner | UNTESTED |
-| `/linkups/edit/:id` | `app/linkups/edit/[id].js` | Edits a link-up via `LinkupForm` with `submitLabel="Save changes"`. | Form submit → `update()`, then `/linkups/:id` | Auth — redirect | UNTESTED |
-| `/linkups/board/:id` | `app/linkups/board/[id].js` | Private attendee message board. | `Back to Link-up` → `/linkups/:id` *(error state)* · header card → `/linkups/:id` · `Send` → `post()` · announcement toggle → `setAnnouncement()` · `Remove` → `remove()` · `Report` → reason picker → `Submit report` | Auth — redirect + owner | UNTESTED |
-
----
-
-## Check-ins and live discovery
-
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/checkins/create` | `app/checkins/create.js` | Publishes a time-boxed check-in at a place. | Place-type chips → `setPlaceType()` · place results → `selectPlace()` · `Use my location` → `useLocation()` · `Remove location` → clears it · activity chips → `setActivity()` · duration options → `setMinutes()` · `Public` / `Followers` → `setVisibility()` · `Start check-in` → `publish()`, then `/live` | Auth — redirect | UNTESTED |
-| `/live` | `app/live.js` | Live Nearby: check-ins and link-ups around you, with distance/time/type filters. | `Create Link-up` → `/linkups/create` · `Check in` → `/checkins/create` · `End` → `endCheckin()` · `Apply` → `applyArea()` · `Use my location` → `useLocation()` · radius options → `setRadius()` · time-window options → `setWindowHours()` · type filters → `setType()` · each result's action button → that item's `deep_link` · `Report` → `reportCheckin()` *(check-ins only)* | Auth — redirect | UNTESTED |
+- **Admin** — `hooks/useAdminGate.js`, used by all nine `app/admin/*` screens.
+  Each renders "Checking admin access…" then "Admin access required".
+- **Manager** — `hooks/useManagerGate.js`, used by exactly three screens:
+  `app/business/dashboard.js`, `app/property/dashboard.js`,
+  `app/manager/requests.js`. It calls `manages_any_listing()`. Deliberately
+  **not** used on `/manager/dashboard`, because that screen is where an
+  Explorer requests the capability in the first place.
+- **Explorer account type** — 12 files check `account_type!=="explorer"`:
+  `activity-clubs/[id]`, `checkins/create`, `connections/[id]`, `events/[id]`,
+  `feed`, `linkups/create`, `linkups/index`, `live`, `moments/create`,
+  `qr/[code]`, `components/ExplorerProfileScreen`, `components/ExplorerReviewForm`.
+- **Signed in** — 32 screens call `router.replace("/auth/login")` when there is
+  no session.
+- **Ownership** — checked per screen against `owner_id` / `manager_id` /
+  `creator_id` / `user_id`.
 
 ---
 
-## Manager
+## 2. Screens
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/manager/dashboard` | `app/manager/dashboard.js` | The manager hub — businesses, properties, clubs and events you own, plus capability requests. Hard-fails with "A manager account is required to open this dashboard." when `account_type !== "manager"` (`:121`). Accepts `?club=` and `?view=` to focus a section. | `Request access` → `onRequest()` · `Open printable QR` → `/manager/qr/:type/:id` · action-centre link → `/manager/requests` · per club: requests → `/manager/requests?club=:id&view=requests`, `Edit` → `/activity-clubs/edit/:id`, `Public profile` → `/activity-clubs/:id`, `Open private message board` → `/activity-clubs/message-board/:id`, remove member → `confirmRemoveMember()` · per business: `Edit` → `/business/edit/:id`, `Public profile` → `/business/:id` · per property: `Edit` → `/property/edit/:id`, `Public profile` → `/property/:id` · per event: `Edit` → `/events/edit/:id`, `View listing` → `/events/:id` · `➕ Add Business` → `/business/add` · `➕ Add Property` → `/property/add` · `➕ Add Activity Club` → `/activity-clubs/add` · `➕ Add Event` → `/events/add` | Auth — redirect + manager | UNTESTED |
-| `/manager/requests` | `app/manager/requests.js` | Action centre for club membership requests. Accepts `?club=`, `?view=`, `?membership=`. | `Approve` / `Reject` → `decideMembership()` · member links → `/manager/dashboard?club=:id&member=:userId&view=members` · club links → `/manager/dashboard?club=:id&view=members` · club tabs → `/manager/requests?club=:id&view=requests` · `Notifications` → `/notifications` · `Manager Dashboard` and `Return to Manager Dashboard` → `/manager/dashboard` | Auth — redirect + manager + owner | UNTESTED |
-| `/manager/membership-status/:id` | `app/manager/membership-status/[id].js` | Status detail for one membership request. Unreachable — see Abandoned. | `Open Manager Dashboard` → `/manager/dashboard` · `Review this request` → `/manager/requests?club=:id&membership=:id&view=requests` · `View current club members` → `/manager/dashboard?club=:id&view=members` · `Notifications` → `/notifications` · `Manager Dashboard` → `/manager/dashboard` | Auth — redirect + manager + owner | UNTESTED |
+### 2.1 Entry and tab roots
 
 ---
 
-## Admin
+#### `/` — `app/index.js`
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/admin/claims` | `app/admin/claims.js` | Reviews ownership claims over businesses and properties. Reached from the menu's admin-only entry. | `Approve` → `updateClaim()` · `Reject` → `updateClaim()` | Auth — redirect + admin | UNTESTED |
-| `/admin/dashboard` | `app/admin/dashboard.js` | Second admin surface over the same claims data. Reached from the `⚙️` button on `/`, which renders only when `is_admin`. | `Approve` → `updateClaim()` · `Reject` → `updateClaim()` | Auth — redirect + admin | UNTESTED |
+**Reached by** app launch; `Header` back button falls back here; log out
+redirects here.
+
+**Elements, top to bottom**
+1. Title **"Guestbook"** (44px, white on `#19191b`)
+2. Subtitle "Discover local places, stays and experiences."
+3. *(signed in only)* **🔔 Notifications** button with unread badge
+4. **🎉 Explore Events** button
+5. **🗺️ Explore Map** button
+6. *(signed in)* **☰ Quick access** button — opens the drawer
+   *(signed out)* a row of two: **Log in** | **Create account**
+7. *(admin only)* **⚙️ Admin Dashboard** button
+
+**Actions** → `/notifications`, `/events`, `/map`, drawer, `/auth/login`,
+`/auth/signup`, `/admin/dashboard`.
+
+**States** — full-screen `ActivityIndicator` while checking the session. No
+error state: if the `profiles` read fails, `isAdmin` is simply false.
+
+**Gating** — Explorer/signed-out both render; the admin button is the only
+conditional destination. This is the only screen with `headerShown:false`.
 
 ---
 
-## QR
+#### `/map` — `app/map.js` (native) / `app/map.web.js` (web)
 
-| Route | File | Purpose | Buttons and links | Auth | Status |
-|---|---|---|---|---|---|
-| `/scan` | `app/scan.js` | Camera scanner for Guestbook QR codes. | `Allow camera access` → `requestPermission()` · `Open verified review` → `openScan()` · `Scan another code` → resets · on a successful scan → `/qr/:code` | Public | UNTESTED |
-| `/qr/:code` | `app/qr/[code].js` | Resolves a scanned code to a listing and forwards to its review form with the verified-visit bonus. | `Continue to review` → `continueToReview()` → `/business/review/:id`, `/property/review/:id`, `/activity-clubs/review/:id` or `/events/review/:id`, each with `?qr=:code` (routes come from the `_config` table at `:15-18`) · `Return home` → `/` *(error state)* · when signed out, pushes `/auth/login` with a `next` param | Auth — prompt | UNTESTED |
-| `/manager/qr/:type/:id` | `app/manager/qr/[type]/[id].js` | Printable verified-review QR poster for a listing. Reached from `/manager/dashboard` and from `/property/:id`. | `Print Verified Review QR` → `printPage()` | Reads user + owner | UNTESTED |
+**Reached by** Map tab, drawer → Map, `/` → Explore Map, `/guest/[id]`.
+
+Two files serve one route via Metro's platform extension. **`app/map.web.js`
+wins on web** and is 12 lines: it renders `PlacesList` with a
+`🗺️ Guestbook Map` header and nothing else — no `react-native-maps` import at
+all.
+
+`app/map.js` reads `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` *inside the component*. If
+the key is absent it returns the same `PlacesList` fallback; only with a key set
+does it render `NativeMap`.
+
+**`NativeMap` elements**
+1. Absolutely-positioned top panel:
+   - Search `TextInput` — "Search businesses, stays or clubs..."
+   - Horizontal filter row: **All · Businesses · Properties · Activity Clubs**
+   - Horizontal live row: **Happening** toggle, then **Now · Tonight · Weekend**
+     (disabled while Happening is off)
+2. `MapView` with `initialRegion` at 50.8225, −0.1372 (never a controlled
+   `region`, so the map keeps the position the user left it at)
+
+**Map layers**, drawn in this order:
+- business `Marker`s → `PlaceMarker` from `toCard(BUSINESS,…)`
+- property `Marker`s
+- activity-club `Marker`s (`status in ('open','full')` only)
+- **live activity `Marker`s last**, so a live thing draws on top of its place
+
+Static pins are filtered by `hasCoordinates` (`utils/coordinates.js`), which
+rejects `null`/`undefined`/`""` but keeps `0`. Live pins come from
+`markerForActivity`.
+
+**Actions** — tapping a static pin sets `openKey` and opens the `PlaceCards`
+modal; tapping a live pin does `router.push(item.deepLink)`.
+
+**States** — no loading spinner and no error UI. Query errors are
+`console.log`ged. A failed live read empties `activities` only; the static pins
+are a separate query and stay.
+
+**Gating** — none. `get_live_discovery` is not called at all when signed out, so
+a signed-out visitor sees static pins only.
 
 ---
 
-# Findings
+#### `components/PlacesList.js` — the list that *is* the map today
 
-## Routes nothing links to
+Used by `map.web.js` and by `map.js` whenever no Maps key is set.
 
-Eleven routes have no inbound navigation anywhere in `app/` or `components/`. They
-are reachable only by typing the URL (web) or a deep link.
+**Elements**
+1. `header` prop (the `🗺️ Guestbook Map` title)
+2. Search input
+3. Type filter row: All · Businesses · Properties · Activity Clubs
+4. **`Happening`** section heading — deliberately first, above the business list
+5. Time window row: **Now · Tonight · Weekend**
+6. Live activity rows (marker + title + state sentence + subtitle), **or** a
+   single card with a per-window instruction:
+   - now → "Nothing is happening this minute. Check in somewhere or start a Link-up to change that."
+   - tonight → "Nothing is on tonight yet. Start a Link-up and it will show here."
+   - weekend → "The weekend is open. Create an Event or a Link-up to put something on it."
+7. **Businesses** section — name, classification label, address
+8. **Properties** section — name, host, address
+9. **Activity Clubs** section — name, `category · status`, address
 
-| Route | File | Why it appears to be stranded |
+**Actions** — a live row pushes its `deepLink`; a place row opens the
+`PlaceCards` modal, which opens the full page.
+
+**States** — no loading state, no error state, no empty state for the three
+place sections (they simply render a heading and nothing).
+
+---
+
+#### `/discover` — `app/discover.js`
+
+**Reached by** Discover tab, drawer → Discover.
+
+**Elements**
+1. Title **"Discover"**
+2. *(when the profile has an area)* "What is on around {area}."
+3. *(on live-read failure)* notice: "Live activity could not be loaded, so Happening now may be incomplete."
+4. Then each section from `SECTIONS` in `utils/discover.js`, each with a title,
+   a count, and up to 6 cards or an empty instruction. Sections are
+   `for-you`, `happening-now`, `events`, `clubs`, `linkups`, `saved`.
+5. A final fixed card: **"Explorer feed"** / "What the Explorers you follow have been doing."
+
+**Every card shows a reason line.** Items pass through `recommend()`, which
+drops anything with no computable reason, so the reason is never blank.
+
+**Actions** → `item.route` (built per section: `/events/{id}`,
+`/activity-clubs/{id}`, `/linkups/{id}`, `get_live_discovery`'s `deep_link`, or
+`savedRoute()` for favourites), and `/feed`.
+
+**States** — full-screen spinner on first load; `RefreshControl`; per-section
+empty text; a notice band for a failed live read. **Signed out renders an empty
+`items` object**, so every section shows its empty state.
+
+---
+
+#### `/create` — `app/create.js`
+
+**Reached by** the raised centre tab only.
+
+A launcher. Builds nothing itself; every row opens an existing screen.
+
+**Elements (signed in)**
+1. Title **"Create"**
+2. Section **"Share where you are"** — five cards:
+   Check in somewhere → `/checkins/create` · Start a link-up → `/linkups/create` ·
+   Post a moment → `/moments/create` · Keep a memory → `/memories/create` ·
+   Leave a verified review → `/scan`
+3. Section **"Add something to the map"** — four cards:
+   Add a business → `/business/add` · Add a property → `/property/add` ·
+   Start an activity club → `/activity-clubs/add` · Add an event → `/events/add`
+
+**Elements (signed out)** — title, an explanation, then **Log in** and
+**Create an account** cards.
+
+**States** — spinner while resolving the session. No error state.
+
+---
+
+#### `/profile` — `app/profile.js` · `/profile/[id]` — `app/profile/[id].js`
+
+Both are thin wrappers. `/profile` renders `ProfileSocialBar ownProfile` +
+`ExplorerProfileScreen ownProfile`. `/profile/[id]` renders `ProfileSocialBar` +
+**`ProfileSafetyActions`** + `ExplorerProfileScreen profileId`.
+
+**`components/ProfileSocialBar.js`** — Followers / Following / Moments counts
+from `get_explorer_follow_counts`; Followers and Following push
+`/connections/{id}` with a `tab` param; a **Find Explorers** link → `/explorers`.
+
+**`components/ProfileSafetyActions.js`** — on other people's profiles only:
+"Safety options", a report-reason picker, **Submit report**
+(`report_live_safety`), and a block control writing `user_blocks`.
+
+##### `components/ExplorerProfileScreen.js` — the body of both profile routes
+
+**Elements, top to bottom**
+1. **Profile card**
+   - Three figures in a row, each with its own spoken label:
+     **AVG SCORE GIVEN** (`stats.average_rating_given`, 1dp) ·
+     **REVIEW POINTS** (`stats.total_points`) ·
+     **REVIEW REPUTATION** (`reputation.total_endorsements`)
+   - Avatar (112px; falls back to the first letter of the name)
+   - Name
+   - *(if `show_area` and `area`)* `📍 {area}`
+   - Bio
+   - *(owner only)* **Edit profile** → `/profile/edit` · **＋ New Moment** → `/moments/create`
+2. **Stats grid** — Reviews · Verified · Videos · Moments
+3. **Monthly leaderboard card** — "See where this Explorer ranks", Local #n /
+   National #n (or `—`) → `/leaderboards`
+4. *(if reputation exists)* **Review reputation card** — endorsement count,
+   "Reviews found useful", "Avg. per review", and the most useful review
+5. **Scrapbook tab row**: Adventures · Reviews · **My Map** *(owner only)* ·
+   Collections · Clubs
+6. The selected tab's body:
+   - **Adventures** — "Memories" horizontal row → `/memories/{id}`; *(owner)*
+     "＋ Share a new Moment"; a two-column Moment grid → `/moments/{id}`
+   - **Reviews** — "Review gallery" horizontal image row; a sort row
+     (Recent · Highest · Lowest); review cards with stars, title, comment,
+     `✓ VERIFIED ON-SITE REVIEW`, photos, an "Open video review" button, an
+     `EndorseButton` and a Comments link; then a "Video reviews" section
+   - **My Map** — `components/MyMap.js`, mounted only when `isOwner`
+   - **Collections** — "Favourite places" horizontal row (public favourites only)
+   - **Clubs** — approved `activity_memberships` only → `/activity-clubs/{id}`
+7. *(owner only)* **Logout**
+
+**States**
+- Loading spinner.
+- **A 15-second timeout.** `loadProfile` races `loadProfileInner()` against a
+  `LOAD_TIMEOUT_MS=15000` rejection, and `setLoading(false)` runs in `finally`,
+  so the screen always leaves the loading state. On failure it shows
+  **"Profile unavailable" / "This profile could not be loaded." / Try again**.
+- The Clubs query is wrapped in its own `try`/`catch`, so one failing tab
+  cannot cost the whole profile.
+- Per-tab empty cards, with different copy for the owner and a visitor.
+- A **separate manager-account branch**: if `account_type!=="explorer"` the
+  screen renders a stripped card with a `MANAGER ACCOUNT` badge, Edit Profile,
+  Open Manager Dashboard and Logout — no scrapbook, no figures.
+
+**Gating** — My Map is `ownerOnly` in `SCRAPBOOK_TABS`, so a visitor is not
+offered the tab at all; `MyMap` re-checks `ownerId===viewerId`, and
+`get_explorer_memories` is SECURITY INVOKER.
+
+---
+
+#### `/leaderboards` — `app/leaderboards.js`
+
+**Reached by** the Leaderboard tab, drawer, the profile rank card.
+
+**Elements**
+1. Eyebrow "EXPLORER RANKINGS", title **"Leaderboards"**, subtitle noting test
+   accounts are excluded
+2. Period tabs: **Weekly · Monthly**
+3. Scope tabs: **Local · National**
+4. *(local, with a public area)* an area pill `📍 {area}`
+5. **"WHERE YOU STAND" card** — `#rank` plus "{n} points · {n} reviews this
+   week/month", or `—` with either "Publish a review of somewhere you went and
+   you will appear here." or, when opted out, "You have opted out of
+   leaderboards…". Derived from the rows already fetched; **no second query**,
+   and it never invents a position for somebody outside the window.
+6. The list — rank circle (top 3 highlighted), avatar, name (`· You` for the
+   viewer), `{area} · {n} reviews`, `{n} verified · {n} videos`, points
+7. **"How points work"** card: text 1 · image 3 · video 6 · verified QR +3, and
+   the one-per-place-per-month note
+
+**Actions** — a row pushes `/profile/{user_id}`; the notice card pushes
+`/profile/edit`.
+
+**States** — spinner; error card; "No points yet" when the period is empty; and
+a distinct **"Add a public area to join local rankings"** notice when the scope
+is Local but the viewer has no public area.
+
+**Gating** — redirects to `/auth/login` when signed out.
+
+---
+
+### 2.2 Place pages
+
+Five routes share `components/PlaceLayout.js`. The layout's own sections, in
+order: photo strip (or `photosEmptyLabel`), title card (name, type label,
+verification label, description, info rows, stats row, favourite/follow slot),
+`beforeActions` slot, **Actions** section, `beforeReviews` slot, **Reviews**
+section, `afterReviews` slot, **Similar nearby** section, footnote. Plus a
+full-screen photo `Modal`.
+
+`PlaceLayout` renders `loadingLabel` with a spinner, or `error` as centred text.
+`showPhotos` and `showReviews` are capability flags, so a page without reviews
+**omits the section rather than emptying it**.
+
+Deliberately absent from the layout: Directions, Book a table, Get tickets.
+
+---
+
+#### `/business/[id]` — `app/business/[id].js`
+
+**Reached by** `PlacesList` / map cards, `/business/dashboard`,
+`/manager/dashboard`, and its own "Similar nearby".
+
+Reads `businesses` and the legacy `reviews` table
+(`moderation_status='published'`).
+
+- **Type label** — `typeLabelForBusiness()`, the same function the map pin uses
+- **Verification** — `✓ VERIFIED BUSINESS` when `owner_id` is set
+- **Info** — ADDRESS, OPENING HOURS
+- **Rating** — average of the reviews, count, plus `FavouriteButton` and
+  `EntityFollowButton`
+- **Owner action** — an **Edit** button → `/business/edit/{id}`
+- **Actions** — 📞 Call (`tel:`) · 🌐 Website (both only when present) ·
+  **⭐ Leave a Business Review** → `/business/review/{id}` · `ClaimButton` when
+  signed in and unclaimed
+- **Similar nearby** — up to 4, same `category`, ordered by `nearestFirst`
+
+**States** — "Loading business...", "This business could not be loaded.",
+reviews empty → "No reviews yet" / "Be the first to share your experience."
+
+---
+
+#### `/property/[id]` — `app/property/[id].js`
+
+Same shape. Type label `PROPERTY_TYPE_LABEL`; verification `✓ VERIFIED
+PROPERTY`; info rows HOST and ADDRESS. Actions: **Open Booking Page** (when
+`booking_url` is set) · **⭐ Leave a Property Review** · *(owner)* **Open
+Printable Verified-Review QR** → `/manager/qr/property/{id}` · `ClaimButton`.
+"Other stays nearby". A footnote states the on-site QR is only on the manager's
+printable sign and is not shown publicly.
+
+---
+
+#### `/activity-clubs/[id]` — `app/activity-clubs/[id].js`
+
+Reads `activity_clubs`, `activity_sessions` (future only),
+`activity_announcements`, `activity_club_reviews`, `activity_club_stats`, and
+the viewer's `activity_memberships` row.
+
+- **Type label** `CLUB_TYPE_LABEL`; info rows WHAT / WHERE / COST
+- **Stats** — members · spaces left · review score (replacing the default pair)
+- **`beforeReviews`** carries the membership state machine, one card per state
+  rather than one merged status card:
+  - *(manager)* **Open Manager Dashboard**
+  - *(can apply, not full)* "Request to join" / "Apply again" + an optional
+    note field + **Send Join Request**
+  - *(can apply, full)* "Club currently full"
+  - *pending* → `PENDING APPROVAL` / "Application submitted" + sent date + the
+    submitted message
+  - *approved* → `MEMBERSHIP APPROVED` / "You're a member"
+  - *rejected* → "Application not approved"
+  - *removed* → `MEMBERSHIP ENDED` / "Membership ended"
+  - *(manager or approved)* **Open Members' Message Board**
+  - *(approved/left/removed)* **⭐ Leave an Activity Club Review**
+  - **Upcoming sessions** — title, date, capacity, or "No sessions are
+    scheduled yet…"
+  - **Club announcements** — or "Nothing announced yet…"
+- Review rows are normalised (`reviewer_name` → `name`) so one review card
+  serves every place type
+
+**Blocking `Alert`s** — not an Explorer account, club full, or no membership,
+each explaining why the action is refused.
+
+---
+
+#### `/events/[id]` — `app/events/[id].js`
+
+Info rows WHAT / WHEN / WHERE / PRICE / CAPACITY. `event_reviews` normalised
+the same way.
+
+The review button is **state, not a disabled control**: before `starts_at` it
+reads **🔒 Reviews unlock when the event starts** and stays pressable,
+explaining itself via an `Alert`; after, **⭐ Leave an Event Review**.
+
+*(manager)* a "Manager controls" box with **Edit event** and **Dashboard**, and
+the event's status as the verification label.
+
+---
+
+#### `/places/[id]` — `app/places/[id].js`
+
+Public places (parks, beaches, viewpoints). `showReviews={false}` — there is no
+`public_place_reviews` table, so the section is omitted rather than emptied.
+
+Info rows AREA and WHERE TO FIND IT. `beforeActions` holds two
+`EntityFollowButton`s — the place and its `geo_area`. Action: **Post a Moment
+here** → `/moments/create?target_type=public_place&target_id={id}`.
+`afterReviews` holds a **"Moments here"** grid (RLS decides which are visible)
+or "No Moments here yet". Footnote explains nobody posts as the place itself.
+
+---
+
+#### `/linkups/[id]` — `app/linkups/[id].js`
+
+`showPhotos={false}` and `showReviews={false}` — a Link-up has neither, and
+there is no `linkup_reviews` table.
+
+Info rows WHAT / WHEN / WHERE; stats `{joined}/{max}` and Public/Followers.
+`beforeActions` holds an **ORGANISED BY** card → `/profile/{creator_id}`, and —
+only when `joined` — an **ATTENDEE MEETING DETAILS** card from
+`linkup_private_details`. That check is a second lock; RLS already returns no
+row to a non-member.
+
+**Actions** — Join Link-up · Leave Link-up · 💬 Open private board →
+`/linkups/board/{id}` · *(owner)* Edit Link-up · *(owner)* Cancel Link-up with
+an inline "Cancel this Link-up?" confirmation.
+
+**`beforeReviews`** — an **Attendees** list (each → `/profile/{id}`, with
+*Remove* for the owner), then **Report Link-up** and **Block organiser** for
+non-owners, and a six-reason report panel. Report and block sit at the end of
+the page and are never behind a menu.
+
+---
+
+### 2.3 Discovery lists
+
+| Route | File | Reached by | Shape |
+|---|---|---|---|
+| `/events` | `app/events/index.js` | drawer, `/`, admin listings | Purple hero "WHAT'S ON / Upcoming Events", search, cards (category, price, name, 📅 date, 📍 location, description, capacity, "View event →"). Only `status='published'` and `starts_at >= now`. Spinner; "Events unavailable" + **Try again**; "No upcoming events found". |
+| `/activity-clubs` | `app/activity-clubs/index.js` | drawer, admin listings | Title, subtitle, search, cards (category badge, Open/Full, name, 📍 location, description, 👥 members / ⭐ rating / price, "View club profile →"). Only `status in ('open','full')`. Spinner; a **"Supabase setup required"** notice on error; "No clubs found". |
+| `/places` | `app/places/index.js` | drawer, admin listings | Riso. Title "Public places", subtitle, search, a type chip row from `PUBLIC_PLACE_TYPES` plus **All**, then cards (name, type · area, location description). Spinner "Loading public places…"; error card; empty state explaining public places are added by the team. |
+| `/explorers` | `app/explorers.js` | drawer, feed, connections, social bar | "EXPLORER COMMUNITY / Find Explorers", search by name or area, cards (avatar, name, 📍 area, 2-line bio) + a `FollowButton`, then a result count. Excludes the viewer, non-Explorers and admins. Spinner; "Could not load Explorers"; "No Explorers found". |
+| `/linkups` | `app/linkups/index.js` | drawer, `/linkups/[id]` | Hero "MEET LOCALLY / Link-ups" + **＋ Create Link-up**; tabs **Discover · Joined · Created**; cards (category pill, status pill, title, when + countdown, 📍 place, description, creator, `n/max joined`, "Followers only"); a trailing **📡 Open Live Nearby**. Spinner; error card; per-tab empty card. Explorer-only. |
+| `/live` | `app/live.js` | drawer, `/linkups`, after a check-in | See below. |
+
+---
+
+#### `/live` — `app/live.js`
+
+**Elements**
+1. Hero "HAPPENING NEARBY / Live Nearby" with **Create Link-up** and **Check in**
+2. *(on error)* an error card
+3. *(when checked in)* a **"YOU ARE CHECKED IN"** card — place, activity,
+   expiry, and an **End** action (`end_live_checkin`)
+4. A filters card: **Area** text input + **Apply**; **Use approximate
+   location** (Expo Location, rounded to 2dp); **Distance** chips 5/15/25/50 km;
+   **Time window** chips 6h/Today/3 days/7 days
+5. A horizontal type tab row: All · Link-ups · People · Events · Activities · Places
+6. Result cards — icon, item type, title, distance, subtitle, 📍 area, time, an
+   **open** button using the row's own `action_label` and `deep_link`, and a
+   **Report** link on check-ins (`report_live_safety`)
+
+**States** — full-screen spinner; `RefreshControl`; error card; empty card
+"Nothing live in this view / Widen the area or time filters, or create the first
+Link-up."
+
+**Gating** — signed in, and `account_type==='explorer'`; otherwise "Only
+Explorer accounts can use Live Nearby." Calls `refresh_live_system` before
+reading.
+
+---
+
+### 2.4 Social
+
+#### `/feed` — `app/feed.js`
+
+**Elements**
+1. "YOUR EXPLORER COMMUNITY / Feed" + subtitle
+2. Quick actions: **＋ New Moment** → `/moments/create`, **Find Explorers** → `/explorers`
+3. Feed cards from `get_explorer_social_feed` (limit 40), each with:
+   - actor row (avatar, name, "shared a Moment" / "posted a review" / "saved a
+     favourite" + relative time) → `/profile/{actor_id}`
+   - **reason pills** from `reasonsFor(item)` — rendered only when the list is
+     non-empty, which is the case until the 8f2 migration is applied
+   - caption, star rating, a `📍 target` pill, image or video poster
+   - `✓ Verified on-site review`
+   - action row: `LikeButton` (Moments) or `EndorseButton` (reviews), a 💬
+     comment count, and **Open place**
+
+**States** — spinner; `RefreshControl`; "Feed unavailable" with the error; and
+an empty card "Build your Explorer feed" + **Find Explorers**.
+
+**Gating** — redirects to login; non-Explorer accounts get "The Explorer feed is
+available to Explorer accounts."
+
+---
+
+#### `/moments/[id]` — `app/moments/[id].js`
+
+Author row (→ profile) with a `FRIENDS` badge when `visibility==='friends'`; for
+an official Moment the listing name comes first and "Official update · {date}"
+below. Then the media (image, or a video poster that opens the URL), caption, an
+**ATTACHED PLACE** card → the listing, and an action row: `LikeButton`,
+**Report** (non-owner) or **Delete** (owner). Inline report and delete
+confirmation panels. Finally `CommentThread`.
+
+**States** — spinner; "Moment unavailable". Deleting also removes the storage
+object and redirects to `/feed`.
+
+---
+
+#### `/social-comments/[id]` — `app/social-comments/[id].js`
+
+Video reviews only. Author row, video poster, stars, title, comment,
+`✓ Verified on-site review`, a **REVIEWED PLACE** card, an `EndorseButton`, then
+`CommentThread`. Errors: "This video review is unavailable." or "Comments are
+only available for published video reviews."
+
+#### `components/CommentThread.js`
+
+"Comments" heading, a composer with **Post**, comment rows (→ profile) with
+**Report** / **Delete**, a five-reason report panel, and
+"No comments yet. Start the conversation." 500-character limit.
+
+---
+
+#### `/connections/[id]` — `app/connections/[id].js`
+
+**Reached only from `ProfileSocialBar`.** Tabs **Followers** and **Following**
+(the initial tab comes from a param), rows with `FollowButton`, and a **Find
+Explorers** link. States: spinner, "Connections unavailable", four distinct
+error strings. Explorer-only.
+
+---
+
+#### `/notifications` — `app/notifications.js`
+
+**Reached by** the header bell, drawer, `/`, manager screens.
+
+Heading + **Mark all read** (only when something is unread), then a horizontal
+category tab row with counts: **All · Live · Social · Clubs · Account**.
+Category is derived from the notification `type`/`entity_type`.
+
+Cards carry an emoji icon chosen per type, title, category label, an optional
+membership status badge (Needs action / Approved / Rejected / Membership ended /
+Left club, prefixed "Past update · " for historical rows), message and relative
+time. Unread rows get a distinct background and a dot.
+
+**Actions** — tapping marks read then pushes `deep_link` (unless it is
+`/notifications` itself). Subscribes to `postgres_changes` for live updates.
+
+**States** — spinner; per-category empty card; a signed-out state with
+**Log in**.
+
+---
+
+### 2.5 Creating things
+
+| Route | File | Reached by | Notes |
+|---|---|---|---|
+| `/checkins/create` | `app/checkins/create.js` | Create tab, drawer, `/live` | Place-type chips (Park · Public place · Business · Activity club · Event), a searchable canonical place picker, free-text place name + broad area, **Add approximate location** (2dp), activity chips + custom, a 240-char message, duration chips **30m/1h/2h/4h**, and a visibility pair — **Followers (recommended, default)** / Public. A "Location safety" card. Calls `start_live_checkin`, then `router.replace("/live")`. Explorer-only. |
+| `/linkups/create` | `app/linkups/create.js` | Create tab, `/linkups`, `/live` | "MAKE A PLAN / Create Link-up" + `LinkupForm` in `titleOnly` mode. Calls `create_linkup`; on success replaces to the new `/linkups/{id}` with "Any blank details were safely marked as to be confirmed." |
+| `/linkups/edit/[id]` | `app/linkups/edit/[id].js` | `/linkups/[id]` | "ORGANISER CONTROLS / Edit Link-up". Refuses a non-creator: "Only the organiser can edit this Link-up." |
+| `/moments/create` | `app/moments/create.js` | Create tab, feed, profile, `/places/[id]` | "SHARE YOUR DAY / New Moment". Photo or ≤30s video picker with size and duration validation, caption (500), a searchable place attachment, a **Post as** choice (Yourself / officially as the listing, when the viewer manages it), a visibility choice, and **Publish Moment**. Explorer-only. |
+| `/memories/create` | `app/memories/create.js` | Create tab, drawer, `MyMap` | Riso. TITLE, NOTE, PHOTO, WHERE (type chips + searchable list), **WHO CAN SEE IT WHILE IT IS LIVE**, **HOW LONG IT STAYS LIVE** (hidden when private), **AFTERWARDS** (archive visibility, which always starts at "Only me"), and a **Show on my profile** switch. On failure the uploaded object is removed again. |
+| `/business/add` · `/property/add` · `/activity-clubs/add` · `/events/add` | | Create tab, `/manager/dashboard`, the dashboards | Plain forms using `LocationPicker`, `ClassificationPicker` (business) or `EventFormFields` (event). All replace to `/manager/dashboard` on success, except `/events/add`, which replaces to the new `/events/{id}`. |
+
+#### `components/LinkupForm.js`
+
+Fields in order: Title, Description, Category, Starts, Ends, Area, **Public
+meeting place** (with "Use a public place. Never publish a private home
+address."), **Exact meeting instructions** (shown only to joined attendees),
+optional coordinates with **Remove location**, Maximum attendees ("The organiser
+counts as one attendee."), **Who can see this?** (Public / Followers only), and
+a Safety note. Six distinct validation messages.
+
+#### `components/ExplorerReviewForm.js`
+
+The body of all four `*/review/[id]` routes, which are 9-line wrappers:
+`/business/review/[id]`, `/property/review/[id]`,
+`/activity-clubs/review/[id]`, `/events/review/[id]`.
+
+Elements: a per-type subtitle, a **POINTS PREVIEW**, a star Rating, a title
+field (required for video), the review body, **Review media** (up to 3 images
+and one 30-second video) with **📷 Add image** / **🎥 Add video** / **Remove**,
+and a publish button. Calls `verify_explorer_review_qr` when a scanned code is
+carried in. Explorer-only, with 13 distinct validation and error messages.
+
+---
+
+### 2.6 Memories
+
+#### `/memories/[id]` — `app/memories/[id].js`
+
+Photo, then a card with the phase label, title, note, an attached-place row, and
+**WHO CAN SEE IT NOW**. For the owner only: a "While it is live" card, an
+**Afterwards** archive-visibility picker, a **Chosen Explorers** share list
+(when either visibility is `selected`), a **Show on my profile** switch, and
+**Delete this Memory** behind an `Alert`.
+
+Every write is `.eq("user_id", viewer.id).select(...)` and reports "The database
+refused the change." when nothing comes back. Error: "This Memory is
+unavailable, or is not shared with you."
+
+#### `components/MyMap.js`
+
+Owner-only. Heading **"My Map"**, the line "Only you can see this map.", the
+pins, and a **Keep a Memory** button → `/memories/create`. Empty state: "Keep a
+Memory of a place you went and it will appear here on your own map." Error:
+"Your map could not be loaded."
+
+Pin drawing is delegated to `components/MemoryPins.js` / `MemoryPins.web.js` —
+a platform split, where the `.web.js` file contains no `react-native-maps`
+import at all.
+
+---
+
+### 2.7 Manager
+
+#### `/manager/dashboard` — `app/manager/dashboard.js` (734 lines)
+
+**Reached by** the drawer (both the non-manager "Manager tools" row and the
+manager section), Settings, the profile manager branch, `GateNotice`, and eight
+listing screens.
+
+**Not** behind `useManagerGate` — this is where an Explorer requests the
+capability in the first place.
+
+**Elements**
+1. "Manager Dashboard" + subtitle
+2. **MANAGER ACTION CENTRE** card → `/manager/requests`
+3. Four capability sections — Businesses, Properties, Activity Clubs, Events.
+   Each has a `CapabilityHeader` with the capability status and a **Request
+   access** button when it is not active, and then either the listings or a
+   `LockedCard` ("Request this capability to create and manage business
+   listings.", "Request this paid capability to create clubs and approve
+   explorer members.", etc.)
+4. Each listing card shows its details, a **QR block** with `QRCodeGenerator`
+   and **Open printable QR** → `/manager/qr/{type}/{id}`, then **Edit** and
+   **Public profile** / **View listing**
+5. Activity club cards additionally get **Open private message board**, an
+   **Approved members** list with a **Remove member** action, and a pointer to
+   review decisions in the Action Centre
+6. Each section ends with **➕ Add …**
+
+**States** — "Loading manager dashboard...", "Manager capabilities could not be
+loaded.", and a per-section empty card ("No businesses yet / Create your first
+business listing.").
+
+---
+
+#### `/manager/requests` — `app/manager/requests.js` (668 lines)
+
+Manager-gated. "Manager Action Centre / Review approvals and decisions without
+searching through your listings." Handles club membership requests: an
+`OPENED FROM NOTIFICATION` banner when arrived via deep link, the
+`APPLICATION MESSAGE`, club capacity, "What happens next?", and **Approve** /
+**Reject**. States: "Loading pending actions...", "Action Centre unavailable",
+"This request is no longer pending", and "All caught up / There are no Activity
+Club membership requests waiting for a decision." Links to `/notifications` and
+`/manager/dashboard`.
+
+#### `/manager/membership-status/[id]` — `app/manager/membership-status/[id].js`
+
+**No in-app link exists.** It is reached only through a notification
+`deep_link`, which is written by a database trigger in
+`20260801211500_route_handled_memberships_to_current_status.sql`. Shows the
+current membership status, club capacity, "What this means now", and links to
+review the request or view members. Refuses: "You do not manage the Activity
+Club linked to this membership."
+
+#### `/manager/qr/[type]/[id]` — `app/manager/qr/[type]/[id].js`
+
+A printable sign: "Guestbook", "Scan while you're here to leave a verified
+review.", the QR, `✓ VERIFIED VISIT`, the points rules, and **Print Verified
+Review QR**. Calls `ensure_listing_qr_code`. Errors: "Unsupported listing
+type.", "Please log in to print this QR code.", "This listing could not be
+loaded or is not owned by your account."
+
+#### `/business/dashboard` · `/property/dashboard`
+
+**Reached only from the drawer.** Both use `useManagerGate` + `GateNotice`.
+
+Business: per-listing name, classification, **Customer QR Code**
+(`QRCodeGenerator`), **View Public Profile**, **Edit Business**, then
+**➕ Add Business Listing**. Its only loading signal is a `status` string
+initialised to `"Loading..."`.
+
+Property: the same shape with **Guest Review QR Code**, **View Public Profile**,
+**Manage Reviews** → `/property/reviews`, **Edit Property**, **➕ Add Property
+Listing**.
+
+`app/business/dashboard.js` is written in a one-attribute-per-line style unlike
+every other file in `app/`.
+
+#### `/business/reviews` · `/property/reviews`
+
+Both list reviews for listings the viewer claims, with **Business response:** /
+**Review challenged** states and a **Manage Review** action →
+`/{type}/review-action?id={id}`.
+
+**`/property/reviews` is linked from `/property/dashboard`.
+`/business/reviews` is linked from nowhere — see §3.**
+
+#### `/business/review-action` · `/property/review-action`
+
+Reached from the two review lists. A response field and a challenge-reason
+field, with **Save Reply** and **Challenge Review**. Both refuse a non-owner:
+"Only the owner of this listing can respond to its reviews."
+
+---
+
+### 2.8 Admin
+
+All nine screens are riso-styled, use `useAdminGate`, and share the same
+skeleton: an eyebrow, a title, a loading line "Checking admin access…", an
+"Admin access required" refusal, a per-screen loading line, a per-screen error
+card with **Try again**, then the content.
+
+| Route | Title | Content |
 |---|---|---|
-| `/auth/update-password` | `app/auth/update-password.js` | Expected. It is entered from a link in a password-reset email, not from inside the app. **Not a defect.** |
-| `/business/dashboard` | `app/business/dashboard.js` | Superseded by `/manager/dashboard`, which owns the business section now. |
-| `/business/edit` | `app/business/edit.js` | Superseded by `/business/edit/:id`. |
-| `/business/reviews` | `app/business/reviews.js` | No route links here, so its `Manage Review` button — the only way into `/business/review-action` — cannot be reached either. |
-| `/guest/:id` | `app/guest/[id].js` | A guest-welcome flow with no entry point. Plausibly intended to be reached from a property QR code or a booking link. |
-| `/manager/membership-status/:id` | `app/manager/membership-status/[id].js` | Fully built, 300+ lines, links out to four places, but nothing links in. The most substantial stranded screen. |
-| `/place` | `app/place.js` | Static mock. See Abandoned. |
-| `/property/dashboard` | `app/property/dashboard.js` | Superseded by `/manager/dashboard`. |
-| `/property/edit` | `app/property/edit.js` | Superseded by `/property/edit/:id`. |
-| `/property/reviews` | `app/property/reviews.js` | Same shape as `/business/reviews` — and the one link that *does* aim at it is malformed, see below. |
-| `/saved` | `app/saved.js` | Placeholder. See Abandoned. |
+| `/admin/dashboard` | Admin overview | "What needs attention" — live counts (pending claims, access requests, businesses, properties, public places, activity clubs, events, open social reports, open safety reports, Explorers, canonical areas, audit records), then eight tool cards linking to every other admin screen, then **Refresh overview**. Error: "One or more database checks failed, so no totals are shown." |
+| `/admin/claims` | Claims & Manager access | Two sections — **Listing claims** and **Manager capability requests**. Each row shows EXPLORER, CLAIM NOTE / REQUEST NOTE, a required **DECISION REASON** field, and **Approve** / **Reject**. Calls `admin_decide_claim` and `admin_decide_capability_request`. "Every decision is audited." |
+| `/admin/listings` | Find every listing | One search across businesses, properties, public places, activity clubs and events. "No listings match". Error: "One or more listing reads failed, so no partial catalogue is shown." |
+| `/admin/activities` | Manage clubs & events | Paged, per-type (Activity clubs / Events), with state filters and a **CHANGE REASON** field. Actions: Publish as open, Reopen, Hide, Close, Publish, Move to draft, Cancel event. Calls `admin_set_activity_state`. |
+| `/admin/moderation` | Review reports | Social and safety report tabs, paged. Each shows REPORTED ITEM, PEOPLE, REPORT DETAILS, a **DECISION REASON** field, and **Dismiss**. Calls `admin_get_moderation_queue` and `admin_decide_report`. |
+| `/admin/explorers` | Explorer directory | Paged, searchable, with Managers / Admins filters. Rows → `/profile/{id}`. Marks "Administrator account". Reads no private contact fields. |
+| `/admin/areas` | Areas & data quality | Four reports: canonical areas, rows without a canonical area, unmatched Place values, ownership issues. Each has an all-clear line ("Every supported row has a canonical area.", "No listing ownership inconsistencies were found."). |
+| `/admin/audit` | Audit history | Paged, searchable list of `admin_audit_log` with the **RECORDED REASON**. |
+| `/admin/public-places` | Public places | The only admin screen that writes rows directly. Editable NAME, TYPE, AREA, LATITUDE, LONGITUDE ("Rounded to three decimal places, the same precision a check-in is stored at."), WHERE TO FIND IT, DESCRIPTION, IMAGE URL, STATUS, with **Edit** / **Hide** / **Cancel**. Four validation messages. |
 
-`/business/review-action` and `/property/review-action` are each linked exactly
-once — from `/business/reviews` and `/property/reviews` respectively. Since both
-of those parents are themselves unreachable, all four screens form a stranded
-cluster.
+---
 
-## Links pointing at routes that don't exist
+### 2.9 Auth, settings and safety
 
-| Link | Written at | Problem |
+#### `/auth/login` — `app/auth/login.js`
+
+Title "Login", subtitle "Continue your Guestbook action", a note that login
+returns you to the page you opened, Email and Password inputs, **Login**,
+**Forgot password?** → `/auth/forgot-password`, and "Don't have an account?
+Create one" → `/auth/signup`.
+
+**It also ships a "Quick test login" panel** — "Tap an account below. No
+password typing is needed." — with **Manager**, **Explorer** and **Explorer 2**
+buttons, and the note "You can also type m, e, events or e2 in the email box and
+tap Login."
+
+Errors: "Incorrect email or password", "Enter your email and password, or use a
+quick test login.", "{account} quick login failed. Please tap the button again."
+
+#### `/auth/signup` — `app/auth/signup.js`
+
+Name, Email, Phone number, Password, **Create Account**. Errors: "This email
+already has an account", "Please enter a valid email address", "Something went
+wrong". Writes `profiles`, including **`account_type`**, and returns early
+without writing a profile row when email confirmation is on — which
+`/settings` compensates for ("No profile was found for this account.").
+
+#### `/auth/forgot-password` · `/auth/update-password`
+
+Forgot: an email field and **Send reset link**, then a "Check your email"
+state with **Send another email** and **Back to login**.
+
+Update: "Checking your reset link...", then either "Reset link unavailable" +
+**Request a new link**, or the form (New password / Confirm new password /
+**Update and verify password**), then "Password updated and verified" +
+**Return to login**. Five distinct error messages. **No in-app screen links to
+it** — it is opened from the emailed recovery link.
+
+#### `/profile/edit` — `app/profile/edit.js`
+
+**Choose Profile Photo**, Name, Phone, Bio, **Save Profile**, and an "Area and
+privacy" card stating that town, public display and leaderboard visibility "now
+live in Settings" → `/settings`.
+
+#### `/settings` — `app/settings.js`
+
+Sections in order: **Profile** (Edit profile link), **Privacy** (area input,
+**Display my area** switch, **Appear on leaderboards** switch, **Save privacy
+settings**), **Managing places** (a capability card listing Businesses,
+Properties, Activity clubs and Events with an active/inactive pill, plus an
+**Open manager dashboard** link), **Safety** (Blocked Explorers), **Sign in**
+(**Send me a password reset link**, behind an `Alert` warning it signs you out),
+and **Account** (**Log out**, behind an `Alert`).
+
+#### `/safety/blocked` — `app/safety/blocked.js`
+
+"SAFETY CONTROLS / Blocked Explorers", an explanation, rows with **Unblock**
+(`unblock_explorer`), and the empty state "Nobody blocked / You can block an
+organiser from a Link-up or a nearby Explorer from their profile."
+
+---
+
+### 2.10 QR
+
+#### `/scan` — `app/scan.js`
+
+The only route where the tab bar is hidden. A camera scanner with a permission
+state ("Camera access is needed" / **Allow camera access**), a `VERIFIED VISIT`
+banner, and a **"Testing on one phone?"** fallback: a text field for the code or
+link plus **Open verified review**. On a valid code, `router.replace`s to
+`/qr/{code}`. Error: "This is not a Guestbook verified-review QR code."
+
+#### `/qr/[code]` — `app/qr/[code].js`
+
+Resolves the code via `resolve_listing_qr_code`, then replaces into the
+listing's review route carrying the verification. Shows "ON-SITE GUESTBOOK
+SCAN / Verified visit ready". Signed-out users are sent to login with a `next`
+param. Four error strings, including "Only Explorer accounts can claim verified
+review points."
+
+---
+
+## 3. Orphaned screens
+
+Six routes have **no inbound navigation anywhere** in `app/`, `components/`,
+`utils/` or `hooks/`. Each is declared in `app/_layout.js`, so the route exists
+and can be typed into a URL bar, but nothing in the app links to it.
+
+| Route | File | Lines | What it is |
+|---|---|---|---|
+| **`/saved`** | `app/saved.js` | 39 | **ORPHANED.** A stub: the heading "❤️ Saved Places" and the line "Your favourite places will appear here". Reads nothing. The working equivalent is the Collections tab on the profile and the `saved` section on `/discover`. |
+| **`/place`** | `app/place.js` | 84 | **ORPHANED.** A hardcoded mock of a single place — "☕ The Coffee House" — with **Leave Review**, **Get Directions** and **Visit Website** buttons. Reads no database. `Get Directions` is a Stage Four surface that exists nowhere else in the app. |
+| **`/guest/[id]`** | `app/guest/[id].js` | 178 | **ORPHANED.** A property welcome screen — "Welcome 👋 / Your local Guestbook" — with **🏠 View Property**, a review link and **📍 Explore Local Area** → `/map`. Reads `properties`. Nothing links to it; presumably intended as a QR landing page, but `/qr/[code]` does not route here. |
+| **`/business/edit`** | `app/business/edit.js` | 254 | **ORPHANED.** A second business edit form. See §4. |
+| **`/property/edit`** | `app/property/edit.js` | 301 | **ORPHANED.** A second property edit form. See §4. |
+| **`/business/reviews`** | `app/business/reviews.js` | 269 | **ORPHANED.** A working review-management list — "Customer Reviews", business responses, challenged reviews, **Manage Review** → `/business/review-action`. Its property twin `/property/reviews` **is** linked from `/property/dashboard`; `/business/dashboard` has no equivalent link. |
+
+Two more are reachable but not from any in-app control:
+
+- **`/auth/update-password`** — reached only by opening an emailed recovery link.
+- **`/manager/membership-status/[id]`** — reached only via a notification
+  `deep_link` written by a database trigger.
+
+---
+
+## 4. Screens that exist in two versions
+
+### 4.1 `/map` — two files, one route
+
+`app/map.js` and `app/map.web.js`. Metro's platform extension means
+**`map.web.js` is the file that runs on web**, and it renders `PlacesList` only.
+`app/map.js` additionally branches internally on
+`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`, so on native without a key it also renders
+`PlacesList`. The `MapView` branch runs only on native with a key set.
+
+The living-map layer (Now/Tonight/Weekend, live pins) is implemented **twice** —
+once in `app/map.js` for the `MapView` and once in `components/PlacesList.js`
+for the list.
+
+### 4.2 Business and property editing — two forms each
+
+| | Linked-to version | Orphaned version |
 |---|---|---|
-| `/property/reviews/:id` | `app/property/dashboard.js:215` (`Manage Reviews`) | **Genuine dead link. Fixed** — the button now pushes the parameterless `/property/reviews`, matching what the file tree actually provides. The alternative, promoting the screen to `app/property/reviews/[id].js`, was not taken: `/property/reviews` still finds its target through the legacy `claims` lookup, and reworking that belongs with the wider two-generations cleanup below rather than with a broken-link fix. |
-| `auth/verify` | `app/_layout.js:44` | A `<Stack.Screen name="auth/verify"/>` was declared but **no `app/auth/verify.js` exists**. **Fixed** — the declaration is removed. Nothing navigated to it, so nothing changes at runtime; it pointed at an email-verification screen that was planned and never built. |
+| Business | `app/business/edit/[id].js` (183 lines) | `app/business/edit.js` (254 lines) |
+| Property | `app/property/edit/[id].js` (168 lines) | `app/property/edit.js` (301 lines) |
 
-One candidate was checked and cleared: the dynamic `router.replace` at
-`app/qr/[code].js:91` builds its path from `_config.route`, whose four possible
-values (`business/review`, `property/review`, `activity-clubs/review`,
-`events/review`) all resolve to real routes. **Not broken.**
+The `[id]` versions take the listing id from the route, use `LocationPicker`,
+`ClassificationPicker` (business) and `utils/coordinates.js`, offer **Delete**,
+and replace to `/manager/dashboard`. They are the ones linked from the place
+pages, the dashboards and the manager dashboard.
 
-## Anything that looks abandoned or half-built
+The id-less versions read `claims` to find the listing, have no delete, do not
+use `utils/coordinates.js`, and are linked from nowhere.
 
-**Static mockups with no data layer**
+### 4.3 Profiles — Explorer and manager branches in one component
 
-- `app/place.js` — hardcoded "☕ The Coffee House" with a fixed 4.8 rating and
-  fixed description. All three buttons (`Leave Review`, `Get Directions`,
-  `Visit Website`) are `TouchableOpacity` elements with **no `onPress` prop at
-  all**, so they are inert. Uses `TouchableOpacity` and a flat indentation style
-  found nowhere else in `app/`, which suggests early scaffolding that predates
-  the current codebase conventions.
-- `app/saved.js` — 38 lines. Renders "❤️ Saved Places" and "Your favourite places
-  will appear here". No query, no state, no controls. Favourites *are* implemented
-  elsewhere (`components/FavouriteButton.js`, and the favourites grid inside
-  `ExplorerProfileScreen`), so this screen was superseded rather than never
-  started.
+`components/ExplorerProfileScreen.js` renders two entirely different screens
+depending on `profile.account_type`. The Explorer branch is the full scrapbook;
+the `!=="explorer"` branch is a short card with a `MANAGER ACCOUNT` badge and
+three buttons. Both are live in the same file.
 
-**Two parallel generations of the same screens**
+### 4.4 Review tables — two systems behind one card
 
-The owner-facing surfaces exist twice, and the older generation is the stranded one:
+`components/PlaceLayout.js` renders one `PlaceReview` card, but the rows come
+from four different tables with different column names:
 
-| Older, unreachable | Current, linked from `/manager/dashboard` |
-|---|---|
-| `/business/dashboard`, `/property/dashboard` | `/manager/dashboard` |
-| `/business/edit`, `/property/edit` | `/business/edit/:id`, `/property/edit/:id` |
+- `/business/[id]` and `/property/[id]` read the legacy **`reviews`** table
+- `/activity-clubs/[id]` reads **`activity_club_reviews`** (normalised
+  `reviewer_name` → `name`)
+- `/events/[id]` reads **`event_reviews`** (same normalisation)
+- The profile and feed read **`explorer_reviews`**, a fifth shape with its own
+  card markup in `ExplorerProfileScreen`
 
-The distinction is how they find their target. `app/business/edit.js:53-75` looks
-up a row in `claims` and follows `claim.business_id`; `app/business/edit/[id].js`
-takes the id straight from the route. The same split exists for properties. This
-is consistent with a migration from a claim-centred model to a manager-centred one
-that left the old screens in the tree.
+---
 
-**Two admin screens over the same data**
+## 5. Two design systems
 
-`/admin/claims` (625 lines) and `/admin/dashboard` (335 lines) both list and
-approve/reject ownership claims, and each is reached from a different place — the
-menu links to the former, the `⚙️` button on `/` to the latter. Nothing in the code
-distinguishes their responsibilities.
+Every one of the 78 route files falls into one of four groups. The split does
+not follow feature areas — it runs straight through them.
 
-**No in-screen auth check on four sensitive routes — and nothing behind them either**
+**Riso** (`utils/tokens.js` `INK.*`: paper `#E7E8E1`, card `#F3F3ED`, ink
+`#16181C`, 2px ink borders, 3px hard offset shadows) — **20 files**
 
-`app/admin/claims.js`, `app/admin/dashboard.js`, `app/business/review-action.js`
-and `app/property/review-action.js` contained no `auth.getUser()` call, no
-`is_admin` test and no redirect. Their entry points are hidden — the admin buttons
-render only when `is_admin`, and the review-action screens sit behind unreachable
-parents — but the routes themselves were not gated, so anything that could
-navigate directly reached a working Approve/Reject or review-response form.
+`/create`, `/discover`, `/places`, `/places/[id]`, `/business/[id]`,
+`/property/[id]`, `/activity-clubs/[id]`, `/events/[id]`, `/linkups/[id]`,
+`/memories/create`, `/memories/[id]`, and all nine `/admin/*`.
 
-**This has since been fixed.** All four now check the session on load and
-redirect to `/auth/login` without one:
+**Dark purple** (`#18181b` screen, `#222226` cards, `#3212b6` primary) —
+**22 files**
 
-- The two admin screens share `hooks/useAdminGate.js`, which reads
-  `profiles.is_admin` and renders a refusal in place of the claims list when it
-  is not set.
-- The two review-action screens load the review, follow `business_id` /
-  `property_id` to the listing, and compare `owner_id` against the caller before
-  rendering the form.
+`/` (`#19191b`), `/profile`, `/profile/[id]`, `/profile/edit`, `/settings`,
+`/feed`, `/explorers`, `/connections/[id]`, `/leaderboards`, `/notifications`,
+`/live`, `/linkups`, `/linkups/create`, `/linkups/edit/[id]`,
+`/linkups/board/[id]`, `/moments/create`, `/moments/[id]`,
+`/social-comments/[id]`, `/checkins/create`, `/safety/blocked`, `/scan`,
+`/qr/[code]`.
 
-The gate is defence in depth, not the control itself: the database decides, and
-since the RLS rollout below it decides correctly. What the client-side check buys
-is that a non-owner is told why the screen is closed rather than being shown a
-form whose buttons silently change nothing.
+**Light grey / white** (`#f5f7fb` or `#f5f6f8`, white cards, `#ddd` borders) —
+**30 files**
 
-That silence was the sharper half of the problem. Both review-action screens
-wrote with a bare `await supabase.from("reviews").update(...)` and then called
-`router.back()` — no error check, no row check. **A write refused by RLS returns
-no error; it simply matches no rows.** So the moment the policies were armed,
-every refused reply would have looked to the user exactly like a saved one. Each
-write now ends in `.select()` and treats an empty result as a rejection, with a
-`FeedbackContext` banner either way. The same check was added to the three claim
-approval writes in `app/admin/claims.js` and `app/admin/dashboard.js`, which had
-the same shape.
+`/map`, `/events`, `/activity-clubs`, all four `/auth/*`, all of
+`/manager/*`, both dashboards, every `add` / `edit` form, both `reviews` lists,
+both `review-action` screens, `/activity-clubs/message-board/[id]`, `/guest/[id]`,
+`/place`.
 
-`scripts/verify-screen-gates.cjs` holds all of this in place, and runs in
-`quality-checks.yml`.
+**No styles of their own** — **6 files**: the four `*/review/[id]` wrappers
+(which inherit `ExplorerReviewForm`), `app/map.web.js`, and `app/saved.js`.
 
-The database was checked, and at the time of writing **row-level security did
-not cover them**. On project `yzpthslwsvesgndzdqai` (pinned at
-`supabase/config.toml:7`), `relrowsecurity` was `false` on all five tables these
-screens touch. **This has since been fixed** — see the remediation below — but
-the finding is recorded as it stood:
+### Where the split is most visible
 
-| Table | RLS (then) | Policies (then) | RLS (now) | Policies (now) |
-|---|---|---|---|---|
-| `claims` | off | 4 | **on** | 5 |
-| `businesses` | off | 4 | **on** | 4 |
-| `reviews` | off | 1 | **on** | 5 |
-| `properties` | off | 0 | **on** | 4 |
-| `profiles` | off | 0 | **on** | 4 |
+- **The chrome disagrees with itself.** `components/TabBar.js` and
+  `components/QuickAccessDrawer.js` use riso `INK` tokens. `components/Header.js`,
+  which sits above them on every screen, uses `#ddd` borders and emoji buttons,
+  and its title is the literal string **"Guestbook"**.
+- **Link-ups are split down the middle.** `/linkups/[id]` is riso via
+  `PlaceLayout`; `/linkups`, `/linkups/create`, `/linkups/edit/[id]` and
+  `/linkups/board/[id]` are dark purple.
+- **Place pages are riso, but the lists that lead to them are not.**
+  `/events` and `/activity-clubs` are light grey; `/events/[id]` and
+  `/activity-clubs/[id]` are riso.
+- **`/places` is the exception** — both the list and the detail page are riso.
+- **The map is light grey and its cards are riso.** `app/map.js` and
+  `PlacesList` use white cards and `#ddd` borders, while the `PlaceCards` modal
+  they open and every place page they lead to use riso.
 
-Policies were written — including `Admins can update claims`, which tests
-`profiles.is_admin` exactly as the admin screens assume — but Postgres does not
-evaluate policies on a table whose RLS is disabled, so none of them apply.
-Supabase's linter reports this as `rls_disabled_in_public` and
-`policy_exists_rls_disabled`. The second project, `nyyljcdrmbdavamgcydw`, is
-configured identically, so this is not one stale copy.
+### Product vocabulary in the code
 
-Both `anon` and `authenticated` hold `SELECT, INSERT, UPDATE, DELETE, TRUNCATE`
-on all five tables. Because the anon key is public by design — it sits in
-`.github/workflows/build-apk.yml:25` and is inlined into every shipped bundle —
-the client screens are not the meaningful control surface: the PostgREST
-endpoint is reachable directly, and whether a screen calls `getUser()` makes no
-difference to a caller who never opens the app.
-
-The sharpest edge is `profiles`: RLS off, zero policies, `anon` UPDATE, and
-`is_admin` is a column on it. Every other admin gate in the app depends on a
-flag that is writable without authentication.
-
-Remediation is split across two migrations, because arming a table before its
-policies exist makes it return nothing:
-
-- `supabase/migrations/20260803211732_rls_policies_and_grants.sql` — defines 22
-  policies across the five tables and narrows the grants. **Applied.** `anon`
-  is now down to `SELECT` on all five, and `profiles.is_admin` was dropped from
-  the `UPDATE` column grant, so it can no longer be written through the API by
-  anyone. That closes the escalation path. The policies themselves are still
-  inert, because RLS remains off.
-- `supabase/migrations/20260803212021_enable_rls_claims.sql` — arms `claims`.
-  **Applied**, verified by impersonating real users in rolled-back
-  transactions: an admin sees all rows and can update them, a claim owner sees
-  only their own, an unrelated signed-in user sees none and updates none, and
-  `anon` sees none.
-- `supabase/migrations/20260803212705_enable_rls_businesses_properties.sql` —
-  arms `businesses` and `properties`. **Applied**: `anon` still reads all 12
-  businesses and 3 properties (so `/map` is unaffected), an owner's update
-  reaches only their own rows, an unrelated user changes nothing, an admin
-  reaches everything, and an insert claiming someone else's `owner_id` is
-  refused outright.
-- `supabase/migrations/20260803214126_enable_rls_reviews.sql` — arms `reviews`.
-  **Applied**: `anon` reads all 15 published rows, a listing owner's response
-  update reaches their 10, an unrelated user's reaches none. The risk here was
-  the `explorer_reviews` → `reviews` sync trigger; it runs `SECURITY DEFINER` as
-  `postgres` (which holds `rolbypassrls`), and a real review submission was
-  confirmed to still mirror across with RLS on.
-- `supabase/migrations/20260803214309_enable_rls_profiles.sql` — arms
-  `profiles`. **Applied**: a signed-in user sees all 19 profiles and can update
-  exactly one — their own; `anon` sees none, so `email` and `phone` are no
-  longer readable by anyone holding the public key; editing another user's row
-  changes 0 rows; and setting `is_admin` on your own row is **refused outright**
-  with `permission denied for table profiles`.
-
-All five are now armed, and Supabase's linter no longer reports
-`rls_disabled_in_public` or `policy_exists_rls_disabled` against any of them.
-
-Two side effects worth recording:
-
-- 1 business and 2 properties have a null `owner_id`, so no `auth.uid()`
-  matches them and only an admin can now edit those rows. They were already
-  unreachable through the app, which finds listings by `owner_id`.
-- `moments/[id].js:75` and `social-comments/[id].js:52` read the author's
-  profile without an `if (user)` guard, so a signed-out visitor arriving by deep
-  link now gets null. Both render `profile?.full_name || "Explorer"` with an "E"
-  avatar fallback, so they degrade rather than break, and both are only linked
-  from `/feed` and `/profile`, which require a session.
-
-`manager_packages` and `manager_subscriptions` were the last two
-`rls_disabled_in_public` ERRORs and have since been closed as well, by
-`20260803221806_manager_billing_narrow_grants.sql` and
-`20260803221818_enable_rls_manager_billing.sql`. Both are **deny-all**: RLS on,
-no policies. They are the superseded entitlement model — the live manager
-screens use `manager_capabilities` and `manager_capability_requests` — and
-nothing in `app/`, `components/`, `hooks/`, `services/`, `utils/`,
-`supabase/functions/`, any function body or any view reads them. Writing
-owner-scoped policies would have meant inventing an access model for code that
-does not exist. The rows are untouched and still reachable to `service_role` and
-the SQL editor; only the public API surface closed. Verified: `anon`,
-`authenticated` and admin all read 0 rows, writes are refused outright, and 5
-packages / 4 subscriptions remain present service-side.
-
-**The project now reports no `rls_disabled_in_public` errors at all.**
-
-Still open, and deliberately not addressed: `account_type` remains writable, so
-a user can still promote themselves to `manager` and reach
-`/manager/dashboard`. Closing that means moving the signup write server-side.
-Also out of scope: three `SECURITY DEFINER` views, an anon-executable
-`create_notification`, the listable `review-image` bucket, and leaked-password
-protection being off.
-
-**Layout declarations out of step with the file tree**
-
-`app/_layout.js` named 63 screens. One (`auth/verify`) had no file, and eleven
-files were absent from it: `admin/dashboard`, `business/[id]`, `business/edit`,
-`business/edit/[id]`, `business/review-action`, `guest/[id]`,
-`manager/membership-status/[id]`, `place`, `property/[id]`, `property/edit`,
-`property/review-action`. Expo-router registers routes from the file tree
-regardless, so the undeclared ones still worked and only missed their explicit
-`Stack.Screen` options — but the drift is a reliable marker of which screens were
-added or abandoned without the layout being revisited. Note that
-`business/[id]` and `property/[id]` are heavily used, so absence from the layout
-never implied a screen was dead.
-
-**This has since been fixed.** The phantom `auth/verify` declaration is gone and
-the eleven missing files are declared, so the layout now names exactly the 64
-routes on disk. Declaring a screen does not resurrect it — `place` and the
-superseded owner dashboards are still stranded, and the section above still
-stands — it only means the layout stops disagreeing with the file tree.
-
-The drift is now a build failure rather than a documentation note:
-`scripts/verify-screen-gates.cjs` derives the route list from the `app/` tree
-and compares it against the `<Stack.Screen>` declarations, reporting each side
-separately. It runs in `quality-checks.yml`.
+The user-facing name **"Guestbook"** appears in the header title, the home
+screen, `/scan`, `/manager/qr/[type]/[id]`, `/guest/[id]`, `/settings`,
+`/places/index`, `/places/[id]` and several error strings in
+`ExplorerReviewForm` and `moments/create`. The riso screens generally avoid a
+product name; `memories/create` uses **"Xplorer"** in one error message
+("The photo picker could not return to Xplorer."), which is the only occurrence
+of that name in `app/`.
