@@ -3,8 +3,9 @@ import {View,Text,Pressable,StyleSheet} from "react-native";
 import Svg,{Circle,Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
-import {TABS,activeTabKey,isTabBarHidden} from "../utils/navigation";
+import {TABS,activeTabKey,isTabBarHidden,centreButton,LOGIN_ROUTE} from "../utils/navigation";
 import {INK} from "../utils/tokens";
+import {signedIn} from "../utils/permissions";
 
 // Packet 3: the navigation shell.
 //
@@ -46,6 +47,22 @@ const ICONS={
   plus:[
     {path:"M8 3.2v9.6"},
     {path:"M3.2 8h9.6"}
+  ],
+  camera:[
+    {path:"M2.2 5.6h2.6l1-1.6h4.4l1 1.6h2.6v7.2H2.2z"},
+    {circle:[8,9.2,2.4]}
+  ],
+  feed:[
+    {path:"M2.6 3.4h10.8"},
+    {path:"M2.6 6.6h10.8"},
+    {path:"M2.6 9.8h7.2"},
+    {path:"M2.6 13h7.2"}
+  ],
+  qr:[
+    {path:"M3 3h3.4v3.4H3z"},
+    {path:"M9.6 3H13v3.4H9.6z"},
+    {path:"M3 9.6h3.4V13H3z"},
+    {path:"M9.6 9.6H13V13H9.6z"}
   ],
   trophy:[
     {path:"M4.6 2.8h6.8v3.6a3.4 3.4 0 0 1-6.8 0z"},
@@ -91,10 +108,31 @@ export default function TabBar(){
   const pathname=usePathname();
   const insets=useSafeAreaInsets();
 
+  // Whether anybody is signed in changes what a tab does, not whether it is
+  // drawn. A signed-out visitor sees the whole bar -- the app is a map first
+  // and the map needs no account -- and is asked to log in only at the moment
+  // they reach for something that needs one.
+  const [account,setAccount]=React.useState({known:false,signedIn:false});
+
+  React.useEffect(()=>{
+    let active=true;
+    signedIn().then(({user})=>{
+      if(active) setAccount({known:true,signedIn:!!user});
+    });
+    return()=>{active=false;};
+  },[pathname]);
+
   if(isTabBarHidden(pathname)) return null;
 
   const active=activeTabKey(pathname);
-  const raised=TABS.find((tab)=>tab.raised);
+  const centre=centreButton(pathname);
+
+  // Until the session has been read, treat a person as signed in. Guessing the
+  // other way would send somebody who IS logged in to the log-in screen for the
+  // first moment after every navigation, which is worse than a redirect that
+  // never fires.
+  const locked=(tab)=>!!tab.signedIn && account.known && !account.signedIn;
+  const destination=(tab)=>locked(tab) ? LOGIN_ROUTE : tab.route;
 
   return(
     <View
@@ -110,6 +148,8 @@ export default function TabBar(){
           // the bar so it can sit above it without being clipped on Android.
           if(tab.raised) return <View key={tab.key} style={styles.tab}/>;
 
+          const isLocked=locked(tab);
+
           return(
             <Pressable
               key={tab.key}
@@ -118,27 +158,32 @@ export default function TabBar(){
               // The selected state reaches a screen reader through this, not
               // through the colour of the label.
               accessibilityState={{selected:isActive}}
-              accessibilityLabel={tab.label}
-              onPress={()=>router.push(tab.route)}
+              accessibilityLabel={isLocked ? `${tab.label}. Log in to open this.` : tab.label}
+              onPress={()=>router.push(destination(tab))}
             >
               {/* Active is carried by a bar and by weight as well as by colour,
                   because state is never carried by colour alone. */}
               <View style={[styles.marker,isActive && styles.markerActive]}/>
               <Icon name={tab.glyph} colour={isActive ? INK.ink : INK.inkSoft}/>
-              <Text style={[styles.label,isActive && styles.labelActive]}>{tab.label}</Text>
+              <Text style={[styles.label,isActive && styles.labelActive]} numberOfLines={1}>
+                {tab.label}
+              </Text>
             </Pressable>
           );
         })}
       </View>
 
+      {/* The centre is the map, except on the map, where it becomes the
+          scanner. One button, two jobs, decided by centreButton() rather than
+          here. */}
       <Pressable
         style={styles.raised}
         accessibilityRole="tab"
-        accessibilityState={{selected:raised.key===active}}
-        accessibilityLabel={raised.label}
-        onPress={()=>router.push(raised.route)}
+        accessibilityState={{selected:centre.key===active}}
+        accessibilityLabel={centre.label}
+        onPress={()=>router.push(destination(centre))}
       >
-        <Icon name={raised.glyph} colour={INK.card} size={26}/>
+        <Icon name={centre.glyph} colour={INK.card} size={26}/>
       </Pressable>
     </View>
   );
@@ -165,7 +210,7 @@ const styles=StyleSheet.create({
   tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:6},
   marker:{height:3,width:26,borderRadius:2,backgroundColor:"transparent",marginBottom:5},
   markerActive:{backgroundColor:INK.ink},
-  label:{fontSize:11,marginTop:3,color:INK.inkSoft},
+  label:{fontSize:10,marginTop:3,color:INK.inkSoft,textAlign:"center",paddingHorizontal:2},
   labelActive:{color:INK.ink,fontWeight:"700"},
   raised:{
     position:"absolute",

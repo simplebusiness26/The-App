@@ -10,11 +10,25 @@ import {router,usePathname} from "expo-router";
 import {useNotifications} from "../context/NotificationContext";
 import {useDrawer} from "../context/DrawerContext";
 import {INK} from "../utils/tokens";
+import {signedIn} from "../utils/permissions";
 
 export default function Header(){
   const pathname=usePathname();
   const {unreadCount}=useNotifications();
   const {openDrawer}=useDrawer();
+
+  // The one always-visible way in for somebody without an account. It sits in
+  // the space the product name used to occupy, and disappears the moment there
+  // is a session -- a Log In button on a logged-in screen is noise.
+  const [showLogIn,setShowLogIn]=React.useState(false);
+
+  React.useEffect(()=>{
+    let active=true;
+    signedIn().then(({user})=>{
+      if(active) setShowLogIn(!user);
+    });
+    return()=>{active=false;};
+  },[pathname]);
 
   function goBack(){
     if(pathname==="/") return;
@@ -54,7 +68,18 @@ export default function Header(){
         stays empty on purpose -- it is what keeps the two side areas equal
         and the back arrow where the thumb expects it.
       */}
-      <View style={styles.titleArea}/>
+      <View style={styles.titleArea}>
+        {showLogIn && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Log in"
+            style={styles.logIn}
+            onPress={()=>router.push("/auth/login")}
+          >
+            <Text style={styles.logInText}>Log in</Text>
+          </Pressable>
+        )}
+      </View>
 
       <View style={[styles.sideArea,styles.rightArea]}>
         <Pressable
@@ -106,7 +131,22 @@ const styles=StyleSheet.create({
     alignItems:"center"
   },
   titleArea:{
-    flex:1
+    flex:1,
+    alignItems:"center",
+    justifyContent:"center"
+  },
+  logIn:{
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:99,
+    paddingHorizontal:14,
+    paddingVertical:6,
+    backgroundColor:INK.paper
+  },
+  logInText:{
+    color:INK.ink,
+    fontWeight:"700",
+    fontSize:13
   },
   rightArea:{
     justifyContent:"flex-end"

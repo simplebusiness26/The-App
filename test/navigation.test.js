@@ -11,6 +11,8 @@ const path=require("path");
 const React=require("react");
 const {act,create}=require("react-test-renderer");
 const {SafeAreaProvider}=require("react-native-safe-area-context");
+const {FeedbackProvider}=require("../context/FeedbackContext");
+const {NotificationProvider}=require("../context/NotificationContext");
 
 const {TABS,FULL_SCREEN_ROUTES,activeTabKey,isTabBarHidden}=require("../utils/navigation");
 
@@ -50,7 +52,7 @@ const paths=onDisk.map(routePath);
 describe("the tab set points at real screens",()=>{
   it("has five tabs in the order the brief names",()=>{
     expect(TABS.map((tab)=>tab.label)).toEqual([
-      "Map","Discover","Create","Leaderboard","Profile"
+      "Camera","News Feed","Map","Explorer Score","Profile"
     ]);
   });
 
@@ -58,6 +60,10 @@ describe("the tab set points at real screens",()=>{
     const raised=TABS.filter((tab)=>tab.raised);
     expect(raised).toHaveLength(1);
     expect(TABS.indexOf(raised[0])).toBe(2);
+
+    // And it is the map. The map is the product; everything else in this app
+    // is a layer on it, so it takes the one slot that sits above the bar.
+    expect(raised[0].key).toBe("map");
   });
 
   it.each(TABS.map((tab)=>[tab.label,tab.route]))(
@@ -168,15 +174,26 @@ describe("no route was lost",()=>{
 });
 
 describe("the bar hides only where the brief says",()=>{
-  it("hides on the QR scanner",()=>{
-    expect(isTabBarHidden("/scan")).toBe(true);
+  it("no longer hides on the QR scanner",()=>{
+    // It used to. The raised centre button becomes Scan QR while you are on the
+    // map, so a scanner that hid the bar destroyed the button that reached it:
+    // you arrive with no way back and the control you just pressed is gone.
+    // The scanner is a small viewfinder and a text field rather than a
+    // full-bleed camera, so it loses nothing by keeping 62px of navigation.
+    expect(isTabBarHidden("/scan")).toBe(false);
   });
 
   it("does not hide on the map tab",()=>{
     // /map IS the Map tab. Hiding the bar there would strand a person on the
-    // tab they just opened; the brief's "full-screen map" is a mode Packet 6
-    // has not built yet.
+    // tab they just opened.
     expect(isTabBarHidden("/map")).toBe(false);
+  });
+
+  it("hides nowhere at all right now",()=>{
+    // An empty list is the current, deliberate state -- see the note in
+    // utils/navigation.js. A full-screen photo viewer and an expanded map mode
+    // both belong here when they exist; neither does.
+    expect(FULL_SCREEN_ROUTES).toEqual([]);
   });
 
   it.each(paths.filter((route)=>!FULL_SCREEN_ROUTES.includes(route)).map((route)=>[route]))(
@@ -270,9 +287,22 @@ describe("the bar renders",()=>{
     // All five are reachable and named. Compared as a set: the raised button is
     // drawn after the bar rather than inside it, so tree order is not visual
     // order -- that is what stops Android clipping it.
-    expect(labelsOf(tree.toJSON()).sort()).toEqual(TABS.map((tab)=>tab.label).sort());
+    //
+    // There is no session in a test, so the four account-only tabs carry the
+    // signed-out suffix. That is the behaviour, not a nuisance: the bar shows
+    // every tab to a signed-out visitor and says which ones need an account,
+    // rather than hiding them and making the app look emptier than it is.
+    const names=labelsOf(tree.toJSON()).map((label)=>label.replace(/\. Log in to open this\.$/,""));
+    expect(names.sort()).toEqual(TABS.map((tab)=>tab.label).sort());
 
-    // Only four carry a visible caption; the raised Create button is the icon
+    // Exactly the tabs marked as needing an account say so, and no others.
+    const announced=labelsOf(tree.toJSON())
+      .filter((label)=>label.endsWith("Log in to open this."))
+      .map((label)=>label.replace(/\. Log in to open this\.$/,""))
+      .sort();
+    expect(announced).toEqual(TABS.filter((tab)=>tab.signedIn).map((tab)=>tab.label).sort());
+
+    // Only four carry a visible caption; the raised map button is the icon
     // alone. Those four appear in the order the brief lists them.
     const captions=TABS.filter((item)=>!item.raised).map((item)=>item.label);
     expect(textOf(tree.toJSON()).filter((value)=>captions.includes(value))).toEqual(captions);
@@ -280,11 +310,22 @@ describe("the bar renders",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("renders nothing at all on the scanner",async()=>{
+  it("still renders on the scanner, so there is a way back",async()=>{
     const tree=await renderAt("/scan");
-    // The test wrapper still renders; what must be empty is the bar itself.
-    expect(tree.toJSON().children).toBeNull();
+    expect(tree.toJSON().children).not.toBeNull();
     await act(async()=>{tree.unmount();});
+  });
+
+  it("turns the centre button into the scanner on the map",async()=>{
+    const onMap=await renderAt("/map");
+    expect(labelsOf(onMap.toJSON())).toContain("Scan QR");
+    await act(async()=>{onMap.unmount();});
+
+    // And nowhere else -- off the map the centre is the map.
+    const elsewhere=await renderAt("/settings");
+    expect(labelsOf(elsewhere.toJSON())).not.toContain("Scan QR");
+    expect(labelsOf(elsewhere.toJSON())).toContain("Map");
+    await act(async()=>{elsewhere.unmount();});
   });
 
   it("marks the current tab selected for a screen reader",async()=>{
@@ -298,17 +339,27 @@ describe("the bar renders",()=>{
       walk(node.children);
     })(tree.toJSON());
 
-    // Exactly one, and the right one. Colour is not the carrier.
-    expect(selected).toEqual(["Leaderboard"]);
+    // Exactly one, and the right one. Colour is not the carrier. The suffix is
+    // there because a test has no session -- see the note in the tab test above.
+    expect(selected.map((label)=>label.replace(/\. Log in to open this\.$/,"")))
+      .toEqual(["Explorer Score"]);
 
     await act(async()=>{tree.unmount();});
   });
 });
 
+// The same providers app/_layout.js wraps every screen in. The Camera tab
+// points at /moments/create, which calls useFeedback -- without the provider it
+// throws before rendering anything, which looks like a broken tab rather than a
+// missing test wrapper.
 function wrap(element){
   return React.createElement(
     SafeAreaProvider,
     {initialMetrics:{frame:{x:0,y:0,width:390,height:844},insets:{top:47,left:0,right:0,bottom:34}}},
-    element
+    React.createElement(
+      FeedbackProvider,
+      null,
+      React.createElement(NotificationProvider,null,element)
+    )
   );
 }
