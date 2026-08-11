@@ -111,8 +111,8 @@ for(const surface of surfaces){
   // predicate, and it calls are_friends internally -- so either name is
   // acceptable here, and neither being present is not.
   check(
-    /are_friends|can_see_location/.test(latest),
-    `${latestFile}: ${surface.label} decides visibility without are_friends or can_see_location, so who can see a position is being worked out somewhere new`
+    /are_friends|can_see_explorer/.test(latest),
+    `${latestFile}: ${surface.label} decides visibility without are_friends or can_see_explorer, so who can see a position is being worked out somewhere new`
   );
 }
 
@@ -129,46 +129,48 @@ for(const surface of surfaces){
 // touched the setting shares with nobody.
 
 const settingDef=[...migrations].reverse().find((migration)=>
-  /add\s+column\s+if\s+not\s+exists\s+location_sharing/i.test(migration.body)
+  /rename\s+column\s+location_sharing\s+to\s+visibility/i.test(migration.body)
 );
 
-check(settingDef!==undefined,"supabase/migrations: profiles.location_sharing is never created");
+check(settingDef!==undefined,"supabase/migrations: profiles.visibility is never created");
 
 if(settingDef){
   check(
-    /location_sharing\s+text\s+not\s+null\s+default\s+'nobody'/i.test(settingDef.body),
-    `${settingDef.name}: location_sharing does not default to 'nobody' -- an opt-in that arrives switched on is not opt-in`
+    // The rename carries the default with it, so the assertion follows the
+    // column back to where it was created rather than expecting it here.
+    migrations.some((m)=>/location_sharing\s+text\s+not\s+null\s+default\s+'nobody'/i.test(m.body)),
+    `${settingDef.name}: the visibility column does not default to 'nobody' -- an opt-in that arrives switched on is not opt-in`
   );
   check(
-    /check\s*\(location_sharing\s+in\s*\('nobody','friends','close_friends'\)\)/i.test(settingDef.body),
-    `${settingDef.name}: location_sharing accepts values outside the three the product offers`
+    /check\s*\(visibility\s+in\s*\('nobody','friends','close_friends','everyone'\)\)/i.test(settingDef.body),
+    `${settingDef.name}: visibility accepts values outside the four the product offers`
   );
 }
 
 const predicate=[...migrations].reverse().find((migration)=>
-  /create\s+or\s+replace\s+function\s+guestbook_private\.can_see_location/i.test(migration.body)
+  /create\s+or\s+replace\s+function\s+guestbook_private\.can_see_explorer/i.test(migration.body)
 );
 
-check(predicate!==undefined,"supabase/migrations: guestbook_private.can_see_location is never defined");
+check(predicate!==undefined,"supabase/migrations: guestbook_private.can_see_explorer is never defined");
 
 if(predicate){
-  const at=predicate.body.search(/create\s+or\s+replace\s+function\s+guestbook_private\.can_see_location/i);
+  const at=predicate.body.search(/create\s+or\s+replace\s+function\s+guestbook_private\.can_see_explorer/i);
   const body=predicate.body.slice(at,predicate.body.indexOf("$$;",predicate.body.indexOf("$$",at)+2));
 
   // The default branch decides what happens to somebody who never chose. It
   // must be false, and it must be reached by anything unrecognised.
   check(
     /else\s+false/i.test(body),
-    `${predicate.name}: can_see_location does not fall through to false, so an unknown setting would share a position`
+    `${predicate.name}: can_see_explorer does not fall through to false, so an unknown setting would share a position`
   );
   check(
     /security\s+definer/i.test(body),
-    `${predicate.name}: can_see_location is not SECURITY DEFINER, so it cannot read close_friends without exposing it`
+    `${predicate.name}: can_see_explorer is not SECURITY DEFINER, so it cannot read close_friends without exposing it`
   );
   check(
-    /revoke\s+all\s+on\s+function\s+guestbook_private\.can_see_location\(uuid,uuid\)\s+from\s+public\s*,\s*anon/i
+    /revoke\s+all\s+on\s+function\s+guestbook_private\.can_see_explorer\(uuid,uuid\)\s+from\s+public\s*,\s*anon/i
       .test(predicate.body),
-    `${predicate.name}: can_see_location is not revoked from anon`
+    `${predicate.name}: can_see_explorer is not revoked from anon`
   );
 }
 

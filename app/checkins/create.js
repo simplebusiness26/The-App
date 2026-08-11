@@ -17,12 +17,14 @@ const TYPES=[
 ];
 const ACTIVITIES=["Walking","Running","Coffee","Eating","Sport","Relaxing","Exploring","Other"];
 
-// What the check-in screen tells you about who will see it. Read from the
-// profile setting rather than chosen here -- one control, on Settings.
+// What the check-in screen tells you about who will see it. Read from your one
+// visibility setting rather than chosen here -- there is a single audience
+// control, on Settings, and it covers the whole app.
 const AUDIENCE_SENTENCE={
-  nobody:"Nobody can see where you are, so this check-in will be visible only to you. Change that in Settings if you want friends to see it.",
+  nobody:"Your visibility is set to nobody, so this check-in will be visible only to you. Change it in Settings if you want other people to see it.",
+  close_friends:"Only the people on your close friends list will see this.",
   friends:"People you and they both follow will see this.",
-  close_friends:"Only the people on your close friends list will see this."
+  everyone:"Any Explorer nearby will see this."
 };
 
 export default function CreateCheckin(){
@@ -38,7 +40,7 @@ export default function CreateCheckin(){
   const [activity,setActivity]=useState("Walking");
   const [customActivity,setCustomActivity]=useState("");
   const [message,setMessage]=useState("");
-  const [locationSharing,setLocationSharing]=useState("nobody");
+  const [visibility,setVisibility]=useState("nobody");
   const [minutes,setMinutes]=useState(120);
   const [places,setPlaces]=useState([]);
   const [query,setQuery]=useState("");
@@ -54,12 +56,12 @@ export default function CreateCheckin(){
   async function loadUser(){
     const {data:{user:currentUser}}=await supabase.auth.getUser();
     if(!currentUser){router.replace("/auth/login");return;}
-    const {data:profile}=await supabase.from("profiles").select("area,location_sharing").eq("id",currentUser.id).maybeSingle();
+    const {data:profile}=await supabase.from("profiles").select("area,visibility").eq("id",currentUser.id).maybeSingle();
     setUser(currentUser);
     setArea(profile?.area || "");
-    setLocationSharing(
-      ["friends","close_friends"].includes(profile?.location_sharing)
-        ? profile.location_sharing
+    setVisibility(
+      Object.keys(AUDIENCE_SENTENCE).includes(profile?.visibility)
+        ? profile.visibility
         : "nobody"
     );
     setLoading(false);
@@ -137,7 +139,7 @@ export default function CreateCheckin(){
     router.replace("/live");
   }
 
-  const audienceSentence=AUDIENCE_SENTENCE[locationSharing] || AUDIENCE_SENTENCE.nobody;
+  const audienceSentence=AUDIENCE_SENTENCE[visibility] || AUDIENCE_SENTENCE.nobody;
 
   if(loading) return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
 
@@ -173,7 +175,7 @@ export default function CreateCheckin(){
       <View style={styles.safetyCard}>
         <Text style={styles.safetyTitle}>Who will see this</Text>
         <Text style={styles.safetyText}>{audienceSentence}</Text>
-        <Pressable onPress={()=>router.push("/settings")}><Text style={styles.changeAudience}>Change who can see where you are</Text></Pressable>
+        <Pressable onPress={()=>router.push("/settings")}><Text style={styles.changeAudience}>Change your visibility</Text></Pressable>
       </View>
 
       <View style={styles.safetyCard}><Text style={styles.safetyTitle}>Location safety</Text><Text style={styles.safetyText}>Only use public places. Xplorer rounds coordinates to roughly neighbourhood-level accuracy and removes this status automatically.</Text></View>

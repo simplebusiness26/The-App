@@ -37,13 +37,18 @@ function CapabilityRow({label,status}){
   );
 }
 
-// Three answers, and no fourth. Each carries the sentence a person reads back
-// once they have chosen it -- privacy controls read as sentences about people,
-// per docs/design-system.md.
-const LOCATION_CHOICES=[
-  {key:"nobody",label:"Nobody",sentence:"Nobody can see where you are."},
-  {key:"friends",label:"Friends",sentence:"People you and they both follow can see where you are."},
-  {key:"close_friends",label:"Close friends",sentence:"Only the people on your close friends list can see where you are."}
+// One setting for the whole app, four answers. Each carries the sentence a
+// person reads back once they have chosen it -- privacy controls read as
+// sentences about people, per docs/design-system.md, never
+// "Visibility: restricted".
+//
+// Everyone means every Explorer using the app. It does not mean the public
+// internet: a signed-out visitor sees the map and nothing about any person.
+const VISIBILITY_CHOICES=[
+  {key:"nobody",label:"Nobody",sentence:"Nobody can see what you share."},
+  {key:"close_friends",label:"Close friends",sentence:"Only the people on your close friends list can see what you share."},
+  {key:"friends",label:"Friends",sentence:"People you and they both follow can see what you share."},
+  {key:"everyone",label:"Everyone",sentence:"Any Explorer using Xplorer can see what you share."}
 ];
 
 export default function Settings(){
@@ -58,7 +63,7 @@ export default function Settings(){
   const [area,setArea]=useState("");
   const [showArea,setShowArea]=useState(false);
   const [leaderboardOptIn,setLeaderboardOptIn]=useState(true);
-  const [locationSharing,setLocationSharing]=useState("nobody");
+  const [visibility,setVisibility]=useState("nobody");
   const [capabilities,setCapabilities]=useState(null);
 
   const load=useCallback(async()=>{
@@ -70,7 +75,7 @@ export default function Settings(){
 
     const {data:profile,error:profileError}=await supabase
       .from("profiles")
-      .select("email,area,show_area,leaderboard_opt_in,location_sharing")
+      .select("email,area,show_area,leaderboard_opt_in,visibility")
       .eq("id",user.id)
       .maybeSingle();
 
@@ -93,11 +98,11 @@ export default function Settings(){
     setArea(profile.area || "");
     setShowArea(!!profile.show_area);
     setLeaderboardOptIn(profile.leaderboard_opt_in!==false);
-    // Anything unrecognised reads as nobody. A location control that fails open
-    // on a value it does not understand is the wrong way round.
-    setLocationSharing(
-      ["friends","close_friends"].includes(profile.location_sharing)
-        ? profile.location_sharing
+    // Anything unrecognised reads as nobody. A visibility control that fails
+    // open on a value it does not understand is the wrong way round.
+    setVisibility(
+      VISIBILITY_CHOICES.some((choice)=>choice.key===profile.visibility)
+        ? profile.visibility
         : "nobody"
     );
 
@@ -141,7 +146,7 @@ export default function Settings(){
         area:area.trim(),
         show_area:showArea,
         leaderboard_opt_in:leaderboardOptIn,
-        location_sharing:locationSharing
+        visibility
       })
       .eq("id",user.id)
       .select();
@@ -242,35 +247,34 @@ export default function Settings(){
       />
 
       {/*
-        Reads as a sentence about people, per the copy rules -- "Nobody can see
-        where you are", never "Location sharing: disabled". Three choices and no
-        fourth: there is deliberately no way to share your position with
-        everybody, which is why the Public option is gone from the check-in
-        screen in this same packet.
+        The one audience control. It is not a location setting and is not named
+        like one -- a setting called "location sharing" invites a second one
+        called "post sharing" beside it, and then there is no single answer any
+        more.
       */}
       <View style={styles.settingBlock}>
-        <Text style={styles.settingTitle}>Who can see where you are</Text>
+        <Text style={styles.settingTitle}>Your visibility</Text>
         <Text style={styles.settingText}>
-          This covers check-ins and anything else that shows your position. It starts at nobody
-          and only you can change it.
+          Who can see what you share, across the whole app. It starts at nobody and only you
+          can change it.
         </Text>
         <View style={styles.choiceRow}>
-          {LOCATION_CHOICES.map((choice)=>(
+          {VISIBILITY_CHOICES.map((choice)=>(
             <Pressable
               key={choice.key}
               accessibilityRole="radio"
-              accessibilityState={{checked:locationSharing===choice.key}}
+              accessibilityState={{checked:visibility===choice.key}}
               accessibilityLabel={choice.sentence}
-              style={[styles.choice,locationSharing===choice.key && styles.choiceActive]}
-              onPress={()=>setLocationSharing(choice.key)}
+              style={[styles.choice,visibility===choice.key && styles.choiceActive]}
+              onPress={()=>setVisibility(choice.key)}
               disabled={savingPrivacy}
             >
-              <Text style={[styles.choiceTitle,locationSharing===choice.key && styles.choiceTitleActive]}>{choice.label}</Text>
+              <Text style={[styles.choiceTitle,visibility===choice.key && styles.choiceTitleActive]}>{choice.label}</Text>
             </Pressable>
           ))}
         </View>
         <Text style={styles.settingText}>
-          {LOCATION_CHOICES.find((choice)=>choice.key===locationSharing)?.sentence}
+          {VISIBILITY_CHOICES.find((choice)=>choice.key===visibility)?.sentence}
         </Text>
       </View>
 
@@ -284,8 +288,8 @@ export default function Settings(){
 
       <View style={styles.settingRow}>
         <View style={styles.settingTextWrap}>
-          <Text style={styles.settingTitle}>Appear in Explorer Score</Text>
-          <Text style={styles.settingText}>Turn this off to keep earning points without appearing in the public ranking.</Text>
+          <Text style={styles.settingTitle}>Appear on the leaderboard</Text>
+          <Text style={styles.settingText}>Turn this off to keep earning your Explorer Score without appearing in the public ranking.</Text>
         </View>
         <Switch value={leaderboardOptIn} onValueChange={setLeaderboardOptIn} disabled={savingPrivacy}/>
       </View>

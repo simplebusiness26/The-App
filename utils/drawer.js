@@ -47,7 +47,7 @@ export const SECTIONS=[
       // visitor to the log-in screen, so listing it as always-available offered
       // a row that dead-ended on tap. The ranking is about Explorers and is not
       // for people without an account.
-      {label:"Explorer Score",route:"/leaderboards",gate:GATES.SIGNED_IN},
+      {label:"Leaderboard",route:"/leaderboards",gate:GATES.SIGNED_IN},
       {label:"Notifications",route:"/notifications",gate:GATES.SIGNED_IN}
     ]
   },

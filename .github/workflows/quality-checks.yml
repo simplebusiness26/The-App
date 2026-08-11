@@ -33,9 +33,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Require clean dependency audit
-        run: npm audit --audit-level=moderate
-
       # Packet 0. This is the only step in this file that proves a screen
       # renders; every step below it reads source text or builds a bundle.
       - name: Mount every route
@@ -133,6 +130,21 @@ jobs:
           DIST_DIR: dist-ci
           REQUIRE_BROWSER: "1"
         run: npm run verify:browser
+
+      # Moved to the end, and it is the only step here that fails on something
+      # this repository cannot fix. The 15 high-severity advisories are all
+      # transitive under expo, react-native and react-native-maps -- upstream
+      # framework packages -- so clearing them means an Expo upgrade, not a
+      # change in this app.
+      #
+      # It used to be the FIRST step, which meant a red audit stopped the entire
+      # job before a single test ran. Every run on this branch was failing here
+      # and no test, gate or browser check had executed in CI at all. A failing
+      # step that hides every other result is worse than a failing step at the
+      # end: the audit still goes red and still blocks the run, but everything
+      # that can pass now runs and reports first.
+      - name: Require clean dependency audit
+        run: npm audit --audit-level=moderate
 
       - name: Upload web build
         uses: actions/upload-artifact@v4

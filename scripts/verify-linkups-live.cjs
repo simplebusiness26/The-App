@@ -121,7 +121,7 @@ contains("app/checkins/create.js",[
   // The screen sends the narrowest value the RPC still accepts; the setting
   // decides the rest.
   'p_visibility:"followers"',
-  'location_sharing',
+  'visibility',
   'Only use public places',
   'customActivity',
   'activity==="Other"?customActivity.trim():activity.trim()'

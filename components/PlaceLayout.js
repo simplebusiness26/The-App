@@ -292,19 +292,24 @@ function PlaceReview({review,onPhoto}){
       )}
 
       {/*
-        Reply and report, on the page the review is actually on. Until now the
-        only way to reach either was to find the review in the news feed and tap
-        it there, which meant the reviews on a place page -- the ones people
-        actually read -- could not be answered at all.
+        Comment, on the page the review is actually on. Until now the only way
+        to reach it was to find the review in the news feed and tap it there,
+        which meant the reviews on a place page -- the ones people actually
+        read -- could not be commented on at all.
+
+        "Comment", not "Reply". A comment is what anybody leaves on a review. A
+        reply is the manager of the reviewed place answering it, which is a
+        different thing said by a different person, and it renders above as its
+        own block rather than as another comment.
       */}
       <View style={styles.reviewActions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Reply to this review"
+          accessibilityLabel="Comment on this review"
           style={styles.reviewAction}
           onPress={(event)=>{event?.stopPropagation?.();router.push(`/social-comments/${review.id}`);}}
         >
-          <Text style={styles.reviewActionText}>Reply</Text>
+          <Text style={styles.reviewActionText}>Comment</Text>
         </Pressable>
         {!!review.user_id && <Text style={styles.profileHint}>Tap the card to view the Explorer →</Text>}
       </View>

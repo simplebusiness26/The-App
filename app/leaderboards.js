@@ -94,8 +94,8 @@ export default function Leaderboards(){
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>EXPLORER SCORE</Text>
-      <Text style={styles.title}>Explorer Score</Text>
+      <Text style={styles.eyebrow}>EXPLORER SCORE RANKINGS</Text>
+      <Text style={styles.title}>Leaderboard</Text>
       {/*
         Say what the number counts. It is points from reviews you published
         inside the period -- not endorsements, and not check-ins. There is a
@@ -103,7 +103,7 @@ export default function Leaderboards(){
         on screen reads; naming this one Explorer Score without saying what it
         counts would be the more misleading half of that.
       */}
-      <Text style={styles.subtitle}>Points from the reviews you published this week or month. Test accounts are excluded.</Text>
+      <Text style={styles.subtitle}>Explorers ranked by their Explorer Score this week and this month. Test accounts are excluded.</Text>
 
       <View style={styles.tabs}>
         {[{key:"weekly",label:"Weekly"},{key:"monthly",label:"Monthly"}].map(item=>(
@@ -202,7 +202,7 @@ export default function Leaderboards(){
       )}
 
       <View style={styles.rulesCard}>
-        <Text style={styles.rulesTitle}>How your Explorer Score works</Text>
+        <Text style={styles.rulesTitle}>How your Explorer Score is earned</Text>
         <Text style={styles.rule}>Text review: 1 point</Text>
         <Text style={styles.rule}>Image review: 3 points</Text>
         <Text style={styles.rule}>Video review: 6 points</Text>

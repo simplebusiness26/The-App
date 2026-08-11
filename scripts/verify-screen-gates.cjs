@@ -770,9 +770,10 @@ check(
 const profileColumns=new Set([
   "id","full_name","email","phone","bio","profile_photo",
   "account_type","is_admin","area","show_area","leaderboard_opt_in",
-  // Rebuild Packet 8. The ceiling on who may see this Explorer's position,
-  // added by 20260811170000 and defaulting to 'nobody'.
-  "location_sharing"
+  // The one audience control -- who can see what this Explorer shares.
+  // Added as location_sharing by 20260811170000 and renamed by 20260811200000,
+  // because naming it after check-ins invited a second column beside it.
+  "visibility"
 ]);
 
 for(const file of ["components/QuickAccessDrawer.js","app/settings.js","app/profile/edit.js"]){

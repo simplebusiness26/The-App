@@ -28,10 +28,15 @@ export const TABS=[
   {key:"camera",label:"Camera",route:"/moments/create",glyph:"camera",signedIn:true},
   {key:"feed",label:"News Feed",route:"/feed",glyph:"feed",signedIn:true},
   {key:"map",label:"Map",route:"/map",glyph:"map",raised:true},
-  // Signed in only, and settled deliberately rather than inherited. The ranking
-  // is about Explorers and is not shown to somebody without an account. The
-  // screen has always redirected a signed-out visitor (leaderboards.js:42);
-  // utils/drawer.js now agrees, so all three say the same thing.
+  // The tab is the Explorer Score -- YOUR score. It opens the Leaderboard,
+  // which is where scores are ranked against each other. Two words for two
+  // things: an Explorer Score is a number a person has, a Leaderboard is the
+  // ordering of those numbers. The screen is titled Leaderboard for that
+  // reason, and the tab is titled for what the person is going to look at.
+  //
+  // Signed in only. The ranking is about Explorers and is not shown to somebody
+  // without an account; the screen has always redirected a signed-out visitor
+  // (leaderboards.js:42) and the drawer now agrees.
   {key:"score",label:"Explorer Score",route:"/leaderboards",glyph:"trophy",signedIn:true},
   {key:"profile",label:"Profile",route:"/profile",glyph:"person",signedIn:true}
 ];
