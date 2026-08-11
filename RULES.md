@@ -29,7 +29,10 @@ Inconsistent naming across files is the main way this codebase will rot.
 - **Claim** — the act of asserting you manage something.
   **Verified** — that claim confirmed by QR scan on site. Different words,
   different states, never used interchangeably.
-- **Check-in** — a public, opt-in presence at a park.
+- **Check-in** — an opt-in presence at a public place, seen by whoever your
+  location setting allows and nobody else. Not public: that word was accurate
+  until the location setting existed, and is not now. Only public places take
+  check-ins — never a business, club or event.
 - **Moment** — a photo pinned to where it was taken. **Memory** — the same
   post once it's past. One table, one component, wording changes with age.
 - **Endorsement** — likes and comments on a review, counting towards the
@@ -46,6 +49,9 @@ Explorer's whereabouts is safety-critical. For these:
 - Stop. Describe what you'd build and what it would expose. Wait.
 - Default every visibility flag to off/hidden. Opt-in is never the
   fallback branch of an if-statement.
+- Who can see an Explorer's position is one setting, `profiles.location_sharing`,
+  answered by `guestbook_private.can_see_location`. Nothing else may work it
+  out. It is a ceiling: a per-item choice can narrow it and never widen it.
 - Anything that reveals position must have an expiry. No permanent
   location record without a stated retention period.
 - Never add a field that would let one Explorer reconstruct another's

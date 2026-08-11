@@ -5,12 +5,15 @@ import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 
+// Public places only. A check-in used to accept businesses, clubs and events
+// as well, which is a different act wearing the same word: it broadcasts your
+// position at a private address, and the business has no say in whether it
+// happens. Both public types stay, because public_places holds eight kinds --
+// beaches, viewpoints, greens -- and allowing a park but not a beach would be
+// an arbitrary line through one table.
 const TYPES=[
   {key:"park",label:"Park"},
-  {key:"public_place",label:"Public place"},
-  {key:"business",label:"Business"},
-  {key:"activity_club",label:"Activity club"},
-  {key:"event",label:"Event"}
+  {key:"public_place",label:"Other public place"}
 ];
 const ACTIVITIES=["Walking","Running","Coffee","Eating","Sport","Relaxing","Exploring","Other"];
 
@@ -119,7 +122,8 @@ export default function CreateCheckin(){
     if(working||!user) return;
     setError("");
     const selectedActivity=activity==="Other"?customActivity.trim():activity.trim();
-    if(placeName.trim().length<2||area.trim().length<2) return setError("Add the public place and broad area, such as a town or neighbourhood.");
+    if(!publicPlaceId) return setError("Choose the public place you are at from the list.");
+    if(area.trim().length<2) return setError("Add the broad area, such as a town or neighbourhood.");
     if(selectedActivity.length<2) return setError("Choose what you are doing or enter a custom activity.");
     setWorking(true);
     const {error:checkinError}=await supabase.rpc("start_live_checkin",{
