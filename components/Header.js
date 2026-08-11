@@ -9,6 +9,7 @@ import {
 import {router,usePathname} from "expo-router";
 import {useNotifications} from "../context/NotificationContext";
 import {useDrawer} from "../context/DrawerContext";
+import {INK} from "../utils/tokens";
 
 export default function Header(){
   const pathname=usePathname();
@@ -47,7 +48,13 @@ export default function Header(){
         </Pressable>
       </View>
 
-      <Text style={styles.title}>Guestbook</Text>
+      {/*
+        No product name here. The screen beneath says what it is, and a name
+        repeated on all 77 screens is a wordmark, not navigation. The middle
+        stays empty on purpose -- it is what keeps the two side areas equal
+        and the back arrow where the thumb expects it.
+      */}
+      <View style={styles.titleArea}/>
 
       <View style={[styles.sideArea,styles.rightArea]}>
         <Pressable
@@ -77,6 +84,10 @@ export default function Header(){
   );
 }
 
+// Every colour here comes from utils/tokens.js. The design system's rule is
+// "never introduce a colour outside this list", and the three inks -- blue,
+// pink, yellow -- are excluded on purpose: they mean a state a place is in, and
+// nothing in the navigation shell is a place. See the note in utils/tokens.js.
 const styles=StyleSheet.create({
   container:{
     height:60,
@@ -84,13 +95,18 @@ const styles=StyleSheet.create({
     alignItems:"center",
     justifyContent:"space-between",
     paddingHorizontal:12,
-    borderBottomWidth:1,
-    borderColor:"#ddd"
+    backgroundColor:INK.card,
+    // 2px, not 1px: the borders are the print register, not a hairline.
+    borderBottomWidth:2,
+    borderColor:INK.ink
   },
   sideArea:{
     width:88,
     flexDirection:"row",
     alignItems:"center"
+  },
+  titleArea:{
+    flex:1
   },
   rightArea:{
     justifyContent:"flex-end"
@@ -104,33 +120,34 @@ const styles=StyleSheet.create({
   },
   icon:{
     fontSize:28,
-    fontWeight:"bold"
+    fontWeight:"bold",
+    color:INK.ink
   },
   bell:{
     fontSize:22
   },
+  // The unread badge was red (#d92d20), which is not a colour in the table. It
+  // is also not one of the three inks: a count of unread notifications is not a
+  // state a place is in, so borrowing pink for it would be exactly the
+  // decorative use the design system forbids. Ink on card, bordered like every
+  // other raised shape.
   badge:{
     position:"absolute",
     top:2,
     right:0,
     minWidth:19,
     height:19,
-    borderRadius:10,
+    borderRadius:99,
     paddingHorizontal:4,
-    backgroundColor:"#d92d20",
+    backgroundColor:INK.ink,
     alignItems:"center",
     justifyContent:"center",
     borderWidth:2,
-    borderColor:"white"
+    borderColor:INK.card
   },
   badgeText:{
-    color:"white",
+    color:INK.card,
     fontSize:10,
     fontWeight:"bold"
-  },
-  title:{
-    fontSize:22,
-    fontWeight:"bold",
-    textAlign:"center"
   }
 });
