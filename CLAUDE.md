@@ -41,6 +41,13 @@ explicitly-marked legacy stub, not the live schema.
 - Point to specific files and lines
 - Ask before adding a new dependency
 - One thing at a time — no broad half-built sweeps
+- Write to me in plain English. No jargon. If a technical term is
+  unavoidable, explain it in one line the first time you use it.
+- Short answers. Tell me what you did and what's next, not a lecture
+  about how it works.
+- CLAUDE.md and the plan files say what I intend. They are not proof
+  of what is built. Check the actual code before you tell me
+  something exists.
 
 Current state of the app is `docs/SCREEN-INVENTORY.md`. Current work is
 `docs/REBUILD-PLAN.md`.
