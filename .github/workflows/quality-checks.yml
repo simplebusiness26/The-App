@@ -83,6 +83,9 @@ jobs:
       - name: Verify QR codes stay off public pages and manager tools stay reachable
         run: npm run verify:manager
 
+      - name: Verify only unlocked managers can create businesses and properties
+        run: npm run verify:listings
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 
