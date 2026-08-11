@@ -15,6 +15,7 @@ function listingRoute(review){
   if(review.target_type==="property") return `/property/${review.target_id}`;
   if(review.target_type==="activity_club") return `/activity-clubs/${review.target_id}`;
   if(review.target_type==="event") return `/events/${review.target_id}`;
+  if(review.target_type==="public_place") return `/places/${review.target_id}`;
   return null;
 }
 
@@ -55,12 +56,9 @@ export default function VideoReviewComments(){
       supabase.from("social_likes").select("id",{count:"exact",head:true}).eq("target_type","review").eq("target_id",reviewId)
     ]);
 
-    if(mediaResult.error || !mediaResult.data){
-      setError("Comments are only available for published video reviews.");
-      setLoading(false);
-      return;
-    }
-
+    // A video is no longer required. Packet 11 opened comments to every
+    // published review -- the old rule meant the reviews most people write,
+    // text and photos, could be endorsed but never answered.
     let liked=false;
     if(user){
       const {data}=await supabase
@@ -74,7 +72,7 @@ export default function VideoReviewComments(){
     }
 
     setReview(reviewRow);
-    setVideo(mediaResult.data);
+    setVideo(mediaResult.data || null);
     setProfile(profileResult.data || null);
     setLikeCount(Number(countResult.count || 0));
     setViewerLiked(liked);
@@ -84,7 +82,7 @@ export default function VideoReviewComments(){
   useFocusEffect(useCallback(()=>{load();},[load]));
 
   if(loading) return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
-  if(error || !review || !video) return <View style={styles.center}><Text style={styles.errorTitle}>Video unavailable</Text><Text style={styles.errorText}>{error}</Text></View>;
+  if(error || !review) return <View style={styles.center}><Text style={styles.errorTitle}>Review unavailable</Text><Text style={styles.errorText}>{error}</Text></View>;
 
   const route=listingRoute(review);
 
@@ -97,19 +95,19 @@ export default function VideoReviewComments(){
         }
         <View style={styles.profileText}>
           <Text style={styles.name}>{profile?.full_name || "Explorer"}</Text>
-          <Text style={styles.date}>Video review · {dateLabel(review.created_at)}</Text>
+          <Text style={styles.date}>Review · {dateLabel(review.created_at)}</Text>
         </View>
       </Pressable>
 
       <View style={styles.card}>
-        <Pressable style={styles.videoWrap} onPress={()=>Linking.openURL(video.media_url)}>
+        {!!video && <Pressable style={styles.videoWrap} onPress={()=>Linking.openURL(video.media_url)}>
           {video.thumbnail_url || review.target_image_url
             ? <Image source={{uri:video.thumbnail_url || review.target_image_url}} style={styles.poster}/>
             : <View style={styles.videoFallback}/>
           }
           <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
           <Text style={styles.duration}>{Math.ceil(Number(video.duration_seconds || 0)) || "≤30"}s</Text>
-        </Pressable>
+        </Pressable>}
 
         <Text style={styles.rating}>{"★".repeat(review.rating)}<Text style={styles.emptyStars}>{"★".repeat(5-review.rating)}</Text></Text>
         {!!review.title && <Text style={styles.title}>{review.title}</Text>}
@@ -133,7 +131,7 @@ export default function VideoReviewComments(){
         </View>
       </View>
 
-      <CommentThread targetType="video_review" targetId={review.id} ownerId={review.user_id}/>
+      <CommentThread targetType="review" targetId={review.id} ownerId={review.user_id}/>
     </ScrollView>
   );
 }

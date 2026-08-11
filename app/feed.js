@@ -87,7 +87,7 @@ export default function Feed(){
 
   function openComments(item){
     if(item.item_type==="moment") router.push(`/moments/${item.item_id}`);
-    else router.push({pathname:`/social-comments/${item.item_id}`,params:{type:"video_review"}});
+    else router.push({pathname:`/social-comments/${item.item_id}`,params:{type:"review"}});
   }
 
   return(

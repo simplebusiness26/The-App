@@ -73,7 +73,11 @@ contains("app/feed.js",[
   'rpc("get_explorer_social_feed"',
   'router.replace("/auth/login")',
   '<LikeButton',
-  'type:"video_review"',
+  // Packet 11 retired 'video_review' as a comment target. Comments used to
+  // need a review with a published video on it, so the text and photo reviews
+  // most people write could be endorsed but never answered. One name for the
+  // thing now, and every published review takes a comment.
+  'type:"review"',
   'router.push(`/moments/${item.item_id}`)',
   'router.push("/moments/create")'
 ]);
