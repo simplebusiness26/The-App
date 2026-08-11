@@ -4,6 +4,17 @@ import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import EndorseButton from "../../components/EndorseButton";
 import CommentThread from "../../components/CommentThread";
+import {useFeedback} from "../../context/FeedbackContext";
+
+// The same five the social_reports constraint allows. A review is content, so
+// it is reported the way a Moment is and lands in the same admin queue.
+const REPORT_REASONS=[
+  {key:"spam",label:"Spam"},
+  {key:"harassment",label:"Harassment"},
+  {key:"inappropriate",label:"Inappropriate"},
+  {key:"false_information",label:"False information"},
+  {key:"other",label:"Other"}
+];
 
 function dateLabel(value){
   if(!value) return "";
@@ -20,6 +31,7 @@ function listingRoute(review){
 }
 
 export default function VideoReviewComments(){
+  const {showFeedback}=useFeedback();
   const params=useLocalSearchParams();
   const reviewId=Array.isArray(params.id) ? params.id[0] : params.id;
   const [review,setReview]=useState(null);
@@ -27,6 +39,9 @@ export default function VideoReviewComments(){
   const [profile,setProfile]=useState(null);
   const [likeCount,setLikeCount]=useState(0);
   const [viewerLiked,setViewerLiked]=useState(false);
+  const [showReport,setShowReport]=useState(false);
+  const [reportReason,setReportReason]=useState("inappropriate");
+  const [reporting,setReporting]=useState(false);
   const [viewerId,setViewerId]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
@@ -81,6 +96,35 @@ export default function VideoReviewComments(){
 
   useFocusEffect(useCallback(()=>{load();},[load]));
 
+  async function reportReview(){
+    if(reporting || !viewerId || viewerId===review?.user_id) return;
+
+    setReporting(true);
+    const {error:reportError}=await supabase
+      .from("social_reports")
+      .insert({
+        reporter_id:viewerId,
+        target_type:"review",
+        target_id:review.id,
+        reason:reportReason,
+        details:"",
+        status:"open"
+      });
+    setReporting(false);
+    setShowReport(false);
+
+    // The unique constraint on (reporter, target_type, target_id) is what stops
+    // one person reporting the same review repeatedly, so a duplicate is a
+    // normal outcome rather than a failure.
+    if(reportError){
+      if(String(reportError.code)==="23505") showFeedback("You have already reported this review.","info","Already reported");
+      else showFeedback(reportError.message,"error","Report not sent");
+      return;
+    }
+
+    showFeedback("This review has been sent for review.","success","Report submitted");
+  }
+
   if(loading) return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
   if(error || !review) return <View style={styles.center}><Text style={styles.errorTitle}>Review unavailable</Text><Text style={styles.errorText}>{error}</Text></View>;
 
@@ -128,7 +172,35 @@ export default function VideoReviewComments(){
 
         <View style={styles.actionRow}>
           <EndorseButton reviewId={review.id} ownerId={review.user_id} viewerId={viewerId} initialCount={likeCount} initialEndorsed={viewerLiked}/>
+          {!!viewerId && viewerId!==review.user_id && (
+            <Pressable style={styles.reportToggle} onPress={()=>setShowReport((current)=>!current)}>
+              <Text style={styles.reportToggleText}>Report</Text>
+            </Pressable>
+          )}
         </View>
+
+        {showReport && (
+          <View style={styles.reportPanel}>
+            <Text style={styles.reportTitle}>Why are you reporting this review?</Text>
+            <View style={styles.reasonRow}>
+              {REPORT_REASONS.map((reason)=>(
+                <Pressable
+                  key={reason.key}
+                  style={[styles.reasonButton,reportReason===reason.key && styles.reasonActive]}
+                  onPress={()=>setReportReason(reason.key)}
+                >
+                  <Text style={[styles.reasonText,reportReason===reason.key && styles.reasonActiveText]}>{reason.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.reportActions}>
+              <Pressable style={styles.cancelButton} onPress={()=>setShowReport(false)}><Text style={styles.cancelText}>Cancel</Text></Pressable>
+              <Pressable style={styles.reportButton} disabled={reporting} onPress={reportReview}>
+                <Text style={styles.reportButtonText}>{reporting ? "Sending..." : "Submit report"}</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </View>
 
       <CommentThread targetType="review" targetId={review.id} ownerId={review.user_id}/>
@@ -150,6 +222,20 @@ const styles=StyleSheet.create({
   name:{color:"white",fontSize:16,fontWeight:"900"},
   date:{color:"#878790",fontSize:11,marginTop:3},
   card:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:17,padding:12},
+  reportToggle:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:8},
+  reportToggleText:{color:"#9a9aa4",fontWeight:"800",fontSize:12},
+  reportPanel:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:13,padding:13,marginTop:12},
+  reportTitle:{color:"white",fontWeight:"900",marginBottom:9},
+  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
+  reasonButton:{backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:16,paddingHorizontal:11,paddingVertical:7},
+  reasonActive:{backgroundColor:"#3212b6",borderColor:"#654ce2"},
+  reasonText:{color:"#aaaab3",fontWeight:"800",fontSize:11},
+  reasonActiveText:{color:"white"},
+  reportActions:{flexDirection:"row",gap:9,marginTop:12},
+  cancelButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,borderWidth:1,borderColor:"#44444c"},
+  cancelText:{color:"#aaaab3",fontWeight:"900"},
+  reportButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,backgroundColor:"#7e3541"},
+  reportButtonText:{color:"white",fontWeight:"900"},
   videoWrap:{height:370,borderRadius:13,overflow:"hidden",backgroundColor:"#0c0c0e",alignItems:"center",justifyContent:"center"},
   poster:{width:"100%",height:"100%"},
   videoFallback:{position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:"#111114"},
