@@ -361,8 +361,17 @@ export default function CreateMoment(){
         )}
 
         <View style={styles.mediaButtons}>
-          <Pressable style={styles.mediaButton} onPress={pickImage}><Text style={styles.mediaButtonText}>Photo / camera</Text></Pressable>
-          <Pressable style={styles.mediaButton} onPress={pickVideo}><Text style={styles.mediaButtonText}>Video / camera</Text></Pressable>
+          {/*
+            These said "Photo / camera" and "Video / camera" and both opened the
+            photo library. launchCameraAsync appears nowhere in this app --
+            app/scan.js is the only expo-camera consumer and it reads QR codes.
+            A button that names a thing it does not do is worse than a button
+            that names less, so they say what they open. Real capture is its own
+            packet; when it lands, these become two buttons rather than a label
+            change.
+          */}
+          <Pressable style={styles.mediaButton} onPress={pickImage}><Text style={styles.mediaButtonText}>Choose a photo</Text></Pressable>
+          <Pressable style={styles.mediaButton} onPress={pickVideo}><Text style={styles.mediaButtonText}>Choose a video</Text></Pressable>
         </View>
       </View>
 

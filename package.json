@@ -34,7 +34,7 @@
     "@react-navigation/native": "^7.3.14",
     "@supabase/supabase-js": "latest",
     "expo": "~57.0.10",
-    "expo-camera": "latest",
+    "expo-camera": "~57.0.3",
     "expo-constants": "~57.0.7",
     "expo-image-picker": "~57.0.7",
     "expo-linking": "~57.0.5",
