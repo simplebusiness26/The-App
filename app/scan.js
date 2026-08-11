@@ -38,7 +38,7 @@ export default function Scan(){
     if(scanned) return;
     const code=extractQrCode(data);
     if(!code){
-      setError("This is not a Guestbook verified-review QR code.");
+      setError("This is not a Xplorer verified-review QR code.");
       setScanned(true);
       return;
     }
@@ -55,13 +55,13 @@ export default function Scan(){
   return(
     <View style={styles.container}>
       <Text style={styles.eyebrow}>VERIFIED VISIT</Text>
-      <Text style={styles.title}>Scan Guestbook QR</Text>
+      <Text style={styles.title}>Scan Xplorer QR</Text>
       <Text style={styles.subtitle}>Scan the code displayed at a business, property, Activity Club or event before leaving your review.</Text>
 
       {!permission.granted ? (
         <View style={styles.permissionCard}>
           <Text style={styles.permissionTitle}>Camera access is needed</Text>
-          <Text style={styles.permissionText}>Guestbook only uses the camera here to recognise QR codes.</Text>
+          <Text style={styles.permissionText}>Xplorer only uses the camera here to recognise QR codes.</Text>
           <Pressable style={styles.primaryButton} onPress={requestPermission}>
             <Text style={styles.primaryText}>Allow camera access</Text>
           </Pressable>
@@ -88,10 +88,10 @@ export default function Scan(){
 
       <View style={styles.manualCard}>
         <Text style={styles.manualTitle}>Testing on one phone?</Text>
-        <Text style={styles.manualText}>Enter the code printed below the QR or paste its Guestbook link.</Text>
+        <Text style={styles.manualText}>Enter the code printed below the QR or paste its Xplorer link.</Text>
         <TextInput
           style={styles.input}
-          placeholder="QR code or Guestbook QR link"
+          placeholder="QR code or Xplorer QR link"
           placeholderTextColor="#878790"
           autoCapitalize="none"
           autoCorrect={false}

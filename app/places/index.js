@@ -114,7 +114,7 @@ export default function PublicPlaces(){
           <Text style={styles.emptyTitle}>No public places here yet</Text>
           {/* An empty state is an instruction, not a mood. */}
           <Text style={styles.muted}>
-            Public places are added by the Guestbook team. Check in at one by name and it can be added
+            Public places are added by the Xplorer team. Check in at one by name and it can be added
             as a place everybody shares.
           </Text>
         </View>

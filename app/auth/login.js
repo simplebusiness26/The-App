@@ -117,7 +117,7 @@ export default function Login(){
 
       {destination!=="/" && (
         <View style={styles.returnNotice}>
-          <Text style={styles.returnTitle}>Continue your Guestbook action</Text>
+          <Text style={styles.returnTitle}>Continue your Xplorer action</Text>
           <Text style={styles.returnText}>After login, you’ll return to the page you opened.</Text>
         </View>
       )}

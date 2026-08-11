@@ -11,7 +11,7 @@ export default function MomentMediaPreview({asset,mediaType,onPreviewError}){
 
   function handleError(){
     setFailed(true);
-    onPreviewError?.("Guestbook could not display this media preview. Choose the file again or open the preview in a separate browser tab.");
+    onPreviewError?.("Xplorer could not display this media preview. Choose the file again or open the preview in a separate browser tab.");
   }
 
   if(!previewUri || failed){

@@ -211,7 +211,7 @@ export default function Settings(){
       </Pressable>
 
       <Text style={styles.sectionTitle}>Privacy</Text>
-      <Text style={styles.helpText}>Use a town or broad area only. Guestbook does not need your exact address.</Text>
+      <Text style={styles.helpText}>Use a town or broad area only. Xplorer does not need your exact address.</Text>
 
       <TextInput
         style={styles.input}

@@ -101,7 +101,7 @@ export default function PrintableListingQR(){
   return(
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.printCard}>
-        <Text style={styles.brand}>Guestbook</Text>
+        <Text style={styles.brand}>Xplorer</Text>
         <Text style={styles.title}>{listing._name}</Text>
         <Text style={styles.subtitle}>Scan while you’re here to leave a verified review.</Text>
 

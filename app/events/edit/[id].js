@@ -137,7 +137,7 @@ export default function EditEvent(){
   function confirmDelete(){
     Alert.alert(
       "Delete event?",
-      `${form.name.trim() || "This event"} will be removed permanently from Guestbook.`,
+      `${form.name.trim() || "This event"} will be removed permanently from Xplorer.`,
       [
         {text:"Cancel",style:"cancel"},
         {text:"Delete",style:"destructive",onPress:deleteEvent}

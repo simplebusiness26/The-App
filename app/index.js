@@ -72,7 +72,7 @@ export default function Home(){
         testID={`home-${HOME_LAYOUT_VERSION}`}
       >
         <View style={styles.brand}>
-          <Text style={styles.title}>Guestbook</Text>
+          <Text style={styles.title}>Xplorer</Text>
           <Text style={styles.subtitle}>
             Discover local places, stays and experiences.
           </Text>

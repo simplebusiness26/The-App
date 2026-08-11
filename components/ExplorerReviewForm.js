@@ -168,7 +168,7 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
       }
     }catch(pickerError){
       console.error("Image picker error:",pickerError);
-      setError("The photo picker could not return to Guestbook. Try opening the preview in a separate browser tab.");
+      setError("The photo picker could not return to Xplorer. Try opening the preview in a separate browser tab.");
     }
   }
 
@@ -202,7 +202,7 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
       setVideo(asset);
     }catch(pickerError){
       console.error("Video picker error:",pickerError);
-      setError("The video picker could not return to Guestbook. Try opening the preview in a separate browser tab.");
+      setError("The video picker could not return to Xplorer. Try opening the preview in a separate browser tab.");
     }
   }
 
@@ -278,7 +278,7 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
           user_id:user.id,
           target_type:targetType,
           target_id:cleanTargetId,
-          target_name:target.name || "Guestbook listing",
+          target_name:target.name || "Xplorer listing",
           target_image_url:config.getImage(target),
           rating,
           title:cleanTitle,

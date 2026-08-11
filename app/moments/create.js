@@ -143,7 +143,7 @@ export default function CreateMoment(){
     if(prepared?.previewUri) return prepared;
 
     releaseSocialAsset(prepared);
-    setError(`Guestbook could not read the selected ${type}. Choose it again or open the app preview in a separate browser tab.`);
+    setError(`Xplorer could not read the selected ${type}. Choose it again or open the app preview in a separate browser tab.`);
     return null;
   }
 
@@ -173,7 +173,7 @@ export default function CreateMoment(){
       setMediaType("image");
     }catch(pickerError){
       console.error(pickerError);
-      setError("The photo picker could not return to Guestbook. Open the preview in a separate browser tab and try again.");
+      setError("The photo picker could not return to Xplorer. Open the preview in a separate browser tab and try again.");
     }
   }
 
@@ -202,7 +202,7 @@ export default function CreateMoment(){
       const seconds=await resolveVideoDuration(prepared);
       if(!seconds){
         releaseSocialAsset(prepared);
-        setError("Guestbook could not read this video's duration. Choose a different clip.");
+        setError("Xplorer could not read this video's duration. Choose a different clip.");
         return;
       }
       if(seconds>30.25){
@@ -215,7 +215,7 @@ export default function CreateMoment(){
       setMediaType("video");
     }catch(pickerError){
       console.error(pickerError);
-      setError("The video picker could not return to Guestbook. Open the preview in a separate browser tab and try again.");
+      setError("The video picker could not return to Xplorer. Open the preview in a separate browser tab and try again.");
     }
   }
 

@@ -65,7 +65,7 @@ export default function ForgotPassword(){
     <View style={styles.container}>
       <Text style={styles.title}>Forgot password?</Text>
       <Text style={styles.message}>
-        Enter the email address connected to your Guestbook account. We’ll send you a secure link to set a new password.
+        Enter the email address connected to your Xplorer account. We’ll send you a secure link to set a new password.
       </Text>
 
       <TextInput

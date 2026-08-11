@@ -78,7 +78,7 @@ Welcome 👋
 
 
 <Text>
-Your local Guestbook
+Your local Xplorer
 </Text>
 
 

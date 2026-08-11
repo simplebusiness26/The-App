@@ -63,7 +63,7 @@ export default function FavouriteButton({targetType,targetId,targetName,targetIm
           user_id:user.id,
           target_type:targetType,
           target_id:targetId,
-          target_name:targetName || "Guestbook place",
+          target_name:targetName || "Xplorer place",
           target_image_url:targetImageUrl || null,
           is_public:true
         })

@@ -135,7 +135,7 @@ export default function EditProfile(){
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Edit Profile</Text>
-      <Text style={styles.subtitle}>Control how your Guestbook profile appears to other people.</Text>
+      <Text style={styles.subtitle}>Control how your Xplorer profile appears to other people.</Text>
 
       {!!error && <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View>}
 

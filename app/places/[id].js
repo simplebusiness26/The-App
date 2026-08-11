@@ -152,7 +152,7 @@ export default function PublicPlacePage(){
       ) : null}
       footnote={{
         title:"Who manages this place",
-        body:"Public places are maintained by the Guestbook team. Anyone can attach a Moment or check in here; nobody posts as the place itself."
+        body:"Public places are maintained by the Xplorer team. Anyone can attach a Moment or check in here; nobody posts as the place itself."
       }}
     />
   );

@@ -49,7 +49,7 @@ export default function VerifiedReviewQR(){
     const qrTarget=resolved?.[0];
 
     if(resolveError || !qrTarget){
-      setError("This Guestbook QR code is invalid or has been disabled.");
+      setError("This Xplorer QR code is invalid or has been disabled.");
       setLoading(false);
       return;
     }
@@ -123,7 +123,7 @@ export default function VerifiedReviewQR(){
         <Text style={styles.primaryText}>{user ? "Continue to verified review" : "Log in to continue"}</Text>
       </Pressable>
 
-      <Text style={styles.ruleText}>The QR bonus can only be used once per review. The review must satisfy Guestbook’s normal eligibility rules.</Text>
+      <Text style={styles.ruleText}>The QR bonus can only be used once per review. The review must satisfy Xplorer’s normal eligibility rules.</Text>
     </ScrollView>
   );
 }

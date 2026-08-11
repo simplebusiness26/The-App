@@ -28,7 +28,7 @@ export default function MapScreen(){
   const apiKey=process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   if(!apiKey){
-    return <PlacesList header={<Text style={styles.fallbackTitle}>🗺️ Guestbook Map</Text>}/>;
+    return <PlacesList header={<Text style={styles.fallbackTitle}>🗺️ Xplorer Map</Text>}/>;
   }
   return <NativeMap/>;
 }
