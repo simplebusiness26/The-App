@@ -251,21 +251,69 @@ describe("the public place page",()=>{
     expect(labels).toContain("Follow this area");
   });
 
-  it("has no reviews section, because public places have no reviews table",async()=>{
-    // The same reasoning 5c applied to link-ups: an empty reviews section
-    // invites something the app cannot record. Omitted, not emptied.
+  it("takes reviews now, and invites one when there are none",async()=>{
+    // This used to assert the opposite, and the reason was sound at the time:
+    // there was no public_place_reviews table, and an empty reviews section
+    // invites something the app cannot record. Rebuild Packet 10 removed the
+    // reason rather than the section -- explorer_reviews.target_type now
+    // includes public_place, so a park is reviewed in the same table as every
+    // other place. A park is a place, not its own concept.
     installFixture({
       user:{id:"explorer-1"},
       params:{id:"park-1"},
-      tables:{public_places:[park],geo_areas:[],explorer_moments:[]},
+      tables:{
+        public_places:[park],
+        geo_areas:[],
+        explorer_moments:[],
+        explorer_reviews:[],
+        review_media:[],
+        profiles:[]
+      },
       rpc:{get_entity_follow_stats:[{follower_count:0,viewer_following:false}]}
     });
 
     const tree=await mountPage();
     const text=textOf(tree.toJSON());
 
-    expect(text).not.toContain("No reviews yet");
+    // An instruction, not a shrug.
+    expect(text).toContain("No reviews yet");
+    expect(text).toContain("Been here? Say what it is like.");
     expect(text).toContain("No Moments here yet");
+  });
+
+  it("renders a park review from the one review table",async()=>{
+    installFixture({
+      user:{id:"explorer-1"},
+      params:{id:"park-1"},
+      tables:{
+        public_places:[park],
+        geo_areas:[],
+        explorer_moments:[],
+        explorer_reviews:[{
+          id:"prev-1",
+          target_type:"public_place",
+          target_id:"park-1",
+          rating:4,
+          title:"Good for a walk",
+          comment:"The lake is quiet early.",
+          created_at:"2026-07-04T09:00:00Z",
+          status:"published",
+          user_id:"explorer-2",
+          points_awarded:1,
+          verified_qr:false
+        }],
+        review_media:[],
+        profiles:[{id:"explorer-2",full_name:"Sam"}]
+      },
+      rpc:{get_entity_follow_stats:[{follower_count:0,viewer_following:false}]}
+    });
+
+    const tree=await mountPage();
+    const text=textOf(tree.toJSON());
+
+    expect(text).toContain("Good for a walk");
+    expect(text).toContain("The lake is quiet early.");
+    expect(text).toContain("Sam");
   });
 
   it("says so when the place cannot be loaded",async()=>{

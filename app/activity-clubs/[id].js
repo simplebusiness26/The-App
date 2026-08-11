@@ -2,6 +2,7 @@ import React,{useCallback,useState} from "react";
 import {View,Text,TextInput,StyleSheet,Pressable,Alert} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {loadPlaceReviews} from "../../utils/reviews";
 import {useFeedback} from "../../context/FeedbackContext";
 import {CLUB_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
@@ -78,16 +79,13 @@ export default function ActivityClubProfile(){
     const [sessionResult,announcementResult,reviewResult,statsResult]=await Promise.all([
       supabase.from("activity_sessions").select("*").eq("club_id",id).gte("starts_at",new Date().toISOString()).order("starts_at",{ascending:true}),
       supabase.from("activity_announcements").select("*").eq("club_id",id).order("created_at",{ascending:false}),
-      supabase.from("activity_club_reviews").select("*").eq("club_id",id).eq("moderation_status","published").order("created_at",{ascending:false}),
+      loadPlaceReviews("activity_club",id),
       supabase.from("activity_club_stats").select("*").eq("club_id",id).maybeSingle()
     ]);
 
     setSessions(sessionResult.data || []);
     setAnnouncements(announcementResult.data || []);
-    // activity_club_reviews names its author column reviewer_name; PlaceReview
-    // renders `name`. Normalised here so one review card serves every place
-    // type instead of one card per table.
-    setReviews((reviewResult.data || []).map((row)=>({...row,name:row.reviewer_name})));
+    setReviews(reviewResult.reviews);
     setStats(statsResult.data || null);
 
     if(currentUser){

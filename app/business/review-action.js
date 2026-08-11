@@ -25,9 +25,13 @@ export default function ReviewAction(){
 
     if(!id){setError("No review was supplied.");setLoading(false);return;}
 
+    // explorer_reviews is the review. `reviews` is a copy written by a trigger
+    // (20260802152100:267-342) and was where the reply columns lived -- they
+    // were never in a migration, which is how a business review ended up with a
+    // column called business_response. They are on the real row now.
     const {data:review,error:reviewError}=await supabase
-      .from("reviews")
-      .select("id,business_id,business_response,challenged,challenge_reason")
+      .from("explorer_reviews")
+      .select("id,target_type,target_id,manager_response,challenged,challenge_reason")
       .eq("id",id)
       .maybeSingle();
 
@@ -37,7 +41,7 @@ export default function ReviewAction(){
       return;
     }
 
-    if(!review.business_id){
+    if(review.target_type!=="business"){
       setError("This review is not attached to a business listing.");
       setLoading(false);
       return;
@@ -46,7 +50,7 @@ export default function ReviewAction(){
     const {data:business}=await supabase
       .from("businesses")
       .select("owner_id")
-      .eq("id",review.business_id)
+      .eq("id",review.target_id)
       .maybeSingle();
 
     // The "Listing owners can respond to reviews" policy is what actually
@@ -58,7 +62,7 @@ export default function ReviewAction(){
       return;
     }
 
-    setResponse(review.business_response || "");
+    setResponse(review.manager_response || "");
     setReason(review.challenge_reason || "");
     setLoading(false);
   }
@@ -66,23 +70,19 @@ export default function ReviewAction(){
   async function saveResponse(){
     setWorking(true);
 
-    const {data,error:updateError}=await supabase
-      .from("reviews")
-      .update({business_response:response})
-      .eq("id",id)
-      .select();
+    // A function rather than an update. explorer_reviews grants update at table
+    // level, so a policy letting a manager write here would let them rewrite
+    // the rating and the text of somebody else's review -- a policy cannot say
+    // "only these three columns changed". respond_to_review checks who manages
+    // the listing and touches nothing else, and refuses out loud rather than
+    // matching no rows.
+    const {error:updateError}=await supabase
+      .rpc("respond_to_review",{p_review_id:id,p_response:response});
 
     setWorking(false);
 
     if(updateError){
       showFeedback(updateError.message,"error");
-      return;
-    }
-
-    // A write refused by RLS matches no rows and reports no error, so an empty
-    // result is a rejection, not a success.
-    if(!data || data.length===0){
-      showFeedback("Your reply was not saved. Only the listing owner can respond to this review.","error");
       return;
     }
 
@@ -98,21 +98,13 @@ export default function ReviewAction(){
 
     setWorking(true);
 
-    const {data,error:updateError}=await supabase
-      .from("reviews")
-      .update({challenged:true,challenge_reason:reason})
-      .eq("id",id)
-      .select();
+    const {error:updateError}=await supabase
+      .rpc("challenge_review",{p_review_id:id,p_reason:reason});
 
     setWorking(false);
 
     if(updateError){
       showFeedback(updateError.message,"error");
-      return;
-    }
-
-    if(!data || data.length===0){
-      showFeedback("Your challenge was not saved. Only the listing owner can challenge this review.","error");
       return;
     }
 

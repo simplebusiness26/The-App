@@ -146,37 +146,58 @@ if(adminSecurityMigrations.length===1){
 // ---------------------------------------------------------------------------
 
 const reviewActions=[
-  {file:"app/business/review-action.js",table:"businesses",column:"business_id"},
-  {file:"app/property/review-action.js",table:"properties",column:"property_id"}
+  {file:"app/business/review-action.js",table:"businesses",kind:"business"},
+  {file:"app/property/review-action.js",table:"properties",kind:"property"}
 ];
 
-for(const {file,table,column} of reviewActions){
+for(const {file,table,kind} of reviewActions){
   contains(file,[
     "auth.getUser()",
     "router.replace(\"/auth/login\")",
     `.from("${table}")`,
     "select(\"owner_id\")",
-    `review.${column}`,
+    // Rebuild Packet 10: the review is read from the one review table, and the
+    // listing it is about is identified by target_type/target_id rather than by
+    // a per-type foreign key on a copy.
+    'from("explorer_reviews")',
+    `review.target_type!=="${kind}"`,
+    "review.target_id",
     "Only the owner of this listing can respond to its reviews.",
     "useFeedback"
   ]);
 
   const content=read(file);
 
-  // Both writes must ask for the affected rows back and act on an empty result.
-  const updates=content.match(/\.update\(/g) || [];
-  check(updates.length===2,`${file}: expected 2 review updates, found ${updates.length}`);
-
-  const selectsAfterUpdate=content.match(/\.eq\("id",id\)\s*\n\s*\.select\(\)/g) || [];
+  // The requirement is unchanged -- a refused reply must be detectable -- but
+  // the mechanism is not, so the assertion follows it.
+  //
+  // These used to be direct .update() calls on the legacy `reviews` table,
+  // where RLS refuses by matching no rows and reporting no error, so the screen
+  // had to ask for the rows back and treat an empty result as a rejection.
+  // explorer_reviews grants update at table level, so that approach would have
+  // needed a policy letting a manager write the row -- and a policy cannot say
+  // "only these three columns changed", which would have let a manager rewrite
+  // the rating and the text of somebody else's review.
+  //
+  // Both writes go through SECURITY DEFINER functions now. They check who
+  // manages the listing and raise, so the refusal arrives as an error rather
+  // than as silence, and there is nothing to detect by counting rows.
   check(
-    selectsAfterUpdate.length===2,
-    `${file}: every review update must end in .select() so a refused write is detectable, found ${selectsAfterUpdate.length}`
+    !/\.update\(/.test(content),
+    `${file}: writes a review row directly -- a reply must go through respond_to_review or challenge_review, which check who manages the listing`
   );
 
-  const emptyGuards=content.match(/if\(!data \|\| data\.length===0\)\{/g) || [];
+  for(const rpc of ["respond_to_review","challenge_review"]){
+    check(
+      new RegExp(`rpc\\("${rpc}"`).test(content),
+      `${file}: does not call ${rpc}`
+    );
+  }
+
+  const errorGuards=content.match(/if\(updateError\)\{/g) || [];
   check(
-    emptyGuards.length===2,
-    `${file}: every review update must treat an empty result as a rejection, found ${emptyGuards.length}`
+    errorGuards.length===2,
+    `${file}: every reply must surface the function's refusal, found ${errorGuards.length} error guards`
   );
 }
 

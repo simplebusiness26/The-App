@@ -46,18 +46,26 @@ const PROPERTY={
   photos:["https://example.test/2.jpg"]
 };
 
+// Reviews are read from public.explorer_reviews now, by utils/reviews.js.
+// These fixtures are that table's shape: `title` rather than `review_title`,
+// `status` rather than `moderation_status`, and no reviewer name on the row --
+// the name comes from profiles and the photos from review_media, which is what
+// the three copy tables used to flatten in.
 const REVIEW={
   id:"rev-1",
+  target_type:"business",
+  target_id:"biz-1",
   rating:5,
-  name:"Alex",
-  review_title:"Worth the walk",
+  title:"Worth the walk",
   comment:"Quiet on a Tuesday.",
   created_at:"2026-07-01T12:00:00Z",
-  moderation_status:"published",
+  status:"published",
   user_id:"visitor-1",
   points_awarded:3,
   verified_qr:true
 };
+
+const REVIEWERS=[{id:"visitor-1",full_name:"Alex"}];
 
 function wrap(element){
   return React.createElement(
@@ -98,8 +106,13 @@ describe("the business place page",()=>{
       params:{id:BUSINESS.id},
       tables:{
         businesses:business ? [business] : [],
-        reviews,
-        profiles:user ? [{id:user.id,account_type:"explorer"}] : [],
+        explorer_reviews:reviews,
+        review_media:[],
+        // One profiles fixture, carrying both the reviewer and the viewer.
+        // utils/reviews.js reads the reviewer's name from here now, so a second
+        // `profiles` key silently shadowed the first and every review rendered
+        // as "Explorer".
+        profiles:REVIEWERS,
         explorer_favourites:[]
       }
     });
@@ -217,8 +230,13 @@ describe("the property place page",()=>{
       params:{id:PROPERTY.id},
       tables:{
         properties:property ? [property] : [],
-        reviews,
-        profiles:user ? [{id:user.id,account_type:"explorer"}] : [],
+        explorer_reviews:reviews,
+        review_media:[],
+        // One profiles fixture, carrying both the reviewer and the viewer.
+        // utils/reviews.js reads the reviewer's name from here now, so a second
+        // `profiles` key silently shadowed the first and every review rendered
+        // as "Explorer".
+        profiles:REVIEWERS,
         explorer_favourites:[]
       }
     });
@@ -298,9 +316,10 @@ const FUTURE_EVENT={...STARTED_EVENT,starts_at:"2099-01-01T18:00:00Z",ends_at:"2
 
 const EVENT_REVIEW={
   id:"erev-1",
+  target_type:"event",
   rating:4,
-  reviewer_name:"Kit",
-  review_title:"Busy but good",
+  status:"published",
+  title:"Busy but good",
   comment:"Go early.",
   created_at:"2026-07-02T10:00:00Z",
   user_id:"visitor-1",
@@ -323,9 +342,10 @@ const CLUB={
 
 const CLUB_REVIEW={
   id:"crev-1",
+  target_type:"activity_club",
   rating:5,
-  reviewer_name:"Robin",
-  review_title:"Friendly",
+  status:"published",
+  title:"Friendly",
   comment:"Nobody minds if you are slow.",
   created_at:"2026-07-03T10:00:00Z",
   user_id:"visitor-1",
@@ -339,8 +359,9 @@ describe("the event place page",()=>{
       params:{id:STARTED_EVENT.id},
       tables:{
         events:event ? [event] : [],
-        event_reviews:reviews,
-        profiles:user ? [{id:user.id,account_type:"explorer"}] : [],
+        explorer_reviews:reviews,
+        review_media:[],
+        profiles:[{id:"visitor-1",full_name:"Kit"}],
         explorer_favourites:[]
       }
     });
@@ -427,12 +448,13 @@ describe("the activity club place page",()=>{
       params:{id:CLUB.id},
       tables:{
         activity_clubs:club ? [club] : [],
-        activity_club_reviews:reviews,
+        explorer_reviews:reviews,
+        review_media:[],
+        profiles:[{id:"visitor-1",full_name:"Robin"}],
         activity_sessions:sessions,
         activity_announcements:announcements,
         activity_club_stats:[{club_id:CLUB.id,member_count:6,spaces_remaining:14}],
         activity_memberships:membership ? [membership] : [],
-        profiles:user ? [{id:user.id,account_type:"explorer",full_name:"Test Explorer"}] : [],
         explorer_favourites:[]
       }
     });

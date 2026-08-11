@@ -2,6 +2,7 @@ import React,{useCallback,useState} from "react";
 import {Text,Pressable,StyleSheet,Linking,View} from "react-native";
 import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {loadPlaceReviews} from "../../utils/reviews";
 import {typeLabelForBusiness} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
 import {nearestFirst} from "../../utils/geo";
@@ -44,7 +45,7 @@ export default function BusinessPage(){
 
     const [businessResult,reviewsResult]=await Promise.all([
       supabase.from("businesses").select("*").eq("id",businessId).single(),
-      supabase.from("reviews").select("*").eq("business_id",businessId).eq("moderation_status","published").order("created_at",{ascending:false})
+      loadPlaceReviews("business",businessId)
     ]);
 
     if(businessResult.error || !businessResult.data){
@@ -54,7 +55,7 @@ export default function BusinessPage(){
     }
 
     setBusiness(businessResult.data);
-    setReviews(reviewsResult.data || []);
+    setReviews(reviewsResult.reviews);
     setCanClaim(!!user);
     setIsOwner(!!user && businessResult.data.owner_id===user.id);
 

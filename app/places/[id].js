@@ -2,6 +2,7 @@ import React,{useCallback,useState} from "react";
 import {Image,Pressable,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {loadPlaceReviews,averageRating} from "../../utils/reviews";
 import PlaceLayout from "../../components/PlaceLayout";
 import EntityFollowButton from "../../components/EntityFollowButton";
 import {publicPlaceTypeLabel} from "../../utils/places";
@@ -26,6 +27,7 @@ export default function PublicPlacePage(){
   const [place,setPlace]=useState(null);
   const [area,setArea]=useState(null);
   const [moments,setMoments]=useState([]);
+  const [reviews,setReviews]=useState([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -49,7 +51,7 @@ export default function PublicPlacePage(){
 
     setPlace(data);
 
-    const [areaResult,momentResult]=await Promise.all([
+    const [areaResult,momentResult,reviewResult]=await Promise.all([
       data.area_id
         ? supabase.from("geo_areas").select("id,name,area_type,parent_area_id").eq("id",data.area_id).maybeSingle()
         : Promise.resolve({data:null}),
@@ -62,11 +64,17 @@ export default function PublicPlacePage(){
         .eq("target_id",placeId)
         .eq("status","published")
         .order("created_at",{ascending:false})
-        .limit(12)
+        .limit(12),
+      // Parks could not be reviewed at all until 20260811140000 added
+      // public_place to explorer_reviews.target_type. There has never been a
+      // public_place_reviews table -- a park is a place, not its own concept,
+      // so it reads from the same table as every other place.
+      loadPlaceReviews("public_place",placeId)
     ]);
 
     setArea(areaResult.data || null);
     setMoments(momentResult.data || []);
+    setReviews(reviewResult.reviews);
     setLoading(false);
   },[placeId]);
 
@@ -82,7 +90,15 @@ export default function PublicPlacePage(){
       description={place?.description}
       photos={place?.image_url ? [place.image_url] : []}
       photosEmptyLabel="No photo of this place yet"
-      showReviews={false}
+      reviews={reviews}
+      rating={{
+        average:averageRating(reviews),
+        count:reviews.length
+      }}
+      reviewsEmpty={{
+        title:"No reviews yet",
+        instruction:"Been here? Say what it is like."
+      }}
       info={[
         {label:"AREA",value:area ? area.name : ""},
         {label:"WHERE TO FIND IT",value:place?.location_description || ""}

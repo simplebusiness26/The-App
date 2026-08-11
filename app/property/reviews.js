@@ -11,6 +11,7 @@ Pressable
 import {router} from "expo-router";
 
 import {supabase} from "../../services/supabase";
+import {loadPlaceReviews} from "../../utils/reviews";
 
 
 export default function PropertyReviews(){
@@ -71,20 +72,10 @@ return;
 
 
 
-const {data,error}=await supabase
-
-.from("reviews")
-
-.select("*")
-
-.eq("property_id",claim.property_id)
-
-.order(
-"created_at",
-{
-ascending:false
-}
-);
+// One review table. utils/reviews.js returns the flattened shape this list
+// was written against, so the rename of business_response to
+// manager_response is the only field change here.
+const {reviews:rows,error}=await loadPlaceReviews("property",claim.property_id);
 
 
 
@@ -98,7 +89,7 @@ return;
 
 
 
-setReviews(data || []);
+setReviews(rows);
 
 
 }
@@ -155,11 +146,11 @@ style={styles.card}
 
 
 
-{review.business_response &&
+{review.manager_response &&
 
 <Text>
 Response:
-{review.business_response}
+{review.manager_response}
 </Text>
 
 }

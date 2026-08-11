@@ -2,6 +2,7 @@ import React,{useCallback,useState} from "react";
 import {View,Text,Pressable,StyleSheet,Alert,Linking} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {loadPlaceReviews} from "../../utils/reviews";
 import {formatEventPrice,formatEventRange,normalizeExternalUrl} from "../../utils/events";
 import {EVENT_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
@@ -48,7 +49,7 @@ export default function EventDetails(){
 
     const [eventResult,reviewResult]=await Promise.all([
       supabase.from("events").select("*").eq("id",eventId).single(),
-      supabase.from("event_reviews").select("*").eq("event_id",eventId).eq("moderation_status","published").order("created_at",{ascending:false})
+      loadPlaceReviews("event",eventId)
     ]);
 
     if(eventResult.error){
@@ -58,7 +59,7 @@ export default function EventDetails(){
     }
 
     setEvent(eventResult.data);
-    setReviews((reviewResult.data || []).map(normaliseReview));
+    setReviews(reviewResult.reviews);
     setLoading(false);
   }
 
@@ -206,13 +207,6 @@ export default function EventDetails(){
       }}
     />
   );
-}
-
-// event_reviews names its author column reviewer_name. PlaceReview renders
-// `name`, as the reviews table uses. Normalising here keeps one review card for
-// every place type instead of one per table.
-function normaliseReview(row){
-  return {...row,name:row.reviewer_name};
 }
 
 const styles=StyleSheet.create({

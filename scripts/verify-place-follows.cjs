@@ -388,11 +388,22 @@ check(
   "app/checkins/create.js: typing a place name no longer clears the canonical reference, so the id and the text could disagree"
 );
 
+// showReviews={false} used to be asserted here, and the reason was sound: there
+// was no public_place_reviews table, so a reviews section on a park invited
+// something the app could not record. Rebuild Packet 10 removed the reason
+// rather than the section -- explorer_reviews.target_type includes public_place
+// now, and a park is a place, not its own concept. The park page reads the same
+// one table as every other place page.
 contains("app/places/[id].js",[
-  "showReviews={false}",
+  'loadPlaceReviews("public_place"',
   "targetType=\"public_place\"",
   "targetType=\"geo_area\""
 ]);
+
+check(
+  !read("app/places/[id].js").includes("showReviews={false}"),
+  "app/places/[id].js: reviews are switched off, but parks are reviewable now"
+);
 
 contains("app/admin/public-places.js",[
   "useAdminGate",

@@ -2,6 +2,7 @@ import React,{useCallback,useState} from "react";
 import {Text,Pressable,StyleSheet,Linking,View} from "react-native";
 import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {loadPlaceReviews} from "../../utils/reviews";
 import {PROPERTY_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
 import {nearestFirst} from "../../utils/geo";
@@ -40,7 +41,7 @@ export default function PropertyDetails(){
 
     const [propertyResult,reviewsResult]=await Promise.all([
       supabase.from("properties").select("*").eq("id",propertyId).single(),
-      supabase.from("reviews").select("*").eq("property_id",propertyId).eq("moderation_status","published").order("created_at",{ascending:false})
+      loadPlaceReviews("property",propertyId)
     ]);
 
     if(propertyResult.error || !propertyResult.data){
@@ -50,7 +51,7 @@ export default function PropertyDetails(){
     }
 
     setProperty(propertyResult.data);
-    setReviews(reviewsResult.data || []);
+    setReviews(reviewsResult.reviews);
     setCanClaim(!!user);
     setIsOwner(!!user && propertyResult.data.owner_id===user.id);
 
