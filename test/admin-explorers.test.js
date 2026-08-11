@@ -94,7 +94,7 @@ describe("Admin Dashboard Stage 6 Explorer directory",()=>{
     expect(text).toContain("30 Explorers · Page 1 of 2");
     expect(queries.map((query)=>query.table)).toEqual(["profiles","manager_capabilities"]);
     expect(queries[0].select).toHaveBeenCalledWith(
-      "id,full_name,is_admin,account_type",
+      "id,full_name,is_admin",
       {count:"exact"}
     );
     expect(queries[0].range).toHaveBeenCalledWith(0,24);

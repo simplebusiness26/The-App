@@ -146,9 +146,7 @@ full_name:name.trim(),
 
 email:email.trim(),
 
-phone:phone.trim(),
-
-account_type:"explorer"
+phone:phone.trim()
 
 },{
 onConflict:"id"

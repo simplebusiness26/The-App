@@ -15,7 +15,7 @@ import {supabase} from "../../services/supabase";
 import {INK} from "../../utils/tokens";
 
 const PAGE_SIZE=25;
-const PROFILE_COLUMNS="id,full_name,is_admin,account_type";
+const PROFILE_COLUMNS="id,full_name,is_admin";
 const CAPABILITY_COLUMNS="user_id,businesses_status,properties_status,activity_clubs_status,events_status";
 const CAPABILITIES=["businesses","properties","activity_clubs","events"];
 

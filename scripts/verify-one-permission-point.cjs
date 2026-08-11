@@ -129,6 +129,65 @@ for(const file of files){
   }
 }
 
+// ---------------------------------------------------------------------------
+// 4. account_type must not be writable by a client
+// ---------------------------------------------------------------------------
+// 20260803214309:39 recorded this as open and it stayed open for a week:
+// account_type sat in the profiles INSERT and UPDATE column grants, so any
+// signed-in Explorer could set their own. The comment directly above the second
+// grant said "nobody can promote themselves" while granting the column that
+// did. Closed by 20260811130000; this is what stops it being granted back.
+
+const migrationsDir=path.join(root,"supabase","migrations");
+const migrationNames=fs.readdirSync(migrationsDir)
+  .filter((name)=>name.endsWith(".sql"))
+  .sort();
+
+for(const verb of ["insert","update"]){
+  const pattern=new RegExp(
+    `grant\\s+${verb}\\s*\\(([^)]*)\\)\\s*on\\s+public\\.profiles\\s+to\\s+authenticated`,
+    "gi"
+  );
+
+  let last=null;
+  let lastFile=null;
+  for(const name of migrationNames){
+    const body=fs.readFileSync(path.join(migrationsDir,name),"utf8")
+      .replace(/^\s*--.*$/gm,"");
+    let match;
+    while((match=pattern.exec(body))!==null){
+      last=match[1];
+      lastFile=name;
+    }
+    pattern.lastIndex=0;
+  }
+
+  check(last!==null,`supabase/migrations: no ${verb} column grant found on public.profiles`);
+
+  if(last!==null){
+    check(
+      !/\baccount_type\b/.test(last),
+      `${lastFile}: account_type is in the ${verb} grant on public.profiles -- any Explorer can promote themselves`
+    );
+    check(
+      !/\bis_admin\b/.test(last),
+      `${lastFile}: is_admin is in the ${verb} grant on public.profiles -- any Explorer can make themselves an administrator`
+    );
+  }
+}
+
+// The constraint is what makes the fork unrepresentable rather than merely
+// unused: with 'manager' impossible, no future policy or screen can start
+// branching on the value again.
+const constrained=migrationNames.some((name)=>
+  /check\s*\(\s*account_type\s*=\s*'explorer'\s*\)/i
+    .test(fs.readFileSync(path.join(migrationsDir,name),"utf8"))
+);
+check(
+  constrained,
+  "supabase/migrations: nothing pins profiles.account_type to 'explorer', so a second account type can be written again"
+);
+
 if(failures.length){
   for(const failure of failures) console.error(`  ✗ ${failure}`);
   console.error(`\nPermission check point failed (${passed} passed, ${failures.length} failed).`);

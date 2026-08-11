@@ -391,7 +391,12 @@ const adminExplorersCode=readCode("app/admin/explorers.js");
 contains("app/admin/explorers.js",[
   "useAdminGate",
   'const PAGE_SIZE=25',
-  'const PROFILE_COLUMNS="id,full_name,is_admin,account_type"',
+  // Rebuild Packet 5 dropped account_type from this select. The column is
+  // pinned to 'explorer' by 20260811130000 and is no longer writable by any
+  // client, so displaying it to an administrator showed the same word on every
+  // row. The point of the assertion -- that this screen names its columns
+  // rather than selecting * -- is unchanged.
+  'const PROFILE_COLUMNS="id,full_name,is_admin"',
   'const CAPABILITY_COLUMNS="user_id,businesses_status,properties_status,activity_clubs_status,events_status"',
   '.from("manager_capabilities")',
   '.in("user_id",ids)',
