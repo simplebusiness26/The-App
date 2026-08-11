@@ -52,11 +52,25 @@ in the repository, and **there were two** — `20260805140000_pin_search_path_on
 place_helpers.sql` had been committed on `c9356c2` and never applied or
 recorded here. Both are now live, plus one forward correction. The archive
 boundary — the whole reason 8d exists — is verified against real accounts.
+**This session:** the owner said the word on both outstanding migrations.
+Applied `20260810030000_feed_source_reasons_and_trending.sql` (8f2) and
+`20260810040000_explorer_score_engine.sql` (9a) to `yzpthslwsvesgndzdqai`, each
+dry-run in a rolled-back transaction first. The owner also chose to backfill —
+existing reviews and check-ins should score, not start everyone at zero — so a
+third migration, `20260811010000_backfill_explorer_score_events.sql`, was
+written and applied: 107 published reviews and 27 check-ins scored, 1005 points
+total, inserted directly (not replayed through the trigger, so the daily cap
+does not throttle history) with `awarded_on` set to each row's own historical
+date so the backfill cannot eat into anyone's live weekly cap. Also opened the
+map in a real browser for the first time since 8f1 shipped — see that packet's
+entry for what was and was not confirmed, and the note below on the app's own
+test suite not yet asserting on the "Happening" section being a heading, not a
+button, which is what prompted the check.
 **Branch:** `main2.0-Dev` — the only development branch. Before new development,
 the confirmed `ba97d32` baseline was synchronised to `main2.0` and `main` at the
 owner's request. All newer work remains only on `main2.0-Dev`; no feature branch
 or pull request was created.
-**Packet order from here:** 10's hub build, then 11 (design system pass). 9b and 10 are both **in progress, not done**, and the entries below say exactly which parts and why. **Two migrations are written, validated and unapplied** — 8f2's and 9a's. Both were compiled against the live schema inside rolled-back transactions; neither has been applied. The owner split the ledger's old
+**Packet order from here:** 10's hub build, then 11 (design system pass). 9b and 10 are both **in progress, not done**, and the entries below say exactly which parts and why. **Both of 8f2's and 9a's migrations are now applied and verified live** (see above) — 9a additionally backfilled. 9b's rank card still ranks on review points, not Explorer Score, because switching it is a one-line change plus a product decision (which figure the board ranks on) that has not been made — see the 9b entry. The owner split the ledger's old
 8f into **8f1** (shared activity read model + living-map integration) and
 **8f2** (feed ranking and trending), and put 8f1 first so the map gets the
 activity before the ranking does. 8b (My Map) is now unblocked: it reads
@@ -133,8 +147,8 @@ Nothing else should change.
 | 8d | Memories (two-phase lifecycle, private archive) | done, **applied and verified live** | `42b695d` | 57-check gate; 13 tests; 409 total; migration + 1 forward correction applied to `yzpthslwsvesgndzdqai`; the phase boundary proved from 4 callers with RLS on, including a friend losing access at expiry |
 | 8e | Canonical places and areas, entity/location follows, Moment visibility | done, **applied and verified live** | `0578aec` | 136-check gate; 17 tests; 12 red-then-green demonstrations; 5 migrations applied to `yzpthslwsvesgndzdqai`; 15 behaviours verified against real accounts with RLS on, including the friends-only boundary from four callers |
 | 8f1 | Shared activity read model + living-map integration | done | | 36-check gate; 21 tests; 9 red-then-green demonstrations; no migration needed — the read model already existed; live shape confirmed on `yzpthslwsvesgndzdqai` |
-| 8f2 | Feed ranking and trending (source reasons, place activity) | done in code, **migration not applied** | | 29-check gate; 23 tests; 9 red-then-green demonstrations; both functions compiled against the live schema inside a rolled-back transaction |
-| 9a | Scoring engine | done in code, **migration not applied** | | 22-check gate; 7 red-then-green demonstrations; diminishing returns measured on live data (10/5/2/1); privacy review recorded |
+| 8f2 | Feed ranking and trending (source reasons, place activity) | done, **applied and verified live** | `f3485e8` | 29-check gate; 23 tests; 9 red-then-green demonstrations; both functions compiled against the live schema inside a rolled-back transaction, then applied |
+| 9a | Scoring engine | done, **applied and verified live, backfilled** | `f3485e8` | 22-check gate; 7 red-then-green demonstrations; diminishing returns measured on live data (10/5/2/1); privacy review recorded; 107 reviews + 27 check-ins backfilled, 1005 points |
 | 9b | Leaderboard UI | **in progress** — rank card done; category and community filters and achievements are blocked, see entry | | 5 tests; 4 red-then-green demonstrations |
 | 10 | Manager Hub | **in progress** — 2 of 3 acceptance criteria verified; the hub build (capability cards, listing form, QR management) is not started | | 116-check gate; manager boundary proved live against a real non-manager |
 | 11 | Design system pass | not started | | |
@@ -163,6 +177,79 @@ Template:
 **Exact next step:** the first thing the next session should do
 **Unverified:** what is being assumed
 ```
+
+---
+
+### 2026-08-11 — Two migrations applied, backfilled, and the map opened for the first time
+
+**Did:** The owner said "apply the migrations, yes backfill points" in a
+separate conversation from this ledger's usual resume-prompt workflow, so
+this entry reconstructs it for the record. Applied
+`20260810030000_feed_source_reasons_and_trending.sql` (8f2) and
+`20260810040000_explorer_score_engine.sql` (9a) to `yzpthslwsvesgndzdqai`,
+each dry-run first inside a transaction ending in `rollback` (107 reviews /
+27 check-ins / 1005 points, matching the real run exactly). Wrote and applied
+a third migration, `20260811010000_backfill_explorer_score_events.sql`, since
+9a's own entry below says plainly that it "backfills nothing" and leaves the
+choice to the owner. It inserts directly rather than replaying the trigger (so
+today's daily cap cannot throttle a reviewer's whole history) and sets
+`awarded_on` to each row's real historical date (so the backfill cannot eat
+into anyone's live weekly cap). Checked `get_advisors` after — nothing new;
+the one flag on `get_explorer_score` is the intentional design already
+documented in 9a's own migration header.
+
+**Then, separately, the owner reported a missing "live button" on the map.**
+8f1's own entry says nobody had opened the map in a browser since it landed —
+both surfaces were `Verified: renders` only. That gap is exactly what a vague
+bug report like this falls into, so it got closed rather than guessed at:
+installed dependencies fresh (`node_modules` was empty in this container),
+built the web dev server against the real Xplorer project, and drove it with
+Playwright (`chromium-cli` is not installed here; the global `playwright`
+package was, so a small driver script did the job).
+
+**Finding: there is no regression. There never was a toggle on the surface
+anyone actually uses.** `app/map.js`'s `NativeMap` has a real "Happening"
+on/off `Pressable` — but it only renders when `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`
+is set, which it is not, on this project or (per `PROJECT-LOG.md`) any
+deployment of it so far. Every real visitor — web or native without a key —
+gets `components/PlacesList.js`, and that file has **never**, in its entire
+git history, had an on/off toggle. It has a plain `Text` heading that reads
+"Happening" and, below it, three real `Pressable` chips: Now / Tonight /
+Weekend. Screenshotted signed out: heading, chips, correct empty-state copy,
+exactly matching the source. If the owner saw a tappable "Happening" control
+and it is gone now, the most likely explanation is a Maps key being present in
+one deployment and not another, or the Replit preview drifting from this repo
+(the checklist's item 22, still unresolved — see `Current position` above) —
+not something removed from this codebase.
+
+**What could not be checked, and why.** The signed-in pass failed: the quick
+test login's Edge Function call and every plain REST read to `*.supabase.co`
+came back `net::ERR_CONNECTION_RESET` through this session's outbound proxy,
+after Chromium was pointed at it with
+`--proxy-server`/`--proxy-bypass-list=<-loopback>;localhost;127.0.0.1` to get
+the dev server itself reachable at all. That is this container's network
+policy, not the app — the same database answered `execute_sql` and
+`apply_migration` calls over the Supabase MCP connection minutes earlier in
+the same session. So the living layer's actual data path (live check-ins,
+Link-ups drawing on the map) is still only test-suite-verified, not
+browser-verified; only the static shell was.
+
+**Files:** none in the app itself.
+`supabase/migrations/20260811010000_backfill_explorer_score_events.sql` is
+the one real code artifact and is recorded in the packet table above, not
+here — it was written and applied in the conversation that ran this session,
+not through the resume-prompt workflow this file assumes.
+
+**Stopped because:** finished the two things asked. A full "everything in the
+alignment plan" pass is genuinely more than one sitting — see the packet
+status table for what is actually still open (9b's category/community/
+achievements, the Manager Hub build, Packet 11).
+
+**Unverified:** the living layer's real data on a signed-in map, blocked on
+this container's network policy rather than on anything in the app. Whether
+the owner's "live button" memory is a stale preview, a stale device, or
+something else entirely — not confirmed, because it cannot be settled from
+the code alone.
 
 The **Exact next step** line is the one that matters. Write it as if
 the person reading it has no memory of this session, because they don't.
