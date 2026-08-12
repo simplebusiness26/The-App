@@ -10,22 +10,24 @@ import {
 } from "react-native";
 import {supabase} from "../../services/supabase";
 import {router,useLocalSearchParams} from "expo-router";
+import DemoLogins from "../../components/DemoLogins";
 import {INK} from "../../utils/tokens";
 
-// THE QUICK TEST LOGIN IS GONE, AND IT SHOULD NEVER HAVE SHIPPED.
+// THE OLD QUICK TEST LOGIN IS GONE, AND IT SHOULD NEVER HAVE SHIPPED.
 //
 // This file used to hold three things that went into every published build:
 // a shared password in plain text, a setup token for an Edge Function that
 // could reset it, and the email addresses of three accounts holding real
 // content. The screen offered them as buttons to anyone who opened the app.
 // The token and the password were both confirmed present in the production web
-// bundle, so they were public to anybody who looked.
+// bundle, so they were public to anybody who looked. That password has since
+// been rotated, so the shipped builds carrying it no longer open anything.
 //
-// If a demo account is wanted again it belongs behind a build-time flag that is
-// off for release builds -- never as a control a real person can see and press.
-//
-// The three accounts still exist and their password is still the one that
-// shipped. Old builds carry it. Rotate or retire them.
+// The demo logins are back, because this is still a prototype that has to be
+// demonstrated -- but built the way that note said they should be: behind a
+// build-time flag, with no credential anywhere in this repository. See
+// components/DemoLogins.js and utils/demoLogins.js. The five taps are the
+// discretion; the missing environment variable is the security.
 
 function safeDestination(value){
   const destination=Array.isArray(value) ? value[0] : value;
@@ -81,6 +83,15 @@ export default function Login(){
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
+      <DemoLogins
+        disabled={loading}
+        onPick={(account)=>{
+          setEmail(account.email);
+          setPassword(account.password);
+          signIn(account.email,account.password);
+        }}
+      />
+
       <Text style={styles.title}>Login</Text>
 
       {destination!=="/" && (
@@ -130,8 +141,8 @@ export default function Login(){
 
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
-  container:{flexGrow:1,paddingHorizontal:30,paddingTop:56,paddingBottom:52},
-  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"bold",marginBottom:46},
+  container:{flexGrow:1,paddingHorizontal:30,paddingTop:40,paddingBottom:52},
+  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"bold",marginTop:22,marginBottom:46},
   returnNotice:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
   returnTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
   returnText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:3},

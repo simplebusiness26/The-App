@@ -29,8 +29,19 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
   const [maxAttendees,setMaxAttendees]=useState(String(initial?.max_attendees || 8));
   // Friends by default. Presence does not open itself.
   const [visibility,setVisibility]=useState(initial?.visibility || "friends");
+  // Choosing Everyone is allowed, but it is not allowed to be a surprise. The
+  // organiser has to say out loud that they understand it before the Link-up
+  // can be posted, and switching away clears the acknowledgement so it can
+  // never be carried over from an earlier choice.
+  const [understoodEveryone,setUnderstoodEveryone]=useState(false);
   const [locating,setLocating]=useState(false);
   const [error,setError]=useState("");
+
+  function chooseVisibility(next){
+    setVisibility(next);
+    setUnderstoodEveryone(false);
+    setError("");
+  }
 
   async function useLocation(){
     setError("");
@@ -50,6 +61,10 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
   async function submit(){
     if(working) return;
     setError("");
+
+    if(visibility==="everyone" && !understoodEveryone){
+      return setError("Tick the box to confirm you want every Explorer to see this Link-up, or change it to Friends.");
+    }
 
     const cleanTitle=title.trim();
     const startIso=localInputToIso(startsAt);
@@ -137,9 +152,21 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
 
       <Text style={styles.label}>Who can see this?</Text>
       <View style={styles.visibilityRow}>
-        <Pressable style={[styles.visibilityButton,visibility==="everyone"&&styles.visibilityActive]} onPress={()=>setVisibility("everyone")}><Text style={[styles.visibilityText,visibility==="everyone"&&styles.visibilityTextActive]}>Everyone</Text><Text style={styles.visibilityHint}>Any Explorer, if your profile allows it</Text></Pressable>
-        <Pressable style={[styles.visibilityButton,visibility==="friends"&&styles.visibilityActive]} onPress={()=>setVisibility("friends")}><Text style={[styles.visibilityText,visibility==="friends"&&styles.visibilityTextActive]}>Friends</Text><Text style={styles.visibilityHint}>People you both follow</Text></Pressable>
+        <Pressable style={[styles.visibilityButton,visibility==="everyone"&&styles.visibilityActive]} onPress={()=>chooseVisibility("everyone")}><Text style={[styles.visibilityText,visibility==="everyone"&&styles.visibilityTextActive]}>Everyone</Text><Text style={styles.visibilityHint}>Any Explorer, if your profile allows it</Text></Pressable>
+        <Pressable style={[styles.visibilityButton,visibility==="friends"&&styles.visibilityActive]} onPress={()=>chooseVisibility("friends")}><Text style={[styles.visibilityText,visibility==="friends"&&styles.visibilityTextActive]}>Friends</Text><Text style={styles.visibilityHint}>People you both follow</Text></Pressable>
       </View>
+
+      {visibility==="everyone" && (
+        <View style={styles.warningCard}>
+          <Text style={styles.warningTitle}>Everyone means everyone</Text>
+          <Text style={styles.warningText}>Every Explorer signed in to Xplorer can see this Link-up: the title, the description, the area, the public meeting place and the time. Not only people you know.</Text>
+          <Text style={styles.warningText}>Your exact meeting instructions stay hidden until someone joins. If your profile visibility is set narrower than everyone, that narrower setting still wins.</Text>
+          <Pressable style={styles.acknowledgeRow} onPress={()=>{setUnderstoodEveryone(!understoodEveryone);setError("");}} accessibilityRole="checkbox" accessibilityState={{checked:understoodEveryone}}>
+            <View style={[styles.acknowledgeBox,understoodEveryone&&styles.acknowledgeBoxOn]}><Text style={styles.acknowledgeTick}>{understoodEveryone?"✓":""}</Text></View>
+            <Text style={styles.acknowledgeText}>I understand this Link-up is visible to every Explorer.</Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.safetyCard}>
         <Text style={styles.safetyTitle}>Safety</Text>
@@ -161,6 +188,17 @@ const styles=StyleSheet.create({
   wrapRow:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:8},chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},chipText:{color:INK.inkSoft,fontWeight:"800",fontSize:12},chipTextActive:{color:INK.card},
   locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:12},locationText:{color:INK.card,fontWeight:"900"},removeLocation:{color:INK.inkSoft,fontWeight:"800",textAlign:"center",paddingVertical:9},
   visibilityRow:{flexDirection:"row",gap:9},visibilityButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},visibilityActive:{borderColor:INK.blue,borderWidth:2},visibilityText:{color:INK.inkSoft,fontWeight:"900"},visibilityTextActive:{color:INK.ink},visibilityHint:{color:INK.inkSoft,fontSize:10,marginTop:4},
+  // Deliberately no new colour. This is the card that has to be read, not the
+  // card that has to be noticed -- so it is the plain card with a heavy border,
+  // and the ink stays the same ink as every other body line on the screen.
+  warningCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:13,marginTop:12},
+  warningTitle:{color:INK.ink,fontWeight:"900",fontSize:14},
+  warningText:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:6},
+  acknowledgeRow:{flexDirection:"row",alignItems:"center",gap:9,marginTop:12},
+  acknowledgeBox:{width:22,height:22,borderRadius:6,borderColor:INK.ink,borderWidth:2,alignItems:"center",justifyContent:"center"},
+  acknowledgeBoxOn:{backgroundColor:INK.blue,borderColor:INK.blue},
+  acknowledgeTick:{color:INK.card,fontWeight:"900",fontSize:13},
+  acknowledgeText:{flex:1,color:INK.ink,fontSize:12,fontWeight:"800",lineHeight:17},
   safetyCard:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:INK.card,fontWeight:"900"},safetyText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:5},
   submitButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},submitText:{color:INK.card,fontSize:16,fontWeight:"900"},disabled:{opacity:.6}
 });
