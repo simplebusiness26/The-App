@@ -68,7 +68,7 @@ export default function AddEvent(){
       />
 
       <Pressable style={[styles.button,loading && styles.disabled]} onPress={createEvent} disabled={loading}>
-        {loading ? <ActivityIndicator color="white"/> : <Text style={styles.buttonText}>Create Event</Text>}
+        {loading ? <ActivityIndicator color={INK.ink}/> : <Text style={styles.buttonText}>Create Event</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -78,8 +78,8 @@ const styles=StyleSheet.create({
   container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   title:{fontSize:30,fontWeight:"bold"},
-  subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},
+  subtitle:{color:INK.ink,lineHeight:22,marginTop:7,marginBottom:20},
   button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},
   disabled:{opacity:0.55},
-  buttonText:{color:"white",fontWeight:"bold"}
+  buttonText:{color:INK.card,fontWeight:"bold"}
 });

@@ -100,10 +100,10 @@ const styles=StyleSheet.create({
   card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:17,padding:14,minHeight:102,justifyContent:"center"},
   countRow:{flexDirection:"row",alignItems:"center"},
   countButton:{flex:1,alignItems:"center",paddingVertical:4},
-  countNumber:{color:"white",fontSize:20,fontWeight:"900"},
+  countNumber:{color:INK.ink,fontSize:20,fontWeight:"900"},
   countLabel:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:3},
   divider:{height:32,width:1,backgroundColor:INK.card},
   actionRow:{alignItems:"center",marginTop:13},
   discoverButton:{minWidth:150,minHeight:42,paddingHorizontal:20,paddingVertical:11,borderRadius:12,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  discoverText:{color:"white",fontWeight:"900"}
+  discoverText:{color:INK.card,fontWeight:"900"}
 });

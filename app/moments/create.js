@@ -533,7 +533,7 @@ export default function CreateMoment(){
       )}
 
       <Pressable style={[styles.publishButton,publishing && styles.disabled]} disabled={publishing} onPress={publish}>
-        {publishing ? <ActivityIndicator color="white"/> : <Text style={styles.publishText}>Publish Moment</Text>}
+        {publishing ? <ActivityIndicator color={INK.ink}/> : <Text style={styles.publishText}>Publish Moment</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -541,37 +541,37 @@ export default function CreateMoment(){
 
 const styles=StyleSheet.create({
   keep:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,marginTop:12,backgroundColor:INK.card},
-  keepOn:{borderColor:INK.green,backgroundColor:INK.green},
-  keepTitle:{color:"white",fontWeight:"900",fontSize:14},
+  keepOn:{borderColor:INK.green,borderWidth:2},
+  keepTitle:{color:INK.ink,fontWeight:"900",fontSize:14},
   keepHint:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
   center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
   eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
-  title:{color:"white",fontSize:31,fontWeight:"900",marginTop:4},
+  title:{color:INK.ink,fontSize:31,fontWeight:"900",marginTop:4},
   subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,marginBottom:17},
   errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:13,padding:13,marginBottom:14},
-  errorText:{color:INK.ink,lineHeight:19},
+  errorText:{color:INK.card,lineHeight:19},
   mediaCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:12},
   mediaEmpty:{height:220,borderRadius:13,backgroundColor:INK.card,alignItems:"center",justifyContent:"center",padding:22},
   mediaEmptyIcon:{fontSize:36},
-  mediaEmptyTitle:{color:"white",fontSize:19,fontWeight:"900",marginTop:9},
+  mediaEmptyTitle:{color:INK.ink,fontSize:19,fontWeight:"900",marginTop:9},
   mediaEmptyText:{color:INK.inkSoft,textAlign:"center",marginTop:6,lineHeight:19},
   removeMediaButton:{alignSelf:"center",paddingHorizontal:12,paddingVertical:9,marginTop:5},
   removeMediaText:{color:INK.ink,fontSize:12,fontWeight:"900"},
   mediaButtons:{flexDirection:"row",gap:10,marginTop:11},
   mediaButton:{flex:1,backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:11,paddingVertical:12,alignItems:"center"},
-  mediaButtonText:{color:INK.ink,fontWeight:"900"},
+  mediaButtonText:{color:INK.card,fontWeight:"900"},
   audienceRow:{flexDirection:"row",gap:9},
   audience:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},
-  audienceActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  audienceTitle:{color:"white",fontWeight:"900"},
+  audienceActive:{borderColor:INK.blue,borderWidth:2},
+  audienceTitle:{color:INK.ink,fontWeight:"900"},
   audienceHint:{color:INK.inkSoft,fontSize:10,lineHeight:15,marginTop:3},
   audienceNote:{color:INK.inkSoft,fontSize:12,lineHeight:18},
   locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center"},
-  locationText:{color:INK.ink,fontWeight:"900"},
+  locationText:{color:INK.card,fontWeight:"900"},
   locationHint:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},
-  label:{color:"white",fontSize:15,fontWeight:"900",marginTop:20,marginBottom:8},
+  label:{color:INK.ink,fontSize:15,fontWeight:"900",marginTop:20,marginBottom:8},
   optional:{color:INK.inkSoft,fontWeight:"700"},
   captionInput:{minHeight:120,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,color:INK.ink,fontSize:15,lineHeight:22,padding:14},
   counter:{color:INK.inkSoft,fontSize:11,textAlign:"right",marginTop:5},
@@ -579,17 +579,17 @@ const styles=StyleSheet.create({
   typeButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:8},
   typeButtonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
   typeText:{color:INK.inkSoft,fontSize:12,fontWeight:"900"},
-  typeTextActive:{color:"white"},
+  typeTextActive:{color:INK.card},
   placesCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:11,marginTop:11},
   placeSearch:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:11,color:INK.ink,paddingHorizontal:12,paddingVertical:11,marginBottom:8},
   placeRow:{flexDirection:"row",alignItems:"center",borderRadius:11,padding:8,marginTop:5},
   placeRowSelected:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1},
   placeImage:{width:46,height:46,borderRadius:9,backgroundColor:INK.card},
   placeFallback:{width:46,height:46,borderRadius:9,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
-  placeName:{color:"white",fontWeight:"800",flex:1,marginLeft:10},
-  placeCheck:{color:INK.inkSoft,fontSize:18,fontWeight:"900",width:24,textAlign:"center"},
+  placeName:{color:INK.card,fontWeight:"800",flex:1,marginLeft:10},
+  placeCheck:{color:INK.card,fontSize:18,fontWeight:"900",width:24,textAlign:"center"},
   noPlaces:{color:INK.inkSoft,textAlign:"center",paddingVertical:18},
   publishButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},
-  publishText:{color:"white",fontSize:16,fontWeight:"900"},
+  publishText:{color:INK.card,fontSize:16,fontWeight:"900"},
   disabled:{opacity:0.65}
 });

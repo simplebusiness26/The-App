@@ -80,11 +80,11 @@ const webStyles={
 const styles=StyleSheet.create({
   image:{width:"100%",height:300,borderRadius:13,backgroundColor:INK.card},
   videoFallback:{height:230,borderRadius:13,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  playIcon:{color:"white",fontSize:40},
-  videoTitle:{color:"white",fontSize:18,fontWeight:"900",marginTop:9},
+  playIcon:{color:INK.ink,fontSize:40},
+  videoTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:9},
   videoMeta:{color:INK.inkSoft,marginTop:4},
   failed:{height:220,borderRadius:13,backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,alignItems:"center",justifyContent:"center",padding:22},
-  failedIcon:{width:34,height:34,borderRadius:17,backgroundColor:INK.red,color:"white",fontSize:22,fontWeight:"900",textAlign:"center",lineHeight:34},
-  failedTitle:{color:"white",fontSize:18,fontWeight:"900",marginTop:10},
-  failedText:{color:INK.inkSoft,textAlign:"center",marginTop:5}
+  failedIcon:{width:34,height:34,borderRadius:17,backgroundColor:INK.red,color:INK.ink,fontSize:22,fontWeight:"900",textAlign:"center",lineHeight:34},
+  failedTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:10},
+  failedText:{color:INK.card,textAlign:"center",marginTop:5}
 });

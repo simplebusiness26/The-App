@@ -277,7 +277,7 @@ const styles=StyleSheet.create({
   errorTitle:{color:INK.ink,fontSize:21,fontWeight:"800"},
   errorText:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:8},
   primaryButton:{minHeight:48,alignItems:"center",justifyContent:"center",borderRadius:14,backgroundColor:INK.ink,marginTop:18,paddingHorizontal:18,paddingVertical:12},
-  primaryButtonText:{color:INK.paper,fontSize:16,fontWeight:"800"},
+  primaryButtonText:{color:INK.ink,fontSize:16,fontWeight:"800"},
   metricGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},
   metricCard:{width:"48%",minHeight:112,justifyContent:"space-between",borderColor:INK.hair,borderRadius:18,borderWidth:1,backgroundColor:INK.card,padding:17},
   attentionCard:{backgroundColor:INK.water},

@@ -229,7 +229,7 @@ const styles=StyleSheet.create({
   sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginBottom:11,letterSpacing:-0.3},
   emptyCard:{...card,padding:18,alignItems:"center"},
   emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:5},
-  muted:{color:INK.inkSoft,textAlign:"center",lineHeight:20},
+  muted:{color:INK.ink,textAlign:"center",lineHeight:20},
   momentGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},
   moment:{...card,width:150,padding:8},
   momentImage:{width:"100%",height:110,borderRadius:8,backgroundColor:INK.hair},

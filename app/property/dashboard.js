@@ -266,7 +266,7 @@ onPress={()=>router.push("/property/add")}
 
 >
 
-<Text style={styles.buttonText}>
+<Text style={styles.addButtonText}>
 ➕ Add Property Listing
 </Text>
 
@@ -314,7 +314,7 @@ marginBottom:15
 },
 
 button:{
-backgroundColor:"#222",
+backgroundColor:INK.card,
 padding:15,
 borderRadius:10,
 marginTop:15
@@ -327,8 +327,13 @@ borderRadius:10,
 marginTop:25
 },
 
+addButtonText:{
+color:INK.card,
+textAlign:"center",
+fontWeight:"bold"
+},
 buttonText:{
-color:"white",
+color:INK.ink,
 textAlign:"center",
 fontWeight:"bold"
 }

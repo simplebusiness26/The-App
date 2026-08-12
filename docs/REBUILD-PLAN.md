@@ -66,6 +66,7 @@ and does not pull on its own.
 | 21 A+B — one Living Map brain, real map on the web | shipped · `73df265` |
 | 21 C — MapLibre native, old map on a switch | shipped · `587a48e` |
 | 21 D — cross-platform parity, proven | shipped · `c2f92df` |
+| 20 second half — 399 colours, 194 unreadable pairs fixed | shipped |
 
 ### Not started
 
@@ -1061,16 +1062,57 @@ the full shape and cost.
 
 ### Packet 20 — The riso pass
 
-Depends on Packet 21: there is no sense taking the map onto the token palette
-until the map is the one we are keeping.
+**Finished, and the second half was the half that mattered.**
 
-83 of the 112 files in `app/` and `components/` do not import `utils/tokens.js`
-and carry hand-written hex instead. Take them onto the tokens in
-`docs/design-system.md`. Purely visual, no behaviour change — which is why it is
-last and why it is the largest.
+The first run took 1108 colours onto the tokens and left the five map surfaces
+alone, because Packet 21 was about to rebuild them. Packet 21 landed, so the
+skip list is gone and `components/PlacesList.js` — the list half of the Living
+Map — went through with everything else: 399 more colours, mostly the short hex
+(`#ccc`) and the colour words (`white`) the first version of the tool could not
+see.
 
-**Done means:** no colour outside the token list survives a grep for hex in
-`app/` and `components/`.
+**What the second run actually found.** Those colour words were not a tidiness
+problem. The first pass mapped `color:"white"` to `INK.ink` — right for a
+paragraph on a pale screen, wrong for the label on a blue button, which is what
+nearly all of them were. Ink on `ink-blue` is 2.77:1 against the 4.5:1 a person
+needs. **Every filled button in the app shipped with a label you could barely
+read**, plus a handful that were literally invisible: `INK.blue` text on an
+`INK.blue` pill in the feed, `INK.green` on `INK.green` in Settings and on the
+profile.
+
+186 pairs were repaired by the tool and 8 by hand. The tool learned four things
+it had been getting wrong, each of which had produced a wrong answer somewhere:
+
+- **Which way up the file is.** Fourteen files were always light-themed. Running
+  the dark rules over them turned the *selected* filter chip into the same
+  colour as the unselected ones beside it.
+- **What is behind a piece of text.** `scripts/style-pairs.cjs` walks the JSX
+  and finds the innermost element that paints a ground — a style array is a
+  stack, `cond && styles.x` is a state of it, and `cond ? a : b` is one decision
+  with two outcomes, not two grounds.
+- **How to measure contrast.** It was using a flat brightness average where WCAG
+  wants gamma-corrected channels, and the difference was enough to leave every
+  green badge alone.
+- **When to shut up.** A rewrite that does not land is not a repair, and one
+  label on two grounds with no colour readable on both is a design decision, not
+  something to guess at. Both are reported now instead of counted.
+
+**The state variants changed shape.** A row that filled itself blue to say
+"this one is yours" — the leaderboard, the Link-up board, the profile score
+pills — now marks itself with a 2px coloured border and keeps the light fill.
+Filling meant every label inside had to change with it, and the ones that were
+missed became unreadable.
+
+**Done means, and this is now checked rather than asserted:**
+`node scripts/verify-contrast.cjs` reads the real hex out of `utils/tokens.js`,
+works out the ground behind all 1041 text/background pairs in `app/` and
+`components/`, and fails under 4.5:1 (3:1 for large text). It runs in CI on
+every push. `node scripts/riso-pass.cjs --check` reports 0 colours and 0 pairs
+left to repair, and running it again changes nothing.
+
+`docs/design-system.md`'s accessibility floor said "ink on all three inks passes
+contrast". It does not, and that sentence is what licensed the damage. It has
+been replaced with the measured table.
 
 ---
 

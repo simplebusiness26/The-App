@@ -231,7 +231,7 @@ const styles=StyleSheet.create({
   challengeTool:{borderColor:INK.red},
   toolOpen:{backgroundColor:INK.paper},
   toolText:{fontWeight:"800",fontSize:12},
-  replyToolText:{color:INK.green},
+  replyToolText:{color:INK.ink},
   challengeToolText:{color:INK.red},
 
   editor:{marginTop:10,borderWidth:2,borderRadius:12,padding:11,backgroundColor:INK.card},

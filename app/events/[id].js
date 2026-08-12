@@ -176,7 +176,7 @@ export default function EventDetails(){
               accessibilityLabel={eventStarted ? "Leave an event review" : "Reviews unlock when the event starts"}
               onPress={openReview}
             >
-              <Text style={eventStarted ? styles.primaryText : styles.lockedText}>
+              <Text style={[styles.primaryText,!eventStarted && styles.lockedText]}>
                 {eventStarted ? "⭐ Leave an Event Review" : "🔒 Reviews unlock when the event starts"}
               </Text>
             </Pressable>
@@ -229,7 +229,7 @@ const styles=StyleSheet.create({
   secondaryInline:{flex:1,minHeight:48,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:10,backgroundColor:INK.card},
   secondaryText:{color:INK.ink,fontWeight:"800"},
   locked:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.hair},
-  lockedText:{color:INK.inkSoft,fontWeight:"800"},
+  lockedText:{color:INK.ink,fontWeight:"800"},
   managerBox:{marginTop:24,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:16,backgroundColor:INK.card},
   managerTitle:{fontSize:18,fontWeight:"800",color:INK.ink},
   managerText:{color:INK.inkSoft,lineHeight:20,marginTop:5},

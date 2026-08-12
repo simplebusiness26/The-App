@@ -169,7 +169,7 @@ export default function EditBusiness(){
       <TextInput style={styles.input} value={openingHours} onChangeText={setOpeningHours} placeholder="Opening hours"/>
 
       <Pressable style={styles.button} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color="white"/> : <Text style={styles.buttonText}>Save Changes</Text>}
+        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
       </Pressable>
       <Pressable style={styles.deleteButton} onPress={deleteBusiness}>
         <Text style={styles.buttonText}>Delete Business</Text>
@@ -179,5 +179,5 @@ export default function EditBusiness(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},loading:{flex:1,justifyContent:"center",alignItems:"center"},title:{fontSize:30,fontWeight:"bold",marginBottom:20},input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},multiline:{minHeight:100,textAlignVertical:"top"},button:{backgroundColor:"#222",padding:15,borderRadius:10,marginTop:10},deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:15},buttonText:{color:"white",textAlign:"center",fontWeight:"bold"}
+  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},loading:{flex:1,justifyContent:"center",alignItems:"center"},title:{fontSize:30,fontWeight:"bold",marginBottom:20},input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},multiline:{minHeight:100,textAlignVertical:"top"},button:{backgroundColor:INK.ink,padding:15,borderRadius:10,marginTop:10},deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:15},buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}
 });

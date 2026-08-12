@@ -29,5 +29,5 @@ const styles=StyleSheet.create({
   row:{flexDirection:"row",alignItems:"center",gap:11,backgroundColor:INK.ink,borderColor:INK.inkSoft,borderWidth:1,borderRadius:14,padding:12,marginBottom:9},
   body:{flex:1},
   title:{color:INK.card,fontWeight:"900",fontSize:15},
-  meta:{color:INK.inkSoft,fontSize:12,marginTop:3}
+  meta:{color:INK.card,fontSize:12,marginTop:3}
 });

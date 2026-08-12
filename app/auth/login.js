@@ -129,15 +129,15 @@ export default function Login(){
 
         <View style={styles.quickRow}>
           <Pressable style={[styles.quickButton,loading && styles.disabledButton]} onPress={()=>quickLogin("m")} disabled={loading}>
-            {loading && quickAccount==="Manager" ? <ActivityIndicator color="white"/> : <><Text style={styles.quickCode}>M</Text><Text style={styles.quickLabel}>Manager</Text></>}
+            {loading && quickAccount==="Manager" ? <ActivityIndicator color={INK.ink}/> : <><Text style={styles.quickCode}>M</Text><Text style={styles.quickLabel}>Manager</Text></>}
           </Pressable>
 
           <Pressable style={[styles.quickButton,loading && styles.disabledButton]} onPress={()=>quickLogin("e")} disabled={loading}>
-            {loading && quickAccount==="Explorer" ? <ActivityIndicator color="white"/> : <><Text style={styles.quickCode}>E</Text><Text style={styles.quickLabel}>Explorer</Text></>}
+            {loading && quickAccount==="Explorer" ? <ActivityIndicator color={INK.ink}/> : <><Text style={styles.quickCode}>E</Text><Text style={styles.quickLabel}>Explorer</Text></>}
           </Pressable>
 
           <Pressable style={[styles.quickButton,loading && styles.disabledButton]} onPress={()=>quickLogin("e2")} disabled={loading}>
-            {loading && quickAccount==="Explorer 2" ? <ActivityIndicator color="white"/> : <><Text style={styles.quickCode}>E2</Text><Text style={styles.quickLabel}>Explorer 2</Text></>}
+            {loading && quickAccount==="Explorer 2" ? <ActivityIndicator color={INK.ink}/> : <><Text style={styles.quickCode}>E2</Text><Text style={styles.quickLabel}>Explorer 2</Text></>}
           </Pressable>
         </View>
 
@@ -172,7 +172,7 @@ export default function Login(){
       {error!=="" && <Text style={styles.error}>{error}</Text>}
 
       <Pressable style={[styles.button,loading && styles.disabledButton]} onPress={login} disabled={loading}>
-        {loading ? <ActivityIndicator color="white"/> : <Text style={styles.buttonText}>Login</Text>}
+        {loading ? <ActivityIndicator color={INK.ink}/> : <Text style={styles.buttonText}>Login</Text>}
       </Pressable>
 
       <Pressable style={styles.signup} onPress={()=>router.push("/auth/signup")}>
@@ -185,25 +185,25 @@ export default function Login(){
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   container:{flexGrow:1,paddingHorizontal:30,paddingTop:56,paddingBottom:52},
-  title:{color:"white",fontSize:46,lineHeight:54,fontWeight:"bold",marginBottom:46},
+  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"bold",marginBottom:46},
   returnNotice:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
   returnTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
-  returnText:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:3},
+  returnText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:3},
   quickPanel:{backgroundColor:INK.blue,borderWidth:1,borderColor:INK.blue,borderRadius:18,padding:18,marginBottom:44},
-  quickTitle:{fontSize:25,lineHeight:32,fontWeight:"bold",color:INK.ink},
-  quickHelp:{color:INK.ink,fontSize:17,lineHeight:25,marginTop:7},
+  quickTitle:{fontSize:25,lineHeight:32,fontWeight:"bold",color:INK.card},
+  quickHelp:{color:INK.card,fontSize:17,lineHeight:25,marginTop:7},
   quickRow:{flexDirection:"row",gap:14,marginTop:20},
   quickButton:{flex:1,minHeight:116,backgroundColor:INK.blue,borderRadius:16,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
-  quickCode:{color:"white",fontSize:34,fontWeight:"bold"},
-  quickLabel:{color:"white",fontSize:16,marginTop:8,textAlign:"center"},
-  aliasHelp:{color:INK.ink,fontSize:15,lineHeight:23,marginTop:18},
+  quickCode:{color:INK.card,fontSize:34,fontWeight:"bold"},
+  quickLabel:{color:INK.card,fontSize:16,marginTop:8,textAlign:"center"},
+  aliasHelp:{color:INK.card,fontSize:15,lineHeight:23,marginTop:18},
   input:{color:INK.ink,backgroundColor:INK.paper,borderWidth:1,borderColor:INK.ink,borderRadius:16,paddingHorizontal:22,paddingVertical:20,minHeight:78,fontSize:19,marginBottom:28},
   forgotPassword:{alignSelf:"flex-end",paddingVertical:2,marginTop:-4,marginBottom:34},
   forgotPasswordText:{color:INK.blue,fontSize:19,fontWeight:"bold"},
   button:{backgroundColor:INK.paper,minHeight:78,paddingHorizontal:20,paddingVertical:20,borderRadius:16,alignItems:"center",justifyContent:"center"},
   disabledButton:{opacity:0.55},
-  buttonText:{color:"white",textAlign:"center",fontWeight:"bold",fontSize:20},
-  error:{color:INK.pink,fontSize:16,marginBottom:20,lineHeight:23},
+  buttonText:{color:INK.ink,textAlign:"center",fontWeight:"bold",fontSize:20},
+  error:{color:INK.ink,fontSize:16,marginBottom:20,lineHeight:23},
   signup:{marginTop:28,alignItems:"center",padding:8},
-  signupText:{color:"white",fontSize:17}
+  signupText:{color:INK.ink,fontSize:17}
 });

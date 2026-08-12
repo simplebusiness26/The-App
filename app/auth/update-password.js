@@ -303,7 +303,7 @@ export default function UpdatePassword(){
         disabled={loading}
       >
         {loading
-          ? <ActivityIndicator color="white"/>
+          ? <ActivityIndicator color={INK.ink}/>
           : <Text style={styles.buttonText}>Update and verify password</Text>
         }
       </Pressable>
@@ -315,12 +315,12 @@ const styles=StyleSheet.create({
   container:{padding:30},
   center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},
   title:{fontSize:32,fontWeight:"bold",marginBottom:12},
-  message:{fontSize:16,lineHeight:23,color:"#666",marginBottom:22},
-  checkingText:{marginTop:14,color:"#666"},
-  input:{borderWidth:1,borderColor:"#aaa",borderRadius:10,padding:15,marginBottom:15},
+  message:{fontSize:16,lineHeight:23,color:INK.ink,marginBottom:22},
+  checkingText:{marginTop:14,color:INK.ink},
+  input:{borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:15,marginBottom:15},
   button:{backgroundColor:INK.blue,padding:16,borderRadius:10,alignItems:"center"},
   disabledButton:{opacity:0.55},
-  buttonText:{color:"white",fontWeight:"bold"},
+  buttonText:{color:INK.card,fontWeight:"bold"},
   error:{color:INK.red,marginBottom:18,lineHeight:21},
   successCard:{borderWidth:1,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
   successIcon:{fontSize:38,fontWeight:"bold",color:INK.green,marginBottom:8}

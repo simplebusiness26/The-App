@@ -12,6 +12,7 @@ import {router} from "expo-router";
 
 import {supabase} from "../../services/supabase";
 import {loadPlaceReviews} from "../../utils/reviews";
+import {INK} from "../../utils/tokens";
 
 
 export default function PropertyReviews(){
@@ -220,14 +221,14 @@ marginTop:15
 },
 
 button:{
-backgroundColor:"#222",
+backgroundColor:INK.card,
 padding:15,
 marginTop:15,
 borderRadius:10
 },
 
 buttonText:{
-color:"white",
+color:INK.ink,
 textAlign:"center"
 }
 

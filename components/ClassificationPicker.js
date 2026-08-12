@@ -78,10 +78,10 @@ export default function ClassificationPicker({
 const styles=StyleSheet.create({
   wrap:{marginBottom:15},
   label:{fontWeight:"900",fontSize:14,marginBottom:7,marginTop:6},
-  help:{color:"#777",fontSize:12,lineHeight:17,marginBottom:8},
+  help:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginBottom:8},
   chips:{flexDirection:"row",flexWrap:"wrap",gap:8},
   chip:{borderWidth:1,borderColor:INK.ink,borderRadius:18,paddingHorizontal:13,paddingVertical:8},
   chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  chipText:{fontSize:13,fontWeight:"700",color:"#333"},
-  chipTextActive:{color:"white"}
+  chipText:{fontSize:13,fontWeight:"700",color:INK.card},
+  chipTextActive:{color:INK.card}
 });

@@ -57,7 +57,7 @@ export default function Home(){
   if(loading){
     return(
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="white"/>
+        <ActivityIndicator size="large" color={INK.ink}/>
       </View>
     );
   }
@@ -126,7 +126,7 @@ export default function Home(){
             onPress={openDrawer}
           >
             <Text style={styles.buttonIcon}>☰</Text>
-            <Text style={styles.primaryButtonText}>Quick access</Text>
+            <Text style={styles.menuButtonText}>Quick access</Text>
           </Pressable>
         ) : (
           <View style={styles.authRow}>
@@ -188,7 +188,7 @@ const styles=StyleSheet.create({
     marginBottom:36
   },
   title:{
-    color:"white",
+    color:INK.ink,
     fontSize:44,
     lineHeight:52,
     fontWeight:"800",
@@ -231,7 +231,7 @@ const styles=StyleSheet.create({
     justifyContent:"center"
   },
   notificationBadgeText:{
-    color:"white",
+    color:INK.ink,
     fontSize:14,
     fontWeight:"bold"
   },
@@ -265,14 +265,20 @@ const styles=StyleSheet.create({
     fontSize:20,
     marginRight:10
   },
+  menuButtonText:{
+    color:INK.ink,
+    fontSize:18,
+    fontWeight:"700",
+    textAlign:"center"
+  },
   primaryButtonText:{
-    color:"white",
+    color:INK.card,
     fontSize:18,
     fontWeight:"700",
     textAlign:"center"
   },
   secondaryButtonText:{
-    color:"white",
+    color:INK.ink,
     fontSize:17,
     fontWeight:"700"
   },
@@ -302,7 +308,7 @@ const styles=StyleSheet.create({
     marginLeft:7
   },
   authButtonText:{
-    color:"white",
+    color:INK.ink,
     fontSize:16,
     fontWeight:"700",
     textAlign:"center"

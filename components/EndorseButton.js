@@ -116,5 +116,5 @@ const styles=StyleSheet.create({
   icon:{fontSize:15,lineHeight:18},
   endorsedIcon:{},
   text:{color:INK.ink,fontSize:12,fontWeight:"900"},
-  endorsedText:{color:INK.green}
+  endorsedText:{color:INK.card}
 });

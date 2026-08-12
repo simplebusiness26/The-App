@@ -89,6 +89,9 @@ jobs:
       - name: Verify friends-only means both people
         run: npm run verify:friends
 
+      - name: Verify every screen can actually be read
+        run: npm run verify:contrast
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

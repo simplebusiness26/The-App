@@ -166,7 +166,7 @@ export default function EditProfile(){
       </Pressable>
 
       <Pressable style={[styles.saveButton,saving && styles.disabled]} onPress={saveProfile} disabled={saving}>
-        {saving ? <View style={styles.savingRow}><ActivityIndicator color="white"/><Text style={styles.saveText}>Saving profile...</Text></View> : <Text style={styles.saveText}>Save Profile</Text>}
+        {saving ? <View style={styles.savingRow}><ActivityIndicator color={INK.ink}/><Text style={styles.saveText}>Saving profile...</Text></View> : <Text style={styles.saveText}>Save Profile</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -176,29 +176,29 @@ const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:22,paddingBottom:60},
   center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  title:{color:"white",fontSize:31,fontWeight:"900"},
+  title:{color:INK.ink,fontSize:31,fontWeight:"900"},
   subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6,marginBottom:18},
   errorBox:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:13,marginBottom:15},
-  errorText:{color:INK.ink,fontWeight:"700",lineHeight:20},
+  errorText:{color:INK.card,fontWeight:"700",lineHeight:20},
   photoSection:{alignItems:"center",marginBottom:22},
   image:{width:120,height:120,borderRadius:60,backgroundColor:INK.card},
   imageFallback:{width:120,height:120,borderRadius:60,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  imageLetter:{color:"white",fontSize:44,fontWeight:"900"},
+  imageLetter:{color:INK.card,fontSize:44,fontWeight:"900"},
   photoButton:{borderColor:INK.blue,borderWidth:1,borderRadius:11,paddingHorizontal:18,paddingVertical:10,marginTop:12},
   photoButtonText:{color:INK.ink,fontWeight:"900"},
-  label:{color:"white",fontWeight:"900",fontSize:14,marginBottom:7},
+  label:{color:INK.ink,fontWeight:"900",fontSize:14,marginBottom:7},
   input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:15},
   textarea:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,minHeight:105,textAlignVertical:"top"},
   characterCount:{color:INK.inkSoft,fontSize:11,textAlign:"right",marginTop:5},
-  sectionTitle:{color:"white",fontSize:21,fontWeight:"900",marginTop:25},
+  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"900",marginTop:25},
   helpText:{color:INK.inkSoft,lineHeight:20,marginTop:5,marginBottom:12},
   settingRow:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
   settingTextWrap:{flex:1,paddingRight:12},
-  settingTitle:{color:"white",fontWeight:"900",fontSize:16},
+  settingTitle:{color:INK.ink,fontWeight:"900",fontSize:16},
   settingText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
   chevron:{color:INK.inkSoft,fontSize:26,fontWeight:"900"},
   saveButton:{backgroundColor:INK.blue,padding:17,borderRadius:13,alignItems:"center",marginTop:24},
-  saveText:{color:"white",fontWeight:"900",fontSize:16,marginLeft:9},
+  saveText:{color:INK.card,fontWeight:"900",fontSize:16,marginLeft:9},
   savingRow:{flexDirection:"row",alignItems:"center"},
   disabled:{opacity:0.55}
 });

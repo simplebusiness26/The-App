@@ -8,6 +8,7 @@ import {classificationLabel} from "../utils/taxonomy";
 import {markerForActivity} from "../utils/markers";
 import {ACTIVITY_STATE_SENTENCE,TIME_WINDOWS} from "../utils/liveActivity";
 import {useLivingMap} from "../hooks/useLivingMap";
+import {INK} from "../utils/tokens";
 
 // The list view of the Living Map.
 //
@@ -174,5 +175,5 @@ export default function PlacesList({header}){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},content:{padding:20,paddingBottom:50},search:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",borderRadius:10,padding:15,marginTop:20},categories:{marginTop:15,maxHeight:48},category:{borderWidth:1,borderColor:"#bbb",borderRadius:20,paddingHorizontal:13,paddingVertical:10,marginRight:8,backgroundColor:"white"},selectedCategory:{backgroundColor:"#222",borderColor:"#222"},categoryText:{fontWeight:"600"},selectedCategoryText:{color:"white",fontWeight:"bold"},section:{fontSize:22,fontWeight:"bold",marginTop:25},card:{backgroundColor:"white",borderWidth:1,borderColor:"#ddd",borderRadius:10,padding:15,marginTop:10},cardRow:{flexDirection:"row",alignItems:"center",gap:12},cardText:{flex:1},name:{fontSize:18,fontWeight:"bold"},address:{color:"#666",marginTop:5}
+  container:{flex:1,backgroundColor:INK.paper},content:{padding:20,paddingBottom:50},search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:10,padding:15,marginTop:20},categories:{marginTop:15,maxHeight:48},category:{borderWidth:1,borderColor:INK.hair,borderRadius:20,paddingHorizontal:13,paddingVertical:10,marginRight:8,backgroundColor:INK.card},selectedCategory:{backgroundColor:INK.ink,borderColor:INK.ink},categoryText:{color:INK.ink,fontWeight:"600"},selectedCategoryText:{color:INK.card,fontWeight:"bold"},section:{fontSize:22,fontWeight:"bold",marginTop:25},card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:10,padding:15,marginTop:10},cardRow:{flexDirection:"row",alignItems:"center",gap:12},cardText:{flex:1},name:{fontSize:18,fontWeight:"bold"},address:{color:INK.inkSoft,marginTop:5}
 });

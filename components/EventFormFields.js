@@ -111,20 +111,20 @@ export default function EventFormFields({form,setForm,statusOptions}){
 
 const styles=StyleSheet.create({
   label:{fontSize:17,fontWeight:"bold",marginBottom:8,marginTop:4},
-  fieldLabel:{fontWeight:"600",color:"#444",marginBottom:7},
-  help:{color:"#666",lineHeight:20,marginTop:-3,marginBottom:12},
-  input:{backgroundColor:"white",borderWidth:1,borderColor:INK.ink,borderRadius:11,padding:14,marginBottom:14},
+  fieldLabel:{fontWeight:"600",color:INK.ink,marginBottom:7},
+  help:{color:INK.inkSoft,lineHeight:20,marginTop:-3,marginBottom:12},
+  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:11,padding:14,marginBottom:14},
   multiline:{minHeight:115,textAlignVertical:"top"},
   row:{flexDirection:"row",gap:10},
   half:{flex:1},
   chipRow:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:14,marginTop:-5},
-  chip:{backgroundColor:"white",borderWidth:1,borderColor:INK.ink,paddingHorizontal:11,paddingVertical:7,borderRadius:18},
+  chip:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,paddingHorizontal:11,paddingVertical:7,borderRadius:18},
   selectedChip:{backgroundColor:INK.card,borderColor:INK.blue},
   chipText:{fontSize:12,fontWeight:"600",color:INK.ink},
   selectedChipText:{color:INK.blue},
   statusRow:{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:22},
-  statusButton:{paddingHorizontal:15,paddingVertical:10,borderRadius:20,borderWidth:1,borderColor:"#aaa",backgroundColor:"white"},
-  selectedStatus:{backgroundColor:INK.blue,borderColor:INK.blue},
+  statusButton:{paddingHorizontal:15,paddingVertical:10,borderRadius:20,borderWidth:1,borderColor:INK.hair,backgroundColor:INK.card},
+  selectedStatus:{borderColor:INK.blue,borderWidth:2},
   statusText:{textTransform:"capitalize",fontWeight:"600"},
-  selectedStatusText:{color:"white"}
+  selectedStatusText:{color:INK.ink}
 });

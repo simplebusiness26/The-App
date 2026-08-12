@@ -395,7 +395,7 @@ const styles=StyleSheet.create({
   option:{...card,padding:13,marginBottom:8},
   optionActive:{backgroundColor:INK.hair},
   optionTitle:{color:INK.ink,fontWeight:"800"},
-  optionHint:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:3},
+  optionHint:{color:INK.ink,fontSize:12,lineHeight:17,marginTop:3},
   switchRow:{...card,padding:13,marginTop:16,flexDirection:"row",alignItems:"center",gap:12},
   switchText:{flex:1},
   destructive:{minHeight:50,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,marginTop:22},

@@ -89,7 +89,7 @@ export default function FavouriteButton({targetType,targetId,targetName,targetIm
       onPress={toggleFavourite}
       disabled={saving}
     >
-      {saving ? <ActivityIndicator color="white"/> : <Text style={[styles.text,favourite && styles.activeText]}>{favourite ? "♥ Saved to favourites" : "♡ Add to favourites"}</Text>}
+      {saving ? <ActivityIndicator color={INK.ink}/> : <Text style={[styles.text,favourite && styles.activeText]}>{favourite ? "♥ Saved to favourites" : "♡ Add to favourites"}</Text>}
     </Pressable>
   );
 }
@@ -99,6 +99,6 @@ const styles=StyleSheet.create({
   compact:{marginTop:0,paddingHorizontal:12,paddingVertical:9},
   active:{backgroundColor:INK.blue,borderColor:INK.blue},
   text:{color:INK.ink,fontWeight:"900",textAlign:"center"},
-  activeText:{color:INK.ink},
+  activeText:{color:INK.card},
   disabled:{opacity:0.55}
 });

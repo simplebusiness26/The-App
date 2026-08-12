@@ -228,7 +228,7 @@ export default function MomentDetail(){
             </View>
             <View style={styles.panelActions}>
               <Pressable style={styles.cancelButton} onPress={()=>setShowReport(false)}><Text style={styles.cancelText}>Cancel</Text></Pressable>
-              <Pressable style={styles.reportButton} disabled={working} onPress={reportMoment}>{working?<ActivityIndicator color="white" size="small"/>:<Text style={styles.reportText}>Submit report</Text>}</Pressable>
+              <Pressable style={styles.reportButton} disabled={working} onPress={reportMoment}>{working?<ActivityIndicator color={INK.ink} size="small"/>:<Text style={styles.reportText}>Submit report</Text>}</Pressable>
             </View>
           </View>
         )}
@@ -239,7 +239,7 @@ export default function MomentDetail(){
             <Text style={styles.panelBody}>Its likes and comments will also be removed. This cannot be undone.</Text>
             <View style={styles.panelActions}>
               <Pressable style={styles.cancelButton} onPress={()=>setConfirmDelete(false)}><Text style={styles.cancelText}>Keep Moment</Text></Pressable>
-              <Pressable style={styles.confirmDeleteButton} disabled={working} onPress={deleteMoment}>{working?<ActivityIndicator color="white" size="small"/>:<Text style={styles.reportText}>Delete permanently</Text>}</Pressable>
+              <Pressable style={styles.confirmDeleteButton} disabled={working} onPress={deleteMoment}>{working?<ActivityIndicator color={INK.ink} size="small"/>:<Text style={styles.reportText}>Delete permanently</Text>}</Pressable>
             </View>
           </View>
         )}
@@ -254,14 +254,14 @@ const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
   center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  errorTitle:{color:"white",fontSize:22,fontWeight:"900"},
+  errorTitle:{color:INK.ink,fontSize:22,fontWeight:"900"},
   errorText:{color:INK.inkSoft,textAlign:"center",marginTop:7},
   profileRow:{flexDirection:"row",alignItems:"center",marginBottom:13},
   avatar:{width:48,height:48,borderRadius:24,backgroundColor:INK.card},
   avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:"white",fontWeight:"900",fontSize:19},
+  avatarLetter:{color:INK.card,fontWeight:"900",fontSize:19},
   profileText:{marginLeft:11},
-  name:{color:"white",fontSize:16,fontWeight:"900"},
+  name:{color:INK.ink,fontSize:16,fontWeight:"900"},
   date:{color:INK.inkSoft,fontSize:11,marginTop:3},
   audienceBadge:{color:INK.card,backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:99,overflow:"hidden",paddingHorizontal:9,paddingVertical:4,fontSize:9,fontWeight:"900",letterSpacing:1},
   card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:12},
@@ -269,34 +269,34 @@ const styles=StyleSheet.create({
   videoWrap:{height:420,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
   videoFallback:{position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:INK.paper},
   playCircle:{position:"absolute",width:62,height:62,borderRadius:31,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
-  playIcon:{color:"white",fontSize:25,marginLeft:4},
-  duration:{position:"absolute",right:9,bottom:9,color:"white",backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
+  playIcon:{color:INK.ink,fontSize:25,marginLeft:4},
+  duration:{position:"absolute",right:9,bottom:9,color:INK.ink,backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
   caption:{color:INK.ink,fontSize:16,lineHeight:23,paddingHorizontal:4,marginTop:14},
   placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:10,marginTop:14},
   placeImage:{width:50,height:50,borderRadius:10,backgroundColor:INK.card},
   placeFallback:{width:50,height:50,borderRadius:10,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
   placeText:{flex:1,marginLeft:10},
-  placeEyebrow:{color:INK.blue,fontSize:9,fontWeight:"900",letterSpacing:0.7},
-  placeName:{color:"white",fontWeight:"900",marginTop:3},
-  placeArrow:{color:INK.blue,fontSize:27},
+  placeEyebrow:{color:INK.card,fontSize:9,fontWeight:"900",letterSpacing:0.7},
+  placeName:{color:INK.card,fontWeight:"900",marginTop:3},
+  placeArrow:{color:INK.card,fontSize:27},
   actions:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14},
   secondaryButton:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:9},
   secondaryText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
   deleteButton:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:9},
-  deleteText:{color:INK.pink,fontWeight:"900",fontSize:12},
+  deleteText:{color:INK.ink,fontWeight:"900",fontSize:12},
   panel:{backgroundColor:INK.card,borderRadius:13,padding:13,marginTop:13},
-  deletePanel:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:13,padding:13,marginTop:13},
-  panelTitle:{color:"white",fontSize:14,fontWeight:"900"},
-  panelBody:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:6},
+  deletePanel:{backgroundColor:INK.card,borderColor:INK.red,borderWidth:2,borderRadius:13,padding:13,marginTop:13},
+  panelTitle:{color:INK.ink,fontSize:14,fontWeight:"900"},
+  panelBody:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:6},
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10},
   reasonButton:{borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:10,paddingVertical:7},
   reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  reasonText:{color:INK.inkSoft,fontSize:10,fontWeight:"800"},
-  reasonActiveText:{color:"white"},
+  reasonText:{color:INK.card,fontSize:10,fontWeight:"800"},
+  reasonActiveText:{color:INK.card},
   panelActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:13},
   cancelButton:{paddingHorizontal:12,paddingVertical:10},
   cancelText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
   reportButton:{minWidth:120,backgroundColor:INK.red,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
   confirmDeleteButton:{minWidth:135,backgroundColor:INK.red,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
-  reportText:{color:"white",fontWeight:"900",fontSize:12}
+  reportText:{color:INK.card,fontWeight:"900",fontSize:12}
 });

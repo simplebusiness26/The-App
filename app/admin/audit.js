@@ -221,7 +221,7 @@ const styles=StyleSheet.create({
   errorTitle:{color:INK.ink,fontSize:21,fontWeight:"800"},
   errorText:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:8},
   primaryButton:{minHeight:48,alignItems:"center",justifyContent:"center",borderRadius:14,backgroundColor:INK.ink,marginTop:18,paddingHorizontal:18,paddingVertical:12},
-  primaryButtonText:{color:INK.paper,fontSize:16,fontWeight:"800"},
+  primaryButtonText:{color:INK.ink,fontSize:16,fontWeight:"800"},
   searchInput:{minHeight:52,borderColor:INK.ink,borderRadius:16,borderWidth:1,backgroundColor:INK.card,color:INK.ink,fontSize:16,paddingHorizontal:16,paddingVertical:12},
   resultCount:{color:INK.inkSoft,fontSize:13,fontWeight:"700",marginBottom:10,marginTop:13},
   emptyPanel:{alignItems:"center",borderColor:INK.hair,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:30},

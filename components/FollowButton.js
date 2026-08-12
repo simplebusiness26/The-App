@@ -156,7 +156,7 @@ export default function FollowButton({profileId,onChanged,compact=false}){
       onPress={toggleFollow}
     >
       {(loading || working)
-        ? <ActivityIndicator size="small" color="white"/>
+        ? <ActivityIndicator size="small" color={INK.ink}/>
         : <Text style={[styles.text,followId && styles.followingText]}>
             {!user
               ? "Log in to follow"
@@ -181,6 +181,6 @@ const styles=StyleSheet.create({
   compact:{minWidth:92,minHeight:38,paddingHorizontal:14,paddingVertical:9,borderRadius:11},
   following:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1},
   disabled:{opacity:0.65},
-  text:{color:"white",fontWeight:"900",fontSize:14},
+  text:{color:INK.card,fontWeight:"900",fontSize:14},
   followingText:{color:INK.ink}
 });

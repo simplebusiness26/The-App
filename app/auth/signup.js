@@ -14,6 +14,7 @@ ActivityIndicator
 import {router} from "expo-router";
 
 import {supabase} from "../../services/supabase";
+import {INK} from "../../utils/tokens";
 
 export default function Signup(){
 
@@ -324,7 +325,7 @@ loading
 
 <View style={styles.loadingContainer}>
 
-<ActivityIndicator color="white"/>
+<ActivityIndicator color={INK.ink}/>
 
 <Text style={styles.buttonText}>
 Creating...
@@ -372,7 +373,7 @@ marginBottom:15
 },
 
 button:{
-backgroundColor:"#222",
+backgroundColor:INK.card,
 padding:16,
 borderRadius:10,
 marginTop:20,
@@ -380,7 +381,7 @@ alignItems:"center"
 },
 
 buttonText:{
-color:"white",
+color:INK.ink,
 fontWeight:"bold"
 },
 

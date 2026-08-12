@@ -146,7 +146,7 @@ export default function EditProperty(){
       <LocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
 
       <Pressable style={styles.button} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color="white"/> : <Text style={styles.buttonText}>Save Changes</Text>}
+        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
       </Pressable>
       <Pressable style={styles.deleteButton} onPress={deleteProperty}>
         <Text style={styles.buttonText}>Delete Property</Text>
@@ -160,9 +160,9 @@ const styles=StyleSheet.create({
   content:{padding:20,paddingBottom:50},
   center:{flex:1,alignItems:"center",justifyContent:"center"},
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
-  input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},
+  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},
   multiline:{minHeight:100,textAlignVertical:"top"},
-  button:{backgroundColor:"#222",padding:15,borderRadius:10},
+  button:{backgroundColor:INK.ink,padding:15,borderRadius:10},
   deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:14},
-  buttonText:{color:"white",textAlign:"center",fontWeight:"bold"}
+  buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}
 });

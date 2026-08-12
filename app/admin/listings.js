@@ -395,7 +395,7 @@ const styles=StyleSheet.create({
     paddingVertical:12
   },
   primaryButtonText:{
-    color:INK.paper,
+    color:INK.ink,
     fontSize:16,
     fontWeight:"800"
   },

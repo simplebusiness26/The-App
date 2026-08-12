@@ -393,6 +393,6 @@ const styles=StyleSheet.create({
   reasonWrap:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10,marginBottom:12},
   reason:{borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:10,paddingVertical:7},
   reasonActive:{backgroundColor:INK.ink},
-  reasonText:{color:INK.ink,fontSize:10,fontWeight:"800",textTransform:"capitalize"},
+  reasonText:{color:INK.card,fontSize:10,fontWeight:"800",textTransform:"capitalize"},
   reasonTextActive:{color:INK.card,fontSize:10,fontWeight:"800",textTransform:"capitalize"}
 });

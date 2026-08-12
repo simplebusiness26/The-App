@@ -108,7 +108,7 @@ export default function AddBusiness(){
       <TextInput style={styles.input} placeholder="Opening Hours" value={openingHours} onChangeText={setOpeningHours}/>
 
       <Pressable style={[styles.button,loading && styles.disabled]} disabled={loading} onPress={addBusiness}>
-        {loading ? <ActivityIndicator color="white"/> : <Text style={styles.buttonText}>Create Business Listing</Text>}
+        {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Create Business Listing</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -118,9 +118,9 @@ const styles=StyleSheet.create({
   container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
-  input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},
+  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},
   multiline:{minHeight:100,textAlignVertical:"top"},
-  button:{backgroundColor:"#222",padding:16,borderRadius:10,alignItems:"center"},
+  button:{backgroundColor:INK.ink,padding:16,borderRadius:10,alignItems:"center"},
   disabled:{opacity:0.6},
-  buttonText:{color:"white",fontWeight:"bold"}
+  buttonText:{color:INK.card,fontWeight:"bold"}
 });

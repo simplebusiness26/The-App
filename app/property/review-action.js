@@ -172,7 +172,7 @@ const styles=StyleSheet.create({
   errorText:{fontSize:16,textAlign:"center",color:INK.red},
   title:{fontSize:30,fontWeight:"bold"},
   input:{borderWidth:1,padding:15,marginTop:15,borderRadius:10},
-  button:{backgroundColor:"#222",padding:15,marginTop:15},
+  button:{backgroundColor:INK.card,padding:15,marginTop:15},
   buttonDisabled:{opacity:0.5},
-  text:{color:"white",textAlign:"center"}
+  text:{color:INK.ink,textAlign:"center"}
 });

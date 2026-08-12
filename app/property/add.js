@@ -83,7 +83,7 @@ export default function AddProperty(){
       <LocationPicker onChange={setSelectedLocation}/>
 
       <Pressable style={styles.button} onPress={addProperty} disabled={loading}>
-        {loading ? <ActivityIndicator color="white"/> : <Text style={styles.buttonText}>Create Property Listing</Text>}
+        {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Create Property Listing</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -93,8 +93,8 @@ const styles=StyleSheet.create({
   container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
-  input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},
+  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},
   multiline:{minHeight:100,textAlignVertical:"top"},
-  button:{backgroundColor:"#222",padding:15,borderRadius:10},
-  buttonText:{color:"white",textAlign:"center",fontWeight:"bold"}
+  button:{backgroundColor:INK.ink,padding:15,borderRadius:10},
+  buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}
 });

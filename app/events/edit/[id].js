@@ -166,7 +166,7 @@ export default function EditEvent(){
       />
 
       <Pressable style={[styles.saveButton,(saving || deleting) && styles.disabled]} onPress={saveEvent} disabled={saving || deleting}>
-        {saving ? <ActivityIndicator color="white"/> : <Text style={styles.buttonText}>Save Changes</Text>}
+        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
       </Pressable>
 
       <Pressable style={[styles.deleteButton,(saving || deleting) && styles.disabled]} onPress={confirmDelete} disabled={saving || deleting}>
@@ -182,10 +182,10 @@ const styles=StyleSheet.create({
   center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},
   error:{fontSize:17,textAlign:"center",lineHeight:24},
   title:{fontSize:30,fontWeight:"bold"},
-  subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},
+  subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},
   saveButton:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},
-  deleteButton:{backgroundColor:"white",borderWidth:1,borderColor:INK.red,padding:15,borderRadius:12,alignItems:"center",marginTop:12},
+  deleteButton:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.red,padding:15,borderRadius:12,alignItems:"center",marginTop:12},
   disabled:{opacity:0.55},
-  buttonText:{color:"white",fontWeight:"bold"},
+  buttonText:{color:INK.card,fontWeight:"bold"},
   deleteText:{color:INK.red,fontWeight:"bold"}
 });

@@ -87,7 +87,7 @@ export default function ForgotPassword(){
         disabled={loading}
       >
         {loading
-          ? <ActivityIndicator color="white"/>
+          ? <ActivityIndicator color={INK.ink}/>
           : <Text style={styles.buttonText}>Send reset link</Text>
         }
       </Pressable>
@@ -102,11 +102,11 @@ export default function ForgotPassword(){
 const styles=StyleSheet.create({
   container:{padding:30},
   title:{fontSize:32,fontWeight:"bold",marginBottom:12},
-  message:{fontSize:16,lineHeight:23,color:"#666",marginBottom:22},
-  input:{borderWidth:1,borderColor:"#aaa",borderRadius:10,padding:15,marginBottom:15},
+  message:{fontSize:16,lineHeight:23,color:INK.ink,marginBottom:22},
+  input:{borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:15,marginBottom:15},
   button:{backgroundColor:INK.blue,padding:16,borderRadius:10,alignItems:"center"},
   disabledButton:{opacity:0.55},
-  buttonText:{color:"white",fontWeight:"bold"},
+  buttonText:{color:INK.card,fontWeight:"bold"},
   linkButton:{marginTop:20,alignItems:"center",padding:8},
   linkText:{fontWeight:"bold",color:INK.blue},
   error:{color:INK.red,marginBottom:15,lineHeight:20},

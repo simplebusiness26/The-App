@@ -88,7 +88,7 @@ const styles=StyleSheet.create({
   button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
   likedButton:{backgroundColor:INK.red,borderColor:INK.red},
   icon:{color:INK.ink,fontSize:20,lineHeight:20},
-  likedIcon:{color:INK.pink},
+  likedIcon:{color:INK.card},
   text:{color:INK.ink,fontSize:12,fontWeight:"900"},
-  likedText:{color:INK.pink}
+  likedText:{color:INK.card}
 });

@@ -146,20 +146,20 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
       </View>
 
       <Pressable style={[styles.submitButton,working&&styles.disabled]} disabled={working} onPress={submit}>
-        {working?<ActivityIndicator color="white"/>:<Text style={styles.submitText}>{submitLabel}</Text>}
+        {working?<ActivityIndicator color={INK.ink}/>:<Text style={styles.submitText}>{submitLabel}</Text>}
       </Pressable>
     </View>
   );
 }
 
 const styles=StyleSheet.create({
-  label:{color:"white",fontSize:14,fontWeight:"900",marginTop:18,marginBottom:8},
+  label:{color:INK.ink,fontSize:14,fontWeight:"900",marginTop:18,marginBottom:8},
   input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,color:INK.ink,fontSize:15,paddingHorizontal:14,paddingVertical:13},
   textarea:{minHeight:130},smallTextarea:{minHeight:90},help:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},
-  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12},errorText:{color:INK.ink,lineHeight:19},
-  wrapRow:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:8},chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},chipText:{color:INK.inkSoft,fontWeight:"800",fontSize:12},chipTextActive:{color:"white"},
-  locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:12},locationText:{color:INK.ink,fontWeight:"900"},removeLocation:{color:INK.inkSoft,fontWeight:"800",textAlign:"center",paddingVertical:9},
-  visibilityRow:{flexDirection:"row",gap:9},visibilityButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},visibilityActive:{backgroundColor:INK.blue,borderColor:INK.blue},visibilityText:{color:INK.inkSoft,fontWeight:"900"},visibilityTextActive:{color:"white"},visibilityHint:{color:INK.inkSoft,fontSize:10,marginTop:4},
-  safetyCard:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:INK.ink,fontWeight:"900"},safetyText:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:5},
-  submitButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},submitText:{color:"white",fontSize:16,fontWeight:"900"},disabled:{opacity:.6}
+  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12},errorText:{color:INK.card,lineHeight:19},
+  wrapRow:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:8},chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},chipText:{color:INK.inkSoft,fontWeight:"800",fontSize:12},chipTextActive:{color:INK.card},
+  locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:12},locationText:{color:INK.card,fontWeight:"900"},removeLocation:{color:INK.inkSoft,fontWeight:"800",textAlign:"center",paddingVertical:9},
+  visibilityRow:{flexDirection:"row",gap:9},visibilityButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},visibilityActive:{borderColor:INK.blue,borderWidth:2},visibilityText:{color:INK.inkSoft,fontWeight:"900"},visibilityTextActive:{color:INK.ink},visibilityHint:{color:INK.inkSoft,fontSize:10,marginTop:4},
+  safetyCard:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:INK.card,fontWeight:"900"},safetyText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:5},
+  submitButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},submitText:{color:INK.card,fontSize:16,fontWeight:"900"},disabled:{opacity:.6}
 });

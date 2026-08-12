@@ -9,6 +9,7 @@ ActivityIndicator
 } from "react-native";
 
 import {supabase} from "../services/supabase";
+import {INK} from "../utils/tokens";
 
 
 export default function ClaimButton({
@@ -262,7 +263,7 @@ disabled={loading || status}
 
 loading ?
 
-<ActivityIndicator color="white"/>
+<ActivityIndicator color={INK.ink}/>
 
 :
 
@@ -306,14 +307,14 @@ status==="approved"
 const styles=StyleSheet.create({
 
 button:{
-backgroundColor:"#222",
+backgroundColor:INK.card,
 padding:15,
 borderRadius:10,
 marginTop:20
 },
 
 text:{
-color:"white",
+color:INK.ink,
 textAlign:"center",
 fontWeight:"bold"
 }

@@ -128,8 +128,33 @@ No parallax, no ambient animation, no staggered reveals.
 ## Accessibility floor
 
 - Visible focus ring: 3px `ink-yellow`, 3px offset.
-- Ink on paper and ink on all three inks passes contrast. White text is
-  only allowed on `ink-blue` and `ink`. Never white on `ink-yellow`.
+- **Which text on which ground.** This used to read "ink on all three inks
+  passes contrast", and that is not true — ink on `ink-blue` is 2.77:1,
+  under the 4.5:1 a person needs. Believing it put barely-legible labels on
+  every filled button in the app. The measured numbers:
+
+  | ground | `ink` text | `card` text |
+  | --- | --- | --- |
+  | `paper` | 14.4:1 ✅ | 1.1:1 ❌ |
+  | `card` | 16.0:1 ✅ | 1.0:1 ❌ |
+  | `hair` | 10.8:1 ✅ | 1.5:1 ❌ |
+  | `ink-blue` | 2.8:1 ❌ | 5.8:1 ✅ |
+  | `ink-red` | 3.2:1 ❌ | 5.0:1 ✅ |
+  | `ink-green` | 3.3:1 ❌ | 4.8:1 ✅ |
+  | `ink-yellow` | 11.3:1 ✅ | 1.4:1 ❌ |
+  | `ink-pink` | 5.2:1 ✅ | 3.1:1 ❌ |
+
+  So: light text on blue, red and green; ink on everything else. Pink and
+  yellow look like strong colours and are not — they take ink, not white.
+- **A state does not have to be a fill.** Where one label style serves a
+  card and its selected variant, the variant marks itself with a 2px
+  coloured border and keeps the light fill. Filling it means every label
+  inside has to change too, and the ones that get missed become
+  unreadable — which is exactly what happened on the Link-up board, the
+  leaderboard and the profile pills.
+- `scripts/verify-contrast.cjs` checks all of this on every push. It reads
+  the real hex values out of `utils/tokens.js`, works out what ground each
+  piece of text is drawn on, and does the sums. Fix the pair, not the gate.
 - Every pin needs a text label available to screen readers; colour is
   never the only carrier of state.
 - Minimum tap target 44px even where the visible pin is 34px.

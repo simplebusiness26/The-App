@@ -73,10 +73,10 @@ export default class ErrorBoundary extends React.Component{
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:22,paddingTop:60},
-  title:{color:"white",fontSize:22,fontWeight:"900"},
+  title:{color:INK.ink,fontSize:22,fontWeight:"900"},
   body:{color:INK.inkSoft,marginTop:10,lineHeight:20},
   heading:{color:INK.blue,fontSize:11,fontWeight:"900",letterSpacing:0.6,marginTop:22},
   mono:{color:INK.ink,fontFamily:"monospace",fontSize:12,lineHeight:18,marginTop:6},
   button:{backgroundColor:INK.blue,borderRadius:12,paddingVertical:15,alignItems:"center",marginTop:28},
-  buttonText:{color:"white",fontWeight:"900"}
+  buttonText:{color:INK.card,fontWeight:"900"}
 });

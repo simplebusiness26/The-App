@@ -489,7 +489,7 @@ const styles=StyleSheet.create({
     paddingHorizontal:18,
     paddingVertical:12
   },
-  primaryButtonText:{color:INK.paper,fontSize:16,fontWeight:"800"},
+  primaryButtonText:{color:INK.ink,fontSize:16,fontWeight:"800"},
   searchInput:{
     minHeight:52,
     borderColor:INK.ink,
