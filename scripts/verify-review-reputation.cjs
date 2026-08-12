@@ -85,9 +85,19 @@ const feed=code(read(FEED));
 check(/import EndorseButton from "\.\.\/components\/EndorseButton"/.test(feed),`${FEED}: does not import EndorseButton`);
 check(/<EndorseButton/.test(feed),`${FEED}: does not render EndorseButton for review feed items`);
 check(/<LikeButton/.test(feed),`${FEED}: Moments must still render LikeButton in the feed`);
+// A Memory takes a Like, never a Useful. Useful endorses a review and pays its
+// author a point (20260812150000); a Memory is somebody's day out.
 check(
-  /isMoment \? \(\s*<LikeButton/.test(feed) || /isMoment\s*\?\s*\(/.test(feed),
-  `${FEED}: the moment/review branch must decide which button renders — a single unconditional button would give reviews the wrong one`
+  /targetType=\{isMemory \? "memory" : "moment"\}/.test(feed),
+  `${FEED}: a Memory does not get a Like of its own — it must not fall through to a review's Useful`
+);
+// Three content types share this row now: a Moment and a Memory both get Like,
+// a review gets Useful. What must hold is that a BRANCH decides -- a single
+// unconditional button would give one of them the wrong word, and the two words
+// are two different acts (one endorses and pays a point, one does not).
+check(
+  /isMoment \|\| isMemory \?\s*\(/.test(feed) || /isMoment\s*\?\s*\(/.test(feed),
+  `${FEED}: the button is not chosen by a branch — a single unconditional one would give reviews the wrong word`
 );
 
 const profile=code(read(PROFILE));
