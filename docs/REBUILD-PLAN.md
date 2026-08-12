@@ -1013,10 +1013,21 @@ from a Map/List switch, kept because it works when the map will not, because it
 is the better surface for a screen reader, and because browsing without a map is
 a real way to use this app.
 
-**What is verified, and what is not.** Web: all 42 routes render in real
-Chromium against a real production export, with the map drawing places and
-carrying its attribution. Android: the APK workflow builds it. iOS: configured,
-not compiled, and said so.
+**What is verified, and what is not.**
+
+- **Web** — all 42 routes render in real Chromium against a real production
+  export, with the map drawing its places and carrying its attribution.
+- **Android** — a full release APK built green on `ec8cbef`, run
+  `31568939140`. `expo prebuild` applied the MapLibre plugin, Gradle compiled
+  MapLibre's native SDK, and the artifact uploaded. Twenty-one minutes of
+  Gradle, against roughly six before, because the native map SDK is a cold
+  first-time compile.
+- **iOS** — configured by the same plugin and NOT compiled. No Mac, no Apple
+  signing, no EAS login here. One build command away, not a day away.
+
+**`main2.0` is deliberately still on the pre-map snapshot** (`f1f436b`). That is
+a clean rollback point while the new map has not been opened on a phone. Fast
+forward it once it has.
 
 ### Packet 18 — Link-ups start on the map
 
