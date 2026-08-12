@@ -132,15 +132,34 @@ code.
   vocabulary was unified. Trending had the same stale word, so nothing could
   trend. `c1d5c03`.
 
-### One thing worth saying out loud
+### Decision 9 — the manager gate, settled
 
-Becoming a manager is now **self-service**: a button in Settings, a
-confirmation, and all four capabilities are on. That is what was asked for, and
-it is a genuine loosening of Packet 0 — which existed because creating a
-business needed no decision from anybody and because approving one capability
-silently granted three others. Neither of those is true now: it takes a person
-choosing it on a screen that says what it means. Claiming somebody else's
-existing listing is still `public.claims` and still an administrator.
+**Approval is for claiming. Creating is free.**
+
+Anyone can press Become a manager in Settings and immediately list a business, a
+property, a club or an event of their own. There is no queue and no approval,
+and that is the intended behaviour, not an oversight — locking it down is a
+later job, once there is something worth protecting.
+
+The one thing that still needs an administrator is **taking over a listing that
+already exists**. That is a claim, and it is properly closed. Proven live on a
+real account inside a rolled-back transaction:
+
+| What was tried | Result |
+|---|---|
+| Self-service manager creates their own listings | works |
+| …grabs an **unclaimed** business by writing `owner_id` | 0 rows |
+| …takes over **somebody else's** business the same way | 0 rows |
+
+The reason both fail is the update policy: `USING (auth.uid() = owner_id OR
+guestbook_is_admin())`. An unowned row makes that `NULL`, which is not true, so
+it is invisible to the update. And `claims` only lets an Explorer insert a row
+that is `pending` with every decision field null; only an administrator may
+update one.
+
+That matters more now than it did, because `stop_managing('unclaim')` creates
+unowned businesses on purpose. Every one of them can only be picked up through a
+claim you approve.
 
 ---
 
