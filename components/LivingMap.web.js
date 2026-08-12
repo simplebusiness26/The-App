@@ -90,7 +90,7 @@ function pinElement(marker,onPress){
   return element;
 }
 
-export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
+export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectActivity,onUnavailable}){
   const host=useRef(null);
   const map=useRef(null);
   const drawn=useRef([]);
@@ -113,11 +113,24 @@ export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectA
 
     map.current.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
 
+    // A map that will not load must not be a blank rectangle. MapLibre reports
+    // a missing style, a dead tile host and a browser with no WebGL through the
+    // same event, and any of them means the same thing to somebody using the
+    // app: there is no map right now. The screen switches to the list.
+    map.current.on("error",(event)=>{
+      const message=event?.error?.message || "";
+      // Tile-level errors are noisy and survivable -- one missing tile is not a
+      // broken map. Only a failure to get a style or a context is fatal.
+      if(/WebGL|style|Style|Failed to fetch|NetworkError/.test(message)){
+        onUnavailable?.(message);
+      }
+    });
+
     return()=>{
       map.current?.remove();
       map.current=null;
     };
-  },[config.styleUrl,config.attribution]);
+  },[config.styleUrl,config.attribution,onUnavailable]);
 
   const draw=useCallback(()=>{
     if(!map.current) return;

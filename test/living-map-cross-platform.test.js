@@ -264,6 +264,38 @@ describe("the controls survived the move",()=>{
   });
 });
 
+describe("when the map itself cannot run",()=>{
+  it("shows the list and says why, instead of a blank rectangle",async()=>{
+    fixture();
+    const LivingMapScreen=require("../components/LivingMapScreen").default;
+    let tree;
+    await act(async()=>{tree=create(wrap(React.createElement(LivingMapScreen)));});
+    await act(async()=>{});
+
+    // The renderer reports a dead style, a dead tile host or a browser with no
+    // WebGL the same way, and all three mean the same thing to somebody using
+    // the app: there is no map right now.
+    const renderer=tree.root.findAll(
+      (node)=>typeof node.props?.onUnavailable==="function",
+      {deep:true}
+    )[0];
+    expect(renderer).toBeTruthy();
+
+    await act(async()=>{renderer.props.onUnavailable("Failed to fetch");});
+
+    const text=textOf(tree.toJSON());
+    console.log("MAP DOWN >>>",text.slice(0,160));
+
+    expect(text).toContain("The map could not load");
+    // The same places, from the same model.
+    expect(text).toContain("The Lamb and Flag");
+    // An instruction, not a mood, and a way back.
+    expect(labelsOf(tree.toJSON()).join(" ")).toContain("Show the map instead of the list");
+
+    await act(async()=>{tree.unmount();});
+  });
+});
+
 describe("Xplorer renders the Xplorer experience",()=>{
   it("opens its own place card rather than a provider popup",async()=>{
     fixture();

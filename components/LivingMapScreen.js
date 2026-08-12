@@ -27,6 +27,10 @@ export default function LivingMapScreen(){
   const map=useLivingMap();
   const [openKey,setOpenKey]=useState(null);
   const [asList,setAsList]=useState(false);
+  // Set when the map itself cannot run -- no WebGL, a dead tile host, a style
+  // that will not load. The list is what somebody gets then, and it says why
+  // rather than leaving a blank rectangle.
+  const [mapFailed,setMapFailed]=useState("");
 
   const tapped=map.cards.find((card)=>card.key===openKey) || null;
 
@@ -34,19 +38,30 @@ export default function LivingMapScreen(){
   // one. It is kept because it works when the map will not load, because it is
   // the better surface for a screen reader, and because browsing what is near
   // you without a map is a real way to use this app.
-  if(asList){
+  if(asList || mapFailed){
     return(
       <View style={styles.container}>
         <PlacesList
           header={
+            <>
+            {!!mapFailed && (
+              <View style={styles.notice}>
+                <Text style={styles.noticeTitle}>The map could not load</Text>
+                <Text style={styles.noticeText}>
+                  Everything below is the same places the map would show. It is
+                  usually a connection problem — try again in a moment.
+                </Text>
+              </View>
+            )}
             <Pressable
               style={styles.switch}
               accessibilityRole="button"
               accessibilityLabel="Show the map instead of the list"
-              onPress={()=>setAsList(false)}
+              onPress={()=>{setMapFailed("");setAsList(false);}}
             >
-              <Text style={styles.switchText}>Show the map</Text>
+              <Text style={styles.switchText}>{mapFailed ? "Try the map again" : "Show the map"}</Text>
             </Pressable>
+            </>
           }
         />
       </View>
@@ -121,6 +136,7 @@ export default function LivingMapScreen(){
         activity={map.activity}
         onSelectPlace={(place)=>setOpenKey(place.card?.key || null)}
         onSelectActivity={(item)=>item.deepLink && router.push(item.deepLink)}
+        onUnavailable={(why)=>setMapFailed(why || "unavailable")}
       />
 
       {!!tapped && (
@@ -153,5 +169,11 @@ const styles=StyleSheet.create({
     alignSelf:"flex-start",borderWidth:2,borderColor:INK.ink,borderRadius:99,
     paddingHorizontal:16,paddingVertical:8,backgroundColor:INK.card,marginBottom:10
   },
-  switchText:{color:INK.ink,fontWeight:"800"}
+  switchText:{color:INK.ink,fontWeight:"800"},
+  notice:{
+    backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,
+    padding:14,marginBottom:10
+  },
+  noticeTitle:{color:INK.ink,fontWeight:"800",fontSize:15},
+  noticeText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:4}
 });
