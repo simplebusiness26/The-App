@@ -12,6 +12,8 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import EndorseButton from "./EndorseButton";
 import MyMap from "./MyMap";
+import StoryRing from "./StoryRing";
+import StoryViewer from "./StoryViewer";
 import {managesAnyListing} from "../utils/permissions";
 
 function dateLabel(value){
@@ -81,7 +83,12 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
   const [reviews,setReviews]=useState([]);
   const [media,setMedia]=useState([]);
   const [favourites,setFavourites]=useState([]);
-  const [moments,setMoments]=useState([]);
+  // Live Moments only, and only as a count for the ring. The permanent grid
+  // that used to live on this screen is gone -- a Moment is NOW, it expires,
+  // and a permanent gallery of expiring things made a Moment into a worse
+  // Memory. The Memory gallery below is the permanent one.
+  const [storyOpen,setStoryOpen]=useState(false);
+  const [liveMomentCount,setLiveMomentCount]=useState(0);
   const [memories,setMemories]=useState([]);
   const [reviewLikes,setReviewLikes]=useState({});
   const [reputation,setReputation]=useState(null);
@@ -158,7 +165,9 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
       supabase.from("explorer_profile_stats").select("*").eq("user_id",id).maybeSingle(),
       supabase.from("explorer_reviews").select("*").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}),
       supabase.from("explorer_favourites").select("*").eq("user_id",id).eq("is_public",true).order("sort_order",{ascending:true}).order("created_at",{ascending:false}),
-      supabase.from("explorer_moments").select("*").eq("user_id",id).eq("status","published").order("created_at",{ascending:false}).limit(60),
+      // Kept as a count for the stat card. Live ones only -- an expired Moment
+      // is not a thing this Explorer currently has.
+      supabase.from("explorer_moments").select("id").eq("user_id",id).eq("status","published").gt("expires_at",new Date().toISOString()),
       // Packet 8d. show_on_profile is not a permission -- row level security
       // decides what comes back, so a private Memory with the flag set reaches
       // its owner and nobody else. The scope only shapes the list.
@@ -195,7 +204,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
     setMedia(mediaRows);
     setReviewLikes(likeMap);
     setFavourites(favouritesResult.data || []);
-    setMoments(momentsResult.data || []);
+    setLiveMomentCount((momentsResult.data || []).length);
     setMemories(memoriesResult.data || []);
 
     // Packet 8a's Clubs tab. Approved memberships only: a pending application is
@@ -337,7 +346,22 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
           </View>
         </View>
 
-        <Avatar profile={profile} size={112}/>
+        {/*
+          The ring. It is the only way into somebody's live Moments now, and it
+          draws nothing at all when there is nothing live -- an empty section is
+          a thing a later change can accidentally populate, a ring that is not
+          there cannot be tapped.
+        */}
+        <StoryRing ownerId={profile.id} size={112} onOpen={()=>setStoryOpen(true)}>
+          <Avatar profile={profile} size={112}/>
+        </StoryRing>
+
+        <StoryViewer
+          ownerId={profile.id}
+          ownerName={profile.full_name || "Explorer"}
+          visible={storyOpen}
+          onClose={()=>setStoryOpen(false)}
+        />
         <Text style={styles.profileName}>{profile.full_name || "Explorer"}</Text>
         {!!profile.show_area && !!profile.area?.trim() && <Text style={styles.area}>📍 {profile.area.trim()}</Text>}
         {!!profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
@@ -345,7 +369,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         {isOwner && (
           <View style={styles.ownerActions}>
             <Pressable style={styles.editProfileButton} onPress={()=>router.push("/profile/edit")}><Text style={styles.editProfileText}>Edit profile</Text></Pressable>
-            <Pressable style={styles.newMomentButton} onPress={()=>router.push("/moments/create")}><Text style={styles.newMomentText}>＋ New Moment</Text></Pressable>
+            <Pressable style={styles.newMomentButton} onPress={()=>router.push("/camera")}><Text style={styles.newMomentText}>＋ New Moment</Text></Pressable>
             {/*
               This was the one thing the separate Manager screen had that this
               one did not. It is now shown to anybody who actually manages
@@ -371,7 +395,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         <StatCard label="Reviews" value={stats?.review_count || 0}/>
         <StatCard label="Verified" value={stats?.verified_review_count || 0}/>
         <StatCard label="Videos" value={stats?.video_review_count || 0} accent/>
-        <StatCard label="Moments" value={moments.length} accent/>
+        <StatCard label="Live Moments" value={liveMomentCount} accent/>
       </View>
 
       <Pressable style={styles.rankCard} onPress={()=>router.push("/leaderboards")}>
@@ -462,23 +486,25 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         </EmptyCard>
       )}
 
-      {isOwner && <Pressable style={styles.createMomentWide} onPress={()=>router.push("/moments/create")}><Text style={styles.createMomentWideText}>＋ Share a new Moment</Text></Pressable>}
-      {moments.length ? (
-        <View style={styles.momentGrid}>
-          {moments.map(moment=>(
-            <Pressable key={moment.id} style={styles.momentCard} onPress={()=>router.push(`/moments/${moment.id}`)}>
-              <View style={styles.momentMediaWrap}>
-                <Image source={{uri:moment.thumbnail_url || moment.target_image_url || moment.media_url}} style={styles.momentImage}/>
-                {moment.media_type==="video" && <View style={styles.momentPlay}><Text style={styles.momentPlayText}>▶</Text></View>}
-              </View>
-              <View style={styles.momentBody}>
-                <Text style={styles.momentCaption} numberOfLines={2}>{moment.caption || "Moment"}</Text>
-                <Text style={styles.momentMeta} numberOfLines={1}>{moment.target_name || dateLabel(moment.created_at)}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      ) : <EmptyCard>{isOwner ? "Share your first Moment from the button above." : "No Moments have been shared yet."}</EmptyCard>}
+      {/*
+        THE PERMANENT MOMENTS GRID USED TO BE HERE.
+        It listed every Moment somebody had ever posted, for ever, which made a
+        Moment a Memory with a different name -- same photo, same permanence,
+        two words for one thing. A Moment is NOW: it is live for a day, it is
+        watched through the ring on the profile picture above, and then it goes.
+        The gallery above this is the permanent one, and it is Memories.
+
+        Nothing was deleted. Every Moment row is still in the database; it just
+        no longer has a permanent home on a profile.
+      */}
+      {isOwner && <Pressable style={styles.createMomentWide} onPress={()=>router.push("/camera")}><Text style={styles.createMomentWideText}>＋ Share a new Moment</Text></Pressable>}
+      <EmptyCard>
+        {liveMomentCount>0
+          ? "Live Moments are watched through the ring on the profile picture above."
+          : isOwner
+            ? "Moments are live for a day and then they go. Post one and it appears as a ring on your profile picture."
+            : "Nothing is live right now. Moments last a day."}
+      </EmptyCard>
       </>}
 
       {scrapbookTab==="reviews" && <>
