@@ -97,11 +97,10 @@ export default function Leaderboards(){
       <Text style={styles.eyebrow}>EXPLORER SCORE RANKINGS</Text>
       <Text style={styles.title}>Leaderboard</Text>
       {/*
-        Say what the number counts. It is points from reviews you published
-        inside the period -- not endorsements, and not check-ins. There is a
-        second scoring ledger in the database on a different scale that nothing
-        on screen reads; naming this one Explorer Score without saying what it
-        counts would be the more misleading half of that.
+        Decision 1, settled: this ranks on explorer_score_events, the scoring
+        ledger. It used to add up review points only, so a board called Explorer
+        Score measured nothing except how much you had written. It now counts
+        reviews, check-ins and endorsements, each dated and capped.
       */}
       <Text style={styles.subtitle}>Explorers ranked by their Explorer Score this week and this month. Test accounts are excluded.</Text>
 
@@ -145,8 +144,17 @@ export default function Leaderboards(){
           {ownRow ? (
             <>
               <Text style={styles.rankValue}>#{ownRow.rank}</Text>
+              {/*
+                Points and nothing else. The review count used to sit here, and
+                next to a ledger total it is a leak: review points are fixed
+                (5, or 15 verified), so points minus review points is check-in
+                points, and the halving rule turns that back into roughly how
+                many different places somebody has been. Your own split is
+                yours -- get_explorer_score_breakdown() -- and is not on a
+                public board.
+              */}
               <Text style={styles.rankMeta}>
-                {ownRow.points} point{ownRow.points===1 ? "" : "s"} · {ownRow.review_count} review{ownRow.review_count===1 ? "" : "s"} this {period==="monthly" ? "month" : "week"}
+                {ownRow.points} point{ownRow.points===1 ? "" : "s"} this {period==="monthly" ? "month" : "week"}
               </Text>
             </>
           ) : (
@@ -156,7 +164,7 @@ export default function Leaderboards(){
               <Text style={styles.rankMeta}>
                 {profile?.leaderboard_opt_in===false
                   ? "You have opted out of leaderboards. Turn it on in your profile to appear here."
-                  : "Publish a review of somewhere you went and you will appear here."}
+                  : "Review somewhere you went, or check in while you are there, and you will appear here."}
               </Text>
             </>
           )}
@@ -176,7 +184,7 @@ export default function Leaderboards(){
       ) : rows.length===0 ? (
         <View style={styles.noticeCard}>
           <Text style={styles.noticeTitle}>No points yet</Text>
-          <Text style={styles.noticeText}>The first eligible review in this period will start the leaderboard.</Text>
+          <Text style={styles.noticeText}>Write a review, check in somewhere, or be useful to another Explorer. The first points in this period start the board.</Text>
         </View>
       ) : (
         <View style={styles.list}>
@@ -188,8 +196,7 @@ export default function Leaderboards(){
                 <Avatar row={row}/>
                 <View style={styles.person}>
                   <Text style={styles.name} numberOfLines={1}>{row.full_name}{own ? " · You" : ""}</Text>
-                  <Text style={styles.meta} numberOfLines={1}>{row.area || "Area hidden"} · {row.review_count} reviews</Text>
-                  <Text style={styles.detail}>{row.verified_reviews} verified · {row.video_reviews} videos</Text>
+                  <Text style={styles.meta} numberOfLines={1}>{row.area || "Area hidden"}</Text>
                 </View>
                 <View style={styles.pointsBox}>
                   <Text style={styles.points}>{row.points}</Text>
@@ -201,13 +208,19 @@ export default function Leaderboards(){
         </View>
       )}
 
+      {/*
+        These are the ledger's rules (20260810040000 and 20260812150000), not
+        the old review-points table. Getting this wrong is worse than saying
+        nothing: a scoring rule people read and act on has to be the rule that
+        runs.
+      */}
       <View style={styles.rulesCard}>
         <Text style={styles.rulesTitle}>How your Explorer Score is earned</Text>
-        <Text style={styles.rule}>Text review: 1 point</Text>
-        <Text style={styles.rule}>Image review: 3 points</Text>
-        <Text style={styles.rule}>Video review: 6 points</Text>
-        <Text style={styles.rule}>Verified on-site QR scan: +3 points</Text>
-        <Text style={styles.ruleNote}>Only one review for the same place per calendar month earns points. Deleted or moderated reviews lose their points.</Text>
+        <Text style={styles.rule}>Write a review: 5 points</Text>
+        <Text style={styles.rule}>Review with the QR scanned on site: 15 points</Text>
+        <Text style={styles.rule}>Check in somewhere new: 10 points</Text>
+        <Text style={styles.rule}>Somebody finds your review useful: 1 point</Text>
+        <Text style={styles.ruleNote}>Checking in at the same place again is worth less each time — the score rewards seeing your area, not one habit. A review earns up to 5 points from other Explorers finding it useful. Deleting a review, or somebody taking their endorsement back, removes those points.</Text>
       </View>
     </ScrollView>
   );

@@ -28,7 +28,12 @@ function profile(overrides={}){
 
 function boardRow(overrides={}){
   return{rank:1,user_id:OTHER,full_name:"Someone",profile_photo:null,area:"Hastings",
-    points:40,review_count:4,verified_reviews:1,video_reviews:0,...overrides};
+    // Six columns, and deliberately no counts. get_explorer_leaderboard stopped
+    // returning review_count, verified_reviews and video_reviews when the board
+    // moved onto the score ledger: review points are a fixed 5 (15 verified),
+    // so a count next to a ledger total lets anybody subtract their way to a
+    // check-in count, which is a history of where somebody has been.
+    points:40,...overrides};
 }
 
 async function render(){
@@ -61,7 +66,7 @@ describe("the rank card",()=>{
       tables:{profiles:[profile()]},
       rpc:{get_explorer_leaderboard:[
         boardRow(),
-        boardRow({rank:2,user_id:ME,full_name:"Ada",points:25,review_count:3})
+        boardRow({rank:2,user_id:ME,full_name:"Ada",points:25})
       ]}
     });
 
@@ -87,7 +92,9 @@ describe("the rank card",()=>{
     // Never invent a position for somebody outside the fetched window.
     expect(text).toContain("WHERE YOU STAND");
     expect(labelsOf(tree.toJSON())).toContain("You are not ranked in this period yet");
-    expect(text).toContain("Publish a review");
+    // The instruction now names both ways in, because the score counts both.
+    expect(text).toContain("Review somewhere you went");
+    expect(text).toContain("check in");
   });
 
   test("an opted-out Explorer is told the real reason, not to post more",async()=>{
@@ -109,7 +116,7 @@ describe("the rank card",()=>{
     installFixture({
       user:{id:ME},
       tables:{profiles:[profile()]},
-      rpc:{get_explorer_leaderboard:[boardRow({rank:3,user_id:ME,points:9,review_count:1})]}
+      rpc:{get_explorer_leaderboard:[boardRow({rank:3,user_id:ME,points:9})]}
     });
 
     await render();
@@ -124,7 +131,7 @@ describe("the rank card",()=>{
     installFixture({
       user:{id:ME},
       tables:{profiles:[profile()]},
-      rpc:{get_explorer_leaderboard:[boardRow({rank:1,user_id:ME,points:1,review_count:1})]}
+      rpc:{get_explorer_leaderboard:[boardRow({rank:1,user_id:ME,points:1})]}
     });
 
     const labels=labelsOf((await render()).toJSON());
