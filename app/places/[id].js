@@ -110,30 +110,54 @@ export default function PublicPlacePage(){
       ]}
       beforeActions={place ? (
         <View style={styles.followRow}>
+          {/*
+            Two follows on one page: this park, and the town it sits in. They
+            both read plain "Follow" until Packet 8e's button learned a noun,
+            which is why this page looked like it had the same button twice.
+          */}
           <EntityFollowButton
             targetType="public_place"
             targetId={place.id}
             targetName={place.name}
+            noun="this place"
           />
           {!!area && (
             <EntityFollowButton
               targetType="geo_area"
               targetId={area.id}
               targetName={area.name}
+              noun={area.name}
               compact
             />
           )}
         </View>
       ) : null}
       actions={place ? (
-        <Pressable
-          style={styles.primary}
-          accessibilityRole="button"
-          accessibilityLabel={`Post a Moment at ${place.name}`}
-          onPress={()=>router.push(`/moments/create?target_type=public_place&target_id=${place.id}`)}
-        >
-          <Text style={styles.primaryText}>Post a Moment here</Text>
-        </Pressable>
+        <View style={styles.actionStack}>
+          <Pressable
+            style={styles.primary}
+            accessibilityRole="button"
+            accessibilityLabel={`Post a Moment at ${place.name}`}
+            onPress={()=>router.push(`/moments/create?target_type=public_place&target_id=${place.id}`)}
+          >
+            <Text style={styles.primaryText}>Post a Moment here</Text>
+          </Pressable>
+
+          {/*
+            Parks became reviewable in 20260811140000 and this page has shown
+            reviews ever since -- with nothing anywhere in the app to write one
+            with. The reviews section said "Been here? Say what it is like." and
+            then offered no way to.
+          */}
+          <Pressable
+            style={styles.secondary}
+            accessibilityRole="button"
+            accessibilityLabel={`Write a review of ${place.name}`}
+            onPress={()=>router.push(`/places/review/${place.id}`)}
+          >
+            <Text style={styles.secondaryText}>Leave a review</Text>
+          </Pressable>
+        </View>
       ) : null}
       afterReviews={place ? (
         <View style={styles.section}>
@@ -188,8 +212,19 @@ const card={
 
 const styles=StyleSheet.create({
   followRow:{flexDirection:"row",gap:10,marginTop:16,flexWrap:"wrap"},
+  actionStack:{gap:10},
   primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12},
   primaryText:{color:INK.card,fontWeight:"800"},
+  secondary:{
+    minHeight:52,
+    justifyContent:"center",
+    alignItems:"center",
+    backgroundColor:INK.card,
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:12
+  },
+  secondaryText:{color:INK.ink,fontWeight:"800"},
   section:{marginTop:24},
   sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginBottom:11,letterSpacing:-0.3},
   emptyCard:{...card,padding:18,alignItems:"center"},

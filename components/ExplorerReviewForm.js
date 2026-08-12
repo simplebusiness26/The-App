@@ -39,6 +39,15 @@ const TARGET_CONFIG={
     select:"id,name,image_url",
     subtitle:"Share your experience of this event",
     getImage:(row)=>row?.image_url || null
+  },
+  // A park, a beach, a square. Reviewable since 20260811140000 added
+  // public_place to explorer_reviews.target_type -- the place page has shown
+  // reviews since then, with no way anywhere in the app to write one.
+  public_place:{
+    table:"public_places",
+    select:"id,name,image_url",
+    subtitle:"Say what this place is like",
+    getImage:(row)=>row?.image_url || null
   }
 };
 

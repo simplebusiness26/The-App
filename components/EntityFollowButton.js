@@ -21,7 +21,13 @@ import {INK} from "../utils/tokens";
 
 const AREA_TYPE="geo_area";
 
-export default function EntityFollowButton({targetType,targetId,targetName,onChanged,compact=false}){
+// `noun` is what the button calls the thing it follows -- "Follow the park",
+// "Follow Old Town". It matters wherever two of these appear together: a public
+// place page carries one for the park and one for the town it is in, and both
+// used to read plain "Follow", which is the "two follow buttons" the owner
+// reported. Left off, the button is just "Follow", which is right on a page
+// with only one of them.
+export default function EntityFollowButton({targetType,targetId,targetName,noun,onChanged,compact=false}){
   const {showFeedback}=useFeedback();
   const [user,setUser]=useState(null);
   const [following,setFollowing]=useState(false);
@@ -120,7 +126,7 @@ export default function EntityFollowButton({targetType,targetId,targetName,onCha
   return(
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={following ? `Unfollow this ${label}` : `Follow this ${label}`}
+      accessibilityLabel={following ? `Unfollow ${noun || `this ${label}`}` : `Follow ${noun || `this ${label}`}`}
       disabled={loading || working}
       style={[
         styles.button,
@@ -133,8 +139,12 @@ export default function EntityFollowButton({targetType,targetId,targetName,onCha
       {(loading || working)
         ? <ActivityIndicator size="small" color={INK.ink}/>
         : (
-          <Text style={styles.text}>
-            {!user ? "Log in to follow" : following ? "Following" : "Follow"}
+          <Text style={styles.text} numberOfLines={1}>
+            {!user
+              ? "Log in to follow"
+              : following
+                ? (noun ? `Following ${noun}` : "Following")
+                : (noun ? `Follow ${noun}` : "Follow")}
             {count>0 ? ` · ${count}` : ""}
           </Text>
         )}
@@ -145,6 +155,7 @@ export default function EntityFollowButton({targetType,targetId,targetName,onCha
 const styles=StyleSheet.create({
   button:{
     minWidth:118,
+    maxWidth:230,
     minHeight:44,
     paddingHorizontal:18,
     paddingVertical:11,

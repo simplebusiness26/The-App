@@ -92,6 +92,7 @@ export default function Layout(){
 
           <Stack.Screen name="places/index"/>
           <Stack.Screen name="places/[id]"/>
+          <Stack.Screen name="places/review/[id]"/>
 
           <Stack.Screen name="activity-clubs/index"/>
           <Stack.Screen name="activity-clubs/[id]"/>

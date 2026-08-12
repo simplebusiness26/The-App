@@ -128,7 +128,11 @@ describe("no route was lost",()=>{
     "admin/areas","admin/audit","memories/create","memories/[id]",
     // Messages has a tab but no feature behind it yet. The screen says so
     // rather than faking an inbox -- see app/messages.js.
-    "messages"];
+    "messages",
+    // Parks became reviewable in 20260811140000 and app/places/[id].js has
+    // listed reviews ever since, with no screen anywhere to write one on. This
+    // is that screen -- the same shared form every other place type uses.
+    "places/review/[id]"];
 
   // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
   // old menu page once every link has a new home." Every link did -- that is

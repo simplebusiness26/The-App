@@ -247,8 +247,14 @@ describe("the public place page",()=>{
     expect(text).toContain("Alexandra Park");
     expect(text).toContain("Park");
     expect(text).toContain("Hastings");
-    expect(labels).toContain("Follow this public place");
-    expect(labels).toContain("Follow this area");
+    // Both follows are NAMED. They both read plain "Follow" before, on a page
+    // that carries two of them -- the owner reported it as the same button
+    // twice, which is exactly what it looked like.
+    expect(labels).toContain("Follow this place");
+    expect(labels).toContain("Follow Hastings");
+
+    // And there is finally a way to write one of the reviews this page lists.
+    expect(labels).toContain("Write a review of Alexandra Park");
   });
 
   it("takes reviews now, and invites one when there are none",async()=>{
