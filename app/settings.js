@@ -66,6 +66,16 @@ export default function Settings(){
   const [visibility,setVisibility]=useState("nobody");
   const [capabilities,setCapabilities]=useState(null);
 
+  // What they currently manage, so the confirmation can say exactly what is
+  // about to happen to it rather than "your listings".
+  const [listings,setListings]=useState({businesses:0,properties:0,activity_clubs:0,events:0});
+  // null | 'become' | 'stop'. The confirmation is drawn in the page rather than
+  // in Alert.alert -- react-native-web has no Alert, so a confirm dialog there
+  // is a button that does nothing at all, which is the exact failure this app
+  // has already had twice.
+  const [confirming,setConfirming]=useState(null);
+  const [workingManager,setWorkingManager]=useState(false);
+
   const load=useCallback(async()=>{
     setLoading(true);
     setError("");
@@ -117,11 +127,29 @@ export default function Settings(){
       .eq("user_id",user.id)
       .maybeSingle();
 
+    // Every default is inactive. It used to say businesses and properties were
+    // 'active' for an account with no row at all, which stopped being true when
+    // 20260811120000 flipped those column defaults -- so Settings was telling
+    // people they could list a business while the insert policy refused it.
     setCapabilities(capabilityRow || {
-      businesses_status:"active",
-      properties_status:"active",
+      businesses_status:"inactive",
+      properties_status:"inactive",
       activity_clubs_status:"inactive",
       events_status:"inactive"
+    });
+
+    const [businessCount,propertyCount,clubCount,eventCount]=await Promise.all([
+      supabase.from("businesses").select("id",{count:"exact",head:true}).eq("owner_id",user.id),
+      supabase.from("properties").select("id",{count:"exact",head:true}).eq("owner_id",user.id),
+      supabase.from("activity_clubs").select("id",{count:"exact",head:true}).eq("manager_id",user.id),
+      supabase.from("events").select("id",{count:"exact",head:true}).eq("manager_id",user.id)
+    ]);
+
+    setListings({
+      businesses:businessCount.count || 0,
+      properties:propertyCount.count || 0,
+      activity_clubs:clubCount.count || 0,
+      events:eventCount.count || 0
     });
 
     setLoading(false);
@@ -164,6 +192,60 @@ export default function Settings(){
     }
 
     showFeedback("Your privacy settings have been updated.");
+  }
+
+  // -------------------------------------------------------------------------
+  // Becoming a manager, and stopping
+  // -------------------------------------------------------------------------
+  // Both go through a function in the database rather than an update from here,
+  // for the same reason every other rule in this app does: the client asks, the
+  // database decides, and there is one place to read what actually happens.
+
+  async function becomeManager(){
+    setWorkingManager(true);
+    const {error:rpcError}=await supabase.rpc("become_manager");
+    setWorkingManager(false);
+
+    if(rpcError){
+      showFeedback(rpcError.message,"error","Could not switch the tools on");
+      return;
+    }
+
+    setConfirming(null);
+    showFeedback(
+      "You can list a business or property, and start an activity club or an event.",
+      "success",
+      "Manager tools are on"
+    );
+    await load();
+  }
+
+  async function stopManaging(listingChoice){
+    setWorkingManager(true);
+    const {data,error:rpcError}=await supabase.rpc("stop_managing",{p_listings:listingChoice});
+    setWorkingManager(false);
+
+    if(rpcError){
+      showFeedback(rpcError.message,"error","Could not switch the tools off");
+      return;
+    }
+
+    setConfirming(null);
+
+    // Say what was actually done, using the numbers the function returned --
+    // not the numbers this screen was holding before it ran.
+    const unclaimed=Number(data?.unclaimed || 0);
+    const removed=Number(data?.removed || 0);
+    const parts=[];
+    if(unclaimed) parts.push(`${unclaimed} left on the map with no owner`);
+    if(removed) parts.push(`${removed} removed`);
+
+    showFeedback(
+      parts.length ? `${parts.join(", ")}.` : "You had nothing listed.",
+      "success",
+      "Manager tools are off"
+    );
+    await load();
   }
 
   function confirmPasswordReset(){
@@ -210,6 +292,26 @@ export default function Settings(){
     await supabase.auth.signOut();
     router.replace("/");
   }
+
+  // A manager is somebody with at least one capability switched on. There is no
+  // account type to read -- 20260803120000 retired it -- so this IS the answer,
+  // and it is the same column the insert policies check.
+  const isManager=CAPABILITIES.some(({key})=>
+    ENABLED_STATUSES.includes(capabilities?.[`${key}_status`])
+  );
+
+  // What they manage, as a sentence, so the confirmation names it rather than
+  // saying "your listings" and leaving somebody to guess.
+  const managedParts=[
+    listings.businesses && `${listings.businesses} business${listings.businesses===1 ? "" : "es"}`,
+    listings.properties && `${listings.properties} propert${listings.properties===1 ? "y" : "ies"}`,
+    listings.activity_clubs && `${listings.activity_clubs} activity club${listings.activity_clubs===1 ? "" : "s"}`,
+    listings.events && `${listings.events} event${listings.events===1 ? "" : "s"}`
+  ].filter(Boolean);
+
+  const managedSentence=managedParts.length
+    ? `You manage ${managedParts.join(", ").replace(/, ([^,]*)$/," and $1")}.`
+    : "You have nothing listed, so there is nothing to decide about — the tools just switch off.";
 
   if(loading){
     return <View style={styles.center}><ActivityIndicator size="large" color="#a58cff"/></View>;
@@ -304,9 +406,8 @@ export default function Settings(){
 
       <Text style={styles.sectionTitle}>Managing places</Text>
       <Text style={styles.helpText}>
-        There is no separate manager account. Listing a business or property is
-        something your Explorer profile can do, and clubs and events are unlocked
-        by request.
+        There is no separate manager account. A manager is an Explorer with the
+        tools switched on, and you can switch them on and off yourself.
       </Text>
 
       <View style={styles.capabilityCard}>
@@ -319,13 +420,139 @@ export default function Settings(){
         ))}
       </View>
 
-      <Pressable style={styles.linkCard} onPress={()=>router.push("/manager/dashboard")}>
-        <View style={styles.linkTextWrap}>
-          <Text style={styles.linkTitle}>Open manager dashboard</Text>
-          <Text style={styles.linkText}>Your listings, and where to request activity clubs and events.</Text>
+      {/*
+        The confirmation is drawn here, in the page. Alert.alert does nothing at
+        all on web, so a confirm dialog built with it is a button that appears
+        to work and does not -- which is the failure this app has already had
+        more than once.
+      */}
+      {!isManager && confirming!=="become" && (
+        <Pressable
+          style={styles.primaryButton}
+          accessibilityRole="button"
+          accessibilityLabel="Become a manager"
+          onPress={()=>setConfirming("become")}
+        >
+          <Text style={styles.primaryText}>Become a manager</Text>
+        </Pressable>
+      )}
+
+      {!isManager && confirming==="become" && (
+        <View style={styles.confirmCard}>
+          <Text style={styles.confirmTitle}>Are you sure?</Text>
+          <Text style={styles.confirmText}>
+            You will be able to list a business or a property, and start an
+            activity club or an event. Your account does not change and nothing
+            about your profile changes — it is the same Explorer with more tools.
+          </Text>
+          <Text style={styles.confirmText}>
+            This does not give you anybody else&apos;s business. Taking over a
+            place that is already listed is a claim, and an administrator decides
+            those.
+          </Text>
+          <Text style={styles.confirmText}>You can switch it off again here whenever you want.</Text>
+
+          <View style={styles.confirmRow}>
+            <Pressable
+              style={[styles.confirmYes,workingManager && styles.disabled]}
+              accessibilityRole="button"
+              accessibilityLabel="Yes, switch the manager tools on"
+              disabled={workingManager}
+              onPress={becomeManager}
+            >
+              <Text style={styles.confirmYesText}>{workingManager ? "Working..." : "Yes, switch them on"}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.confirmNo}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              disabled={workingManager}
+              onPress={()=>setConfirming(null)}
+            >
+              <Text style={styles.confirmNoText}>Cancel</Text>
+            </Pressable>
+          </View>
         </View>
-        <Text style={styles.chevron}>›</Text>
-      </Pressable>
+      )}
+
+      {isManager && (
+        <Pressable style={styles.linkCard} onPress={()=>router.push("/manager/dashboard")}>
+          <View style={styles.linkTextWrap}>
+            <Text style={styles.linkTitle}>Open manager dashboard</Text>
+            <Text style={styles.linkText}>Your listings, and everything you manage.</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+      )}
+
+      {isManager && confirming!=="stop" && (
+        <Pressable
+          style={styles.stopManagingButton}
+          accessibilityRole="button"
+          accessibilityLabel="Stop being a manager"
+          onPress={()=>setConfirming("stop")}
+        >
+          <Text style={styles.stopManagingText}>Stop being a manager</Text>
+        </Pressable>
+      )}
+
+      {isManager && confirming==="stop" && (
+        <View style={styles.confirmCard}>
+          <Text style={styles.confirmTitle}>What happens to what you manage?</Text>
+          <Text style={styles.confirmText}>{managedSentence}</Text>
+
+          {(listings.activity_clubs>0 || listings.events>0) && (
+            <Text style={styles.confirmWarning}>
+              A club or an event always belongs to somebody, so there is no way to
+              leave one behind without an owner. Either way you choose, your
+              {listings.activity_clubs>0 ? ` ${listings.activity_clubs} club${listings.activity_clubs===1 ? "" : "s"}` : ""}
+              {listings.activity_clubs>0 && listings.events>0 ? " and" : ""}
+              {listings.events>0 ? ` ${listings.events} event${listings.events===1 ? "" : "s"}` : ""}
+              {" "}will be removed.
+            </Text>
+          )}
+
+          <Pressable
+            style={[styles.choiceCard,workingManager && styles.disabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Leave my businesses and properties on the map with no owner"
+            disabled={workingManager}
+            onPress={()=>stopManaging("unclaim")}
+          >
+            <Text style={styles.choiceTitle}>Leave them unclaimed</Text>
+            <Text style={styles.choiceText}>
+              Your businesses and properties stay on the map with nobody managing
+              them, exactly like every place nobody has claimed yet. Their reviews
+              and photos stay. Somebody else can claim them later — including you.
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.choiceCard,styles.choiceDanger,workingManager && styles.disabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Delete everything I manage"
+            disabled={workingManager}
+            onPress={()=>stopManaging("delete")}
+          >
+            <Text style={styles.choiceTitle}>Delete them</Text>
+            <Text style={styles.choiceText}>
+              Everything you manage comes off the map, along with its reviews. This
+              cannot be undone. Moments and Memories other Explorers took there are
+              theirs and are kept — they just stop being attached to a place.
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.confirmNo}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+            disabled={workingManager}
+            onPress={()=>setConfirming(null)}
+          >
+            <Text style={styles.confirmNoText}>{workingManager ? "Working..." : "Cancel, keep managing"}</Text>
+          </Pressable>
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>Safety</Text>
       <Pressable style={styles.linkCard} onPress={()=>router.push("/safety/blocked")}>
@@ -378,6 +605,25 @@ const styles=StyleSheet.create({
   choiceActive:{backgroundColor:"#2d2152",borderColor:"#644be0"},
   choiceTitle:{color:"#aaaab3",fontWeight:"800",fontSize:12},
   choiceTitleActive:{color:"white"},
+  confirmCard:{backgroundColor:"#1e1e22",borderColor:"#3a3a42",borderWidth:1,borderRadius:14,padding:16,marginBottom:11},
+  confirmTitle:{color:"#f4f4f8",fontSize:17,fontWeight:"900",marginBottom:8},
+  confirmText:{color:"#b9b9c4",fontSize:13,lineHeight:19,marginBottom:8},
+  confirmWarning:{color:"#f0c36d",fontSize:13,lineHeight:19,marginBottom:10,fontWeight:"700"},
+  confirmRow:{flexDirection:"row",gap:10,marginTop:4},
+  confirmYes:{flex:1,backgroundColor:"#3212b6",borderRadius:12,paddingVertical:13,alignItems:"center"},
+  confirmYesText:{color:"white",fontWeight:"900",fontSize:14},
+  confirmNo:{flex:1,backgroundColor:"#2b2b31",borderColor:"#4a4a55",borderWidth:1,borderRadius:12,paddingVertical:13,alignItems:"center"},
+  confirmNoText:{color:"#d5d5dc",fontWeight:"800",fontSize:14},
+  choiceCard:{backgroundColor:"#26262c",borderColor:"#43434e",borderWidth:1,borderRadius:12,padding:14,marginBottom:10},
+  choiceDanger:{borderColor:"#7a2a24"},
+  choiceTitle:{color:"#f4f4f8",fontSize:15,fontWeight:"900",marginBottom:5},
+  choiceText:{color:"#b9b9c4",fontSize:13,lineHeight:19},
+  // Named for what it is rather than "danger": there is already a dangerButton
+  // further down this same StyleSheet, and a duplicate key in an object literal
+  // silently keeps the LAST one -- so this button would have quietly worn the
+  // wrong style.
+  stopManagingButton:{backgroundColor:"#3a1c18",borderColor:"#7a2a24",borderWidth:1,borderRadius:12,paddingVertical:14,alignItems:"center",marginBottom:11},
+  stopManagingText:{color:"#f0a79c",fontWeight:"900",fontSize:14},
   capabilityCard:{backgroundColor:"#1e1e22",borderColor:"#3a3a42",borderWidth:1,borderRadius:14,padding:6,marginBottom:11},
   capabilityRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingHorizontal:10,paddingVertical:9},
   capabilityLabel:{color:"#d5d5dc",fontSize:14,fontWeight:"700"},
