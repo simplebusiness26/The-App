@@ -15,6 +15,7 @@ import {
 } from "../../utils/memories";
 import {PUBLIC_PLACE_TYPES} from "../../utils/places";
 import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,uploadSocialAsset} from "../../utils/socialMedia";
+import AudienceCeiling from "../../components/AudienceCeiling";
 import {INK} from "../../utils/tokens";
 
 // Packet 8d: keeping something on purpose.
@@ -347,6 +348,13 @@ export default function CreateMemory(){
           Save it first, then choose the Explorers on the Memory itself.
         </Text>
       )}
+
+      {/*
+        profiles.visibility is a ceiling over this choice, and it starts at
+        Nobody. Without this the screen offers four audiences and silently
+        delivers none of them.
+      */}
+      <AudienceCeiling audience={visibility}/>
 
       {!isPrivate && (
         <>

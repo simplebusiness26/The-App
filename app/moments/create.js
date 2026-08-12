@@ -7,6 +7,7 @@ import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import MomentMediaPreview from "../../components/MomentMediaPreview";
 import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
+import AudienceCeiling from "../../components/AudienceCeiling";
 import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY,roundCoordinate} from "../../utils/places";
 
 // Packet 8e added three things to this screen, each with a boundary in the
@@ -472,6 +473,15 @@ export default function CreateMoment(){
           ))}
         </View>
       )}
+
+      {/*
+        And then the truth. profiles.visibility is a ceiling and starts at
+        Nobody, so a brand new Explorer's first Moment is seen by no one -- the
+        setting working exactly as intended, and completely silent about it.
+        This says so before the post, not after somebody asks why their friend
+        cannot see it.
+      */}
+      <AudienceCeiling audience={postOfficially ? "everyone" : visibility}/>
 
       {!selectedPlace && (
         <>
