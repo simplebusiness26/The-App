@@ -169,10 +169,11 @@ describe("the map keeps its position",()=>{
     else process.env[KEY]=original;
   });
 
-  it("renders a map when a key is set",async()=>{
+  it("renders a map",async()=>{
     fixture();
     const tree=await render(require("../app/map").default);
-    expect(nodes(tree.toJSON(),"MapView")).toHaveLength(1);
+    // MapLibre now. The name changed; what is being asserted did not.
+    expect(nodes(tree.toJSON(),"MapLibreMap")).toHaveLength(1);
     await act(async()=>{tree.unmount();});
   });
 
@@ -180,20 +181,22 @@ describe("the map keeps its position",()=>{
     fixture();
     const tree=await render(require("../app/map").default);
 
-    const before=nodes(tree.toJSON(),"MapView")[0].props;
-    const markers=nodes(tree.toJSON(),"Marker");
+    const before=nodes(tree.toJSON(),"MapLibreCamera")[0].props;
+    const markers=nodes(tree.toJSON(),"MapLibreMarker");
     expect(markers.length).toBeGreaterThan(0);
 
     await act(async()=>{markers[0].props.onPress();});
 
-    const after=nodes(tree.toJSON(),"MapView")[0].props;
+    const after=nodes(tree.toJSON(),"MapLibreCamera")[0].props;
 
-    // The map is uncontrolled: it is given a starting region once and never
-    // told where to be again. A `region` prop appearing is what would drag it
-    // back on every render.
-    expect(after.initialRegion).toEqual(before.initialRegion);
-    expect(after.region).toBeUndefined();
-    expect(before.region).toBeUndefined();
+    // The camera is uncontrolled: given a starting position once and never told
+    // where to be again. MapLibre's controlled prop is `centerCoordinate` on
+    // the Camera, the way react-native-maps' was `region` on the MapView --
+    // different name, identical trap, and it would drag the map back on every
+    // render.
+    expect(after.defaultSettings).toEqual(before.defaultSettings);
+    expect(after.centerCoordinate).toBeUndefined();
+    expect(before.centerCoordinate).toBeUndefined();
 
     await act(async()=>{tree.unmount();});
   });
@@ -202,7 +205,7 @@ describe("the map keeps its position",()=>{
     fixture();
     const tree=await render(require("../app/map").default);
 
-    const markers=nodes(tree.toJSON(),"Marker");
+    const markers=nodes(tree.toJSON(),"MapLibreMarker");
     await act(async()=>{markers[0].props.onPress();});
 
     const labels=labelsOf(tree.toJSON()).join(" ");
@@ -210,14 +213,14 @@ describe("the map keeps its position",()=>{
     expect(textOf(tree.toJSON())).toContain("nearby");
 
     // Dismissing leaves the map exactly where it was.
-    const regionWhileOpen=nodes(tree.toJSON(),"MapView")[0].props.initialRegion;
+    const regionWhileOpen=nodes(tree.toJSON(),"MapLibreCamera")[0].props.defaultSettings;
     const close=pressable(tree,"Close place card");
     expect(close).not.toBeNull();
 
     await act(async()=>{close.props.onPress();});
 
     expect(labelsOf(tree.toJSON()).join(" ")).not.toContain("Close place card");
-    expect(nodes(tree.toJSON(),"MapView")[0].props.initialRegion).toEqual(regionWhileOpen);
+    expect(nodes(tree.toJSON(),"MapLibreCamera")[0].props.defaultSettings).toEqual(regionWhileOpen);
 
     await act(async()=>{tree.unmount();});
   });
@@ -238,7 +241,7 @@ describe("the map no longer needs a Google key, and the list is still there",()=
     // WAS the map. That was true for the whole life of the app and it is the
     // thing Packet 21 exists to end. MapLibre and OpenFreeMap need no key, no
     // account and no card.
-    expect(nodes(tree.toJSON(),"MapView").length).toBeGreaterThan(0);
+    expect(nodes(tree.toJSON(),"MapLibreMap").length).toBeGreaterThan(0);
 
     await act(async()=>{tree.unmount();});
   });
@@ -258,7 +261,7 @@ describe("the map no longer needs a Google key, and the list is still there",()=
 
     // The same places, in a list, from the same Living Map model.
     expect(textOf(tree.toJSON())).toContain("The Lamb and Flag");
-    expect(nodes(tree.toJSON(),"MapView")).toHaveLength(0);
+    expect(nodes(tree.toJSON(),"MapLibreMap")).toHaveLength(0);
 
     await act(async()=>{tree.unmount();});
   });

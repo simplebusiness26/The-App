@@ -42,6 +42,7 @@ function code(content){
 // interface into one screen, the drawing into a per-platform renderer. These
 // constants follow the rules to where they live now.
 const MAP="components/LivingMap.js";
+const LEGACY="components/LivingMap.legacy.js";
 const SCREEN="components/LivingMapScreen.js";
 const LIST="components/PlacesList.js";
 const SHEET="components/PlaceCards.js";
@@ -53,13 +54,23 @@ const MODEL="utils/placeCards.js";
 
 const map=code(read(MAP));
 
+// MapLibre's uncontrolled camera is `defaultSettings`; react-native-maps' was
+// `initialRegion`. Different name, same rule: the map is told where to start
+// once and never told where to be again. The controlled forms -- MapLibre's
+// centerCoordinate, react-native-maps' region -- drag it back on every render,
+// which is exactly what "map position unchanged after opening, swiping and
+// dismissing a card" forbids.
 check(
-  /initialRegion=\{/.test(map),
-  `${MAP}: MapView must be given an initialRegion`
+  /defaultSettings=\{/.test(map),
+  `${MAP}: the MapLibre Camera must be given defaultSettings`
 );
 check(
-  !/<MapView[^>]*\sregion=\{/.test(map),
-  `${MAP}: MapView must not take a region prop — a controlled map is dragged back to a fixed point on every render, which is exactly what "map position unchanged" forbids`
+  !/<Camera[^>]*\scenterCoordinate=\{/.test(map),
+  `${MAP}: the Camera must not take centerCoordinate — a controlled camera is dragged back to a fixed point on every render`
+);
+check(
+  !/<MapView[^>]*\sregion=\{/.test(code(read(LEGACY))),
+  `${LEGACY}: MapView must not take a region prop, for the same reason`
 );
 
 // The sheet is a Modal, so it renders outside the map's view tree. Inside it,

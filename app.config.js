@@ -27,6 +27,16 @@ module.exports = () => ({
       bundleIdentifier: "com.guestbook.app"
     },
     plugins: [
+      // MapLibre's native map. The plugin is what wires the SDK into the
+      // generated Android and iOS projects -- on iOS it adds MLRN.post_install
+      // to the Podfile, which cannot be done any other way.
+      //
+      // It means the app CANNOT run in Expo Go any more. That is not a
+      // regression to work around: this repository has never used Expo Go for a
+      // build, and .github/workflows/build-apk.yml already runs `expo prebuild`
+      // and Gradle, which is a custom native build. The plugin joins that
+      // pipeline with nothing else to change.
+      "@maplibre/maplibre-react-native",
       [
         "expo-camera",
         {

@@ -1,47 +1,70 @@
 import React from "react";
-import MapView,{Marker} from "react-native-maps";
 import {StyleSheet} from "react-native";
+import {Map,Camera,Marker} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
-import {DEFAULT_CENTRE,DEFAULT_SPAN} from "../hooks/useLivingMap";
+import LegacyMap from "./LivingMap.legacy";
+import {mapConfiguration,useLegacyNativeMap} from "../utils/mapProvider";
+import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 
-// The native renderer.
+// The native renderer: MapLibre on Android and iOS.
 //
-// STILL react-native-maps, ON PURPOSE, AND ONLY FOR NOW.
+// THE OLD MAP IS STILL HERE, BEHIND A SWITCH, AND THAT IS DELIBERATE
 //
-// Packet 21's phase order is deliberate: the MapLibre native renderer arrives
-// ALONGSIDE this one rather than instead of it, so the working native map is
-// never the thing being debugged. The owner has not yet seen the new map on a
-// real phone, and the agreed position is that both exist until they have.
+// components/LivingMap.legacy.js is the react-native-maps version. Setting
+// EXPO_PUBLIC_LEGACY_MAP=1 brings it back. It stays until the owner has opened
+// the MapLibre one on a real phone, because if it misbehaves on a device I
+// cannot test, flipping one variable is a working map and deleting the file was
+// a week of waiting.
 //
-// The important part has already moved: this file no longer reads the database,
-// filters anything, decides what a marker means or builds a card. It takes what
-// useLivingMap worked out and draws it. Swapping MapLibre in underneath is
-// therefore a change to this file and nothing else -- which is the whole point
-// of the shared brain.
+// It costs a dependency in package.json for a few days. Phase E removes it once
+// the new map has been seen.
 //
-// initialRegion and never `region`: a controlled region drags the map back to a
-// fixed point on every re-render, and "map position unchanged after opening,
-// swiping and dismissing a card" is a criterion this has to keep meeting.
+// WHAT THIS FILE DOES NOT DO
+//
+// Read the database, filter anything, decide what a marker means, or build a
+// card. All of that is hooks/useLivingMap.js and it is shared with the web
+// renderer, which is why the two platforms cannot drift.
+//
+// NO API KEY. MapLibre needs none and OpenFreeMap needs none, so there is no
+// billing to set up and no card to add. That is the whole reason for the stack.
 
-export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
+export default function LivingMap(props){
+  if(useLegacyNativeMap()) return <LegacyMap {...props}/>;
+  return <MapLibreMap {...props}/>;
+}
+
+function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
+  const config=mapConfiguration();
+
   return(
-    <MapView
+    <Map
       style={styles.map}
-      initialRegion={{
-        latitude:DEFAULT_CENTRE.latitude,
-        longitude:DEFAULT_CENTRE.longitude,
-        latitudeDelta:DEFAULT_SPAN,
-        longitudeDelta:DEFAULT_SPAN
-      }}
+      mapStyle={config.styleUrl}
+      attributionEnabled
+      logoEnabled={false}
     >
+      {/*
+        defaultSettings, not a controlled camera. A controlled one drags the map
+        back to a fixed point on every re-render, and "map position unchanged
+        after opening, swiping and dismissing a card" is a criterion this has to
+        keep meeting.
+      */}
+      <Camera
+        defaultSettings={{
+          centerCoordinate:[DEFAULT_CENTRE.longitude,DEFAULT_CENTRE.latitude],
+          zoomLevel:12
+        }}
+      />
+
       {places.map((place)=>(
         <Marker
           key={`${place.kind}-${place.id}`}
-          coordinate={{latitude:Number(place.latitude),longitude:Number(place.longitude)}}
-          title={place.name}
-          description={place.card?.marker?.label}
+          id={`${place.kind}-${place.id}`}
+          coordinate={[Number(place.longitude),Number(place.latitude)]}
           onPress={()=>onSelectPlace?.(place)}
         >
+          {/* The same component the old map drew, from the same descriptor.
+              Web builds the identical pin out of DOM. One visual language. */}
           <PlaceMarker marker={place.card?.marker}/>
         </Marker>
       ))}
@@ -51,15 +74,14 @@ export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectA
       {activity.map((item)=>(
         <Marker
           key={item.key}
-          coordinate={{latitude:item.latitude,longitude:item.longitude}}
-          title={item.title}
-          description={item.marker?.label}
+          id={item.key}
+          coordinate={[item.longitude,item.latitude]}
           onPress={()=>onSelectActivity?.(item)}
         >
           <PlaceMarker marker={item.marker}/>
         </Marker>
       ))}
-    </MapView>
+    </Map>
   );
 }
 

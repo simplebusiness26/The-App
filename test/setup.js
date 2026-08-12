@@ -153,6 +153,28 @@ jest.mock("expo-camera",()=>{
   };
 });
 
+// MapLibre React Native is a native module: it cannot load under Node, and the
+// mock is what lets a test exercise the map screen's behaviour rather than only
+// its imports.
+//
+// Props are passed through and children rendered, so a test can read the pins
+// the screen asked for and press one -- exactly the reason the react-native-maps
+// mock below does the same. A mock that swallows its children makes a map look
+// healthy while it draws nothing.
+jest.mock("@maplibre/maplibre-react-native",()=>{
+  const React=require("react");
+  const pass=(name)=>({children,...rest})=>React.createElement(name,rest,children);
+
+  return{
+    __esModule:true,
+    Map:pass("MapLibreMap"),
+    Camera:pass("MapLibreCamera"),
+    Marker:pass("MapLibreMarker"),
+    UserLocation:pass("MapLibreUserLocation"),
+    ShapeSource:pass("MapLibreShapeSource")
+  };
+});
+
 // react-native-maps ships no web build and requires a native module.
 jest.mock("react-native-maps",()=>{
   const React=require("react");
