@@ -100,10 +100,7 @@ Parked by your decision:
 
 - **Packet 13** (drop the mirror review tables) — "leave them for now".
 
-Everything else that was outstanding is done. Packet 18's logic and the four
-map-shaped Moments and Memories steps (8, 9, 10, 12) have their rules built and
-tested in `utils/mapLayers.js`; they now have a map to draw on, and drawing them
-is a small piece of work rather than a packet.
+Everything else that was outstanding is done.
 
 ### Packets 14 and 15 are superseded
 
@@ -123,9 +120,12 @@ a Moment's audience can be narrowed and never widened), **7** (Save to
 Memories, with the Memory inheriting the Moment's audience), **11** (Memories
 in the feed).
 
-Waiting on the map, with their logic already built and tested in
-`utils/mapLayers.js`: **8** (fading Memory pins), **9–10** (historical map and
-time slider), **12** (heat layer).
+Done since the map arrived: **8** (Memory pins fade through the last quarter of
+their window), **12** (the heat layer, off by default, three contributions from
+two Explorers before a cell exists). **9–10** are partly done — Moments and
+Memories are on the map and leave it when their window passes, which is the
+historical map; the time SLIDER is not built, and `itemsOnMapAt` in
+`utils/mapLayers.js` is the rule waiting for it.
 
 ### Still open, and yours to decide
 
