@@ -137,6 +137,19 @@ describe("what reaches the map",()=>{
     // key carries the kind as well as the id.
     expect(ids).toContain("club-c1");
 
+    // And each one is somewhere. Checking only the ids let a pin with NO
+    // POSITION count as a pin: `coordinate` is MapLibre v10's prop and v11
+    // wants `lngLat`, so every marker was built, handed to the map and dropped,
+    // and this test stayed green while the phone showed an empty world map.
+    // Longitude first -- MapLibre takes [lng,lat], the opposite of how the rows
+    // are stored, and getting it backwards puts Brighton in Somalia.
+    const pub=markers.find((node)=>node.props.id==="business-b1");
+    expect(pub.props.lngLat).toEqual([BUSINESS.longitude,BUSINESS.latitude]);
+    for(const marker of markers){
+      expect(Array.isArray(marker.props.lngLat)).toBe(true);
+      expect(marker.props.lngLat.every(Number.isFinite)).toBe(true);
+    }
+
     await act(async()=>{tree.unmount();});
   });
 

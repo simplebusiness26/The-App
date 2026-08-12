@@ -30,7 +30,8 @@
     "verify:listings": "node scripts/verify-listing-creation-gate.cjs",
     "verify:permissions": "node scripts/verify-one-permission-point.cjs",
     "verify:friends": "node scripts/verify-friends-visibility.cjs",
-    "verify:contrast": "node scripts/verify-contrast.cjs"
+    "verify:contrast": "node scripts/verify-contrast.cjs",
+    "verify:nativemap": "node scripts/verify-native-map-props.cjs"
   },
   "dependencies": {
     "@maplibre/maplibre-react-native": "^11.3.6",

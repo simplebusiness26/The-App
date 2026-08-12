@@ -60,15 +60,22 @@ function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
       logo={false}
     >
       {/*
-        defaultSettings, not a controlled camera. A controlled one drags the map
-        back to a fixed point on every re-render, and "map position unchanged
-        after opening, swiping and dismissing a card" is a criterion this has to
-        keep meeting.
+        initialViewState, not a controlled camera. A controlled one drags the
+        map back to a fixed point on every re-render, and "map position
+        unchanged after opening, swiping and dismissing a card" is a criterion
+        this has to keep meeting.
+
+        THIS IS THE ONE THAT OPENED THE MAP ON THE WHOLE WORLD.
+
+        `defaultSettings={{centerCoordinate,zoomLevel}}` is v10. On v11 it is
+        `initialViewState={{center,zoom}}` -- so nothing here was read, no
+        starting position was ever set, and the map opened where MapLibre opens
+        with no instructions: zoomed all the way out.
       */}
       <Camera
-        defaultSettings={{
-          centerCoordinate:[DEFAULT_CENTRE.longitude,DEFAULT_CENTRE.latitude],
-          zoomLevel:12
+        initialViewState={{
+          center:[DEFAULT_CENTRE.longitude,DEFAULT_CENTRE.latitude],
+          zoom:12
         }}
       />
 
@@ -76,7 +83,14 @@ function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
         <Marker
           key={`${place.kind}-${place.id}`}
           id={`${place.kind}-${place.id}`}
-          coordinate={[Number(place.longitude),Number(place.latitude)]}
+          /*
+            AND THIS IS THE ONE THAT DREW NO PINS.
+
+            v10 called it `coordinate`, v11 calls it `lngLat`. A Marker with no
+            position it recognises has nothing to draw, so every pin was built,
+            handed to the map, and dropped on the floor.
+          */
+          lngLat={[Number(place.longitude),Number(place.latitude)]}
           onPress={()=>onSelectPlace?.(place)}
         >
           {/* The same component the old map drew, from the same descriptor.
@@ -91,7 +105,7 @@ function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
         <Marker
           key={item.key}
           id={item.key}
-          coordinate={[item.longitude,item.latitude]}
+          lngLat={[item.longitude,item.latitude]}
           onPress={()=>onSelectActivity?.(item)}
         >
           <PlaceMarker marker={item.marker}/>

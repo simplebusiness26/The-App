@@ -92,6 +92,9 @@ jobs:
       - name: Verify every screen can actually be read
         run: npm run verify:contrast
 
+      - name: Verify the native map props exist on the installed MapLibre
+        run: npm run verify:nativemap
+
       - name: Verify Explorer social layer
         run: npm run verify:social
 

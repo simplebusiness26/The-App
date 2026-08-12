@@ -54,19 +54,28 @@ const MODEL="utils/placeCards.js";
 
 const map=code(read(MAP));
 
-// MapLibre's uncontrolled camera is `defaultSettings`; react-native-maps' was
-// `initialRegion`. Different name, same rule: the map is told where to start
-// once and never told where to be again. The controlled forms -- MapLibre's
-// centerCoordinate, react-native-maps' region -- drag it back on every render,
-// which is exactly what "map position unchanged after opening, swiping and
-// dismissing a card" forbids.
+// MapLibre v11's uncontrolled camera is `initialViewState`; react-native-maps'
+// was `initialRegion`. Different name, same rule: the map is told where to
+// start once and never told where to be again. The controlled forms -- a bare
+// `center` on the Camera, react-native-maps' `region` -- drag it back on every
+// render, which is exactly what "map position unchanged after opening, swiping
+// and dismissing a card" forbids.
+//
+// THIS CHECK USED TO ASSERT `defaultSettings`, WHICH IS THE v10 NAME.
+//
+// So it passed while the real prop was being ignored, and reported a camera
+// that had never been configured as correctly configured. The map opened on the
+// whole world on a phone and this gate said it was fine. Asserting the name of
+// a prop is worth nothing unless something also checks the prop EXISTS --
+// that is scripts/verify-native-map-props.cjs, which reads the installed
+// package's own type definitions.
 check(
-  /defaultSettings=\{/.test(map),
-  `${MAP}: the MapLibre Camera must be given defaultSettings`
+  /initialViewState=\{/.test(map),
+  `${MAP}: the MapLibre Camera must be given initialViewState`
 );
 check(
-  !/<Camera[^>]*\scenterCoordinate=\{/.test(map),
-  `${MAP}: the Camera must not take centerCoordinate — a controlled camera is dragged back to a fixed point on every render`
+  !/<Camera[^>]*\s(centerCoordinate|center)=\{/.test(map),
+  `${MAP}: the Camera must not take a center prop — a controlled camera is dragged back to a fixed point on every render`
 );
 check(
   !/<MapView[^>]*\sregion=\{/.test(code(read(LEGACY))),

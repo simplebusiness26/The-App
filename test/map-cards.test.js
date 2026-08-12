@@ -190,13 +190,23 @@ describe("the map keeps its position",()=>{
     const after=nodes(tree.toJSON(),"MapLibreCamera")[0].props;
 
     // The camera is uncontrolled: given a starting position once and never told
-    // where to be again. MapLibre's controlled prop is `centerCoordinate` on
-    // the Camera, the way react-native-maps' was `region` on the MapView --
-    // different name, identical trap, and it would drag the map back on every
-    // render.
-    expect(after.defaultSettings).toEqual(before.defaultSettings);
-    expect(after.centerCoordinate).toBeUndefined();
-    expect(before.centerCoordinate).toBeUndefined();
+    // where to be again. MapLibre's controlled prop is `center` on the Camera,
+    // the way react-native-maps' was `region` on the MapView -- different name,
+    // identical trap, and it would drag the map back on every render.
+    //
+    // The starting position is asserted to EXIST first, and that is not
+    // pedantry. This test used to compare `before.defaultSettings` with
+    // `after.defaultSettings` -- the v10 prop name -- so it was comparing
+    // undefined with undefined and passing on a camera that had never been
+    // given a position at all. The map opened on the whole world on a phone
+    // while this test was green.
+    expect(before.initialViewState).toEqual({
+      center:[-0.1372,50.8225],
+      zoom:12
+    });
+    expect(after.initialViewState).toEqual(before.initialViewState);
+    expect(after.center).toBeUndefined();
+    expect(before.center).toBeUndefined();
 
     await act(async()=>{tree.unmount();});
   });
@@ -213,14 +223,15 @@ describe("the map keeps its position",()=>{
     expect(textOf(tree.toJSON())).toContain("nearby");
 
     // Dismissing leaves the map exactly where it was.
-    const regionWhileOpen=nodes(tree.toJSON(),"MapLibreCamera")[0].props.defaultSettings;
+    const regionWhileOpen=nodes(tree.toJSON(),"MapLibreCamera")[0].props.initialViewState;
+    expect(regionWhileOpen).toBeTruthy();
     const close=pressable(tree,"Close place card");
     expect(close).not.toBeNull();
 
     await act(async()=>{close.props.onPress();});
 
     expect(labelsOf(tree.toJSON()).join(" ")).not.toContain("Close place card");
-    expect(nodes(tree.toJSON(),"MapLibreCamera")[0].props.defaultSettings).toEqual(regionWhileOpen);
+    expect(nodes(tree.toJSON(),"MapLibreCamera")[0].props.initialViewState).toEqual(regionWhileOpen);
 
     await act(async()=>{tree.unmount();});
   });
