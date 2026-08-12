@@ -122,7 +122,8 @@ test("3. the map centre button carries an upward-swipe responder",async()=>{
   const {centreSwipeUp,centreButton}=require("../utils/navigation");
   expect(centreSwipeUp("/map")?.route).toBe("/discover");
   expect(centreSwipeUp("/feed")).toBeNull();
-  expect(centreButton("/map").route).toBe("/moments/create");
+  // /camera, not /moments/create. The centre used to open the photo library.
+  expect(centreButton("/map").route).toBe("/camera");
 
   expoRouter.usePathname=original;
   await act(async()=>{tree.unmount();});

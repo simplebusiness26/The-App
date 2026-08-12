@@ -121,11 +121,35 @@ jest.mock("expo-image-picker",()=>({
   MediaTypeOptions:{Images:"Images",Videos:"Videos",All:"All"}
 }));
 
+// expo-camera. The default is "not granted yet", because that is what every
+// screen sees on a fresh install and the permission path is the one most likely
+// to be got wrong.
+//
+// Props are forwarded and the ref is real, so a test can reach onBarcodeScanned
+// and takePictureAsync. Without that, a camera screen can only ever be checked
+// for "it rendered", which is how a Camera button that opened the photo library
+// went unnoticed.
 jest.mock("expo-camera",()=>{
   const React=require("react");
+
+  let permission={granted:false,status:"undetermined"};
+  let nextPicture={uri:"file:///tmp/shot.jpg",width:1000,height:1000};
+
+  const CameraView=React.forwardRef(({children,...rest},ref)=>{
+    React.useImperativeHandle(ref,()=>({
+      takePictureAsync:async()=>nextPicture
+    }),[]);
+    return React.createElement("CameraView",rest,children);
+  });
+
   return{
-    CameraView:()=>React.createElement("CameraView"),
-    useCameraPermissions:()=>[{granted:false,status:"undetermined"},jest.fn()]
+    CameraView,
+    useCameraPermissions:()=>[permission,jest.fn()],
+    // Test controls. Reset them yourself -- module state survives between tests
+    // in a file, which is deliberate: several of these tests want a granted
+    // camera for the whole file.
+    __setCameraPermission:(next)=>{permission=next;},
+    __setNextPicture:(next)=>{nextPicture=next;}
   };
 });
 

@@ -375,7 +375,7 @@ describe("creating a Moment",()=>{
     return render(React.createElement(CreateMoment,null));
   }
 
-  it("asks who can see it, and offers friends as well as public",async()=>{
+  it("asks who can see it, and offers friends as well as everyone",async()=>{
     installFixture({user:{id:"explorer-1"},tables:{profiles:[{account_type:"explorer"}]}});
 
     const tree=await mountCreate();
@@ -383,7 +383,11 @@ describe("creating a Moment",()=>{
 
     expect(textOf(tree.toJSON())).toContain("Who can see this");
     expect(labels).toContain("Friends: Explorers you follow who follow you back");
-    expect(labels).toContain("Public: Any Explorer, and it can appear in discovery");
+    // "Everyone", not "Public". Every audience in the app went onto one word
+    // list in 20260811220000 and explorer_moments.visibility has refused
+    // 'public' since -- so this button was posting a value the database
+    // rejects.
+    expect(labels).toContain("Everyone: Any Explorer, and it can appear in discovery");
   });
 
   it("never reads the device position on its own",async()=>{

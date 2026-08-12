@@ -40,6 +40,29 @@ export function prepareSocialAsset(asset){
   };
 }
 
+// A photo the app's own camera just took. It arrives as a file path, not as a
+// picked asset, and it is handed between screens as a route parameter -- so
+// app/camera.js can take the picture while the Moment and Memory screens keep
+// sole responsibility for uploading and for who may see it.
+//
+// ownsPreviewUri is false: nothing here created an object URL, so nothing here
+// should revoke one.
+export function assetFromCameraUri(uri){
+  const clean=(uri || "").trim();
+  if(!clean) return null;
+
+  const extension=clean.split("?")[0].split(".").pop()?.toLowerCase();
+  const known=["jpg","jpeg","png","heic","webp"].includes(extension) ? extension : "jpg";
+
+  return {
+    uri:clean,
+    previewUri:clean,
+    ownsPreviewUri:false,
+    fileName:`camera.${known}`,
+    mimeType:`image/${known==="jpg" ? "jpeg" : known}`
+  };
+}
+
 export function releaseSocialAsset(asset){
   if(
     Platform.OS==="web" &&

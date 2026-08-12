@@ -6,7 +6,7 @@ import * as Location from "expo-location";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import MomentMediaPreview from "../../components/MomentMediaPreview";
-import {prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
+import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
 import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY,roundCoordinate} from "../../utils/places";
 
 // Packet 8e added three things to this screen, each with a boundary in the
@@ -41,6 +41,9 @@ export default function CreateMoment(){
   const params=useLocalSearchParams();
   const presetType=Array.isArray(params.target_type) ? params.target_type[0] : params.target_type;
   const presetId=Array.isArray(params.target_id) ? params.target_id[0] : params.target_id;
+  // A photo handed over by app/camera.js. The camera takes the picture; this
+  // screen is still the only thing that uploads it or decides who sees it.
+  const cameraPhoto=Array.isArray(params.photo) ? params.photo[0] : params.photo;
 
   const [user,setUser]=useState(null);
   const [asset,setAsset]=useState(null);
@@ -64,6 +67,15 @@ export default function CreateMoment(){
   useEffect(()=>{
     return()=>releaseSocialAsset(asset);
   },[asset]);
+
+  // Opened from the camera with the photo already taken.
+  useEffect(()=>{
+    if(!cameraPhoto || asset) return;
+    const taken=assetFromCameraUri(cameraPhoto);
+    if(!taken) return;
+    setAsset(taken);
+    setMediaType("image");
+  },[cameraPhoto,asset]);
 
   // Opened from a place page with the place already chosen.
   useEffect(()=>{
@@ -283,7 +295,7 @@ export default function CreateMoment(){
       // people, and a business does not have any. The database refuses the
       // combination too -- this keeps the screen from sending it.
       const official=postOfficially && canPostOfficially;
-      const audience=official ? "public" : visibility;
+      const audience=official ? "everyone" : visibility;
 
       // Coordinates are sent only for a standalone Moment. An attached one is
       // snapshotted from the place itself on insert, so sending the device's

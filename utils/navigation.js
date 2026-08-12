@@ -14,11 +14,12 @@
 //
 // Two notes on where these point today:
 //
-//   Camera points at /moments/create, which is the post-a-photo screen that
-//   exists. It opens the photo library rather than a camera -- there is no
-//   camera capture anywhere in this app yet. Packet 16 builds that and this tab
-//   is what it lands in. Pointing the tab at a screen that does not exist, or
-//   at a coming-soon panel, would be the placeholder UI RULES.md rules out.
+//   Camera points at /camera, which is a real camera. It used to point at
+//   /moments/create -- the post-a-photo screen, which opens the PHOTO LIBRARY --
+//   so the one control in this app named after a camera was the one control
+//   that could not take a picture. app/camera.js takes the photo and hands it
+//   to the Moment or Memory screen, and recognises a Xplorer QR code whenever
+//   one is in front of it.
 //
 //   Explorer Score points at /leaderboards. The screen keeps its route and its
 //   RPC; only what a person reads changes. WHICH figure it should rank on is an
@@ -43,7 +44,7 @@ export const TABS=[
 export const MAP_CENTRE_ACTION={
   key:"camera",
   label:"Camera",
-  route:"/moments/create",
+  route:"/camera",
   glyph:"camera",
   signedIn:true
 };

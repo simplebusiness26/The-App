@@ -59,8 +59,11 @@ export const MOMENT_VISIBILITY=[
     hint:"Explorers you follow who follow you back"
   },
   {
-    key:"public",
-    label:"Public",
+    // 'everyone', not 'public'. 20260811220000 put every audience in the app on
+    // one word list, and explorer_moments.visibility has refused 'public' since
+    // -- so this button was posting a value the database rejects.
+    key:"everyone",
+    label:"Everyone",
     hint:"Any Explorer, and it can appear in discovery"
   }
 ];
@@ -68,7 +71,7 @@ export const MOMENT_VISIBILITY=[
 export const DEFAULT_MOMENT_VISIBILITY="friends";
 
 export function momentVisibilityLabel(visibility){
-  return MOMENT_VISIBILITY.find((item)=>item.key===visibility)?.label || "Public";
+  return MOMENT_VISIBILITY.find((item)=>item.key===visibility)?.label || "Everyone";
 }
 
 // Roughly 100 metres. Enough to say which park, not enough to say which bench.

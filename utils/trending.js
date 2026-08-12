@@ -93,9 +93,16 @@ export function cappedContributions(perPosterCounts){
 // 8. PUBLIC CONTENT ONLY. Trending is a public surface. A friends-only Moment or
 //    a private Memory must never be able to influence it, even in aggregate --
 //    a count is still a disclosure if it only moves when one person posts.
+// 'everyone' is the word for this now. 20260811220000 moved every audience in
+// the app onto one list and 'public' became 'everyone' for Moments and
+// Memories -- so this had quietly stopped matching anything, which failed the
+// safe way (nothing trended) but was still wrong. Link-ups keep their own
+// 'public', so both are accepted.
+const PUBLIC_AUDIENCES=["everyone","public"];
+
 export function isPublicOnly(item){
   const visibility=item?.visibility;
-  return visibility===undefined || visibility===null || visibility==="public";
+  return visibility===undefined || visibility===null || PUBLIC_AUDIENCES.includes(visibility);
 }
 
 // ---------------------------------------------------------------------------

@@ -11,23 +11,9 @@ import {
 } from "react-native";
 import {CameraView,useCameraPermissions} from "expo-camera";
 import {router} from "expo-router";
-
-function extractQrCode(value){
-  const raw=(value || "").trim();
-  if(!raw) return "";
-
-  try{
-    const parsed=new URL(raw);
-    const match=parsed.pathname.match(/\/qr\/([^/?#]+)/i);
-    if(match?.[1]) return decodeURIComponent(match[1]);
-  }catch{
-    const match=raw.match(/(?:^|\/)qr\/([^/?#]+)/i);
-    if(match?.[1]) return decodeURIComponent(match[1]);
-  }
-
-  if(/^[a-f0-9]{20,80}$/i.test(raw)) return raw;
-  return "";
-}
+// Shared with app/camera.js. Two copies of "is this one of ours" is how a code
+// starts working on one screen and not the other.
+import {extractQrCode} from "../utils/qr";
 
 export default function Scan(){
   const [permission,requestPermission]=useCameraPermissions();

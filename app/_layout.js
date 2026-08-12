@@ -40,6 +40,7 @@ export default function Layout(){
           <Stack.Screen name="discover"/>
           <Stack.Screen name="create"/>
           <Stack.Screen name="scan"/>
+          <Stack.Screen name="camera"/>
           <Stack.Screen name="qr/[code]"/>
           <Stack.Screen name="profile"/>
           <Stack.Screen name="profile/[id]"/>

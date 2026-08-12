@@ -14,7 +14,7 @@ import {
   liveUntilFrom
 } from "../../utils/memories";
 import {PUBLIC_PLACE_TYPES} from "../../utils/places";
-import {prepareSocialAsset,releaseSocialAsset,uploadSocialAsset} from "../../utils/socialMedia";
+import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,uploadSocialAsset} from "../../utils/socialMedia";
 import {INK} from "../../utils/tokens";
 
 // Packet 8d: keeping something on purpose.
@@ -38,6 +38,8 @@ export default function CreateMemory(){
   const params=useLocalSearchParams();
   const presetType=Array.isArray(params.target_type) ? params.target_type[0] : params.target_type;
   const presetId=Array.isArray(params.target_id) ? params.target_id[0] : params.target_id;
+  // A photo handed over by app/camera.js. See the note in app/moments/create.js.
+  const cameraPhoto=Array.isArray(params.photo) ? params.photo[0] : params.photo;
 
   const [user,setUser]=useState(null);
   const [title,setTitle]=useState("");
@@ -60,6 +62,13 @@ export default function CreateMemory(){
 
   useEffect(()=>{loadUser();},[]);
   useEffect(()=>()=>releaseSocialAsset(asset),[asset]);
+
+  // Opened from the camera with the photo already taken.
+  useEffect(()=>{
+    if(!cameraPhoto || asset) return;
+    const taken=assetFromCameraUri(cameraPhoto);
+    if(taken) setAsset(taken);
+  },[cameraPhoto,asset]);
 
   const choosePlaceType=useCallback(async(type,preselectId=null)=>{
     setPlaceType(type);

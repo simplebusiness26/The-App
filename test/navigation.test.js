@@ -132,7 +132,11 @@ describe("no route was lost",()=>{
     // Parks became reviewable in 20260811140000 and app/places/[id].js has
     // listed reviews ever since, with no screen anywhere to write one on. This
     // is that screen -- the same shared form every other place type uses.
-    "places/review/[id]"];
+    "places/review/[id]",
+    // The camera. The centre button said Camera and opened /moments/create --
+    // the PHOTO LIBRARY -- so the one control named after a camera was the one
+    // that could not take a picture.
+    "camera"];
 
   // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
   // old menu page once every link has a new home." Every link did -- that is
