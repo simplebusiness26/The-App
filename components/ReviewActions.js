@@ -1,8 +1,8 @@
 import React,{useState} from "react";
 import {View,Text,Pressable,StyleSheet} from "react-native";
-import {router} from "expo-router";
 import CommentThread from "./CommentThread";
 import EndorseButton from "./EndorseButton";
+import ManagerReply from "./ManagerReply";
 import {INK} from "../utils/tokens";
 
 // The row of actions under a review. One component, used everywhere a review is
@@ -23,23 +23,25 @@ import {INK} from "../utils/tokens";
 //   Reply    -- ONLY whoever manages the reviewed place, and only on reviews of
 //               THEIR place. A reply is the business answering its customer, and
 //               it renders as its own block above the comments rather than as
-//               another comment.
+//               another comment. Challenging the review is the other half of the
+//               same job, so both live in ManagerReply -- also in place, also
+//               under the review, for the same reason comments are.
 //
 // The last one is the rule that was missing. Managing a business does not make
 // you a manager everywhere: on somebody else's listing you are an ordinary
 // Explorer and you get Useful and Comment like everybody else. `canReply` is
 // computed once per page by whoever knows the answer -- never per card, and
 // never by asking the client to decide who owns what.
-
-const ACTION_ROUTE={
-  business:"/business/review-action",
-  property:"/property/review-action"
-};
+//
+// There is no ACTION_ROUTE table any more. Reply used to push
+// /business/review-action or /property/review-action -- a screen with the review
+// nowhere on it -- and there was no entry at all for an activity club or an
+// event, so a club manager had no way to answer a review of their club. Nothing
+// is routed now, so nothing can be missing from the table.
 
 export default function ReviewActions({
   review,
   viewerId,
-  targetType,
   canReply=false,
   likeCount=0,
   liked=false,
@@ -56,11 +58,21 @@ export default function ReviewActions({
 
   // A manager cannot reply to their own review of their own place. They are the
   // author there, and a business answering itself is not a reply.
-  const replyRoute=ACTION_ROUTE[targetType];
-  const showReply=canReply && !isAuthor && !!replyRoute;
+  const showManagerTools=canReply && !isAuthor;
 
   return(
     <View>
+      {/*
+        The manager's reply and challenge. Above the action row because they are
+        part of the review being read, not something you do to it -- and because
+        an answer belongs next to the thing it answers.
+      */}
+      <ManagerReply
+        review={review}
+        canManage={showManagerTools}
+        onChanged={onChanged}
+      />
+
       <View style={styles.row}>
       <EndorseButton
         reviewId={review.id}
@@ -83,19 +95,6 @@ export default function ReviewActions({
         <Text style={styles.actionText}>{showComments ? "Hide comments" : "Comment"}</Text>
       </Pressable>
 
-      {showReply && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Reply to this review as the manager"
-          style={[styles.action,styles.reply]}
-          onPress={(event)=>{
-            event?.stopPropagation?.();
-            router.push(`${replyRoute}?id=${review.id}`);
-          }}
-        >
-          <Text style={[styles.actionText,styles.replyText]}>Reply</Text>
-        </Pressable>
-      )}
       </View>
 
       {/*
@@ -128,9 +127,5 @@ const styles=StyleSheet.create({
     paddingVertical:6,
     backgroundColor:INK.card
   },
-  actionText:{color:INK.ink,fontWeight:"800",fontSize:12},
-  // The manager's action is the filled one: it is the rarer, weightier thing to
-  // do, and it is the only one on the row that speaks for the place itself.
-  reply:{backgroundColor:INK.ink,borderColor:INK.ink},
-  replyText:{color:INK.card}
+  actionText:{color:INK.ink,fontWeight:"800",fontSize:12}
 });

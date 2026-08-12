@@ -95,7 +95,6 @@ export default function PublicPlacePage(){
       photos={place?.image_url ? [place.image_url] : []}
       photosEmptyLabel="No photo of this place yet"
       reviews={reviews}
-      reviewTargetType="public_place"
       viewerId={viewerId}
       rating={{
         average:averageRating(reviews),

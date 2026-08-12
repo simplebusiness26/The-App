@@ -23,5 +23,11 @@ export const INK={
   // one: an active tab is a place you are, not a state a place is in.
   blue:"#2B4BE8",
   pink:"#FF3D6E",
-  yellow:"#FFC61A"
+  yellow:"#FFC61A",
+
+  // Not map inks, and not decoration either -- see design-system.md. These are
+  // the manager's two answers to a review: green agrees, red disputes. They
+  // appear together or not at all, and nowhere else in the app.
+  green:"#1E7A4C",
+  red:"#C2321F"
 };

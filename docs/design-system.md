@@ -24,11 +24,21 @@ colour, the design is wrong.
 | `ink-blue` | `#2B4BE8` | State: it exists |
 | `ink-pink` | `#FF3D6E` | State: something is scheduled |
 | `ink-yellow` | `#FFC61A` | State: an offer is running |
+| `ink-green` | `#1E7A4C` | A manager has answered a review |
+| `ink-red` | `#C2321F` | A manager disputes a review |
 
 **The three-ink rule.** Blue, pink and yellow are the only saturated
-colours on screen. They mean something. Never use them decoratively —
+colours on the map. They mean something. Never use them decoratively —
 not for a nice heading, not for a hover tint, not for a brand flourish.
 Land, water and parks stay desaturated so the inks stay legible.
+
+**Green and red are not map inks.** They exist for exactly one pair of
+things: a manager's reply to a review, and a manager's challenge to one.
+Agreeing and disputing are opposites, they always appear next to each
+other, and green/red is the one colour pair everybody already reads that
+way without a legend. They never appear on the map, never on a pin, and
+never anywhere else in the app. This is a deliberate exception to the
+sentence above and it is the only one.
 
 **No gradients.** Flat ink only. The one exception is a photo placeholder.
 

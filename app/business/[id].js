@@ -195,7 +195,6 @@ export default function BusinessPage(){
         </>
       ) : null}
       reviews={reviews}
-      reviewTargetType="business"
       viewerId={viewerId}
       viewerManagesThis={managesThis}
       reviewsEmpty={{title:"No reviews yet",instruction:"Be the first to share your experience."}}

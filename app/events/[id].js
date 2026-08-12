@@ -199,7 +199,6 @@ export default function EventDetails(){
         </View>
       ) : null}
       reviews={reviews}
-      reviewTargetType="event"
       viewerId={user?.id}
       reviewsEmpty={{
         title:"No event reviews yet",

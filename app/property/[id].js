@@ -191,7 +191,6 @@ export default function PropertyDetails(){
         </>
       ) : null}
       reviews={reviews}
-      reviewTargetType="property"
       viewerId={viewerId}
       viewerManagesThis={managesThis}
       reviewsEmpty={{title:"No reviews yet",instruction:"Be the first to share your stay."}}
