@@ -10,10 +10,11 @@
 //   1. The button is only offered to somebody who is not already a manager, and
 //      the downgrade only to somebody who is.
 //   2. Nothing happens on the first press. The confirmation comes first.
-//   3. The confirmation is drawn IN THE PAGE. Alert.alert does nothing at all
-//      on react-native-web, so a confirm dialog built with it is a button that
-//      looks like it works and does not. app/settings.js already has two of
-//      those (password reset, log out) -- this is not adding a third.
+//   3. The confirmation is drawn IN THE PAGE, not as a system dialog. Alert
+//      would have worked -- FeedbackProvider replaces react-native-web's empty
+//      one, which test/web-confirm-dialog.test.js proves -- but the downgrade is
+//      not a yes/no. It is a choice between two outcomes that each need
+//      explaining, and that does not fit on a system button.
 
 const React=require("react");
 const {act,create}=require("react-test-renderer");
@@ -112,7 +113,7 @@ describe("upgrading",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("does not use Alert, which does nothing on web",()=>{
+  it("puts the confirmation in the page, where the choice can be explained",()=>{
     const source=require("fs").readFileSync(
       require("path").join(__dirname,"..","app","settings.js"),"utf8"
     );
@@ -122,7 +123,7 @@ describe("upgrading",()=>{
 
     expect(start).toBeGreaterThan(-1);
     expect(managerSection).not.toContain("Alert.alert");
-    // And the confirmation is rendered, which is what makes it work on web.
+    // And the confirmation is rendered as part of the screen.
     expect(source).toContain("Are you sure?");
     expect(source).toContain("What happens to what you manage?");
   });

@@ -137,6 +137,11 @@ export function FeedbackProvider({children}){
                   return(
                     <Pressable
                       key={`${action.text || "Action"}-${index}`}
+                      // The buttons in this dialog were the only controls in
+                      // the app with no role and no label, so a screen reader
+                      // met a confirmation it could not answer.
+                      accessibilityRole="button"
+                      accessibilityLabel={action.text || "OK"}
                       style={[
                         styles.dialogButton,
                         destructive

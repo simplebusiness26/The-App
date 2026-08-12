@@ -70,9 +70,10 @@ export default function Settings(){
   // about to happen to it rather than "your listings".
   const [listings,setListings]=useState({businesses:0,properties:0,activity_clubs:0,events:0});
   // null | 'become' | 'stop'. The confirmation is drawn in the page rather than
-  // in Alert.alert -- react-native-web has no Alert, so a confirm dialog there
-  // is a button that does nothing at all, which is the exact failure this app
-  // has already had twice.
+  // in Alert.alert. Alert would work -- FeedbackProvider replaces it on web,
+  // where react-native-web's own is an empty function -- but this one is not a
+  // yes/no. Downgrading is a choice between two outcomes that each need
+  // explaining, and a three-button system dialog is the wrong shape for that.
   const [confirming,setConfirming]=useState(null);
   const [workingManager,setWorkingManager]=useState(false);
 
@@ -421,10 +422,11 @@ export default function Settings(){
       </View>
 
       {/*
-        The confirmation is drawn here, in the page. Alert.alert does nothing at
-        all on web, so a confirm dialog built with it is a button that appears
-        to work and does not -- which is the failure this app has already had
-        more than once.
+        The confirmations are drawn here, in the page, rather than as system
+        dialogs. Not because Alert is broken -- FeedbackProvider swaps in a
+        working one on web -- but because the downgrade is not a yes/no: it is a
+        choice between two outcomes that each need a sentence of explanation,
+        and neither fits on a system button.
       */}
       {!isManager && confirming!=="become" && (
         <Pressable
