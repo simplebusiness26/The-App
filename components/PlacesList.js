@@ -1,25 +1,24 @@
-import React,{useEffect,useState} from "react";
+import React,{useState} from "react";
 import {View,Text,StyleSheet,Pressable,TextInput,ScrollView} from "react-native";
 import {router} from "expo-router";
-import {supabase} from "../services/supabase";
 import PlaceMarker from "./PlaceMarker";
 import PlaceCards from "./PlaceCards";
 import {CARD_KINDS,cardsAround,toCard} from "../utils/placeCards";
 import {classificationLabel} from "../utils/taxonomy";
 import {markerForActivity} from "../utils/markers";
-import {
-  ACTIVITY_STATE_SENTENCE,
-  DEFAULT_TIME_WINDOW,
-  TIME_WINDOWS,
-  activitiesInWindow,
-  toActivities
-} from "../utils/liveActivity";
+import {ACTIVITY_STATE_SENTENCE,TIME_WINDOWS} from "../utils/liveActivity";
+import {useLivingMap} from "../hooks/useLivingMap";
 
-// Packet 8f1 lands here as well as on app/map.js, and this is the copy that
-// matters today. EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is not set, so this list IS
-// the map as far as anybody using the app is concerned. Putting the living
-// layer only in the MapView branch would have closed the gap in a file nobody
-// currently renders and left the shipping path exactly as it was.
+// The list view of the Living Map.
+//
+// It used to be the ONLY view: EXPO_PUBLIC_GOOGLE_MAPS_API_KEY was never set,
+// so app/map.js fell through to this and the app had no map at all. Packet 21
+// gave it one, and this stopped being the map.
+//
+// It is kept, and reachable, because it earns its place: it works when the map
+// will not load, it is the better surface for a screen reader, and browsing
+// what is near you without a map is a real way to use this app. What it is no
+// longer is a substitute for being unable to draw one.
 
 // Each window gets its own sentence. "Nothing here yet" is banned, and a single
 // generic line would be the same mood in three costumes.
@@ -30,92 +29,32 @@ function emptyActivityInstruction(timeWindow){
 }
 
 export default function PlacesList({header}){
-  const [businesses,setBusinesses]=useState([]);
-  const [properties,setProperties]=useState([]);
-  const [activityClubs,setActivityClubs]=useState([]);
-  const [search,setSearch]=useState("");
-  const [typeFilter,setTypeFilter]=useState("all");
-  // Packet 6. The brief wants the bottom card to work "with the current list
-  // fallback when no Maps API key is set", and per PROJECT-LOG.md that is the
-  // shipping path -- so this is where the card actually gets used today. A row
-  // opens the same card the map would, and the card opens the full page.
+  // ONE BRAIN, TWO VIEWS.
+  //
+  // This file used to carry its own copy of everything: the three reads, the
+  // signed-out guard, the error isolation, the search matcher, the type filter
+  // and the time window -- all of it duplicated almost line for line in
+  // app/map.js. Two copies of a rule is two chances for the list and the map to
+  // disagree about what is in front of somebody.
+  //
+  // It is the same hook the map uses now. The list is a VIEW of the Living Map,
+  // not a second implementation of it, which is why a Map/List switch can put
+  // them side by side without either lying.
+  const map=useLivingMap();
+
+  const {search,setSearch,typeFilter,setTypeFilter,timeWindow,setTimeWindow}=map;
   const [openKey,setOpenKey]=useState(null);
 
-  const [activities,setActivities]=useState([]);
-  const [timeWindow,setTimeWindow]=useState(DEFAULT_TIME_WINDOW);
+  // The hook returns one filtered list with a `kind` on each row. The sections
+  // below want them split, and splitting a list is not a second read model.
+  const filteredBusinesses=map.places.filter((row)=>row.kind===CARD_KINDS.BUSINESS);
+  const filteredProperties=map.places.filter((row)=>row.kind===CARD_KINDS.PROPERTY);
+  const filteredClubs=map.places.filter((row)=>row.kind===CARD_KINDS.CLUB);
 
-  useEffect(()=>{loadPlaces();loadActivity();},[]);
-
-  async function loadPlaces(){
-    const [businessResult,propertyResult,clubResult]=await Promise.all([
-      supabase.from("businesses").select("id,name,category,business_type,claimed,address,latitude,longitude"),
-      supabase.from("properties").select("id,name,host,address,latitude,longitude"),
-      supabase.from("activity_clubs").select("id,name,category,location,address,latitude,longitude,status").in("status",["open","full"])
-    ]);
-
-    setBusinesses(businessResult.data || []);
-    setProperties(propertyResult.data || []);
-    setActivityClubs(clubResult.data || []);
-  }
-
-  // get_live_discovery is SECURITY DEFINER and refuses a signed-out caller, so
-  // it is not asked. A signed-out visitor keeps the static list they had
-  // before -- the living layer is an addition, never a gate.
-  async function loadActivity(){
-    const {data:{user}}=await supabase.auth.getUser();
-    if(!user){
-      setActivities([]);
-      return;
-    }
-
-    const {data,error}=await supabase.rpc("get_live_discovery",{
-      p_area:null,
-      p_latitude:null,
-      p_longitude:null,
-      p_radius_km:25,
-      p_window_hours:168
-    });
-
-    // A failed live read must not empty the list. The places are a separate
-    // query and stay exactly as they were.
-    if(error){
-      console.log(error);
-      setActivities([]);
-      return;
-    }
-
-    setActivities(toActivities(data));
-  }
-
-  // Packet 1 turned businesses.category into a key, so a search for the word a
-  // person would type stopped matching a place whose category now reads
-  // food_and_drink. The readable classification is passed in as extra text.
-  function matches(item,extraText){
-    const clean=search.trim().toLowerCase();
-    if(!clean) return true;
-    return [item.name,item.category,item.address,item.location,extraText]
-      .filter(Boolean)
-      .some(value=>String(value).toLowerCase().includes(clean));
-  }
-
-  const filteredBusinesses=businesses.filter(place=>matches(place,classificationLabel(place)));
-  const filteredProperties=properties.filter(matches);
-  const filteredClubs=activityClubs.filter(matches);
-
-  // Follows the same filters the rows do: swiping to a place the filter has
-  // hidden would be a different list than the one on screen.
-  const cards=[
-    ...((typeFilter==="all" || typeFilter==="business") ? filteredBusinesses.map((row)=>toCard(CARD_KINDS.BUSINESS,row)) : []),
-    ...((typeFilter==="all" || typeFilter==="property") ? filteredProperties.map((row)=>toCard(CARD_KINDS.PROPERTY,row)) : []),
-    ...((typeFilter==="all" || typeFilter==="activity") ? filteredClubs.map((row)=>toCard(CARD_KINDS.CLUB,row)) : [])
-  ].filter(Boolean);
+  const cards=map.cards;
+  const visibleActivity=map.activity;
 
   const tapped=cards.find((card)=>card.key===openKey) || null;
-
-  // The time filter narrows what is happening, never what exists. "Tonight"
-  // does not make a pub stop being a pub.
-  const visibleActivity=activitiesInWindow(activities,timeWindow)
-    .filter(item=>matches({name:item.title,category:item.subtitle,location:item.area}));
 
   return(
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

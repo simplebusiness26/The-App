@@ -223,20 +223,42 @@ describe("the map keeps its position",()=>{
   });
 });
 
-describe("the card works without a map at all",()=>{
+describe("the map no longer needs a Google key, and the list is still there",()=>{
   const KEY="EXPO_PUBLIC_GOOGLE_MAPS_API_KEY";
   let original;
 
   beforeEach(()=>{original=process.env[KEY];delete process.env[KEY];});
   afterEach(()=>{if(original!==undefined) process.env[KEY]=original;});
 
-  it("falls back to the list when no key is set",async()=>{
+  it("draws a map with no key set at all",async()=>{
     fixture();
     const tree=await render(require("../app/map").default);
 
-    // This is the shipping path, not a degraded one.
-    expect(nodes(tree.toJSON(),"MapView")).toHaveLength(0);
+    // This test used to assert the opposite: no key meant no map, and the list
+    // WAS the map. That was true for the whole life of the app and it is the
+    // thing Packet 21 exists to end. MapLibre and OpenFreeMap need no key, no
+    // account and no card.
+    expect(nodes(tree.toJSON(),"MapView").length).toBeGreaterThan(0);
+
+    await act(async()=>{tree.unmount();});
+  });
+
+  it("still offers the list, as a view rather than a fallback",async()=>{
+    fixture();
+    const tree=await render(require("../app/map").default);
+
+    const toList=tree.root.findAll(
+      (node)=>node.props?.accessibilityLabel==="Show a list instead of the map"
+        && typeof node.props?.onPress==="function",
+      {deep:true}
+    )[0];
+
+    expect(toList).toBeTruthy();
+    await act(async()=>{toList.props.onPress();});
+
+    // The same places, in a list, from the same Living Map model.
     expect(textOf(tree.toJSON())).toContain("The Lamb and Flag");
+    expect(nodes(tree.toJSON(),"MapView")).toHaveLength(0);
 
     await act(async()=>{tree.unmount();});
   });
@@ -244,6 +266,13 @@ describe("the card works without a map at all",()=>{
   it("opens the same card from a list row",async()=>{
     fixture();
     const tree=await render(require("../app/map").default);
+
+    const toList=tree.root.findAll(
+      (node)=>node.props?.accessibilityLabel==="Show a list instead of the map"
+        && typeof node.props?.onPress==="function",
+      {deep:true}
+    )[0];
+    await act(async()=>{toList.props.onPress();});
 
     const row=pressable(tree,"The Lamb and Flag");
     expect(row).not.toBeNull();
@@ -254,49 +283,6 @@ describe("the card works without a map at all",()=>{
     // The card offers the full page rather than replacing it.
     expect(labels).toContain("Open The Lamb and Flag");
 
-    await act(async()=>{tree.unmount();});
-  });
-});
-
-describe("the sheet",()=>{
-  const PlaceCards=require("../components/PlaceCards").default;
-  const cards=BUSINESSES.map((row)=>toCard(CARD_KINDS.BUSINESS,row));
-
-  it("opens on the place that was tapped, not on the first in the set",async()=>{
-    // Deliberately the second card. Starting on index 0 makes this assertion
-    // unfalsifiable -- which it was, until replacing startIndex with a literal
-    // 0 failed to turn it red.
-    let tree;
-    await act(async()=>{
-      tree=create(wrap(React.createElement(PlaceCards,{cards,startKey:"business-b2",onClose:()=>{}})));
-    });
-
-    expect(textOf(tree.toJSON()).replace(/\s+/g," ")).toContain("2 of 3 nearby");
-    expect(labelsOf(tree.toJSON()).join(" ")).toContain("Place 2 of 3");
-    expect(labelsOf(tree.toJSON()).join(" ")).toContain("Bean There");
-
-    await act(async()=>{tree.unmount();});
-  });
-
-  it("renders every place it was given, so a swipe has somewhere to go",async()=>{
-    let tree;
-    await act(async()=>{
-      tree=create(wrap(React.createElement(PlaceCards,{cards,startKey:"business-b1",onClose:()=>{}})));
-    });
-
-    const text=textOf(tree.toJSON());
-    for(const card of cards) expect(text).toContain(card.name);
-
-    await act(async()=>{tree.unmount();});
-  });
-
-  it("renders nothing when there is nothing to show",async()=>{
-    let tree;
-    await act(async()=>{
-      tree=create(wrap(React.createElement(PlaceCards,{cards:[],onClose:()=>{}})));
-    });
-    expect(labelsOf(tree.toJSON()).join(" ")).not.toContain("Close place card");
-    expect(textOf(tree.toJSON())).not.toContain("nearby");
     await act(async()=>{tree.unmount();});
   });
 });

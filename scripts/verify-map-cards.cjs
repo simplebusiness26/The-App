@@ -38,7 +38,11 @@ function code(content){
     .replace(/(^|[^:])\/\/.*$/gm,"$1");
 }
 
-const MAP="app/map.js";
+// Packet 21 split the map screen three ways: the rules into a hook, the
+// interface into one screen, the drawing into a per-platform renderer. These
+// constants follow the rules to where they live now.
+const MAP="components/LivingMap.js";
+const SCREEN="components/LivingMapScreen.js";
 const LIST="components/PlacesList.js";
 const SHEET="components/PlaceCards.js";
 const MODEL="utils/placeCards.js";
@@ -69,7 +73,7 @@ check(
 // 2. Both surfaces offer the card, and neither assumes a map
 // ---------------------------------------------------------------------------
 
-for(const surface of [MAP,LIST]){
+for(const surface of [SCREEN,LIST]){
   const content=code(read(surface));
 
   check(
@@ -82,22 +86,30 @@ for(const surface of [MAP,LIST]){
   );
 }
 
-// The list fallback is the shipping path and must not import the map library.
+// The list must not import a native-only map library: it is what renders when
+// the map will not, and on web react-native-maps has no build at all.
 check(
   !/react-native-maps/.test(code(read(LIST))),
-  `${LIST}: must not import react-native-maps — it is the surface that runs when there is no map`
+  `${LIST}: must not import react-native-maps — it is the surface that runs when the map does not`
 );
 check(
   !/react-native-maps/.test(code(read(SHEET))),
   `${SHEET}: must not import react-native-maps — the card is shown with and without a map`
 );
 
-// Read inside the component, not at module scope, or the fallback cannot be
-// exercised by a test and the shipping path stays unverified.
-check(
-  /const apiKey=process\.env\.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY/.test(map),
-  `${MAP}: the API key must be read inside the component so both paths are testable`
-);
+// THE OPPOSITE OF WHAT THIS USED TO CHECK.
+//
+// It required the Google key to be read inside the component, so that the
+// no-key fallback could be tested -- because the fallback was the shipping path
+// and the map was the branch nobody ever saw. Packet 21 ended that: the map
+// needs no key at all, on any platform, and a key appearing here again would
+// mean the primary map had gone back to needing billing.
+for(const surface of [MAP,SCREEN,"components/LivingMap.web.js","hooks/useLivingMap.js"]){
+  check(
+    !/GOOGLE_MAPS_API_KEY|MAPBOX_TOKEN/.test(code(read(surface))),
+    `${surface}: the map wants an API key — MapLibre and OpenFreeMap need none, and that is the point of the stack`
+  );
+}
 
 // ---------------------------------------------------------------------------
 // 3. Reduced motion

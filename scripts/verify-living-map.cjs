@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 "use strict";
 
-// Packet 8f1: the living map.
+// The living map: one brain, every surface.
 //
-// CLAUDE.md names the gap this closes as the highest-priority fix in the
-// project: live data "lives on a separate /live screen and never reaches the
-// main map". The failure mode this gate exists to prevent is the quiet one --
-// the living layer being added to app/map.js only, which renders nothing today
-// because no Google Maps key is set, leaving the shipping path untouched while
-// every test goes green.
+// WHAT THIS USED TO CHECK, AND WHY IT CHANGED
+//
+// Packet 8f1 shipped the living layer into TWO files -- app/map.js and
+// components/PlacesList.js -- because they were two implementations of the same
+// screen. This gate existed to stop the layer being added to one and not the
+// other, which would have looked complete while the shipping path stayed dead.
+//
+// Packet 21 removed the duplication rather than policing it. Both surfaces now
+// render one screen over one hook. So the checks moved with the rules: what has
+// to hold is that the live layer has exactly one source, that no screen has
+// grown its own again, and that the list survives as a view of the same model.
+//
+// The count went UP. A gate that loses checks during a migration is a gate that
+// stopped working.
 
 const fs=require("fs");
 const path=require("path");
@@ -32,126 +40,122 @@ function code(source){
     .replace(/(^|[^:])\/\/.*$/gm,"$1");
 }
 
+const BRAIN="hooks/useLivingMap.js";
+const SCREEN="components/LivingMapScreen.js";
 const MAP="app/map.js";
+const WEB="app/map.web.js";
 const LIST="components/PlacesList.js";
 const MODEL="utils/liveActivity.js";
 const MARKERS="utils/markers.js";
+const PROVIDER="utils/mapProvider.js";
 
-const map=code(read(MAP));
+const brain=code(read(BRAIN));
+const screen=code(read(SCREEN));
 const list=code(read(LIST));
 const model=code(read(MODEL));
 const markers=code(read(MARKERS));
 
 // ---------------------------------------------------------------------------
-// 1. BOTH map surfaces are alive, not just the one behind an API key
+// 1. The live layer has exactly one source
 // ---------------------------------------------------------------------------
-//
-// This is the check the whole packet turns on. app/map.js only renders when
-// EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is set, and it is not, so PlacesList is what
-// a person actually sees. A living map in one file and not the other is the
-// gap re-created one level down.
-
-// Each of these matches a USE, not a mention. The first version of this block
-// tested for the bare identifier, and three separate demonstrations passed
-// against broken code: `get_live_discovery` still matched inside
-// `get_live_discovery_DISABLED`, and `toActivities` / `ACTIVITY_STATE_SENTENCE`
-// were both satisfied by the import line alone after every call site was
-// deleted. A gate that a rename defeats is decoration.
-
-for(const [file,source] of [[MAP,map],[LIST,list]]){
-  check(
-    /rpc\(\s*["']get_live_discovery["']/.test(source),
-    `${file}: never calls get_live_discovery — the live layer must reach this surface, not only the other one`
-  );
-  check(
-    /\btoActivities\s*\(/.test(source),
-    `${file}: does not normalise live rows through ${MODEL}`
-  );
-  check(
-    /\bactivitiesInWindow\s*\(/.test(source),
-    `${file}: does not apply the time window`
-  );
-  check(
-    /\bmarkerForActivity\s*\(/.test(source),
-    `${file}: does not derive activity pins from ${MARKERS}`
-  );
-  check(
-    /\bTIME_WINDOWS\s*\.\s*map\s*\(/.test(source),
-    `${file}: does not render the Now / Tonight / Weekend filters`
-  );
-}
-
-// app/map.web.js is what the WEB actually renders -- Metro's platform extension
-// means app/map.js never loads there. It is legal for it to carry no living
-// layer of its own only because it delegates entirely to PlacesList, which has
-// one. If it ever grows its own implementation, the living map silently stops
-// existing on the only platform currently in use.
-const MAP_WEB="app/map.web.js";
-const mapWeb=code(read(MAP_WEB));
 
 check(
-  /<PlacesList/.test(mapWeb),
-  `${MAP_WEB}: does not delegate to PlacesList — the web map must not be a second implementation without the living layer`
+  /rpc\(\s*["']get_live_discovery["']/.test(brain),
+  `${BRAIN}: never calls get_live_discovery — the live layer has to come from somewhere`
 );
+check(/\btoActivities\s*\(/.test(brain),`${BRAIN}: does not normalise live rows through ${MODEL}`);
+check(/\bactivitiesInWindow\s*\(/.test(brain),`${BRAIN}: does not apply the time window`);
+check(/\bmarkerForActivity\s*\(/.test(brain),`${BRAIN}: does not derive activity pins from ${MARKERS}`);
 
 check(
-  !/MapView|react-native-maps/.test(mapWeb),
-  `${MAP_WEB}: references the native map — react-native-maps has no web build`
+  /\bTIME_WINDOWS\s*\.\s*map\s*\(/.test(screen),
+  `${SCREEN}: does not render the Now / Tonight / Weekend filters`
 );
 
 // ---------------------------------------------------------------------------
-// 2. No second read model
+// 2. And no surface may grow a second one
 // ---------------------------------------------------------------------------
 //
-// get_live_discovery already returns Link-ups, check-ins, events and club
-// sessions in one shape. Querying those tables directly from a map surface
-// would be a second answer to the same question, free to disagree with the
-// first -- RULES.md's "second table for the same noun", one layer up.
+// This is the check that replaces the old pair, and it is stronger: the old one
+// asked whether both copies were up to date, this one asks whether a copy
+// exists at all.
 
-for(const [file,source] of [[MAP,map],[LIST,list]]){
-  for(const table of ["linkups","live_checkins","activity_sessions"]){
-    check(
-      !new RegExp(`from\\(["']${table}["']\\)`).test(source),
-      `${file}: reads ${table} directly — the live read model is get_live_discovery`
-    );
-  }
+for(const file of [MAP,WEB,SCREEN,LIST]){
+  const source=code(read(file));
+  check(
+    !/rpc\(\s*["']get_live_discovery["']/.test(source),
+    `${file}: calls get_live_discovery itself — the live read belongs to ${BRAIN}, once`
+  );
+  check(
+    !/\bsupabase\b/.test(source),
+    `${file}: reads the database directly — every surface goes through ${BRAIN}`
+  );
 }
 
-// The model itself must not grow a database call. It is a pure normaliser.
+for(const file of [MAP,WEB]){
+  check(
+    /<LivingMapScreen\s*\/>/.test(code(read(file))),
+    `${file}: does not render LivingMapScreen — two platforms with two screens is how a layer goes missing on one of them`
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 3. The list survives, as a view rather than a fallback
+// ---------------------------------------------------------------------------
+//
+// "Do not delete PlacesList. It remains valuable for accessibility, degraded
+// map operation, map-load failures and non-spatial browsing. However, it should
+// no longer exist because Xplorer is incapable of rendering a map."
+
+check(
+  /useLivingMap\(\)/.test(list),
+  `${LIST}: does not use ${BRAIN} — the list must be a view of the Living Map, not a second one`
+);
+check(
+  /<PlacesList/.test(screen),
+  `${SCREEN}: the list is unreachable — it is kept for map failures, screen readers and non-spatial browsing`
+);
+
+// ---------------------------------------------------------------------------
+// 4. No second read model for what is happening
+// ---------------------------------------------------------------------------
+
+for(const table of ["linkups","live_checkins","activity_sessions"]){
+  check(
+    !new RegExp(`from\\(["']${table}["']\\)`).test(brain),
+    `${BRAIN}: reads ${table} directly — the live read model is get_live_discovery`
+  );
+}
+
 check(
   !/supabase|from\(|rpc\(/.test(model),
   `${MODEL}: touches the database — it is a pure read model over rows the caller fetched`
 );
 
 // ---------------------------------------------------------------------------
-// 3. A signed-out visitor still gets a map
+// 5. A signed-out visitor still gets a map, and a live failure leaves it alone
 // ---------------------------------------------------------------------------
-//
-// get_live_discovery raises 'Explorer account required.' when auth.uid() is
-// null. Calling it unconditionally would put an error on the map for every
-// signed-out visitor, and the living layer is an addition, never a gate.
 
-for(const [file,source] of [[MAP,map],[LIST,list]]){
-  check(
-    /getUser\(\)/.test(source) && /if\(!user\)/.test(source),
-    `${file}: calls the live read model without checking for a signed-in Explorer first`
-  );
-}
+check(
+  /getUser\(\)/.test(brain) && /if\(!user\)/.test(brain),
+  `${BRAIN}: calls the live read model without checking for a signed-in Explorer first`
+);
 
-// A failed live read must not empty the static pins.
-for(const [file,source] of [[MAP,map],[LIST,list]]){
-  check(
-    /setActivities\(\[\]\)/.test(source),
-    `${file}: does not fall back to an empty living layer — a live failure must leave the places alone`
-  );
-}
+check(
+  /setActivities\(\[\]\)/.test(brain),
+  `${BRAIN}: does not fall back to an empty living layer — a live failure must leave the places alone`
+);
+
+// A row with no location must not be plotted at 0,0. Number(null) is 0 and
+// Number.isFinite(0) is true, which is how it used to happen.
+check(
+  /hasCoordinates/.test(brain),
+  `${BRAIN}: does not validate coordinates — a listing with no location lands in the Gulf of Guinea`
+);
 
 // ---------------------------------------------------------------------------
-// 4. The time windows are pure and testable
+// 6. The time windows are pure and testable
 // ---------------------------------------------------------------------------
-//
-// A filter whose behaviour depends on the wall clock cannot be tested, so every
-// entry point takes the current time as an argument.
 
 for(const fn of ["activityState","windowRange","inWindow","toActivity"]){
   check(
@@ -160,11 +164,6 @@ for(const fn of ["activityState","windowRange","inWindow","toActivity"]){
   );
 }
 
-// Every reading of the wall clock must be a default parameter value. Anything
-// else is a function whose answer changes under a test that never moved time.
-// `/now\(\)/` was the first version of this and matched `Date.now()` itself,
-// so it failed on the correct code -- the check has to name the shape it wants,
-// not the substring.
 const clockReads=[...model.matchAll(/Date\.now\(\)/g)].length;
 const injectedClocks=[...model.matchAll(/now=Date\.now\(\)/g)].length;
 
@@ -179,24 +178,17 @@ check(
 );
 
 // ---------------------------------------------------------------------------
-// 5. Static places are not duplicated as "live"
+// 7. Static places are not duplicated as "live"
 // ---------------------------------------------------------------------------
-//
-// get_live_discovery returns a 'place' row for every reviewed business. The map
-// already draws those as static pins, so letting them through would stack a
-// second pin on the first and call the duplicate live.
 
 check(
   /STATIC_KINDS/.test(model) && /"place"/.test(model),
-  `${MODEL}: does not exclude the 'place' rows — they are already static pins on both surfaces`
+  `${MODEL}: does not exclude the 'place' rows — they are already static pins`
 );
 
 // ---------------------------------------------------------------------------
-// 6. The palette rule survives
+// 8. The palette rule survives
 // ---------------------------------------------------------------------------
-//
-// The product describes more event states than the design system has inks. The
-// resolution is that words carry the difference, NOT a fourth colour.
 
 check(
   /MARKER_STATES\.SCHEDULED/.test(markers.slice(markers.indexOf("markerForActivity"))),
@@ -204,43 +196,93 @@ check(
 );
 
 check(
-  !/INK\.(live|now|red|green|orange|purple)/.test(markers),
-  `${MARKERS}: names an ink outside the three — the palette does not grow to fit a state`
+  !/INK\.(live|now|orange|purple)/.test(markers),
+  `${MARKERS}: names an ink outside the table — the palette does not grow to fit a state`
 );
 
-// Every activity state has a sentence, so colour is never the only carrier.
 check(
   /ACTIVITY_STATE_SENTENCE/.test(model),
   `${MODEL}: has no spoken sentence per activity state`
 );
 
-for(const [file,source] of [[MAP,map],[LIST,list]]){
-  // Indexed, not merely imported.
-  check(
-    /ACTIVITY_STATE_SENTENCE\s*\[/.test(source),
-    `${file}: renders activity pins without saying the state in words`
-  );
-}
+check(
+  /ACTIVITY_STATE_SENTENCE\s*\[/.test(list),
+  `${LIST}: renders activity rows without saying the state in words`
+);
 
 // ---------------------------------------------------------------------------
-// 7. Live things are reachable
+// 9. Live things are reachable
 // ---------------------------------------------------------------------------
-//
-// A pin that cannot be opened answers "what is happening" and not "how do I
-// join", which is the next question in CLAUDE.md's list.
 
-for(const [file,source] of [[MAP,map],[LIST,list]]){
+for(const file of [SCREEN,LIST]){
   check(
-    /deepLink/.test(source),
+    /deepLink/.test(code(read(file))),
     `${file}: activity rows have no route — the loop needs See → Decide → Join`
   );
 }
 
-// An empty state is an instruction, not a mood.
 check(
   !/Nothing here yet/i.test(list),
   `${LIST}: uses a banned empty-state phrase — write an instruction`
 );
+
+// ---------------------------------------------------------------------------
+// 10. The provider is isolated, and needs no key
+// ---------------------------------------------------------------------------
+//
+// "We may keep this setup long term. We may replace it later. Do not couple
+// Xplorer's product logic to OpenFreeMap." So the hostname lives in exactly one
+// file, and changing that file changes the map on every platform.
+
+const provider=code(read(PROVIDER));
+
+check(
+  /tiles\.openfreemap\.org/.test(provider),
+  `${PROVIDER}: does not name a provider — something has to`
+);
+
+const everywhereElse=["app","components","hooks","utils"];
+const offenders=[];
+(function walk(dir){
+  const full=path.join(root,dir);
+  for(const entry of fs.readdirSync(full,{withFileTypes:true})){
+    const relative=`${dir}/${entry.name}`;
+    if(entry.isDirectory()){walk(relative);continue;}
+    if(!entry.name.endsWith(".js")) continue;
+    if(relative===PROVIDER) continue;
+    if(/openfreemap|openmaptiles|tiles\./.test(code(read(relative)))) offenders.push(relative);
+  }
+})("utils");
+for(const dir of ["app","components","hooks"]){
+  (function walk(d){
+    for(const entry of fs.readdirSync(path.join(root,d),{withFileTypes:true})){
+      const relative=`${d}/${entry.name}`;
+      if(entry.isDirectory()){walk(relative);continue;}
+      if(!entry.name.endsWith(".js")) continue;
+      if(/openfreemap|openmaptiles/.test(code(read(relative)))) offenders.push(relative);
+    }
+  })(dir);
+}
+
+check(
+  offenders.length===0,
+  `provider configuration has escaped ${PROVIDER} into: ${offenders.join(", ")}`
+);
+
+// Attribution is a licence condition, not decoration.
+check(
+  /ATTRIBUTION/.test(provider) && /OpenStreetMap/.test(provider),
+  `${PROVIDER}: no attribution string — the data is OpenStreetMap's and the licence requires it on the map`
+);
+
+// No key, no token, no card. That is the whole reason for this stack.
+for(const file of [BRAIN,SCREEN,PROVIDER,"components/LivingMap.web.js"]){
+  const source=code(read(file));
+  check(
+    !/GOOGLE_MAPS_API_KEY|MAPBOX_TOKEN|accessToken/.test(source),
+    `${file}: the primary map wants an API key — MapLibre and OpenFreeMap need none`
+  );
+}
 
 // ---------------------------------------------------------------------------
 
