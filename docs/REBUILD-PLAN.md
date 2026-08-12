@@ -14,7 +14,7 @@ a line number is quoted, that line was opened.
 
 ## Where this stands
 
-Updated at commit `4340a40`. Everything below section 0 is the original plan and
+Updated at commit `c2f92df`. Everything below section 0 is the original plan and
 still reads as if nothing has been built — this section is the correction.
 
 **Two things to know before reading anything else.**
@@ -62,30 +62,32 @@ and does not pull on its own.
 | 9 — Direct messages | live · `235990e` |
 | The Living Map's arithmetic, ahead of the map | shipped · `a503ee3` |
 | 20 — The riso pass, 1108 colours | shipped · `4340a40` |
+| 21 spike — MapLibre survives Metro; v5, not v6 | shipped · `47a8b99` |
+| 21 A+B — one Living Map brain, real map on the web | shipped · `73df265` |
+| 21 C — MapLibre native, old map on a switch | shipped · `587a48e` |
+| 21 D — cross-platform parity, proven | shipped · `c2f92df` |
 
 ### Not started
 
-**Packet 21 only** — the cross-platform Living Map. Everything else in this plan
-is done or explicitly parked by decision.
+**Nothing, except the two follow-ups Packet 21 deliberately left.**
 
-Parked by decision, not by omission:
+- **Phase E** — remove `react-native-maps`, `components/LivingMap.legacy.js`
+  and the Google Maps config. Held back on purpose: the MapLibre map has not
+  been opened on a real phone yet, and `EXPO_PUBLIC_LEGACY_MAP=1` brings the old
+  one back in one variable. It goes the moment the new one has been seen.
+- **iOS is configured and NOT compiled.** The MapLibre plugin covers it and
+  `npx expo config` resolves clean, but there is no Mac, no Apple signing and no
+  EAS login in this environment. It is one build command away rather than a
+  day away, and that is the honest state of it.
 
-- **Packet 13** (drop the mirror review tables) — you chose "leave them for now".
-  Reversible whenever you want it.
-- **Packet 18** (Link-ups from the map) — its *logic* is built and tested
-  (`utils/mapLayers.js`, `linkupLocationFrom`). It needs a map to drop a pin on.
-- **Moments & Memories steps 8, 9, 10 and 12** — Memory pins that fade, the
-  historical map, the time slider, the heat layer. Same story: every rule is
-  built and tested in `utils/mapLayers.js`, and Packet 21 draws them. That was
-  the deliberate call, so the map packet is a renderer and not a renderer plus
-  five features.
+Parked by your decision:
 
-**There is no interactive map in this app today, on any platform.** `app/map.js`
-falls back to `PlacesList` without a Google Maps key, `app/map.web.js` is
-`PlacesList` and always has been, and `components/MemoryPins.js` does the same
-thing again for My Map. Packet 21 is where that stops: MapLibre on web, Android
-and iOS, over one shared Living Map model, with OpenFreeMap as the current
-basemap and the provider kept swappable.
+- **Packet 13** (drop the mirror review tables) — "leave them for now".
+
+Everything else that was outstanding is done. Packet 18's logic and the four
+map-shaped Moments and Memories steps (8, 9, 10, 12) have their rules built and
+tested in `utils/mapLayers.js`; they now have a map to draw on, and drawing them
+is a small piece of work rather than a packet.
 
 ### Packets 14 and 15 are superseded
 
@@ -982,6 +984,39 @@ businesses, properties, clubs and live activity, with the same pins, the same
 cards, the same filters and the same deep links; `react-native-maps` is gone
 from `package.json`; no Google key or Mapbox token is required by any map path;
 and moving off OpenFreeMap later means editing one module.
+
+#### What Packet 21 actually turned out to be
+
+Written after doing it, because the packet as planned was right about the shape
+and wrong about where the difficulty was.
+
+**The spike was worth every minute and found the opposite of what it looked
+for.** The worry was Metro and the worker. Metro bundled MapLibre first try. The
+real finding was a version: **maplibre-gl 6 is ESM-only and builds its worker
+from an `import.meta.url` Worker construction, which Metro does not support** —
+so the map constructs and then sits there for ever with no load, no error and
+no styledata at all. Silent. Version 5 ships a UMD build with the worker
+inlined and works. `package.json` says `^5` and the reason is in `47a8b99`.
+
+**Three of the four wrong turns were the test harness lying.** The browser gate
+ran with `--disable-gpu`, so MapLibre threw before rendering anything; its
+request stub matched `*` and answered the style request with a fake row, so
+MapLibre reported "object expected, array found"; and the 200 that seemed to
+prove the network worked was the stub answering, not the internet. An hour went
+on the second one. All three are fixed and the gate is stronger for it — it can
+now check one route in seconds, wait longer for a map than for a table, print
+what the page actually said, and relay real map data through Node.
+
+**The list stayed, and became honest.** `PlacesList` was the map for the whole
+life of this app. It is now a *view* of the same Living Map model, reachable
+from a Map/List switch, kept because it works when the map will not, because it
+is the better surface for a screen reader, and because browsing without a map is
+a real way to use this app.
+
+**What is verified, and what is not.** Web: all 42 routes render in real
+Chromium against a real production export, with the map drawing places and
+carrying its attribution. Android: the APK workflow builds it. iOS: configured,
+not compiled, and said so.
 
 ### Packet 18 — Link-ups start on the map
 
