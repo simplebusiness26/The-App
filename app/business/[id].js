@@ -31,6 +31,7 @@ export default function BusinessPage(){
   const [canClaim,setCanClaim]=useState(false);
   const [isOwner,setIsOwner]=useState(false);
   const [viewerId,setViewerId]=useState(null);
+  const [managesThis,setManagesThis]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -58,6 +59,22 @@ export default function BusinessPage(){
     setBusiness(businessResult.data);
     setReviews(reviewsResult.reviews);
     setViewerId(user?.id || null);
+
+    // Who may reply is decided by the database, using the SAME function
+    // respond_to_review checks before it writes. owner_id was the wrong test:
+    // it is one way to manage a listing, not the definition of it, so a manager
+    // who is not the owner row got no Reply button and could not answer their
+    // own reviews.
+    if(user){
+      const {data:manages}=await supabase.rpc("listing_is_managed_by_user",{
+        p_user_id:user.id,
+        p_target_type:"business",
+        p_target_id:businessId
+      });
+      setManagesThis(manages===true);
+    }else{
+      setManagesThis(false);
+    }
     setCanClaim(!!user);
     setIsOwner(!!user && businessResult.data.owner_id===user.id);
 
@@ -180,7 +197,7 @@ export default function BusinessPage(){
       reviews={reviews}
       reviewTargetType="business"
       viewerId={viewerId}
-      viewerManagesThis={isOwner}
+      viewerManagesThis={managesThis}
       reviewsEmpty={{title:"No reviews yet",instruction:"Be the first to share your experience."}}
       similar={similar}
       similarLabel="Similar nearby"

@@ -205,8 +205,23 @@ export default function TabBar(){
           <Icon name={centre.glyph} colour={INK.card} size={26}/>
         </Pressable>
 
-        {/* The affordance. A gesture nobody can see is a gesture nobody uses. */}
-        {!!swipeUp && <Text style={styles.swipeHint}>▲ {swipeUp.label}</Text>}
+        {/*
+          The affordance, and a real control in its own right. The upward swipe
+          is the nice version, but a gesture that does not fire -- on web, or
+          under a screen reader, or for anybody who simply does not discover it
+          -- would leave Discover unreachable, since it has no tab any more.
+          Tapping this label always works.
+        */}
+        {!!swipeUp && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${swipeUp.label}`}
+            hitSlop={8}
+            onPress={()=>router.push(destination(swipeUp))}
+          >
+            <Text style={styles.swipeHint}>▲ {swipeUp.label}</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );

@@ -27,6 +27,7 @@ export default function PropertyDetails(){
   const [canClaim,setCanClaim]=useState(false);
   const [isOwner,setIsOwner]=useState(false);
   const [viewerId,setViewerId]=useState(null);
+  const [managesThis,setManagesThis]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -54,6 +55,22 @@ export default function PropertyDetails(){
     setProperty(propertyResult.data);
     setReviews(reviewsResult.reviews);
     setViewerId(user?.id || null);
+
+    // Who may reply is decided by the database, using the SAME function
+    // respond_to_review checks before it writes. owner_id was the wrong test:
+    // it is one way to manage a listing, not the definition of it, so a manager
+    // who is not the owner row got no Reply button and could not answer their
+    // own reviews.
+    if(user){
+      const {data:manages}=await supabase.rpc("listing_is_managed_by_user",{
+        p_user_id:user.id,
+        p_target_type:"property",
+        p_target_id:propertyId
+      });
+      setManagesThis(manages===true);
+    }else{
+      setManagesThis(false);
+    }
     setCanClaim(!!user);
     setIsOwner(!!user && propertyResult.data.owner_id===user.id);
 
@@ -176,7 +193,7 @@ export default function PropertyDetails(){
       reviews={reviews}
       reviewTargetType="property"
       viewerId={viewerId}
-      viewerManagesThis={isOwner}
+      viewerManagesThis={managesThis}
       reviewsEmpty={{title:"No reviews yet",instruction:"Be the first to share your stay."}}
       similar={similar}
       similarLabel="Other stays nearby"
