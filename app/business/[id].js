@@ -30,6 +30,7 @@ export default function BusinessPage(){
   const [similar,setSimilar]=useState([]);
   const [canClaim,setCanClaim]=useState(false);
   const [isOwner,setIsOwner]=useState(false);
+  const [viewerId,setViewerId]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -56,6 +57,7 @@ export default function BusinessPage(){
 
     setBusiness(businessResult.data);
     setReviews(reviewsResult.reviews);
+    setViewerId(user?.id || null);
     setCanClaim(!!user);
     setIsOwner(!!user && businessResult.data.owner_id===user.id);
 
@@ -176,6 +178,9 @@ export default function BusinessPage(){
         </>
       ) : null}
       reviews={reviews}
+      reviewTargetType="business"
+      viewerId={viewerId}
+      viewerManagesThis={isOwner}
       reviewsEmpty={{title:"No reviews yet",instruction:"Be the first to share your experience."}}
       similar={similar}
       similarLabel="Similar nearby"

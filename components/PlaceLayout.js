@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import {router} from "expo-router";
 import {INK} from "../utils/tokens";
+import ReviewActions from "./ReviewActions";
 
 // Packet 5a: the shared place page.
 //
@@ -59,6 +60,9 @@ export default function PlaceLayout({
   beforeReviews,
   afterReviews,
   reviews=[],
+  reviewTargetType,
+  viewerId,
+  viewerManagesThis=false,
   reviewsEmpty,
   similar=[],
   similarLabel="Similar nearby",
@@ -161,7 +165,14 @@ export default function PlaceLayout({
                 <Text style={styles.muted}>{reviewsEmpty?.instruction}</Text>
               </View>
             ) : reviews.map((review)=>(
-              <PlaceReview key={review.id} review={review} onPhoto={setSelectedPhoto}/>
+              <PlaceReview
+                key={review.id}
+                review={review}
+                onPhoto={setSelectedPhoto}
+                targetType={reviewTargetType}
+                viewerId={viewerId}
+                canReply={viewerManagesThis}
+              />
             ))}
           </View>
         )}
@@ -216,7 +227,7 @@ export default function PlaceLayout({
 // One review card, shared by every place type. Business and property reviews
 // come from the same `reviews` table; 5b will have to normalise event_reviews
 // and activity_club_reviews into this shape rather than widen it.
-function PlaceReview({review,onPhoto}){
+function PlaceReview({review,onPhoto,targetType,viewerId,canReply}){
   const photos=Array.isArray(review.photos)
     ? review.photos.filter((photo)=>typeof photo==="string" && photo.trim()).slice(0,3)
     : [];
@@ -302,17 +313,14 @@ function PlaceReview({review,onPhoto}){
         different thing said by a different person, and it renders above as its
         own block rather than as another comment.
       */}
-      <View style={styles.reviewActions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Comment on this review"
-          style={styles.reviewAction}
-          onPress={(event)=>{event?.stopPropagation?.();router.push(`/social-comments/${review.id}`);}}
-        >
-          <Text style={styles.reviewActionText}>Comment</Text>
-        </Pressable>
-        {!!review.user_id && <Text style={styles.profileHint}>Tap the card to view the Explorer →</Text>}
-      </View>
+      <ReviewActions
+        review={review}
+        viewerId={viewerId}
+        targetType={targetType}
+        canReply={canReply}
+      />
+
+      {!!review.user_id && <Text style={styles.profileHint}>Tap the card to view the Explorer →</Text>}
     </Pressable>
   );
 }

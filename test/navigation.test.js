@@ -316,15 +316,24 @@ describe("the bar renders",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("turns the centre button into the scanner on the map",async()=>{
+  it("turns the centre button into the camera on the map, and offers Discover on a swipe up",async()=>{
     const onMap=await renderAt("/map");
-    expect(labelsOf(onMap.toJSON())).toContain("Scan QR");
+    const mapLabels=labelsOf(onMap.toJSON());
+
+    // The camera, not the scanner: the camera is where a Moment, a Memory and a
+    // QR scan all start, so naming it after one of the three hides the others.
+    expect(mapLabels.some((label)=>label.startsWith("Camera"))).toBe(true);
+
+    // The swipe is announced rather than hidden. A gesture nobody can find is a
+    // gesture nobody uses, and a screen reader has no way to guess it at all.
+    expect(mapLabels.some((label)=>/Swipe up for Discover/.test(label))).toBe(true);
     await act(async()=>{onMap.unmount();});
 
-    // And nowhere else -- off the map the centre is the map.
+    // And nowhere else -- off the map the centre is the map, with no gesture.
     const elsewhere=await renderAt("/settings");
-    expect(labelsOf(elsewhere.toJSON())).not.toContain("Scan QR");
-    expect(labelsOf(elsewhere.toJSON())).toContain("Map");
+    const otherLabels=labelsOf(elsewhere.toJSON());
+    expect(otherLabels).toContain("Map");
+    expect(otherLabels.some((label)=>/Swipe up/.test(label))).toBe(false);
     await act(async()=>{elsewhere.unmount();});
   });
 

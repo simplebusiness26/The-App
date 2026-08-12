@@ -355,6 +355,8 @@ export default function ActivityClubProfile(){
         </View>
       ) : null}
       reviews={reviews}
+      reviewTargetType="activity_club"
+      viewerId={user?.id}
       reviewsEmpty={{
         title:"No reviews yet",
         instruction:"Members and former members can review this club after a session."

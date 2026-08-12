@@ -26,6 +26,7 @@ export default function PropertyDetails(){
   const [similar,setSimilar]=useState([]);
   const [canClaim,setCanClaim]=useState(false);
   const [isOwner,setIsOwner]=useState(false);
+  const [viewerId,setViewerId]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -52,6 +53,7 @@ export default function PropertyDetails(){
 
     setProperty(propertyResult.data);
     setReviews(reviewsResult.reviews);
+    setViewerId(user?.id || null);
     setCanClaim(!!user);
     setIsOwner(!!user && propertyResult.data.owner_id===user.id);
 
@@ -172,6 +174,9 @@ export default function PropertyDetails(){
         </>
       ) : null}
       reviews={reviews}
+      reviewTargetType="property"
+      viewerId={viewerId}
+      viewerManagesThis={isOwner}
       reviewsEmpty={{title:"No reviews yet",instruction:"Be the first to share your stay."}}
       similar={similar}
       similarLabel="Other stays nearby"

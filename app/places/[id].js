@@ -25,6 +25,7 @@ export default function PublicPlacePage(){
   const placeId=Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [place,setPlace]=useState(null);
+  const [viewerId,setViewerId]=useState(null);
   const [area,setArea]=useState(null);
   const [moments,setMoments]=useState([]);
   const [reviews,setReviews]=useState([]);
@@ -36,6 +37,9 @@ export default function PublicPlacePage(){
 
     setLoading(true);
     setError("");
+
+    const {data:{user}}=await supabase.auth.getUser();
+    setViewerId(user?.id || null);
 
     const {data,error:placeError}=await supabase
       .from("public_places")
@@ -91,6 +95,8 @@ export default function PublicPlacePage(){
       photos={place?.image_url ? [place.image_url] : []}
       photosEmptyLabel="No photo of this place yet"
       reviews={reviews}
+      reviewTargetType="public_place"
+      viewerId={viewerId}
       rating={{
         average:averageRating(reviews),
         count:reviews.length

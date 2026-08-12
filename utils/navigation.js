@@ -43,13 +43,29 @@ export const TABS=[
 
 // What the raised centre button becomes when you are already on the map. The
 // map tab cannot usefully take you to the map, so the slot carries the thing
-// you most want in front of a place: the scanner.
+// you most want in front of a place: the camera.
+//
+// It is the Camera, not the scanner. The camera is where a Moment, a Memory and
+// a QR scan all start -- one capture surface with three outcomes -- so pointing
+// the centre of the map at the scanner alone would name one of the three and
+// hide the other two.
 export const MAP_CENTRE_ACTION={
-  key:"scan",
-  label:"Scan QR",
-  route:"/scan",
-  glyph:"qr",
+  key:"camera",
+  label:"Camera",
+  route:"/moments/create",
+  glyph:"camera",
   signedIn:true
+};
+
+// And swiping UP on that button opens Discover. The map is the surface you are
+// on; Discover is what is worth going to see. Putting it on an upward swipe
+// from the centre keeps it one thumb-reach away without spending a tab on it,
+// which is why Discover lost its tab in the first place.
+export const MAP_CENTRE_SWIPE_UP={
+  key:"discover",
+  label:"Discover",
+  route:"/discover",
+  signedIn:false
 };
 
 // Where a signed-out visitor goes when they tap a tab that needs an account.
@@ -83,6 +99,14 @@ export function centreButton(pathname){
   const onMap=normalise(pathname)==="/map";
   if(onMap) return MAP_CENTRE_ACTION;
   return TABS.find((tab)=>tab.raised);
+}
+
+// What an upward swipe on the centre button does, or null where it does
+// nothing. Only the map has one -- everywhere else the centre IS the map, and
+// a hidden gesture on a button whose job is already obvious is just a way to
+// lose people.
+export function centreSwipeUp(pathname){
+  return normalise(pathname)==="/map" ? MAP_CENTRE_SWIPE_UP : null;
 }
 
 export function isTabBarHidden(pathname){

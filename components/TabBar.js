@@ -1,9 +1,9 @@
 import React from "react";
-import {View,Text,Pressable,StyleSheet} from "react-native";
+import {View,Text,Pressable,StyleSheet,PanResponder} from "react-native";
 import Svg,{Circle,Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
-import {TABS,activeTabKey,isTabBarHidden,centreButton,LOGIN_ROUTE} from "../utils/navigation";
+import {TABS,activeTabKey,isTabBarHidden,centreButton,centreSwipeUp,LOGIN_ROUTE} from "../utils/navigation";
 import {INK} from "../utils/tokens";
 import {signedIn} from "../utils/permissions";
 
@@ -126,6 +126,20 @@ export default function TabBar(){
 
   const active=activeTabKey(pathname);
   const centre=centreButton(pathname);
+  const swipeUp=centreSwipeUp(pathname);
+
+  // An upward drag on the centre button opens Discover; a tap still opens the
+  // camera. onStartShouldSetPanResponder stays false so a plain tap is never
+  // swallowed by the gesture -- the responder only takes over once the finger
+  // has actually travelled far enough upward to mean it.
+  const swipeResponder=React.useMemo(()=>PanResponder.create({
+    onStartShouldSetPanResponder:()=>false,
+    onMoveShouldSetPanResponder:(_event,gesture)=>
+      !!swipeUp && gesture.dy < -12 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+    onPanResponderRelease:(_event,gesture)=>{
+      if(swipeUp && gesture.dy < -12) router.push(destination(swipeUp));
+    }
+  }),[swipeUp,account.known,account.signedIn]);
 
   // Until the session has been read, treat a person as signed in. Guessing the
   // other way would send somebody who IS logged in to the log-in screen for the
@@ -176,15 +190,24 @@ export default function TabBar(){
       {/* The centre is the map, except on the map, where it becomes the
           scanner. One button, two jobs, decided by centreButton() rather than
           here. */}
-      <Pressable
-        style={styles.raised}
-        accessibilityRole="tab"
-        accessibilityState={{selected:centre.key===active}}
-        accessibilityLabel={centre.label}
-        onPress={()=>router.push(destination(centre))}
-      >
-        <Icon name={centre.glyph} colour={INK.card} size={26}/>
-      </Pressable>
+      <View style={styles.raisedWrap} {...swipeResponder.panHandlers}>
+        <Pressable
+          style={styles.raised}
+          accessibilityRole="tab"
+          accessibilityState={{selected:centre.key===active}}
+          accessibilityLabel={
+            swipeUp
+              ? `${centre.label}. Swipe up for ${swipeUp.label}.`
+              : centre.label
+          }
+          onPress={()=>router.push(destination(centre))}
+        >
+          <Icon name={centre.glyph} colour={INK.card} size={26}/>
+        </Pressable>
+
+        {/* The affordance. A gesture nobody can see is a gesture nobody uses. */}
+        {!!swipeUp && <Text style={styles.swipeHint}>▲ {swipeUp.label}</Text>}
+      </View>
     </View>
   );
 }
@@ -212,9 +235,21 @@ const styles=StyleSheet.create({
   markerActive:{backgroundColor:INK.ink},
   label:{fontSize:10,marginTop:3,color:INK.inkSoft,textAlign:"center",paddingHorizontal:2},
   labelActive:{color:INK.ink,fontWeight:"700"},
-  raised:{
+  raisedWrap:{
     position:"absolute",
     top:0,
+    left:0,
+    right:0,
+    alignItems:"center"
+  },
+  swipeHint:{
+    fontSize:9,
+    fontWeight:"800",
+    color:INK.inkSoft,
+    marginTop:2,
+    letterSpacing:0.4
+  },
+  raised:{
     alignSelf:"center",
     width:RAISED_SIZE,
     height:RAISED_SIZE,
