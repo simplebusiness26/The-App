@@ -32,6 +32,10 @@
 //
 //   REQUIRE_BROWSER=1  fail instead of skip when no Chromium is found
 //   CHROMIUM_PATH=...  point at a specific binary
+//   ONLY_ROUTES=/a,/b  check just these, instead of all of them. Added for
+//                      Packet 21's spike: "does one map screen survive a real
+//                      browser" is a question worth being able to ask in
+//                      seconds rather than by running forty routes.
 
 const fs=require("fs");
 const path=require("path");
@@ -55,6 +59,15 @@ const ROUTES=[
   "/admin/moderation","/admin/explorers","/admin/areas","/admin/audit",
   "/auth/login","/auth/signup","/auth/forgot-password"
 ];
+
+// Hosts whose answers must be real. Anything the map fetches -- style, sprites,
+// fonts, vector tiles -- is relayed rather than stubbed.
+const MAP_HOST=/^https:\/\/[^/]*(openfreemap|openmaptiles|maplibre|basemaps|protomaps)\./;
+
+const ONLY=(process.env.ONLY_ROUTES || "")
+  .split(",").map((route)=>route.trim()).filter(Boolean);
+const CHECKING=ONLY.length ? ONLY : ROUTES;
+
 
 // A row shaped loosely enough that any screen's read gets something usable.
 // This is a crash smoke test, not a content test -- what matters is that the
@@ -220,7 +233,13 @@ async function main(){
   const userDataDir=fs.mkdtempSync(path.join(require("os").tmpdir(),"xplorer-browser-"));
 
   const browser=spawn(chromium,[
-    "--headless=new","--remote-debugging-port=9333","--no-sandbox","--disable-gpu",
+    "--headless=new","--remote-debugging-port=9333","--no-sandbox",
+    // --disable-gpu was here and it made a map untestable: MapLibre draws with
+    // WebGL, and without a context it throws before it ever renders. SwiftShader
+    // is a software renderer, so the map draws on a machine with no graphics
+    // card at all -- which is every CI box and this one. Slower, and the only
+    // way this gate can say anything about a map.
+    "--use-gl=swiftshader","--enable-unsafe-swiftshader",
     "--disable-dev-shm-usage","--no-first-run","--no-default-browser-check",
     `--user-data-dir=${userDataDir}`,"about:blank"
   ],{stdio:"ignore"});
@@ -242,7 +261,7 @@ async function main(){
 
     const cdp=new Devtools(socket);
 
-    for(const route of ROUTES){
+    for(const route of CHECKING){
       const {targetId}=await cdp.send("Target.createTarget",{url:"about:blank"});
       const {sessionId}=await cdp.send("Target.attachToTarget",{targetId,flatten:true});
 
@@ -299,9 +318,8 @@ async function main(){
         }
 
         // The stub is a cross-origin server as far as the page is concerned, so
-        // it has to answer preflight and echo the allowed headers. Getting this
-        // wrong made the first run report 13 CORS failures that were entirely
-        // the harness's own doing -- a gate that cries wolf is worse than none.
+        // it has to answer preflight and echo the allowed headers. Declared up
+        // here because the map relay below needs it too.
         const cors=[
           {name:"Access-Control-Allow-Origin",value:"*"},
           {name:"Access-Control-Allow-Methods",value:"GET,POST,PATCH,DELETE,OPTIONS"},
@@ -310,6 +328,49 @@ async function main(){
           {name:"Access-Control-Expose-Headers",value:"content-range"}
         ];
 
+        // The map provider gets REAL data, fetched by Node and handed over.
+        //
+        // This cost Packet 21's spike an hour. The stub matched urlPattern "*"
+        // and answered EVERY request with `[ROW]`, so MapLibre asked for its
+        // style, got a JSON array, and reported "object expected, array found".
+        // Metro, the worker and WebGL were all working perfectly; the harness
+        // was lying to the map.
+        //
+        // Node does the fetching rather than the browser because in a sandbox
+        // the shell reaches the internet through a proxy and a headless browser
+        // does not -- curl succeeds and a page fetch fails. Node has the same
+        // access curl has, so it relays.
+        //
+        // A stubbed map is a map that proves nothing, which is why this is
+        // worth the fifteen lines.
+        if(MAP_HOST.test(request.url)){
+          (async()=>{
+            try{
+              const upstream=await fetch(request.url);
+              const bytes=Buffer.from(await upstream.arrayBuffer());
+              await cdp.send("Fetch.fulfillRequest",{
+                requestId,
+                responseCode:upstream.status,
+                responseHeaders:[
+                  {name:"Content-Type",value:upstream.headers.get("content-type") || "application/octet-stream"},
+                  ...cors
+                ],
+                body:bytes.toString("base64")
+              },sessionId);
+            }catch(problem){
+              // Offline, or the provider is down. Fail the request rather than
+              // faking it: a map that renders because the harness invented a
+              // tile is worse than one that visibly did not load.
+              cdp.send("Fetch.failRequest",{requestId,errorReason:"ConnectionFailed"},sessionId).catch(()=>{});
+            }
+          })();
+          return;
+        }
+
+        // The stub is a cross-origin server as far as the page is concerned, so
+        // it has to answer preflight and echo the allowed headers. Getting this
+        // wrong made the first run report 13 CORS failures that were entirely
+        // the harness's own doing -- a gate that cries wolf is worse than none.
         if(request.method==="OPTIONS"){
           cdp.send("Fetch.fulfillRequest",{
             requestId,responseCode:204,responseHeaders:cors,body:""
@@ -338,7 +399,10 @@ async function main(){
       cdp.on(stub);
 
       await cdp.send("Page.navigate",{url:`http://127.0.0.1:${port}${route}`},sessionId);
-      await new Promise(r=>setTimeout(r,2600));
+      // 2.6s is enough for a screen that reads a table. A map is not: it
+      // fetches a style, then sprites, then vector tiles, and Packet 21's
+      // spike sat at "constructed" purely because nothing waited for that.
+      await new Promise(r=>setTimeout(r,Number(process.env.SETTLE_MS || 2600)));
 
       let text="";
       try{
@@ -370,7 +434,7 @@ async function main(){
       results.push({route,length:text.length,crashed,errors:unique});
 
       if(crashed || unique.length){
-        failures.push({route,text:text.slice(0,120),errors:unique});
+        failures.push({route,text:text.slice(0,400),errors:unique});
       }
     }
 
@@ -388,19 +452,27 @@ async function main(){
 
   for(const result of results){
     const flag=result.crashed ? "CRASH" : (result.errors.length ? "ERROR" : "ok   ");
-    console.log(`  ${flag} ${result.route.padEnd(46)} ${String(result.length).padStart(5)} chars ${result.errors[0] || ""}`);
+    const said=process.env.SHOW_TEXT ? ` :: ${(result.text || "").replace(/\s+/g," ").slice(0,160)}` : "";
+    console.log(`  ${flag} ${result.route.padEnd(46)} ${String(result.length).padStart(5)} chars ${result.errors[0] || ""}${said}`);
   }
 
   if(failures.length){
-    console.error(`\nBrowser check FAILED: ${failures.length} of ${ROUTES.length} routes threw.`);
+    console.error(`\nBrowser check FAILED: ${failures.length} of ${CHECKING.length} routes threw.`);
     for(const failure of failures){
       console.error(`  ${failure.route}`);
       for(const error of failure.errors) console.error(`      ${error}`);
+      // What the page actually said. A crash caught by the error boundary
+      // produces no console error at all, so without this the report is a
+      // route name and nothing to act on -- which is what it was during
+      // Packet 21's spike.
+      if(!failure.errors.length && failure.text){
+        console.error(`      page said: ${failure.text}`);
+      }
     }
     process.exit(1);
   }
 
-  console.log(`\nBrowser check passed (${ROUTES.length} routes rendered without an uncaught error).`);
+  console.log(`\nBrowser check passed (${CHECKING.length} routes rendered without an uncaught error).`);
 }
 
 main().catch(error=>{
