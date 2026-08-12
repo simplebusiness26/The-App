@@ -14,7 +14,7 @@ a line number is quoted, that line was opened.
 
 ## Where this stands
 
-Updated at commit `c1d5c03`. Everything below section 0 is the original plan and
+Updated at commit `4340a40`. Everything below section 0 is the original plan and
 still reads as if nothing has been built — this section is the correction.
 
 **Two things to know before reading anything else.**
@@ -52,22 +52,40 @@ and does not pull on its own.
 | Following becomes Friends when it is mutual | shipped · `e9f910a` |
 | Become / stop being a manager, from Settings | live · `19ac73d` |
 | 16 — A real camera behind the camera button | shipped · `c1d5c03` |
+| Moments expiry backfill that never ran | live · `6476d4f` |
+| 1 + 8 — Explorer Score on the ledger, endorsements count | live · `35beee6` |
+| Memories take likes and comments | live · `fb46dc7` |
+| M&M step 4 — the ring and the story viewer | shipped · `eaafc7f` |
+| M&M step 6 — audience ceiling shown, Moment audience locked | live · `092ad70` |
+| M&M step 7 — a Moment can be kept as a Memory | live · `47598ba` |
+| M&M step 11 — Memories in the feed | live · `07815e4` |
+| 9 — Direct messages | live · `235990e` |
+| The Living Map's arithmetic, ahead of the map | shipped · `a503ee3` |
+| 20 — The riso pass, 1108 colours | shipped · `4340a40` |
 
 ### Not started
 
-Packet 9 (direct messages), 13 (drop the three mirror review tables — needs a
-production soak and Decision 7), **21 (the cross-platform Living Map — added
-2026-08-12, and the next big one)**, 18 (Link-ups created from the map, now
-waiting on 21), 19a (endorsements as dated score events), 20 (the riso pass over
-83 files, also waiting on 21).
+**Packet 21 only** — the cross-platform Living Map. Everything else in this plan
+is done or explicitly parked by decision.
+
+Parked by decision, not by omission:
+
+- **Packet 13** (drop the mirror review tables) — you chose "leave them for now".
+  Reversible whenever you want it.
+- **Packet 18** (Link-ups from the map) — its *logic* is built and tested
+  (`utils/mapLayers.js`, `linkupLocationFrom`). It needs a map to drop a pin on.
+- **Moments & Memories steps 8, 9, 10 and 12** — Memory pins that fade, the
+  historical map, the time slider, the heat layer. Same story: every rule is
+  built and tested in `utils/mapLayers.js`, and Packet 21 draws them. That was
+  the deliberate call, so the map packet is a renderer and not a renderer plus
+  five features.
 
 **There is no interactive map in this app today, on any platform.** `app/map.js`
 falls back to `PlacesList` without a Google Maps key, `app/map.web.js` is
 `PlacesList` and always has been, and `components/MemoryPins.js` does the same
 thing again for My Map. Packet 21 is where that stops: MapLibre on web, Android
 and iOS, over one shared Living Map model, with OpenFreeMap as the current
-basemap and the provider kept swappable. It is inserted before 18 and 20 because
-both of them need a map to exist first.
+basemap and the provider kept swappable.
 
 ### Packets 14 and 15 are superseded
 
@@ -81,22 +99,37 @@ everyone` — with the profile setting as a ceiling), **step 3** (`moment_views`
 and the story-state RPC), **step 5** (Memories permanent, `map_until` separate
 from audience). Commit `030ea48`.
 
-Not started: **step 4** (profile ring and story viewer, remove the permanent
-Moments section), **6** (one capture flow with the locked-visibility rule),
-**7** (Save-to-Memories transition), **8** (Memory pins with fading), **9–10**
-(historical map and time slider), **11** (Memories in the feed), **12** (heat
-layer with Reviews as a signal).
+Done since: **step 4** (the ring and the story viewer; the permanent Moments
+grid is gone), **6** (the audience ceiling is said out loud before posting, and
+a Moment's audience can be narrowed and never widened), **7** (Save to
+Memories, with the Memory inheriting the Moment's audience), **11** (Memories
+in the feed).
 
-The schema all of those sit on is in place and tested, so they are unblocked.
-They are mostly interface and map work.
+Waiting on the map, with their logic already built and tested in
+`utils/mapLayers.js`: **8** (fading Memory pins), **9–10** (historical map and
+time slider), **12** (heat layer).
 
 ### Still open, and yours to decide
 
-- **Decision 1** — which figure the Leaderboard ranks on. The rename shipped;
-  the data source did not change, because switching it moves everybody's
-  position on the day it ships.
-- **Decision 7** — whether the three legacy review tables get dropped.
-- **The 60 existing Moments.** Step 1 backfilled a 24-hour expiry from each
+Nothing blocking. The four below are settled and recorded here for the trail.
+
+- **Decision 1 — settled: the ledger.** The Leaderboard ranks on
+  `explorer_score_events`. Everybody's position moved the day it shipped, which
+  was the known cost.
+- **Decision 7 — settled: leave them for now.** The three mirror review tables
+  and their sync triggers stay. Packet 13 is deferred, not cancelled.
+- **Decision 8 — settled: yes, capped and dated.** An endorsement earns the
+  review's author one point, five per review maximum. 142 of the 155 that
+  already existed were backfilled to the date they actually happened.
+- **Decision 9 — settled: approval is for claiming, creating is free.**
+- **The 60 existing Moments — dealt with, and it was worse than this said.**
+  The backfill never ran: 20260811210000 added `expires_at` as NOT NULL with a
+  default, so Postgres filled all 60 rows with the same value, and the statement
+  meant to correct that matched zero rows. Every Moment in the app was going to
+  vanish at 00:30 on 13 August, together. Pushed 30 days out. The old text
+  follows, and it was wrong:
+
+  ~~Step 1 backfilled a 24-hour expiry from each
   post's own date, so all 60 are past. Nothing was deleted. If they should stay
   visible, the answer is converting them to Memories using step 7's machinery,
   not a different expiry.
@@ -113,6 +146,34 @@ They are mostly interface and map work.
 - "Follow each other = friends" had **no visible indicator**. Fixed in
   `e9f910a`: the follow button reads Friends when both directions exist, and
   unfollowing says what it costs.
+
+### Found while building, and fixed
+
+Every one of these was live, none was reported, and all were found by reading
+the code next to the thing being changed rather than by looking for them.
+
+- **Every Moment in the app was going to expire at the same minute.** The
+  backfill in 20260811210000 matched zero rows and a statement that updates
+  nothing is not an error. `6476d4f`.
+- **The Leaderboard would have leaked a visit count.** Ranking on the ledger
+  while still publishing a review count next to it lets anybody subtract their
+  way to how many places somebody has been. The public board returns a position
+  and a total now. `35beee6`.
+- **Deleting a review orphaned its comments.** `cleanup_social_interactions`
+  still looked for `target_type='video_review'`, renamed eight days earlier.
+  `fb46dc7`.
+- **The feed hid Moments shared with everyone.** It filtered on
+  `visibility='public'`, a value the schema stopped accepting. It also
+  hand-rolled the audience test, so it knew nothing about close friends,
+  followers or the profile ceiling. `07815e4`.
+- **Every review in the feed showed zero comments.** Same rename, same missed
+  call site. `07815e4`.
+- **Posting a Moment publicly was impossible.** The button sent `public`.
+  Nothing could trend either, same cause. `c1d5c03`.
+- **Nothing anybody posted was visible to anybody.** All nineteen accounts are
+  still on `visibility='nobody'`, which is the correct default — and nothing in
+  the app said so, which is the shape of a bug report that is not a bug.
+  `092ad70`.
 
 ### Found by testing the APK, and fixed
 
