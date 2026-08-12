@@ -100,6 +100,40 @@ export function centreSwipeUp(pathname){
   return normalise(pathname)==="/map" ? MAP_CENTRE_SWIPE_UP : null;
 }
 
+// ---------------------------------------------------------------------------
+// The drag, as arithmetic
+// ---------------------------------------------------------------------------
+// The centre button follows the finger, and the numbers that decide how live
+// here rather than inside the component, so they can be checked without faking
+// a touch. Fake touch events do not carry the history PanResponder reads, which
+// is what made an earlier attempt at testing the gesture pass while the gesture
+// itself did nothing.
+
+// How far up before the button starts moving. Small: a drag has to begin when
+// somebody means it. Still bigger than the pixel or two a tap wanders.
+export const DRAG_START=4;
+// How far up before letting go actually opens Discover. Bigger than DRAG_START
+// so a drag that started by accident can be put back down.
+export const DRAG_THRESHOLD=28;
+// The furthest it travels, however far the finger keeps going.
+export const DRAG_MAX=64;
+
+// Where to draw the button for a finger that has moved dy. Negative is up.
+export function dragOffset(dy){
+  const travelled=Number(dy)||0;
+  return Math.min(0,Math.max(-DRAG_MAX,travelled));
+}
+
+// Is this movement a drag at all, rather than a tap or a sideways swipe?
+export function isDragging(dx,dy){
+  return dy < -DRAG_START && Math.abs(dy) > Math.abs(dx);
+}
+
+// Let go here -- does Discover open?
+export function dragOpens(dx,dy){
+  return dy < -DRAG_THRESHOLD && Math.abs(dy) > Math.abs(dx);
+}
+
 export function isTabBarHidden(pathname){
   return FULL_SCREEN_ROUTES.includes(normalise(pathname));
 }

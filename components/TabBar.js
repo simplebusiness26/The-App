@@ -1,9 +1,20 @@
 import React from "react";
-import {View,Text,Pressable,StyleSheet,PanResponder} from "react-native";
+import {View,Text,Pressable,StyleSheet,PanResponder,Animated} from "react-native";
 import Svg,{Circle,Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
-import {TABS,activeTabKey,isTabBarHidden,centreButton,centreSwipeUp,LOGIN_ROUTE} from "../utils/navigation";
+import {
+  TABS,
+  activeTabKey,
+  isTabBarHidden,
+  centreButton,
+  centreSwipeUp,
+  LOGIN_ROUTE,
+  DRAG_THRESHOLD,
+  dragOffset,
+  isDragging,
+  dragOpens
+} from "../utils/navigation";
 import {INK} from "../utils/tokens";
 import {signedIn} from "../utils/permissions";
 
@@ -29,9 +40,13 @@ import {signedIn} from "../utils/permissions";
 const BAR_HEIGHT=62;
 const RAISE=20;
 const RAISED_SIZE=54;
-// How far up the finger must travel before the swipe counts. Small enough to
-// feel responsive, large enough that a shaky tap is still a tap.
-const SWIPE_THRESHOLD=14;
+// The numbers behind the drag live in utils/navigation.js -- see DRAG_START,
+// DRAG_THRESHOLD, DRAG_MAX and the three small functions that use them.
+//
+// The centre button's own column. This used to be the full width of the bar,
+// which is why nothing else in the footer could be tapped from the map: an
+// invisible box was sitting over all five tabs and swallowing every touch.
+const RAISED_COLUMN=84;
 
 // Navigation icons, on the same 16x16 canvas as the place markers. Deliberately
 // a separate set from GLYPHS in utils/markers.js: those say what a place is,
@@ -120,6 +135,11 @@ export default function TabBar(){
   // they reach for something that needs one.
   const [account,setAccount]=React.useState({known:false,signedIn:false});
 
+  // How far the centre button has been dragged, in pixels, negative for up. The
+  // button is drawn from this, so it sits under the finger rather than jumping
+  // to a destination once some invisible threshold is crossed.
+  const drag=React.useRef(new Animated.Value(0)).current;
+
   React.useEffect(()=>{
     let active=true;
     signedIn().then(({user})=>{
@@ -139,30 +159,55 @@ export default function TabBar(){
   // swallowed by the gesture -- the responder only takes over once the finger
   // has actually travelled far enough upward to mean it.
   const swipeResponder=React.useMemo(()=>{
-    // The CAPTURE variants are the whole fix. The button in the middle is a
-    // Pressable, and a Pressable claims the touch on its own -- so a responder
-    // installed on the parent in the normal (bubbling) phase never got asked,
-    // and the swipe silently did nothing. Capture asks the parent FIRST.
+    // The CAPTURE variants are the whole reason this fires at all. The button in
+    // the middle is a Pressable, and a Pressable claims the touch on its own --
+    // so a responder installed on the parent in the normal (bubbling) phase
+    // never got asked, and the drag silently did nothing. Capture asks the
+    // parent FIRST.
     //
     // onStartShouldSetPanResponderCapture stays false so a plain tap is still
     // the child's: only once the finger has actually travelled upward, and
     // travelled further up than sideways, does the parent take over. That is
-    // what stops the gesture from eating taps and from firing on a scroll.
-    const wantsSwipe=(gesture)=>
-      !!swipeUp
-      && gesture.dy < -SWIPE_THRESHOLD
-      && Math.abs(gesture.dy) > Math.abs(gesture.dx);
+    // what stops the gesture from eating taps and from firing on a sideways
+    // swipe.
+    const wantsDrag=(gesture)=>!!swipeUp && isDragging(gesture.dx,gesture.dy);
+
+    const settle=()=>Animated.spring(drag,{
+      toValue:0,
+      // Not the native driver: the hint's opacity is driven off the same value,
+      // and opacity plus transform on a value that is also setValue'd mid-drag
+      // is the combination that behaves inconsistently on web. One driver, one
+      // behaviour everywhere.
+      useNativeDriver:false,
+      speed:20,
+      bounciness:6
+    }).start();
 
     return PanResponder.create({
       onStartShouldSetPanResponderCapture:()=>false,
-      onMoveShouldSetPanResponderCapture:(_event,gesture)=>wantsSwipe(gesture),
-      onMoveShouldSetPanResponder:(_event,gesture)=>wantsSwipe(gesture),
+      onMoveShouldSetPanResponderCapture:(_event,gesture)=>wantsDrag(gesture),
+      onMoveShouldSetPanResponder:(_event,gesture)=>wantsDrag(gesture),
       onPanResponderTerminationRequest:()=>false,
+
+      // The button follows the finger. Clamped at both ends: it never travels
+      // below its resting place, and it stops at DRAG_MAX however far the drag
+      // continues, so it stays attached to the bar it belongs to.
+      onPanResponderMove:(_event,gesture)=>{
+        drag.setValue(dragOffset(gesture.dy));
+      },
+
       onPanResponderRelease:(_event,gesture)=>{
-        if(wantsSwipe(gesture)) router.push(destination(swipeUp));
-      }
+        // Let go of it before it settles back, so the screen change and the
+        // button dropping happen together rather than one after the other.
+        if(swipeUp && dragOpens(gesture.dx,gesture.dy)) router.push(destination(swipeUp));
+        settle();
+      },
+
+      // A cancelled gesture -- a call arriving, a system gesture taking over --
+      // has to put the button back too, or it stays stuck half way up.
+      onPanResponderTerminate:settle
     });
-  },[swipeUp,account.known,account.signedIn]);
+  },[swipeUp,account.known,account.signedIn,drag]);
 
   // Until the session has been read, treat a person as signed in. Guessing the
   // other way would send somebody who IS logged in to the log-in screen for the
@@ -212,38 +257,59 @@ export default function TabBar(){
 
       {/* The centre is the map, except on the map, where it becomes the
           scanner. One button, two jobs, decided by centreButton() rather than
-          here. */}
+          here.
+
+          RAISED_COLUMN wide and centred, NOT the full width of the bar. This
+          box sits on top of the row, so anything it covers cannot be tapped --
+          and while it spanned left:0 to right:0 it covered all five tabs. That
+          is why the footer was dead on the map: every touch landed here. */}
       <View style={styles.raisedWrap} {...swipeResponder.panHandlers}>
-        <Pressable
-          style={styles.raised}
-          accessibilityRole="tab"
-          accessibilityState={{selected:centre.key===active}}
-          accessibilityLabel={
-            swipeUp
-              ? `${centre.label}. Swipe up for ${swipeUp.label}.`
-              : centre.label
-          }
-          onPress={()=>router.push(destination(centre))}
-        >
-          <Icon name={centre.glyph} colour={INK.card} size={26}/>
-        </Pressable>
+        {/* The button itself, drawn wherever the finger has dragged it to. */}
+        <Animated.View style={{transform:[{translateY:drag}]}}>
+          <Pressable
+            style={styles.raised}
+            accessibilityRole="tab"
+            accessibilityState={{selected:centre.key===active}}
+            accessibilityLabel={
+              swipeUp
+                ? `${centre.label}. Drag up for ${swipeUp.label}.`
+                : centre.label
+            }
+            onPress={()=>router.push(destination(centre))}
+          >
+            <Icon name={centre.glyph} colour={INK.card} size={26}/>
+          </Pressable>
+        </Animated.View>
 
         {/*
-          The affordance, and a real control in its own right. The upward swipe
+          The affordance, and a real control in its own right. The upward drag
           is the nice version, but a gesture that does not fire -- on web, or
           under a screen reader, or for anybody who simply does not discover it
           -- would leave Discover unreachable, since it has no tab any more.
           Tapping this label always works.
+
+          It sharpens as the drag goes, so the further the button is pulled the
+          clearer it is what letting go will do.
         */}
         {!!swipeUp && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${swipeUp.label}`}
-            hitSlop={8}
-            onPress={()=>router.push(destination(swipeUp))}
+          <Animated.View
+            style={{
+              opacity:drag.interpolate({
+                inputRange:[-DRAG_THRESHOLD,0],
+                outputRange:[1,0.5],
+                extrapolate:"clamp"
+              })
+            }}
           >
-            <Text style={styles.swipeHint}>▲ {swipeUp.label}</Text>
-          </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${swipeUp.label}`}
+              hitSlop={8}
+              onPress={()=>router.push(destination(swipeUp))}
+            >
+              <Text style={styles.swipeHint}>▲ {swipeUp.label}</Text>
+            </Pressable>
+          </Animated.View>
         )}
       </View>
     </View>
@@ -251,10 +317,21 @@ export default function TabBar(){
 }
 
 const styles=StyleSheet.create({
-  // Transparent above the bar so the raised button has somewhere to sit that is
-  // not outside its parent. Android clips overflowing children; this avoids
-  // needing it to overflow at all.
-  container:{width:"100%",backgroundColor:"transparent"},
+  // The whole footer is one block of card, top edge included.
+  //
+  // It used to be transparent above the bar, to give the raised button somewhere
+  // to sit that was not outside its parent -- Android clips overflowing
+  // children. That worked, but a transparent strip shows whatever is behind the
+  // app, and behind the app is black: that is the black bar above the
+  // navigation. Painting it card and moving the border up to the outer edge
+  // keeps the button where it is and leaves one footer with one line on top.
+  container:{
+    width:"100%",
+    backgroundColor:INK.card,
+    // The borders are the print register, and not optional.
+    borderTopWidth:2,
+    borderTopColor:INK.ink
+  },
   bar:{
     position:"absolute",
     left:0,
@@ -262,10 +339,7 @@ const styles=StyleSheet.create({
     bottom:0,
     flexDirection:"row",
     alignItems:"flex-start",
-    backgroundColor:INK.card,
-    // The borders are the print register, and not optional.
-    borderTopWidth:2,
-    borderTopColor:INK.ink
+    backgroundColor:INK.card
   },
   // 44px is the tap-target floor even where the visible target is smaller.
   tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:6},
@@ -273,11 +347,15 @@ const styles=StyleSheet.create({
   markerActive:{backgroundColor:INK.ink},
   label:{fontSize:10,marginTop:3,color:INK.inkSoft,textAlign:"center",paddingHorizontal:2},
   labelActive:{color:INK.ink,fontWeight:"700"},
+  // Its own column, centred over the middle tab slot. left/right:0 here is what
+  // made every other tab untappable from the map -- this box is drawn last, so
+  // it takes the touch before anything under it gets a look.
   raisedWrap:{
     position:"absolute",
     top:0,
-    left:0,
-    right:0,
+    left:"50%",
+    width:RAISED_COLUMN,
+    marginLeft:-RAISED_COLUMN/2,
     alignItems:"center"
   },
   swipeHint:{
