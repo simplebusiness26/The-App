@@ -104,11 +104,15 @@ export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectA
       style:config.styleUrl,
       center:[DEFAULT_CENTRE.longitude,DEFAULT_CENTRE.latitude],
       zoom:12,
-      // The licence requires attribution to be visible, and OpenFreeMap's own
+      // The licence requires the credit to be visible, and OpenFreeMap's own
       // styles carry it -- passing ours as well printed it twice. The provider
       // module keeps the string for a style that does not supply one, and for
       // anything that needs to say where the map came from in words.
-      attributionControl:{compact:false}
+      //
+      // compact:true makes it a small (i) that opens on tap rather than a bar
+      // of text across the bottom of the map. Same credit, and the licence is
+      // satisfied either way -- it has to be reachable, not large.
+      attributionControl:{compact:true}
     });
 
     map.current.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");

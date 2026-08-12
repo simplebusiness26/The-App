@@ -40,8 +40,24 @@ function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
     <Map
       style={styles.map}
       mapStyle={config.styleUrl}
-      attributionEnabled
-      logoEnabled={false}
+      /*
+        THE CREDIT IS SMALL, NOT GONE
+
+        The map data is OpenStreetMap's, and the licence it is free under says
+        the credit has to be on the map. Removing it is not a setting, it is a
+        breach -- so it becomes a small round (i) in the bottom right instead,
+        which is exactly what Google and Mapbox do with theirs. Tapping it shows
+        the full wording.
+
+        These are also the RIGHT prop names. `attributionEnabled` and
+        `logoEnabled` were v10's; on v11 they are `attribution` and `logo`, so
+        the old ones did nothing at all and the map was drawing the MapLibre
+        logo and the long credit bar because both default to on. That is the bar
+        that was across the bottom.
+      */
+      attribution
+      attributionPosition={{bottom:10,right:10}}
+      logo={false}
     >
       {/*
         defaultSettings, not a controlled camera. A controlled one drags the map
