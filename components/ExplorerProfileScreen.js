@@ -205,6 +205,12 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
     setReviewLikes(likeMap);
     setFavourites(favouritesResult.data || []);
     setLiveMomentCount((momentsResult.data || []).length);
+
+    // Anything this Explorer marked "keep as a Memory" that has since expired
+    // becomes a Memory now. Nothing in this project runs on a timer, so the
+    // transition is lazy and owner-scoped -- settle_my_moments only ever
+    // touches the caller's own rows, which is why it is safe to call on load.
+    if(user?.id===id) await supabase.rpc("settle_my_moments");
     setMemories(memoriesResult.data || []);
 
     // Packet 8a's Clubs tab. Approved memberships only: a pending application is
@@ -360,6 +366,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
           ownerId={profile.id}
           ownerName={profile.full_name || "Explorer"}
           visible={storyOpen}
+          isOwner={isOwner}
           onClose={()=>setStoryOpen(false)}
         />
         <Text style={styles.profileName}>{profile.full_name || "Explorer"}</Text>

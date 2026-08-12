@@ -56,6 +56,11 @@ export default function CreateMoment(){
   const [selectedPlace,setSelectedPlace]=useState(null);
   const [visibility,setVisibility]=useState(DEFAULT_MOMENT_VISIBILITY);
   const [postOfficially,setPostOfficially]=useState(false);
+  // Save to Memories. The columns for this were added on 11 August and nothing
+  // had ever written them -- the intent was recorded, the transition was not
+  // built. It is off by default: keeping something for ever should be a choice
+  // somebody makes, not one they fail to undo.
+  const [keepAsMemory,setKeepAsMemory]=useState(false);
   const [coordinates,setCoordinates]=useState(null);
   const [locating,setLocating]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -317,6 +322,7 @@ export default function CreateMoment(){
           target_name:selectedPlace?.name || null,
           target_image_url:selectedPlace?.displayImage || null,
           visibility:audience,
+          save_to_memory:keepAsMemory,
           actor_type:official ? placeType : "explorer",
           actor_id:official ? selectedPlace.id : user.id,
           ...deviceLocation,
@@ -483,6 +489,26 @@ export default function CreateMoment(){
       */}
       <AudienceCeiling audience={postOfficially ? "everyone" : visibility}/>
 
+      {/*
+        A Moment is live for a day and then it goes. This is the one way to keep
+        it, and the Memory it becomes inherits this Moment's audience -- keeping
+        something must never widen it.
+      */}
+      <Pressable
+        style={[styles.keep,keepAsMemory && styles.keepOn]}
+        accessibilityRole="switch"
+        accessibilityState={{checked:keepAsMemory}}
+        accessibilityLabel="Keep this as a Memory after it expires"
+        onPress={()=>setKeepAsMemory((on)=>!on)}
+      >
+        <Text style={styles.keepTitle}>{keepAsMemory ? "✓ Keep this as a Memory" : "Keep this as a Memory"}</Text>
+        <Text style={styles.keepHint}>
+          {keepAsMemory
+            ? "When it stops being live it becomes a Memory, shared with exactly the same people."
+            : "Off — this disappears in 24 hours and is not kept."}
+        </Text>
+      </Pressable>
+
       {!selectedPlace && (
         <>
           <Text style={styles.label}>Location <Text style={styles.optional}>(optional)</Text></Text>
@@ -513,6 +539,10 @@ export default function CreateMoment(){
 }
 
 const styles=StyleSheet.create({
+  keep:{borderWidth:2,borderColor:"#45454c",borderRadius:12,padding:14,marginTop:12,backgroundColor:"#222226"},
+  keepOn:{borderColor:"#7fe0ab",backgroundColor:"#12291d"},
+  keepTitle:{color:"white",fontWeight:"900",fontSize:14},
+  keepHint:{color:"#a5a5b0",fontSize:12,lineHeight:17,marginTop:4},
   screen:{flex:1,backgroundColor:"#18181b"},
   content:{padding:18,paddingBottom:70},
   center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},

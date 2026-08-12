@@ -61,13 +61,17 @@ function leftToRun(value){
   return `Gone in ${Math.round(hours/24)} days`;
 }
 
-export default function StoryViewer({ownerId,ownerName,visible,onClose}){
+export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=false}){
   const [moments,setMoments]=useState([]);
   const [index,setIndex]=useState(0);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const marked=useRef(new Set());
   const fade=useRef(new Animated.Value(0)).current;
+  // Which Moments this session has kept, so the button can say so without
+  // another read.
+  const [kept,setKept]=useState(new Set());
+  const [keeping,setKeeping]=useState(false);
 
   const load=useCallback(async()=>{
     if(!ownerId){setLoading(false);return;}
@@ -121,6 +125,23 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose}){
 
   function previous(){
     setIndex((current)=>Math.max(0,current-1));
+  }
+
+  // Keeping it. Only the owner sees this, and the database refuses anybody
+  // else -- save_moment_as_memory checks auth.uid() against the Moment.
+  async function keep(){
+    if(keeping || !current?.id) return;
+    setKeeping(true);
+
+    const {error:keepError}=await supabase.rpc("save_moment_as_memory",{p_moment_id:current.id});
+    setKeeping(false);
+
+    if(keepError){
+      setError(keepError.message || "This Moment could not be kept.");
+      return;
+    }
+
+    setKept((current_set)=>new Set(current_set).add(current.id));
   }
 
   const place=current?.target_type && current?.target_id
@@ -228,6 +249,24 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose}){
             {/* A Moment expires. Saying when is the difference between this and
                 a photo gallery. */}
             <Text style={styles.expiry}>{leftToRun(current.expires_at)}</Text>
+
+            {isOwner && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  kept.has(current.id)
+                    ? "Kept as a Memory"
+                    : "Keep this Moment as a Memory"
+                }
+                disabled={keeping || kept.has(current.id)}
+                style={[styles.keep,kept.has(current.id) && styles.keptOn]}
+                onPress={keep}
+              >
+                <Text style={styles.keepText}>
+                  {kept.has(current.id) ? "✓ Kept as a Memory" : "Keep this as a Memory"}
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
       </View>
@@ -264,5 +303,16 @@ const styles=StyleSheet.create({
   footer:{padding:16,paddingBottom:30,gap:6},
   caption:{color:INK.card,fontSize:15,lineHeight:21},
   place:{color:INK.card,fontSize:13,fontWeight:"800"},
-  expiry:{color:"rgba(243,243,237,0.65)",fontSize:11,fontWeight:"700"}
+  expiry:{color:"rgba(243,243,237,0.65)",fontSize:11,fontWeight:"700"},
+  keep:{
+    marginTop:8,
+    alignSelf:"flex-start",
+    borderWidth:2,
+    borderColor:INK.card,
+    borderRadius:99,
+    paddingHorizontal:16,
+    paddingVertical:8
+  },
+  keptOn:{opacity:0.6},
+  keepText:{color:INK.card,fontWeight:"800",fontSize:12}
 });

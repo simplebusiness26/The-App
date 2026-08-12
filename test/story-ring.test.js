@@ -115,23 +115,57 @@ describe("the viewer",()=>{
      target_name:null,target_type:null,target_id:null,viewed:false}
   ];
 
-  async function renderViewer(){
+  async function renderViewer(isOwner=false){
     installFixture({
       user:{id:"viewer"},
       tables:{},
-      rpc:{get_live_moments:MOMENTS,mark_moment_viewed:null}
+      rpc:{get_live_moments:MOMENTS,mark_moment_viewed:null,save_moment_as_memory:"mem-9"}
     });
 
     const StoryViewer=require("../components/StoryViewer").default;
     let tree;
     await act(async()=>{
       tree=create(wrap(React.createElement(StoryViewer,{
-        ownerId:"owner-1",ownerName:"Sam Okoro",visible:true,onClose:()=>{}
+        ownerId:"owner-1",ownerName:"Sam Okoro",visible:true,isOwner,onClose:()=>{}
       })));
     });
     await act(async()=>{});
     return tree;
   }
+
+  it("offers Keep as a Memory to the owner and to nobody else",async()=>{
+    const visitor=await renderViewer(false);
+    expect(labelsOf(visitor.toJSON()).join(" ")).not.toContain("Keep this");
+    await act(async()=>{visitor.unmount();});
+
+    const owner=await renderViewer(true);
+    const labels=labelsOf(owner.toJSON()).join(" | ");
+    console.log("OWNER VIEWER >>>",labels);
+    expect(labels).toContain("Keep this Moment as a Memory");
+    await act(async()=>{owner.unmount();});
+  });
+
+  it("keeps it through the database, which checks the owner again",async()=>{
+    const {supabase}=require("../services/supabase");
+    const tree=await renderViewer(true);
+
+    const keep=tree.root.findAll(
+      (node)=>node.props?.accessibilityLabel==="Keep this Moment as a Memory"
+        && typeof node.props?.onPress==="function",
+      {deep:true}
+    )[0];
+
+    await act(async()=>{await keep.props.onPress();});
+
+    // Not an insert into explorer_memories from here. The audience has to be
+    // inherited from the Moment and only the database knows how to do that.
+    expect(supabase.rpc).toHaveBeenCalledWith("save_moment_as_memory",{p_moment_id:"m2"});
+    expect(supabase.from).not.toHaveBeenCalledWith("explorer_memories");
+
+    expect(textOf(tree.toJSON())).toContain("Kept as a Memory");
+
+    await act(async()=>{tree.unmount();});
+  });
 
   it("opens on the first thing the viewer has not watched",async()=>{
     const tree=await renderViewer();
