@@ -5,6 +5,8 @@ import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import {ARCHIVE_VISIBILITY,currentAudience,isLive,phaseLabel,visibilityLabel,MEMORY_VISIBILITY} from "../../utils/memories";
 import {entityRoute,entityTypeLabel} from "../../utils/places";
+import LikeButton from "../../components/LikeButton";
+import CommentThread from "../../components/CommentThread";
 import {INK} from "../../utils/tokens";
 
 // Packet 8d: one Memory, and the controls only its owner gets.
@@ -27,6 +29,9 @@ export default function MemoryPage(){
   const [loading,setLoading]=useState(true);
   const [working,setWorking]=useState(false);
   const [error,setError]=useState("");
+  // Likes on this Memory. Read here rather than inside LikeButton so the count
+  // is right on first paint instead of flicking up from zero.
+  const [likes,setLikes]=useState({count:0,liked:false});
 
   const load=useCallback(async()=>{
     if(!memoryId) return;
@@ -50,6 +55,20 @@ export default function MemoryPage(){
     }
 
     setMemory(data);
+
+    // A Memory could not be liked or commented on at all until
+    // 20260812160000 -- it was the one piece of content in the app nobody
+    // could say anything back to.
+    const {data:likeRows}=await supabase
+      .from("social_likes")
+      .select("user_id")
+      .eq("target_type","memory")
+      .eq("target_id",memoryId);
+
+    setLikes({
+      count:(likeRows || []).length,
+      liked:!!user && (likeRows || []).some((row)=>row.user_id===user.id)
+    });
 
     if(user && user.id===data.user_id){
       const [shareResult,followResult]=await Promise.all([
@@ -237,6 +256,34 @@ export default function MemoryPage(){
         </View>
       </View>
 
+      {/*
+        LIKE, not Useful. Useful is an endorsement of a review -- it says "this
+        helped me decide" and it pays the reviewer a point. A Memory is
+        somebody's day out; liking it says you liked seeing it and means nothing
+        else. Same table, two words, because they are two different acts.
+
+        Anybody who can read this screen can respond on it. Who that is was
+        decided before this screen ran, by the read policy and by
+        can_see_content -- there is no client-side branch here deciding who may
+        speak, and the database refuses a like or a comment on a Memory the
+        viewer was never shown.
+      */}
+      <View style={styles.respond}>
+        <LikeButton
+          targetType="memory"
+          targetId={memory.id}
+          initialCount={likes.count}
+          initialLiked={likes.liked}
+          onChanged={(next)=>setLikes({count:next.count,liked:next.liked})}
+        />
+      </View>
+
+      <CommentThread
+        targetType="memory"
+        targetId={memory.id}
+        ownerId={memory.user_id}
+      />
+
       {isOwner && (
         <>
           <Text style={styles.sectionTitle}>While it is live</Text>
@@ -326,6 +373,7 @@ export default function MemoryPage(){
 const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12};
 
 const styles=StyleSheet.create({
+  respond:{marginTop:12,flexDirection:"row"},
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:16,paddingBottom:60},
   centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
