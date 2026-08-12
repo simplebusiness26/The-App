@@ -12,19 +12,20 @@ import {supabase} from "../../services/supabase";
 import {router,useLocalSearchParams} from "expo-router";
 import {INK} from "../../utils/tokens";
 
-const TEST_PASSWORD="password123";
-const TEST_SETUP_TOKEN="P0h11qYVK3Ev_wuTUfQxfLjXxj6rtK4vZf4Evq99xaE";
-
-const TEST_ACCOUNTS={
-  m:{label:"Manager",email:"manager@test.com"},
-  e:{label:"Explorer",email:"explorer@test.com"},
-  events:{label:"Explorer",email:"explorer@test.com"},
-  e2:{label:"Explorer 2",email:"explorer2@test.com"}
-};
-
-function normaliseAlias(value){
-  return value.trim().toLowerCase();
-}
+// THE QUICK TEST LOGIN IS GONE, AND IT SHOULD NEVER HAVE SHIPPED.
+//
+// This file used to hold three things that went into every published build:
+// a shared password in plain text, a setup token for an Edge Function that
+// could reset it, and the email addresses of three accounts holding real
+// content. The screen offered them as buttons to anyone who opened the app.
+// The token and the password were both confirmed present in the production web
+// bundle, so they were public to anybody who looked.
+//
+// If a demo account is wanted again it belongs behind a build-time flag that is
+// off for release builds -- never as a control a real person can see and press.
+//
+// The three accounts still exist and their password is still the one that
+// shipped. Old builds carry it. Rotate or retire them.
 
 function safeDestination(value){
   const destination=Array.isArray(value) ? value[0] : value;
@@ -40,26 +41,12 @@ export default function Login(){
   const [password,setPassword]=useState("");
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
-  const [quickAccount,setQuickAccount]=useState("");
 
-  async function prepareTestAccount(alias){
-    const {data,error:setupError}=await supabase.functions.invoke(
-      "guestbook-test-account-setup",
-      {body:{token:TEST_SETUP_TOKEN,alias}}
-    );
-
-    if(setupError) throw new Error(setupError.message || "Test account setup failed");
-    if(!data?.ok) throw new Error(data?.error || "Test account setup failed");
-  }
-
-  async function signIn(loginEmail,loginPassword,accountLabel="",testAlias=""){
+  async function signIn(loginEmail,loginPassword){
     setError("");
     setLoading(true);
-    setQuickAccount(accountLabel);
 
     try{
-      if(testAlias) await prepareTestAccount(testAlias);
-
       const {error:loginError}=await supabase.auth.signInWithPassword({
         email:loginEmail.trim(),
         password:loginPassword
@@ -69,43 +56,23 @@ export default function Login(){
       router.replace(destination);
     }catch(loginError){
       console.log(loginError);
-      if(accountLabel){
-        setError(`${accountLabel} quick login failed. Please tap the button again.`);
-      }else if(loginError.message?.includes("Invalid login")){
+      if(loginError.message?.includes("Invalid login")){
         setError("Incorrect email or password");
       }else{
         setError(loginError.message || "Login failed");
       }
     }finally{
       setLoading(false);
-      setQuickAccount("");
     }
   }
 
   async function login(){
-    const alias=normaliseAlias(email);
-    const testAccount=TEST_ACCOUNTS[alias];
-
-    if(testAccount && !password){
-      await signIn(testAccount.email,TEST_PASSWORD,testAccount.label,alias);
-      return;
-    }
-
     if(!email || !password){
-      setError("Enter your email and password, or use a quick test login.");
+      setError("Enter your email and password.");
       return;
     }
 
     await signIn(email,password);
-  }
-
-  async function quickLogin(alias){
-    const account=TEST_ACCOUNTS[alias];
-    if(!account || loading) return;
-
-    setEmail(alias);
-    setPassword("");
-    await signIn(account.email,TEST_PASSWORD,account.label,alias);
   }
 
   return(
@@ -123,30 +90,9 @@ export default function Login(){
         </View>
       )}
 
-      <View style={styles.quickPanel}>
-        <Text style={styles.quickTitle}>Quick test login</Text>
-        <Text style={styles.quickHelp}>Tap an account below. No password typing is needed.</Text>
-
-        <View style={styles.quickRow}>
-          <Pressable style={[styles.quickButton,loading && styles.disabledButton]} onPress={()=>quickLogin("m")} disabled={loading}>
-            {loading && quickAccount==="Manager" ? <ActivityIndicator color={INK.ink}/> : <><Text style={styles.quickCode}>M</Text><Text style={styles.quickLabel}>Manager</Text></>}
-          </Pressable>
-
-          <Pressable style={[styles.quickButton,loading && styles.disabledButton]} onPress={()=>quickLogin("e")} disabled={loading}>
-            {loading && quickAccount==="Explorer" ? <ActivityIndicator color={INK.ink}/> : <><Text style={styles.quickCode}>E</Text><Text style={styles.quickLabel}>Explorer</Text></>}
-          </Pressable>
-
-          <Pressable style={[styles.quickButton,loading && styles.disabledButton]} onPress={()=>quickLogin("e2")} disabled={loading}>
-            {loading && quickAccount==="Explorer 2" ? <ActivityIndicator color={INK.ink}/> : <><Text style={styles.quickCode}>E2</Text><Text style={styles.quickLabel}>Explorer 2</Text></>}
-          </Pressable>
-        </View>
-
-        <Text style={styles.aliasHelp}>You can also type m, e, events or e2 in the email box and tap Login.</Text>
-      </View>
-
       <TextInput
         style={styles.input}
-        placeholder="Email or test alias"
+        placeholder="Email"
         placeholderTextColor={INK.ink}
         autoCapitalize="none"
         autoCorrect={false}
@@ -189,14 +135,6 @@ const styles=StyleSheet.create({
   returnNotice:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
   returnTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
   returnText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:3},
-  quickPanel:{backgroundColor:INK.blue,borderWidth:1,borderColor:INK.blue,borderRadius:18,padding:18,marginBottom:44},
-  quickTitle:{fontSize:25,lineHeight:32,fontWeight:"bold",color:INK.card},
-  quickHelp:{color:INK.card,fontSize:17,lineHeight:25,marginTop:7},
-  quickRow:{flexDirection:"row",gap:14,marginTop:20},
-  quickButton:{flex:1,minHeight:116,backgroundColor:INK.blue,borderRadius:16,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
-  quickCode:{color:INK.card,fontSize:34,fontWeight:"bold"},
-  quickLabel:{color:INK.card,fontSize:16,marginTop:8,textAlign:"center"},
-  aliasHelp:{color:INK.card,fontSize:15,lineHeight:23,marginTop:18},
   input:{color:INK.ink,backgroundColor:INK.paper,borderWidth:1,borderColor:INK.ink,borderRadius:16,paddingHorizontal:22,paddingVertical:20,minHeight:78,fontSize:19,marginBottom:28},
   forgotPassword:{alignSelf:"flex-end",paddingVertical:2,marginTop:-4,marginBottom:34},
   forgotPasswordText:{color:INK.blue,fontSize:19,fontWeight:"bold"},

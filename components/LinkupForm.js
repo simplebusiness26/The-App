@@ -27,7 +27,8 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
   const [latitude,setLatitude]=useState(initial?.latitude ?? null);
   const [longitude,setLongitude]=useState(initial?.longitude ?? null);
   const [maxAttendees,setMaxAttendees]=useState(String(initial?.max_attendees || 8));
-  const [visibility,setVisibility]=useState(initial?.visibility || "public");
+  // Friends by default. Presence does not open itself.
+  const [visibility,setVisibility]=useState(initial?.visibility || "friends");
   const [locating,setLocating]=useState(false);
   const [error,setError]=useState("");
 
@@ -136,8 +137,8 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
 
       <Text style={styles.label}>Who can see this?</Text>
       <View style={styles.visibilityRow}>
-        <Pressable style={[styles.visibilityButton,visibility==="public"&&styles.visibilityActive]} onPress={()=>setVisibility("public")}><Text style={[styles.visibilityText,visibility==="public"&&styles.visibilityTextActive]}>Public</Text><Text style={styles.visibilityHint}>All Explorers</Text></Pressable>
-        <Pressable style={[styles.visibilityButton,visibility==="followers"&&styles.visibilityActive]} onPress={()=>setVisibility("followers")}><Text style={[styles.visibilityText,visibility==="followers"&&styles.visibilityTextActive]}>Followers only</Text><Text style={styles.visibilityHint}>People following you</Text></Pressable>
+        <Pressable style={[styles.visibilityButton,visibility==="everyone"&&styles.visibilityActive]} onPress={()=>setVisibility("everyone")}><Text style={[styles.visibilityText,visibility==="everyone"&&styles.visibilityTextActive]}>Everyone</Text><Text style={styles.visibilityHint}>Any Explorer, if your profile allows it</Text></Pressable>
+        <Pressable style={[styles.visibilityButton,visibility==="friends"&&styles.visibilityActive]} onPress={()=>setVisibility("friends")}><Text style={[styles.visibilityText,visibility==="friends"&&styles.visibilityTextActive]}>Friends</Text><Text style={styles.visibilityHint}>People you both follow</Text></Pressable>
       </View>
 
       <View style={styles.safetyCard}>

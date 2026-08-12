@@ -116,11 +116,15 @@ contains("app/checkins/create.js",[
   "requestForegroundPermissionsAsync",
   "[30,60,120,240]",
   // Rebuild Packet 8 removed the per-check-in visibility choice. Who can see a
-  // check-in is one setting on the profile, and it is a ceiling -- with no
-  // setting value above Friends, a Public button here could not do anything.
-  // The screen sends the narrowest value the RPC still accepts; the setting
-  // decides the rest.
-  'p_visibility:"followers"',
+  // check-in is one setting on the profile, and it is a ceiling.
+  //
+  // This used to require the string 'followers', and that was the bug rather
+  // than the contract: RULES.md says presence caps at friends and never uses
+  // followers, and the profile setting could be set wider than either. The
+  // screen now sends the word the rule actually is, and the database caps it
+  // again with can_see_content(owner, viewer, 'friends') so an older build
+  // sending 'followers' is translated rather than trusted.
+  'p_visibility:"friends"',
   'visibility',
   'Only use public places',
   'customActivity',

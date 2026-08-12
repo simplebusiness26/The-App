@@ -132,7 +132,7 @@ export default function CreateCheckin(){
     const {error:checkinError}=await supabase.rpc("start_live_checkin",{
       p_place_type:placeType,p_target_id:targetId,p_place_name:placeName.trim(),p_area:area.trim(),
       p_latitude:latitude,p_longitude:longitude,p_activity:selectedActivity,p_message:message.trim(),
-      p_visibility:"followers",p_minutes:minutes,p_public_place_id:publicPlaceId
+      p_visibility:"friends",p_minutes:minutes,p_public_place_id:publicPlaceId
     });
     setWorking(false);
     if(checkinError){setError(checkinError.message);return;}

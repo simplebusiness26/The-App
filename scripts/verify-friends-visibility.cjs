@@ -76,12 +76,30 @@ const surfaces=[
   },
   {
     label:"public.get_live_discovery",
-    start:/create\s+or\s+replace\s+function\s+public\.get_live_discovery/i,
+    // Two shapes count as defining this one.
+    //
+    // A full `create or replace`, and ALSO a `do $$ ... $$` block that patches
+    // the live definition in place. The second is not a dodge: this function is
+    // a sixty-line union of five selects, and changing one predicate by
+    // retyping the other fifty-nine lines is how a transcription error gets
+    // into a privacy rule. 20260812220000 reads pg_get_functiondef, replaces
+    // exactly one call, and raises if that call is not found -- so it cannot
+    // silently do nothing, which is the only real risk of the technique.
+    //
+    // The rule below is unchanged either way: whatever last touched this
+    // surface has to cap presence at friends.
+    start:/create\s+or\s+replace\s+function\s+public\.get_live_discovery|do\s+\$\$[\s\S]*?get_live_discovery/i,
     extract:(body)=>{
-      const at=body.search(/create\s+or\s+replace\s+function\s+public\.get_live_discovery/i);
-      if(at<0) return null;
-      const end=body.indexOf("$$;",body.indexOf("$$",at)+2);
-      return body.slice(at,end);
+      const created=body.search(/create\s+or\s+replace\s+function\s+public\.get_live_discovery/i);
+      if(created>=0){
+        const end=body.indexOf("$$;",body.indexOf("$$",created)+2);
+        return body.slice(created,end);
+      }
+
+      const patched=body.search(/do\s+\$\$/i);
+      if(patched<0 || !/get_live_discovery/.test(body)) return null;
+      const end=body.indexOf("$$;",body.indexOf("$$",patched)+2);
+      return body.slice(patched,end<0 ? body.length : end);
     }
   }
 ];
@@ -107,12 +125,30 @@ for(const surface of surfaces){
     `${latestFile}: ${surface.label} decides visibility with a one-way follow lookup -- anybody who follows you, unanswered, can see where you are`
   );
 
-  // Packet 8 moved the answer up one level. can_see_location is now the single
-  // predicate, and it calls are_friends internally -- so either name is
-  // acceptable here, and neither being present is not.
+  // One of the three named predicates has to be doing the deciding. Anything
+  // else means the rule has been rewritten by hand somewhere new, which is how
+  // a one-way follow check got into presence in the first place.
   check(
-    /are_friends|can_see_explorer/.test(latest),
-    `${latestFile}: ${surface.label} decides visibility without are_friends or can_see_explorer, so who can see a position is being worked out somewhere new`
+    /are_friends|can_see_explorer|can_see_content/.test(latest),
+    `${latestFile}: ${surface.label} decides visibility without are_friends, can_see_explorer or can_see_content, so who can see a position is being worked out somewhere new`
+  );
+
+  // AND, for presence specifically, the ceiling function is not enough.
+  //
+  // can_see_explorer(owner, viewer) answers "does this person's PROFILE let you
+  // see them", which is `followers` and `everyone` as readily as `friends`.
+  // RULES.md: "`followers` ... is not an acceptable audience for presence --
+  // check-ins and Link-ups use friends." Proven on live data: under the old
+  // rule a one-way follower could read a live check-in when the profile said
+  // `followers`; under can_see_content(owner, viewer, 'friends') they cannot,
+  // and a real friend still can.
+  //
+  // can_see_content takes the NARROWER of the audience it is given and the
+  // profile ceiling, so asking it for 'friends' is the cap and the ceiling at
+  // once.
+  check(
+    !/can_see_explorer/.test(latest) || /can_see_content\s*\([^)]*'friends'/.test(latest),
+    `${latestFile}: ${surface.label} uses can_see_explorer, which follows the profile setting and therefore allows followers and everyone. Presence caps at friends -- use can_see_content(owner, viewer, 'friends')`
   );
 }
 
