@@ -113,9 +113,24 @@ jobs:
       - name: Check Expo project
         run: npx expo-doctor
 
+      # The two EXPO_PUBLIC_ values are what services/supabase.js reads, and
+      # without them the bundle carries no Supabase URL at all -- so the browser
+      # gate below cannot find the project ref, cannot stub a session, and
+      # refuses to run rather than reporting the login screen 42 times.
+      #
+      # They are repository secrets rather than literals here. Both are public
+      # by design -- they ship inside every APK, and row level security is what
+      # actually protects the data -- but they are the owner's values to put in
+      # the repository, not mine to commit on their behalf.
+      #
+      # Add them at Settings > Secrets and variables > Actions:
+      #   EXPO_PUBLIC_SUPABASE_URL
+      #   EXPO_PUBLIC_SUPABASE_ANON_KEY
       - name: Build Expo web app
         env:
           CI: true
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
         run: npx expo export --platform web --output-dir dist-ci
 
       - name: Verify create route in web bundle
@@ -139,9 +154,9 @@ jobs:
 
       # Moved to the end, and it is the only step here that fails on something
       # this repository cannot fix. The 15 high-severity advisories are all
-      # transitive under expo, react-native and react-native-maps -- upstream
-      # framework packages -- so clearing them means an Expo upgrade, not a
-      # change in this app.
+      # transitive under expo, metro and react-native -- upstream framework
+      # packages -- so clearing them means an Expo upgrade, not a change in this
+      # app. (react-native-maps used to be named here too; it is uninstalled.)
       #
       # It used to be the FIRST step, which meant a red audit stopped the entire
       # job before a single test ran. Every run on this branch was failing here

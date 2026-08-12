@@ -225,6 +225,14 @@ async function main(){
     console.error("Could not find the Supabase project ref in the bundle.");
     console.error("Without it no session can be stubbed, and every signed-in route would");
     console.error("silently render the login screen and be reported as passing.");
+    console.error("");
+    console.error("The bundle only carries the ref if EXPO_PUBLIC_SUPABASE_URL was set when");
+    console.error("`expo export` ran. In CI that comes from repository secrets:");
+    console.error("  Settings > Secrets and variables > Actions");
+    console.error("  EXPO_PUBLIC_SUPABASE_URL");
+    console.error("  EXPO_PUBLIC_SUPABASE_ANON_KEY");
+    console.error("Both are public by design -- they ship in every APK -- but they are");
+    console.error("yours to add rather than something to hardcode here.");
     process.exit(1);
   }
 
