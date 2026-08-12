@@ -14,7 +14,7 @@ a line number is quoted, that line was opened.
 
 ## Where this stands
 
-Updated at commit `1a08710`. Everything below section 0 is the original plan and
+Updated at commit `c1d5c03`. Everything below section 0 is the original plan and
 still reads as if nothing has been built — this section is the correction.
 
 **Two things to know before reading anything else.**
@@ -46,13 +46,18 @@ and does not pull on its own.
 | 19 — Explorer Score / Leaderboard naming | shipped · `53a6820`, corrected in `8c3731e` |
 | 16 (part) — expo-camera pinned, labels fixed | shipped · `cb5a947` |
 | Review actions everywhere + map camera and swipe-up | shipped · `1a08710` |
+| Footer works on the map; centre button drags; black bar gone | shipped · `a23e6e1` |
+| Manager reply and challenge inline, green and red | shipped · `70c2fac` |
+| Public places: named follows, and a way to leave a review | shipped · `97afbc6` |
+| Following becomes Friends when it is mutual | shipped · `e9f910a` |
+| Become / stop being a manager, from Settings | live · `19ac73d` |
+| 16 — A real camera behind the camera button | shipped · `c1d5c03` |
 
 ### Not started
 
 Packet 9 (direct messages), 13 (drop the three mirror review tables — needs a
-production soak and Decision 7), 16 (real camera capture), 18 (Link-ups created
-from the map), 19a (endorsements as dated score events), 20 (the riso pass over
-83 files).
+production soak and Decision 7), 18 (Link-ups created from the map), 19a
+(endorsements as dated score events), 20 (the riso pass over 83 files).
 
 ### Packets 14 and 15 are superseded
 
@@ -95,9 +100,47 @@ They are mostly interface and map work.
 
 - The reply screen for businesses had **no inbound link anywhere**, so a
   business manager could not reply to a review at all. Fixed in `1a08710`.
-- "Follow each other = friends" has **no visible indicator**. It is a server
-  rule; there is no badge, label or list, and the only visible sign is a
-  notification when a follow becomes mutual — which fires on new follows only.
+- "Follow each other = friends" had **no visible indicator**. Fixed in
+  `e9f910a`: the follow button reads Friends when both directions exist, and
+  unfollowing says what it costs.
+
+### Found by testing the APK, and fixed
+
+Everything in this list came from using the built app rather than reading the
+code.
+
+- **Every tab in the footer was dead on the map.** The gesture box around the
+  raised centre button spanned the full width of the bar and was drawn last, so
+  every touch in the footer landed on it. `a23e6e1`.
+- **The black bar above the navigation** was a transparent strip showing what is
+  behind the app. `a23e6e1`.
+- **Challenging a review did nothing visible.** `challenge_review` set the
+  column, `utils/reviews.js` read it back, and no screen in the app drew it.
+  `70c2fac`.
+- **Replying meant leaving the page**, to a screen with the review nowhere on
+  it — and there was no route at all for a club or an event, so a club manager
+  could not answer a review. `70c2fac`.
+- **Public places had two identical Follow buttons** and no way to write one of
+  the reviews the page was already listing. `97afbc6`.
+- **Settings said businesses and properties were active** for an account with no
+  capability row. That stopped being true when Packet 0 flipped the column
+  defaults, so the screen offered something the policy refused. `19ac73d`.
+- **The Camera button opened the photo library.** No camera capture existed
+  anywhere in the app. `c1d5c03`.
+- **Moments could not be posted publicly.** `MOMENT_VISIBILITY` still offered
+  `'public'`, a value the check constraint has refused since the audience
+  vocabulary was unified. Trending had the same stale word, so nothing could
+  trend. `c1d5c03`.
+
+### One thing worth saying out loud
+
+Becoming a manager is now **self-service**: a button in Settings, a
+confirmation, and all four capabilities are on. That is what was asked for, and
+it is a genuine loosening of Packet 0 — which existed because creating a
+business needed no decision from anybody and because approving one capability
+silently granted three others. Neither of those is true now: it takes a person
+choosing it on a screen that says what it means. Claiming somebody else's
+existing listing is still `public.claims` and still an administrator.
 
 ---
 
