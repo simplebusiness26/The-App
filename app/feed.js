@@ -81,12 +81,19 @@ export default function Feed(){
       return;
     }
 
+    if(item.item_type==="memory"){
+      router.push(`/memories/${item.item_id}`);
+      return;
+    }
+
     const route=listingRoute(item);
     if(route) router.push(route);
   }
 
   function openComments(item){
     if(item.item_type==="moment") router.push(`/moments/${item.item_id}`);
+    // A Memory's comments live on the Memory, the same way a Moment's do.
+    else if(item.item_type==="memory") router.push(`/memories/${item.item_id}`);
     else router.push({pathname:`/social-comments/${item.item_id}`,params:{type:"review"}});
   }
 
@@ -127,16 +134,17 @@ export default function Feed(){
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>🧭</Text>
           <Text style={styles.emptyTitle}>Build your Explorer feed</Text>
-          <Text style={styles.emptyText}>Follow Explorers to see their reviews, favourite places and Moments here.</Text>
+          <Text style={styles.emptyText}>Follow Explorers to see their reviews, Moments, Memories and favourite places here.</Text>
           <Pressable style={styles.emptyButton} onPress={()=>router.push("/explorers")}><Text style={styles.emptyButtonText}>Find Explorers</Text></Pressable>
         </View>
       )}
 
       {!loading && !error && items.map(item=>{
         const isMoment=item.item_type==="moment";
+        const isMemory=item.item_type==="memory";
         const isReview=item.item_type==="review";
         const hasVideo=isReview && item.media_type==="video";
-        const canComment=isMoment || hasVideo;
+        const canComment=isMoment || isMemory || hasVideo;
         const route=listingRoute(item);
 
         return(
@@ -145,7 +153,13 @@ export default function Feed(){
               <Avatar item={item}/>
               <View style={styles.actorText}>
                 <Text style={styles.actorName}>{item.actor_name || "Explorer"}</Text>
-                <Text style={styles.meta}>{isMoment ? "shared a Moment" : isReview ? "posted a review" : "saved a favourite"} · {timeLabel(item.created_at)}</Text>
+                {/*
+                  Four kinds now. "kept a Memory" rather than "shared" -- a
+                  Memory is something somebody keeps, and the word is what
+                  separates it from a Moment on a feed where both are a photo
+                  and a sentence.
+                */}
+                <Text style={styles.meta}>{isMoment ? "shared a Moment" : isMemory ? "kept a Memory" : isReview ? "posted a review" : "saved a favourite"} · {timeLabel(item.created_at)}</Text>
               </View>
             </Pressable>
 
@@ -199,11 +213,13 @@ export default function Feed(){
 
             {!!item.verified_qr && <Text style={styles.verified}>✓ Verified on-site review</Text>}
 
-            {(isMoment || isReview) && (
+            {(isMoment || isMemory || isReview) && (
               <View style={styles.actionRow}>
-                {isMoment ? (
+                {isMoment || isMemory ? (
+                  /* Like, not Useful. Useful endorses a review and pays its
+                     author a point; a Moment or a Memory just gets liked. */
                   <LikeButton
-                    targetType="moment"
+                    targetType={isMemory ? "memory" : "moment"}
                     targetId={item.item_id}
                     initialCount={item.like_count}
                     initialLiked={item.viewer_liked}
