@@ -235,8 +235,13 @@ function PlaceReview({review,onPhoto,targetType,viewerId,canReply}){
   const stars=Number(review.rating || 0);
 
   return(
+    // The card is a plain View, and only the part above the actions opens the
+    // Explorer's profile. It used to be one big Pressable wrapping everything,
+    // which was fine while the actions were three buttons -- it is not fine now
+    // that a comment box lives down there, because every tap in the text field
+    // would navigate away mid-sentence.
+    <View style={styles.reviewCard}>
     <Pressable
-      style={styles.reviewCard}
       onPress={()=>review.user_id && router.push(`/profile/${review.user_id}`)}
       disabled={!review.user_id}
     >
@@ -313,15 +318,16 @@ function PlaceReview({review,onPhoto,targetType,viewerId,canReply}){
         different thing said by a different person, and it renders above as its
         own block rather than as another comment.
       */}
-      <ReviewActions
-        review={review}
-        viewerId={viewerId}
-        targetType={targetType}
-        canReply={canReply}
-      />
-
-      {!!review.user_id && <Text style={styles.profileHint}>Tap the card to view the Explorer →</Text>}
+      {!!review.user_id && <Text style={styles.profileHint}>Tap to view the Explorer →</Text>}
     </Pressable>
+
+    <ReviewActions
+      review={review}
+      viewerId={viewerId}
+      targetType={targetType}
+      canReply={canReply}
+    />
+    </View>
   );
 }
 

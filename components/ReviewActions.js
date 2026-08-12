@@ -1,6 +1,7 @@
-import React from "react";
+import React,{useState} from "react";
 import {View,Text,Pressable,StyleSheet} from "react-native";
 import {router} from "expo-router";
+import CommentThread from "./CommentThread";
 import EndorseButton from "./EndorseButton";
 import {INK} from "../utils/tokens";
 
@@ -13,7 +14,11 @@ import {INK} from "../utils/tokens";
 //               "people found this helpful". EndorseButton owns that word and
 //               hides itself for the author, because the database refuses it.
 //
-//   Comment  -- anybody. What any Explorer says back about a review.
+//   Comment  -- anybody. What any Explorer says back about a review. It opens
+//               IN PLACE, under the review it belongs to. Sending somebody to
+//               another screen to say one line, then back again to read the
+//               next review, is the thing that made this unusable: the reply
+//               and the thing being replied to were never on screen together.
 //
 //   Reply    -- ONLY whoever manages the reviewed place, and only on reviews of
 //               THEIR place. A reply is the business answering its customer, and
@@ -40,6 +45,11 @@ export default function ReviewActions({
   liked=false,
   onChanged
 }){
+  // The hook runs before any early return -- React requires the same hooks in
+  // the same order on every render, and a `return null` above it would break
+  // that the first time a card arrived without an id.
+  const [showComments,setShowComments]=useState(false);
+
   if(!review?.id) return null;
 
   const isAuthor=!!viewerId && viewerId===review.user_id;
@@ -50,7 +60,8 @@ export default function ReviewActions({
   const showReply=canReply && !isAuthor && !!replyRoute;
 
   return(
-    <View style={styles.row}>
+    <View>
+      <View style={styles.row}>
       <EndorseButton
         reviewId={review.id}
         ownerId={review.user_id}
@@ -66,10 +77,10 @@ export default function ReviewActions({
         style={styles.action}
         onPress={(event)=>{
           event?.stopPropagation?.();
-          router.push(`/social-comments/${review.id}`);
+          setShowComments((open)=>!open);
         }}
       >
-        <Text style={styles.actionText}>Comment</Text>
+        <Text style={styles.actionText}>{showComments ? "Hide comments" : "Comment"}</Text>
       </Pressable>
 
       {showReply && (
@@ -85,12 +96,30 @@ export default function ReviewActions({
           <Text style={[styles.actionText,styles.replyText]}>Reply</Text>
         </Pressable>
       )}
+      </View>
+
+      {/*
+        The thread itself, under the review rather than on a screen of its own.
+        CommentThread is the same component the standalone review screen uses --
+        one implementation, so a comment cannot behave differently depending on
+        where somebody happened to open it.
+      */}
+      {showComments && (
+        <View style={styles.thread}>
+          <CommentThread
+            targetType="review"
+            targetId={review.id}
+            ownerId={review.user_id}
+          />
+        </View>
+      )}
     </View>
   );
 }
 
 const styles=StyleSheet.create({
   row:{flexDirection:"row",alignItems:"center",gap:8,marginTop:12,flexWrap:"wrap"},
+  thread:{marginTop:10},
   action:{
     borderWidth:2,
     borderColor:INK.ink,

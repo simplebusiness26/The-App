@@ -29,6 +29,9 @@ import {signedIn} from "../utils/permissions";
 const BAR_HEIGHT=62;
 const RAISE=20;
 const RAISED_SIZE=54;
+// How far up the finger must travel before the swipe counts. Small enough to
+// feel responsive, large enough that a shaky tap is still a tap.
+const SWIPE_THRESHOLD=14;
 
 // Navigation icons, on the same 16x16 canvas as the place markers. Deliberately
 // a separate set from GLYPHS in utils/markers.js: those say what a place is,
@@ -135,14 +138,31 @@ export default function TabBar(){
   // camera. onStartShouldSetPanResponder stays false so a plain tap is never
   // swallowed by the gesture -- the responder only takes over once the finger
   // has actually travelled far enough upward to mean it.
-  const swipeResponder=React.useMemo(()=>PanResponder.create({
-    onStartShouldSetPanResponder:()=>false,
-    onMoveShouldSetPanResponder:(_event,gesture)=>
-      !!swipeUp && gesture.dy < -12 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-    onPanResponderRelease:(_event,gesture)=>{
-      if(swipeUp && gesture.dy < -12) router.push(destination(swipeUp));
-    }
-  }),[swipeUp,account.known,account.signedIn]);
+  const swipeResponder=React.useMemo(()=>{
+    // The CAPTURE variants are the whole fix. The button in the middle is a
+    // Pressable, and a Pressable claims the touch on its own -- so a responder
+    // installed on the parent in the normal (bubbling) phase never got asked,
+    // and the swipe silently did nothing. Capture asks the parent FIRST.
+    //
+    // onStartShouldSetPanResponderCapture stays false so a plain tap is still
+    // the child's: only once the finger has actually travelled upward, and
+    // travelled further up than sideways, does the parent take over. That is
+    // what stops the gesture from eating taps and from firing on a scroll.
+    const wantsSwipe=(gesture)=>
+      !!swipeUp
+      && gesture.dy < -SWIPE_THRESHOLD
+      && Math.abs(gesture.dy) > Math.abs(gesture.dx);
+
+    return PanResponder.create({
+      onStartShouldSetPanResponderCapture:()=>false,
+      onMoveShouldSetPanResponderCapture:(_event,gesture)=>wantsSwipe(gesture),
+      onMoveShouldSetPanResponder:(_event,gesture)=>wantsSwipe(gesture),
+      onPanResponderTerminationRequest:()=>false,
+      onPanResponderRelease:(_event,gesture)=>{
+        if(wantsSwipe(gesture)) router.push(destination(swipeUp));
+      }
+    });
+  },[swipeUp,account.known,account.signedIn]);
 
   // Until the session has been read, treat a person as signed in. Guessing the
   // other way would send somebody who IS logged in to the log-in screen for the
