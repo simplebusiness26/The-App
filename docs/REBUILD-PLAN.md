@@ -12,6 +12,95 @@ a line number is quoted, that line was opened.
 
 ---
 
+## Where this stands
+
+Updated at commit `1a08710`. Everything below section 0 is the original plan and
+still reads as if nothing has been built — this section is the correction.
+
+**Two things to know before reading anything else.**
+
+Migrations marked *live* were applied to the **Xplorer** Supabase project
+(`yzpthslwsvesgndzdqai`), not the older Guestbook one. Anything pointed at the
+wrong project sees none of this.
+
+Code marked *shipped* is on `main2.0-Dev` on GitHub. Replit keeps its own copy
+and does not pull on its own.
+
+### Done
+
+| Packet | State |
+|---|---|
+| 0 — Gate business/property creation | live · `8dbc76f` |
+| 1 — Header on tokens, name dropped | shipped · `cfad4c2` |
+| 2 — Renamed to Xplorer | shipped · `3b92158` |
+| 3 — Six dead routes deleted | shipped · `7844cfa` |
+| 4 — One permission check point | live · `2854d6f` |
+| 5 — Self-promotion closed | live · `654fa54` |
+| 6 — Footer rebuilt around the map | shipped · `c66e3a2` |
+| 7 — Friends mean friends | live · `eae0495` |
+| 8 — Close friends + the visibility setting | live · `36067a2`, `8c3731e` |
+| 10 — Reviews read from one table | live · `b5d3ae6` |
+| 11 — Comment on any review | live · `ef15797` |
+| 12 — Report a review | live · `fb09ba7` |
+| 17 — Check-ins are public places only | live · `7d7c1b5` |
+| 19 — Explorer Score / Leaderboard naming | shipped · `53a6820`, corrected in `8c3731e` |
+| 16 (part) — expo-camera pinned, labels fixed | shipped · `cb5a947` |
+| Review actions everywhere + map camera and swipe-up | shipped · `1a08710` |
+
+### Not started
+
+Packet 9 (direct messages), 13 (drop the three mirror review tables — needs a
+production soak and Decision 7), 16 (real camera capture), 18 (Link-ups created
+from the map), 19a (endorsements as dated score events), 20 (the riso pass over
+83 files).
+
+### Packets 14 and 15 are superseded
+
+The Moments and Memories specification replaced them. It is a 12-step plan of
+its own, and **Moment and Memory are now explicitly two tables and two content
+types** — the opposite of what Packet 14 said. `RULES.md` has been corrected.
+
+Done and live: **step 1** (Moments expire), **step 2** (one audience
+vocabulary — `nobody · selected · close_friends · friends · followers ·
+everyone` — with the profile setting as a ceiling), **step 3** (`moment_views`
+and the story-state RPC), **step 5** (Memories permanent, `map_until` separate
+from audience). Commit `030ea48`.
+
+Not started: **step 4** (profile ring and story viewer, remove the permanent
+Moments section), **6** (one capture flow with the locked-visibility rule),
+**7** (Save-to-Memories transition), **8** (Memory pins with fading), **9–10**
+(historical map and time slider), **11** (Memories in the feed), **12** (heat
+layer with Reviews as a signal).
+
+The schema all of those sit on is in place and tested, so they are unblocked.
+They are mostly interface and map work.
+
+### Still open, and yours to decide
+
+- **Decision 1** — which figure the Leaderboard ranks on. The rename shipped;
+  the data source did not change, because switching it moves everybody's
+  position on the day it ships.
+- **Decision 7** — whether the three legacy review tables get dropped.
+- **The 60 existing Moments.** Step 1 backfilled a 24-hour expiry from each
+  post's own date, so all 60 are past. Nothing was deleted. If they should stay
+  visible, the answer is converting them to Memories using step 7's machinery,
+  not a different expiry.
+- **CI is red on `npm audit`** — 15 high-severity advisories, all transitive
+  under `expo`, `react-native` and `react-native-maps`. It has been red since
+  before this work started. The step was moved to the end of the workflow so
+  every test and gate now runs and reports first, but clearing it needs an Expo
+  upgrade.
+
+### Two gaps found by using the app rather than reading it
+
+- The reply screen for businesses had **no inbound link anywhere**, so a
+  business manager could not reply to a review at all. Fixed in `1a08710`.
+- "Follow each other = friends" has **no visible indicator**. It is a server
+  rule; there is no badge, label or list, and the only visible sign is a
+  notification when a follow becomes mutual — which fires on new follows only.
+
+---
+
 ## 0. Where this contradicts what is built
 
 ### Things you think are broken that are already fixed
