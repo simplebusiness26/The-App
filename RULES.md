@@ -33,8 +33,24 @@ Inconsistent naming across files is the main way this codebase will rot.
   location setting allows and nobody else. Not public: that word was accurate
   until the location setting existed, and is not now. Only public places take
   check-ins — never a business, club or event.
-- **Moment** — a photo pinned to where it was taken. **Memory** — the same
-  post once it's past. One table, one component, wording changes with age.
+- **Moment** — live content. What is happening NOW. It expires, appears in the
+  feed and the map's heat layer, and is reached through the ring on an
+  Explorer's profile picture. It has **no permanent gallery on a profile**.
+- **Memory** — permanent scrapbook content. What happened HERE. It appears in
+  the profile Memory gallery, on My Map, and in the feed, always according to
+  the audience its owner chose.
+- **Moment ≠ Memory.** Two tables, two content types, two lifecycles. A Moment
+  with "Save to Memories" on *produces* a Memory; the Memory is its own record.
+  An earlier version of this file said they were one table — that was wrong.
+- **A Memory leaving the current map is not a Memory being deleted.** A Memory
+  has two independent clocks: `visibility` decides who may see it, for as long
+  as the owner leaves it alone; `map_until` decides how long it sits on today's
+  map. When `map_until` passes, the pin goes and **nothing else changes** — it
+  stays in the gallery, on My Map, and in the historical map. Never delete
+  Memories because their map window ended.
+- **Review** — an opinion about a place. A third content type. It appears in the
+  feed and adds to map heat, and it stays on the profile permanently. It is
+  never a Moment: no ring, no story viewer, no view tracking, no expiry.
 - **Endorsement** — likes and comments on a review, counting towards the
   reviewer.
 - **State** — what a pin currently is. Not `status`, not `mode`.
@@ -49,9 +65,17 @@ Explorer's whereabouts is safety-critical. For these:
 - Stop. Describe what you'd build and what it would expose. Wait.
 - Default every visibility flag to off/hidden. Opt-in is never the
   fallback branch of an if-statement.
-- Who can see an Explorer's position is one setting, `profiles.location_sharing`,
-  answered by `guestbook_private.can_see_location`. Nothing else may work it
-  out. It is a ceiling: a per-item choice can narrow it and never widen it.
+- Who can see anything an Explorer shares is one setting, `profiles.visibility`,
+  answered by `guestbook_private.can_see_content(owner, viewer, audience)`.
+  Nothing else may work it out. It is a ceiling: a per-post choice can narrow it
+  and never widen it.
+- One audience vocabulary, narrowest first: `nobody`, `selected`,
+  `close_friends`, `friends`, `followers`, `everyone`. Never invent a synonym —
+  not `public`, not `private`. Anything unrecognised must fail closed.
+- `followers` is wider than `friends`, because following is one-way and needs no
+  permission. It is a fine audience for something somebody chose to post. It is
+  **not** an acceptable audience for presence — check-ins and Link-ups use
+  friends.
 - Anything that reveals position must have an expiry. No permanent
   location record without a stated retention period.
 - Never add a field that would let one Explorer reconstruct another's

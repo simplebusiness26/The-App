@@ -147,30 +147,51 @@ if(settingDef){
   );
 }
 
+// The fall-through and the anon revoke moved down a level when the audience
+// vocabulary was unified: can_see_explorer is a thin wrapper now and
+// audience_allows is where the decision actually happens. The requirement is
+// unchanged, so the assertions follow it rather than being dropped.
 const predicate=[...migrations].reverse().find((migration)=>
-  /create\s+or\s+replace\s+function\s+guestbook_private\.can_see_explorer/i.test(migration.body)
+  /create\s+or\s+replace\s+function\s+guestbook_private\.audience_allows/i.test(migration.body)
 );
 
-check(predicate!==undefined,"supabase/migrations: guestbook_private.can_see_explorer is never defined");
+check(predicate!==undefined,"supabase/migrations: guestbook_private.audience_allows is never defined");
 
 if(predicate){
-  const at=predicate.body.search(/create\s+or\s+replace\s+function\s+guestbook_private\.can_see_explorer/i);
+  const at=predicate.body.search(/create\s+or\s+replace\s+function\s+guestbook_private\.audience_allows/i);
   const body=predicate.body.slice(at,predicate.body.indexOf("$$;",predicate.body.indexOf("$$",at)+2));
 
-  // The default branch decides what happens to somebody who never chose. It
-  // must be false, and it must be reached by anything unrecognised.
+  // An unrecognised audience must close access, never open it.
   check(
     /else\s+false/i.test(body),
-    `${predicate.name}: can_see_explorer does not fall through to false, so an unknown setting would share a position`
+    `${predicate.name}: audience_allows does not fall through to false, so an unknown audience would share content`
   );
   check(
     /security\s+definer/i.test(body),
-    `${predicate.name}: can_see_explorer is not SECURITY DEFINER, so it cannot read close_friends without exposing it`
+    `${predicate.name}: audience_allows is not SECURITY DEFINER, so it cannot read close_friends without exposing it`
   );
   check(
-    /revoke\s+all\s+on\s+function\s+guestbook_private\.can_see_explorer\(uuid,uuid\)\s+from\s+public\s*,\s*anon/i
+    /revoke\s+all\s+on\s+function\s+guestbook_private\.audience_allows\(uuid,uuid,text\)\s+from\s+public\s*,\s*anon/i
       .test(predicate.body),
-    `${predicate.name}: can_see_explorer is not revoked from anon`
+    `${predicate.name}: audience_allows is not revoked from anon`
+  );
+
+  // The ceiling. A post must never reach past the owner's profile setting.
+  const ceiling=[...migrations].reverse().find((m)=>
+    /create\s+or\s+replace\s+function\s+guestbook_private\.can_see_content/i.test(m.body)
+  );
+  check(ceiling!==undefined,"supabase/migrations: guestbook_private.can_see_content is never defined");
+  if(ceiling){
+    check(
+      /audience_rank/.test(ceiling.body),
+      `${ceiling.name}: can_see_content does not compare the post audience against the profile setting, so a post could be wider than its owner allows`
+    );
+  }
+
+  // 'followers' has to exist, and must not be reachable for presence.
+  check(
+    /when\s+p_audience\s*=\s*'followers'/i.test(body),
+    `${predicate.name}: the audience vocabulary has no 'followers', which a Memory needs`
   );
 }
 
