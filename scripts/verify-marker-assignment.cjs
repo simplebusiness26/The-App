@@ -209,8 +209,7 @@ const SKIP=new Set([
   "app/map.js",
   "app/map.web.js",
   "components/PlacesList.js",
-  "components/MemoryPins.js",
-  "components/MemoryPins.web.js"
+  "components/MemoryPins.js"
 ]);
 
 function everyScreen(dir,found=[]){

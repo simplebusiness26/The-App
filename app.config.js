@@ -1,5 +1,3 @@
-const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
 module.exports = () => ({
   expo: {
     name: "Xplorer",
@@ -18,10 +16,10 @@ module.exports = () => ({
       bundler: "metro"
     },
     android: {
-      package: "com.guestbook.app",
-      ...(googleMapsApiKey
-        ? {config: {googleMaps: {apiKey: googleMapsApiKey}}}
-        : {})
+      // No maps configuration. MapLibre needs no key, no account and no card,
+      // so there is nothing to configure and nothing to leak. The Google Maps
+      // block that used to sit here went with react-native-maps.
+      package: "com.guestbook.app"
     },
     ios: {
       bundleIdentifier: "com.guestbook.app"

@@ -42,7 +42,6 @@ function code(content){
 // interface into one screen, the drawing into a per-platform renderer. These
 // constants follow the rules to where they live now.
 const MAP="components/LivingMap.js";
-const LEGACY="components/LivingMap.legacy.js";
 const SCREEN="components/LivingMapScreen.js";
 const LIST="components/PlacesList.js";
 const SHEET="components/PlaceCards.js";
@@ -77,10 +76,11 @@ check(
   !/<Camera[^>]*\s(centerCoordinate|center)=\{/.test(map),
   `${MAP}: the Camera must not take a center prop — a controlled camera is dragged back to a fixed point on every render`
 );
-check(
-  !/<MapView[^>]*\sregion=\{/.test(code(read(LEGACY))),
-  `${LEGACY}: MapView must not take a region prop, for the same reason`
-);
+// There used to be a third check here, on components/LivingMap.legacy.js: the
+// react-native-maps map, kept behind a switch until the MapLibre one had been
+// seen on a real phone. It has been, so the file, the switch, the dependency
+// and the Google Maps configuration are all gone -- and with them the last
+// third-party logo in the app.
 
 // The sheet is a Modal, so it renders outside the map's view tree. Inside it,
 // every card open would re-render the map.

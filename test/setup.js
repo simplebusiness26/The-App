@@ -175,26 +175,12 @@ jest.mock("@maplibre/maplibre-react-native",()=>{
   };
 });
 
-// react-native-maps ships no web build and requires a native module.
-jest.mock("react-native-maps",()=>{
-  const React=require("react");
-
-  // Props are passed through rather than swallowed, so a test can read the
-  // map's region props and assert they did not change -- Packet 6's first
-  // acceptance criterion. Marker forwards onPress and renders its children for
-  // the same reason: without it, a marker tap cannot be exercised at all and
-  // the whole map path stays as untested as it was before Packet 0.
-  const MapView=({children,...rest})=>React.createElement("MapView",rest,children);
-  const Marker=({children,...rest})=>React.createElement("Marker",rest,children);
-
-  return{
-    __esModule:true,
-    default:MapView,
-    Marker,
-    Callout:({children})=>React.createElement("Callout",null,children),
-    PROVIDER_GOOGLE:"google"
-  };
-});
+// react-native-maps is gone. It was the Google map, it was the only thing in
+// this app carrying somebody else's logo, and MapLibre draws both maps now --
+// so there is nothing left to mock. Its mock is deliberately NOT left behind
+// as a harmless stub: a mock for a package that is not installed is how a
+// re-introduced import goes unnoticed, and scripts/verify-my-map.cjs now fails
+// on any file that imports it.
 
 jest.mock("react-native-qrcode-svg",()=>{
   const React=require("react");

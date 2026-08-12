@@ -113,7 +113,40 @@ describe("My Map is the owner's alone",()=>{
 
     expect(text).toContain("My Map");
     expect(text).toContain("Only you can see this map.");
-    expect(text).toContain("The pier at dusk");
+
+    // It is a MAP now, so the Memory is a pin rather than a line of text.
+    //
+    // It used to be a list wearing a map's name: the old renderer only drew a
+    // MapView if EXPO_PUBLIC_GOOGLE_MAPS_API_KEY was set, and it never was, so
+    // every owner got MemoryRows. MapLibre needs no key, so there is an actual
+    // map here for the first time -- and no Google logo on it, which was the
+    // last third-party badge left in the app.
+    const pins=tree.root.findAll((node)=>node.type==="MapLibreMarker",{deep:true});
+    expect(pins).toHaveLength(1);
+    expect(pins[0].props.id).toBe("m1");
+    expect(pins[0].props.lngLat.every(Number.isFinite)).toBe(true);
+  });
+
+  test("falls back to the list when the map cannot run",async()=>{
+    installFixture({
+      user:{id:OWNER},
+      rpc:{get_explorer_memories:[memory()]}
+    });
+
+    const tree=await render(React.createElement(MyMap,{ownerId:OWNER,viewerId:OWNER}));
+
+    // No WebGL, a dead tile host, a style that will not load -- all the same
+    // thing to somebody looking at it, and a blank rectangle is the worst
+    // possible answer. The Memories come back as rows.
+    const renderer=tree.root.findAll(
+      (node)=>typeof node.props?.onUnavailable==="function",
+      {deep:true}
+    )[0];
+    expect(renderer).toBeTruthy();
+
+    await act(async()=>{renderer.props.onUnavailable("Failed to fetch");});
+
+    expect(textOf(tree.toJSON())).toContain("The pier at dusk");
   });
 });
 

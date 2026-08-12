@@ -5,7 +5,7 @@ import {markerForMemory} from "../utils/markers";
 import {phaseLabel} from "../utils/memories";
 import {INK} from "../utils/tokens";
 
-// One Memory as a row. Shared by both platform builds of MemoryPins so the web
+// One Memory as a row. Used by MemoryPins when the map cannot run, so the
 // list and the native no-key fallback cannot drift into two different designs.
 
 export default function MemoryRow({memory,onPress}){

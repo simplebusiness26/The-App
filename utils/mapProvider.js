@@ -76,18 +76,6 @@ export const ATTRIBUTION_COPYRIGHT="© OpenStreetMap contributors";
 // thing an interested person can reach.
 export const ATTRIBUTION_URL="https://www.openstreetmap.org/copyright";
 
-// The old native map, on a switch.
-//
-// react-native-maps is still installed and components/LivingMap.legacy.js still
-// draws with it. EXPO_PUBLIC_LEGACY_MAP=1 brings it back on a phone.
-//
-// It exists because the owner has not yet opened the MapLibre map on a real
-// device, and if it misbehaves there, flipping one variable is a working map
-// while deleting the file was a week of waiting. It goes when the new map has
-// been seen -- that is phase E, and it is a follow-up rather than a loose end.
-export function useLegacyNativeMap(){
-  return process.env.EXPO_PUBLIC_LEGACY_MAP==="1";
-}
 
 // Everything a renderer needs to start, in one object, so a platform renderer
 // never reaches past this for configuration.

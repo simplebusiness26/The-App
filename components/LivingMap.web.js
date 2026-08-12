@@ -90,7 +90,20 @@ function pinElement(marker,onPress){
   return element;
 }
 
-export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectActivity,onUnavailable}){
+// ONE RENDERER, TWO MAPS -- see the note in LivingMap.js. `pins` is the general
+// layer: a key, a position, a marker descriptor and an optional opacity, which
+// is how My Map draws Memories that fade as their time runs out.
+export default function LivingMap({
+  places=[],
+  activity=[],
+  pins=[],
+  centre=DEFAULT_CENTRE,
+  zoom=12,
+  style,
+  onSelectPlace,
+  onSelectActivity,
+  onUnavailable
+}){
   const host=useRef(null);
   const map=useRef(null);
   const drawn=useRef([]);
@@ -102,8 +115,8 @@ export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectA
     map.current=new maplibregl.Map({
       container:host.current,
       style:config.styleUrl,
-      center:[DEFAULT_CENTRE.longitude,DEFAULT_CENTRE.latitude],
-      zoom:12,
+      center:[Number(centre.longitude),Number(centre.latitude)],
+      zoom,
       // No control at all, and no logo. MapLibre GL JS adds an attribution
       // control unless told not to; `false` means it is never created, so
       // there is nothing on the map to hide. Nothing is covered or clipped.
@@ -161,7 +174,19 @@ export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectA
           .addTo(map.current)
       );
     }
-  },[places,activity,onSelectPlace,onSelectActivity]);
+
+    // The general layer, and the only one that fades. utils/mapLayers.js
+    // decides the opacity; this draws it.
+    for(const pin of pins){
+      const element=pinElement(pin.marker,()=>pin.onPress?.());
+      if(pin.opacity!==undefined) element.style.opacity=String(pin.opacity);
+      drawn.current.push(
+        new maplibregl.Marker({element})
+          .setLngLat([Number(pin.longitude),Number(pin.latitude)])
+          .addTo(map.current)
+      );
+    }
+  },[places,activity,pins,onSelectPlace,onSelectActivity]);
 
   useEffect(()=>{
     if(!map.current) return;
@@ -170,12 +195,12 @@ export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectA
   },[draw]);
 
   return(
-    <View style={styles.wrap}>
+    <View style={[styles.wrap,style]}>
       <View ref={host} style={styles.canvas} nativeID="living-map"/>
       {/* Read by scripts/verify-browser.cjs: a map that failed silently looks
           exactly like one that worked. */}
       <Text style={styles.marker} nativeID="living-map-state">
-        {`LIVING MAP ${places.length} places ${activity.length} live`}
+        {`LIVING MAP ${places.length} places ${activity.length} live ${pins.length} pins`}
       </Text>
     </View>
   );

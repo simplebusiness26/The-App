@@ -180,62 +180,47 @@ check(
 // 5. It does not assume a map
 // ---------------------------------------------------------------------------
 //
-// app/map.js falls back to a list when no Google Maps key is set, and the
-// ledger records that no key is set, which makes the fallback the shipping
-// path. A My Map that only renders inside MapView would be blank in production.
-
-// The key check lives in the native pin renderer now, not here.
+// My Map draws with the app's own map now, and that changed what has to be
+// checked here.
+//
+// It used to draw with react-native-maps behind an EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+// check -- and the key was never set, so the "map" was a list wearing a map's
+// name. There is no key any more because MapLibre needs none, so the thing to
+// verify is no longer "does it cope without a key" but "does it cope without a
+// working map", which is a real failure and not a configuration one.
 const PINS="components/MemoryPins.js";
-const PINS_WEB="components/MemoryPins.web.js";
 const pins=code(read(PINS));
 
 check(
-  /EXPO_PUBLIC_GOOGLE_MAPS_API_KEY/.test(pins),
-  `${PINS}: does not check for a maps key — the brief is explicit that a map must not be assumed`
+  /from\s+"\.\/LivingMap"/.test(pins),
+  `${PINS}: does not draw with the app's own map — a second map component is a second camera to get wrong and a second logo to forget to turn off`
 );
 
 check(
-  /if\(!apiKey\)/.test(pins),
-  `${PINS}: has no fallback branch for a missing maps key`
+  /onUnavailable/.test(pins),
+  `${PINS}: has no fallback for a map that cannot run — no WebGL and a dead tile host are real, and a blank rectangle is the worst answer to either`
+);
+
+check(
+  /MemoryRow/.test(pins),
+  `${PINS}: the fallback must be the Memory list, which is also the surface a screen reader wants`
 );
 
 // ---------------------------------------------------------------------------
-// 6. react-native-maps must never be reachable from a web route
+// 6. react-native-maps is gone, and stays gone
 // ---------------------------------------------------------------------------
 //
-// This is the check that would have saved a broken profile screen.
+// This check used to be subtler: react-native-maps declares no `browser` entry,
+// so importing it from anything the web bundle reaches pulled a native-only
+// module into web. 8b imported MapView into components/MyMap.js,
+// ExplorerProfileScreen imports MyMap, and every profile on web went blank.
+// Jest could not catch it -- test/setup.js mocked react-native-maps, and the
+// mock is exactly what made the native-only import look fine.
 //
-// react-native-maps declares no `browser` entry, so importing it from anything
-// the web bundle reaches pulls a native-only module into web. `app/map.web.js`
-// has existed for exactly that reason since the map was built. 8b imported
-// MapView directly into components/MyMap.js, ExplorerProfileScreen imports
-// MyMap, and every profile on web went blank.
-//
-// Jest could not catch it: test/setup.js mocks react-native-maps, and the mock
-// is precisely what makes the native-only import look fine. So this is a source
-// rule, not a test.
+// The whole library is now removed: MapLibre draws both maps, on all three
+// platforms, with no key and no Google logo. So the rule is no longer "only
+// with a .web.js sibling". It is simply: not at all, anywhere.
 
-check(
-  !/react-native-maps/.test(map),
-  `${MAP}: imports react-native-maps — it has no web build, and this file is reachable from a web route. Put the map in a platform-split component (see ${PINS_WEB})`
-);
-
-check(
-  !/react-native-maps/.test(code(read(PINS_WEB))),
-  `${PINS_WEB}: imports react-native-maps — the whole point of the .web.js split is that this file does not`
-);
-
-check(
-  /react-native-maps/.test(pins),
-  `${PINS}: no longer renders a real map — if the native map is gone, delete the split rather than leaving an empty half`
-);
-
-// Any component the profile can reach must be clean. A future MyMap that
-// imports a map helper which imports react-native-maps would reintroduce this.
-// The general rule, over every screen and component: a file may import
-// react-native-maps ONLY if a .web.js sibling exists to replace it on web.
-// app/map.js is legal because app/map.web.js exists; MemoryPins.js is legal
-// because MemoryPins.web.js exists. Anything else is the 8b bug again.
 function jsFilesUnder(dir){
   const found=[];
   for(const entry of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){
@@ -247,16 +232,17 @@ function jsFilesUnder(dir){
 }
 
 for(const file of [...jsFilesUnder("app"),...jsFilesUnder("components")]){
-  if(file.endsWith(".web.js")) continue;
   const source=code(read(file));
-  if(!/from\s+["']react-native-maps["']/.test(source)) continue;
-
-  const sibling=file.replace(/\.js$/,".web.js");
   check(
-    fs.existsSync(path.join(root,sibling)),
-    `${file}: imports react-native-maps but has no ${sibling} — it has no web build, so a web route reaching this file renders a blank screen`
+    !/from\s+["']react-native-maps["']/.test(source),
+    `${file}: imports react-native-maps — it was removed with the Google map. Draw with components/LivingMap.`
   );
 }
+
+check(
+  !Object.keys(JSON.parse(read("package.json")).dependencies || {}).includes("react-native-maps"),
+  "package.json: react-native-maps is back in dependencies — the Google map was removed on purpose, and with it the only map in this app that carried somebody else's logo"
+);
 
 // An empty state is an instruction, not a mood. design-system.md bans the mood.
 check(

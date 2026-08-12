@@ -1,23 +1,20 @@
 import React from "react";
-import {StyleSheet} from "react-native";
+import {View,StyleSheet} from "react-native";
 import {Map,Camera,Marker} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
-import LegacyMap from "./LivingMap.legacy";
-import {mapConfiguration,useLegacyNativeMap} from "../utils/mapProvider";
+import {mapConfiguration} from "../utils/mapProvider";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 
 // The native renderer: MapLibre on Android and iOS.
 //
-// THE OLD MAP IS STILL HERE, BEHIND A SWITCH, AND THAT IS DELIBERATE
+// THE OLD MAP IS GONE
 //
-// components/LivingMap.legacy.js is the react-native-maps version. Setting
-// EXPO_PUBLIC_LEGACY_MAP=1 brings it back. It stays until the owner has opened
-// the MapLibre one on a real phone, because if it misbehaves on a device I
-// cannot test, flipping one variable is a working map and deleting the file was
-// a week of waiting.
-//
-// It costs a dependency in package.json for a few days. Phase E removes it once
-// the new map has been seen.
+// components/LivingMap.legacy.js was the react-native-maps version, kept behind
+// EXPO_PUBLIC_LEGACY_MAP=1 until the MapLibre map had been opened on a real
+// phone. It has been, so the file, the switch, the dependency and the Google
+// Maps configuration all went with it -- and the Google logo went with them,
+// which was the only third-party badge left in the app once My Map moved onto
+// this renderer too.
 //
 // WHAT THIS FILE DOES NOT DO
 //
@@ -29,16 +26,33 @@ import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 // billing to set up and no card to add. That is the whole reason for the stack.
 
 export default function LivingMap(props){
-  if(useLegacyNativeMap()) return <LegacyMap {...props}/>;
   return <MapLibreMap {...props}/>;
 }
 
-function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
+// ONE RENDERER, TWO MAPS.
+//
+// `places` and `activity` are the Living Map's own shapes. `pins` is the
+// general one -- a key, a position, a marker descriptor and an optional
+// opacity -- and it is what My Map draws its Memories with.
+//
+// The alternative was a second MapLibre setup in components/MemoryPins.js, and
+// then two places to get the camera wrong, two places to forget to turn the
+// logo off, and two visual languages a month later. This map is the app's map.
+function MapLibreMap({
+  places=[],
+  activity=[],
+  pins=[],
+  centre=DEFAULT_CENTRE,
+  zoom=12,
+  style,
+  onSelectPlace,
+  onSelectActivity
+}){
   const config=mapConfiguration();
 
   return(
     <Map
-      style={styles.map}
+      style={[styles.map,style]}
       mapStyle={config.styleUrl}
       /*
         NO BRANDING ON THE MAP, AND THE CREDIT MOVED RATHER THAN DROPPED
@@ -80,8 +94,8 @@ function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
       */}
       <Camera
         initialViewState={{
-          center:[DEFAULT_CENTRE.longitude,DEFAULT_CENTRE.latitude],
-          zoom:12
+          center:[Number(centre.longitude),Number(centre.latitude)],
+          zoom
         }}
       />
 
@@ -115,6 +129,21 @@ function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
           onPress={()=>onSelectActivity?.(item)}
         >
           <PlaceMarker marker={item.marker}/>
+        </Marker>
+      ))}
+
+      {/* The general layer. A Memory fades as its time on the map runs out --
+          utils/mapLayers.js works the opacity out, this only draws it. */}
+      {pins.map((pin)=>(
+        <Marker
+          key={pin.key}
+          id={pin.key}
+          lngLat={[Number(pin.longitude),Number(pin.latitude)]}
+          onPress={()=>pin.onPress?.()}
+        >
+          <View style={{opacity:pin.opacity ?? 1}}>
+            <PlaceMarker marker={pin.marker}/>
+          </View>
         </Marker>
       ))}
     </Map>

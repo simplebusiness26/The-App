@@ -114,10 +114,10 @@ export default function MyMap({ownerId,viewerId}){
       )}
 
       {/*
-        MemoryPins is platform-split. react-native-maps has no web build, so the
-        import must not be reachable from a web route -- see MemoryPins.web.js.
-        Importing MapView here is what took every profile on web to a blank
-        screen after 8b.
+        One file now, no platform twin. MemoryPins draws with the app's own map
+        (components/LivingMap), which is where the web/native split lives -- so
+        there is no native-only import reachable from a web route, which is what
+        took every profile on web to a blank screen after 8b.
       */}
       {!loading && !error && !!plottable.length && <MemoryPins memories={plottable}/>}
 
