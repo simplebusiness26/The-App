@@ -74,7 +74,7 @@ const SCRAPBOOK_TABS=[
   {key:"clubs",label:"Clubs"}
 ];
 
-export default function ExplorerProfileScreen({profileId,ownProfile=false}){
+export default function ExplorerProfileScreen({profileId,ownProfile=false,belowIdentity=null}){
   const [resolvedId,setResolvedId]=useState(profileId || null);
   const [profile,setProfile]=useState(null);
   const [stats,setStats]=useState(null);
@@ -357,6 +357,15 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false}){
           </View>
         )}
       </View>
+
+      {/*
+        Anything the surrounding screen wants directly under the identity card:
+        the follower counts, the Follow button, safety options. These used to be
+        stacked ABOVE this component, which pushed the whole profile down and
+        clipped the top of the photo -- the counts appeared before you knew
+        whose they were. Under the picture is where they belong.
+      */}
+      {belowIdentity}
 
       <View style={styles.statsGrid}>
         <StatCard label="Reviews" value={stats?.review_count || 0}/>

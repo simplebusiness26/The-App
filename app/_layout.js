@@ -36,6 +36,7 @@ export default function Layout(){
           <Stack.Screen name="index" options={{headerShown:false}}/>
           <Stack.Screen name="settings"/>
           <Stack.Screen name="map"/>
+          <Stack.Screen name="messages"/>
           <Stack.Screen name="discover"/>
           <Stack.Screen name="create"/>
           <Stack.Screen name="scan"/>

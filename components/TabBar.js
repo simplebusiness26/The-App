@@ -58,6 +58,9 @@ const ICONS={
     {path:"M2.6 9.8h7.2"},
     {path:"M2.6 13h7.2"}
   ],
+  message:[
+    {path:"M2.6 4.2h10.8v6.8H7.4l-3 2.4v-2.4H2.6z"}
+  ],
   qr:[
     {path:"M3 3h3.4v3.4H3z"},
     {path:"M9.6 3H13v3.4H9.6z"},

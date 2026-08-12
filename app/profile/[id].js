@@ -11,9 +11,15 @@ export default function PublicProfile(){
 
   return(
     <View style={styles.screen}>
-      <ProfileSocialBar profileId={profileId}/>
-      <ProfileSafetyActions profileId={profileId}/>
-      <ExplorerProfileScreen profileId={profileId}/>
+      <ExplorerProfileScreen
+        profileId={profileId}
+        belowIdentity={
+          <>
+            <ProfileSocialBar profileId={profileId}/>
+            <ProfileSafetyActions profileId={profileId}/>
+          </>
+        }
+      />
     </View>
   );
 }

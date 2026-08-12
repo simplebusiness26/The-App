@@ -6,8 +6,7 @@ import ProfileSocialBar from "../components/ProfileSocialBar";
 export default function Profile(){
   return(
     <View style={styles.screen}>
-      <ProfileSocialBar ownProfile/>
-      <ExplorerProfileScreen ownProfile/>
+      <ExplorerProfileScreen ownProfile belowIdentity={<ProfileSocialBar ownProfile/>}/>
     </View>
   );
 }

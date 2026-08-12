@@ -6,7 +6,8 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
-  Platform
+  Platform,
+  ScrollView
 } from "react-native";
 import {CameraView,useCameraPermissions} from "expo-camera";
 import {router} from "expo-router";
@@ -53,7 +54,14 @@ export default function Scan(){
   }
 
   return(
-    <View style={styles.container}>
+    // A plain View clipped everything past the fold: the manual code entry and
+    // its help text sat below the viewfinder with no way to reach them, and the
+    // tab bar takes 82px off the bottom on top of that.
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.eyebrow}>VERIFIED VISIT</Text>
       <Text style={styles.title}>Scan Xplorer QR</Text>
       <Text style={styles.subtitle}>Scan the code displayed at a business, property, Activity Club or event before leaving your review.</Text>
@@ -104,12 +112,13 @@ export default function Scan(){
       </View>
 
       {Platform.OS==="web" && <Text style={styles.webNote}>Browser camera access depends on the browser and its site permissions.</Text>}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#18181b",padding:20},
+  screen:{flex:1,backgroundColor:"#18181b"},
+  container:{flexGrow:1,paddingBottom:110,backgroundColor:"#18181b",padding:20},
   center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},
   eyebrow:{color:"#8fe1aa",fontSize:11,fontWeight:"900",letterSpacing:0.8,marginTop:8},
   title:{color:"white",fontSize:29,fontWeight:"900",marginTop:5},

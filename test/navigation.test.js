@@ -52,7 +52,7 @@ const paths=onDisk.map(routePath);
 describe("the tab set points at real screens",()=>{
   it("has five tabs in the order the brief names",()=>{
     expect(TABS.map((tab)=>tab.label)).toEqual([
-      "Camera","News Feed","Map","Explorer Score","Profile"
+      "News Feed","Messages","Map","Leaderboard","Profile"
     ]);
   });
 
@@ -125,7 +125,10 @@ describe("no route was lost",()=>{
   // still fails.
   const ADDED=["create","discover","places/index","places/[id]","admin/public-places",
     "admin/listings","admin/activities","admin/moderation","admin/explorers",
-    "admin/areas","admin/audit","memories/create","memories/[id]"];
+    "admin/areas","admin/audit","memories/create","memories/[id]",
+    // Messages has a tab but no feature behind it yet. The screen says so
+    // rather than faking an inbox -- see app/messages.js.
+    "messages"];
 
   // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
   // old menu page once every link has a new home." Every link did -- that is
@@ -351,7 +354,7 @@ describe("the bar renders",()=>{
     // Exactly one, and the right one. Colour is not the carrier. The suffix is
     // there because a test has no session -- see the note in the tab test above.
     expect(selected.map((label)=>label.replace(/\. Log in to open this\.$/,"")))
-      .toEqual(["Explorer Score"]);
+      .toEqual(["Leaderboard"]);
 
     await act(async()=>{tree.unmount();});
   });
