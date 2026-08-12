@@ -3,6 +3,7 @@ import {Pressable,Text,StyleSheet,ActivityIndicator} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
+import {INK} from "../utils/tokens";
 
 export default function FavouriteButton({targetType,targetId,targetName,targetImageUrl,compact=false}){
   const {showFeedback}=useFeedback();
@@ -77,7 +78,7 @@ export default function FavouriteButton({targetType,targetId,targetName,targetIm
   }
 
   if(loading){
-    return compact ? null : <Pressable style={[styles.button,styles.disabled]} disabled><ActivityIndicator color="#d8cff5"/></Pressable>;
+    return compact ? null : <Pressable style={[styles.button,styles.disabled]} disabled><ActivityIndicator color={INK.ink}/></Pressable>;
   }
 
   return(
@@ -94,10 +95,10 @@ export default function FavouriteButton({targetType,targetId,targetName,targetIm
 }
 
 const styles=StyleSheet.create({
-  button:{backgroundColor:"#25252a",borderColor:"#5a5a63",borderWidth:1,borderRadius:12,padding:14,alignItems:"center",justifyContent:"center",marginTop:12},
+  button:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,alignItems:"center",justifyContent:"center",marginTop:12},
   compact:{marginTop:0,paddingHorizontal:12,paddingVertical:9},
-  active:{backgroundColor:"#382044",borderColor:"#9a5bb0"},
-  text:{color:"#d6d6dd",fontWeight:"900",textAlign:"center"},
-  activeText:{color:"#f2c7ff"},
+  active:{backgroundColor:INK.blue,borderColor:INK.blue},
+  text:{color:INK.ink,fontWeight:"900",textAlign:"center"},
+  activeText:{color:INK.ink},
   disabled:{opacity:0.55}
 });

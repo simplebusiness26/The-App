@@ -11,6 +11,7 @@ import {
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {formatEventDate,formatEventPrice} from "../../utils/events";
+import {INK} from "../../utils/tokens";
 
 export default function Events(){
   const [events,setEvents]=useState([]);
@@ -114,28 +115,28 @@ export default function Events(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f6f8"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
-  hero:{backgroundColor:"#24113f",padding:22,borderRadius:18,marginBottom:18},
-  eyebrow:{color:"#d7c4ff",fontSize:12,fontWeight:"bold",letterSpacing:1},
+  hero:{backgroundColor:INK.blue,padding:22,borderRadius:18,marginBottom:18},
+  eyebrow:{color:INK.ink,fontSize:12,fontWeight:"bold",letterSpacing:1},
   title:{fontSize:32,fontWeight:"bold",color:"white",marginTop:7},
-  subtitle:{fontSize:16,color:"#eee7fa",lineHeight:23,marginTop:8},
+  subtitle:{fontSize:16,color:INK.ink,lineHeight:23,marginTop:8},
   search:{backgroundColor:"white",borderWidth:1,borderColor:"#ddd",borderRadius:12,padding:15,marginBottom:18},
   loader:{marginTop:40},
   notice:{backgroundColor:"white",padding:20,borderRadius:14,borderWidth:1,borderColor:"#ddd"},
   noticeTitle:{fontSize:18,fontWeight:"bold",marginBottom:7},
   noticeText:{color:"#555",lineHeight:21},
-  retryButton:{backgroundColor:"#5633a8",padding:12,borderRadius:10,marginTop:14,alignSelf:"flex-start"},
+  retryButton:{backgroundColor:INK.blue,padding:12,borderRadius:10,marginTop:14,alignSelf:"flex-start"},
   retryText:{color:"white",fontWeight:"bold"},
-  card:{backgroundColor:"white",padding:18,borderRadius:16,borderWidth:1,borderColor:"#e1e1e1",marginBottom:16},
+  card:{backgroundColor:"white",padding:18,borderRadius:16,borderWidth:1,borderColor:INK.ink,marginBottom:16},
   badgeRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:10},
-  category:{backgroundColor:"#eae4ff",color:"#5633a8",paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12,overflow:"hidden"},
-  price:{fontWeight:"bold",color:"#1f7135"},
+  category:{backgroundColor:INK.card,color:INK.blue,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12,overflow:"hidden"},
+  price:{fontWeight:"bold",color:INK.green},
   eventName:{fontSize:23,fontWeight:"bold",marginTop:14},
-  date:{fontWeight:"600",color:"#3f3550",marginTop:8,lineHeight:20},
+  date:{fontWeight:"600",color:INK.blue,marginTop:8,lineHeight:20},
   location:{color:"#555",marginTop:6},
   description:{color:"#444",lineHeight:21,marginTop:12},
   cardFooter:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:16},
   capacity:{fontSize:13,color:"#666",fontWeight:"600"},
-  viewText:{fontWeight:"bold",color:"#275bd6"}
+  viewText:{fontWeight:"bold",color:INK.blue}
 });

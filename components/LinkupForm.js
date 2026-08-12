@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-
 import * as Location from "expo-location";
 import DateTimeField from "./DateTimeField";
 import {localInputToIso,toLocalInputValue} from "../utils/linkups";
+import {INK} from "../utils/tokens";
 
 const CATEGORIES=["Football","Walking","Running","Coffee","Food","Games","Social","Other"];
 
@@ -98,10 +99,10 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
       {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
 
       <Text style={styles.label}>Title</Text>
-      <TextInput value={title} onChangeText={setTitle} maxLength={100} placeholder="Five-a-side football" placeholderTextColor="#74747d" style={styles.input}/>
+      <TextInput value={title} onChangeText={setTitle} maxLength={100} placeholder="Five-a-side football" placeholderTextColor={INK.inkSoft} style={styles.input}/>
 
       <Text style={styles.label}>Description</Text>
-      <TextInput value={description} onChangeText={setDescription} maxLength={2000} multiline textAlignVertical="top" placeholder="Tell people what to expect and what to bring." placeholderTextColor="#74747d" style={[styles.input,styles.textarea]}/>
+      <TextInput value={description} onChangeText={setDescription} maxLength={2000} multiline textAlignVertical="top" placeholder="Tell people what to expect and what to bring." placeholderTextColor={INK.inkSoft} style={[styles.input,styles.textarea]}/>
 
       <Text style={styles.label}>Category</Text>
       <View style={styles.wrapRow}>
@@ -115,17 +116,17 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
       <DateTimeField value={endsAt} onChange={setEndsAt} min={startsAt}/>
 
       <Text style={styles.label}>Area</Text>
-      <TextInput value={area} onChangeText={setArea} maxLength={80} placeholder="Hastings" placeholderTextColor="#74747d" style={styles.input}/>
+      <TextInput value={area} onChangeText={setArea} maxLength={80} placeholder="Hastings" placeholderTextColor={INK.inkSoft} style={styles.input}/>
 
       <Text style={styles.label}>Public meeting place</Text>
-      <TextInput value={locationName} onChangeText={setLocationName} maxLength={120} placeholder="Alexandra Park main entrance" placeholderTextColor="#74747d" style={styles.input}/>
+      <TextInput value={locationName} onChangeText={setLocationName} maxLength={120} placeholder="Alexandra Park main entrance" placeholderTextColor={INK.inkSoft} style={styles.input}/>
       <Text style={styles.help}>Use a public place. Never publish a private home address.</Text>
 
       <Text style={styles.label}>Exact meeting instructions</Text>
-      <TextInput value={meetingDetails} onChangeText={setMeetingDetails} maxLength={500} multiline textAlignVertical="top" placeholder="Shown only to joined attendees." placeholderTextColor="#74747d" style={[styles.input,styles.smallTextarea]}/>
+      <TextInput value={meetingDetails} onChangeText={setMeetingDetails} maxLength={500} multiline textAlignVertical="top" placeholder="Shown only to joined attendees." placeholderTextColor={INK.inkSoft} style={[styles.input,styles.smallTextarea]}/>
 
       <Pressable style={styles.locationButton} disabled={locating} onPress={useLocation}>
-        {locating?<ActivityIndicator color="#d9ceff"/>:<Text style={styles.locationText}>{latitude!=null?"✓ Approximate location added":"Use approximate current location"}</Text>}
+        {locating?<ActivityIndicator color={INK.ink}/>:<Text style={styles.locationText}>{latitude!=null?"✓ Approximate location added":"Use approximate current location"}</Text>}
       </Pressable>
       {latitude!=null && <Pressable onPress={()=>{setLatitude(null);setLongitude(null);}}><Text style={styles.removeLocation}>Remove location</Text></Pressable>}
 
@@ -153,12 +154,12 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
 
 const styles=StyleSheet.create({
   label:{color:"white",fontSize:14,fontWeight:"900",marginTop:18,marginBottom:8},
-  input:{backgroundColor:"#242429",borderColor:"#44444c",borderWidth:1,borderRadius:12,color:"white",fontSize:15,paddingHorizontal:14,paddingVertical:13},
-  textarea:{minHeight:130},smallTextarea:{minHeight:90},help:{color:"#898994",fontSize:11,lineHeight:16,marginTop:6},
-  errorCard:{backgroundColor:"#431f26",borderColor:"#7e3541",borderWidth:1,borderRadius:12,padding:12},errorText:{color:"#ffc1c9",lineHeight:19},
-  wrapRow:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:8},chipActive:{backgroundColor:"#3212b6",borderColor:"#674ee0"},chipText:{color:"#aaaab3",fontWeight:"800",fontSize:12},chipTextActive:{color:"white"},
-  locationButton:{backgroundColor:"#29233d",borderColor:"#554777",borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:12},locationText:{color:"#d9ceff",fontWeight:"900"},removeLocation:{color:"#a899d1",fontWeight:"800",textAlign:"center",paddingVertical:9},
-  visibilityRow:{flexDirection:"row",gap:9},visibilityButton:{flex:1,backgroundColor:"#242429",borderColor:"#44444c",borderWidth:1,borderRadius:12,padding:13},visibilityActive:{backgroundColor:"#2c2051",borderColor:"#684fe0"},visibilityText:{color:"#b1b1ba",fontWeight:"900"},visibilityTextActive:{color:"white"},visibilityHint:{color:"#85858e",fontSize:10,marginTop:4},
-  safetyCard:{backgroundColor:"#1f332b",borderColor:"#315e4c",borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:"#b9f5d6",fontWeight:"900"},safetyText:{color:"#a7d2ba",fontSize:12,lineHeight:18,marginTop:5},
-  submitButton:{backgroundColor:"#3212b6",borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},submitText:{color:"white",fontSize:16,fontWeight:"900"},disabled:{opacity:.6}
+  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,color:INK.ink,fontSize:15,paddingHorizontal:14,paddingVertical:13},
+  textarea:{minHeight:130},smallTextarea:{minHeight:90},help:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},
+  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12},errorText:{color:INK.ink,lineHeight:19},
+  wrapRow:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:8},chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},chipText:{color:INK.inkSoft,fontWeight:"800",fontSize:12},chipTextActive:{color:"white"},
+  locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:12},locationText:{color:INK.ink,fontWeight:"900"},removeLocation:{color:INK.inkSoft,fontWeight:"800",textAlign:"center",paddingVertical:9},
+  visibilityRow:{flexDirection:"row",gap:9},visibilityButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},visibilityActive:{backgroundColor:INK.blue,borderColor:INK.blue},visibilityText:{color:INK.inkSoft,fontWeight:"900"},visibilityTextActive:{color:"white"},visibilityHint:{color:INK.inkSoft,fontSize:10,marginTop:4},
+  safetyCard:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:INK.ink,fontWeight:"900"},safetyText:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:5},
+  submitButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},submitText:{color:"white",fontSize:16,fontWeight:"900"},disabled:{opacity:.6}
 });

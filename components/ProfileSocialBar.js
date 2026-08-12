@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FollowButton from "./FollowButton";
+import {INK} from "../utils/tokens";
 
 export default function ProfileSocialBar({profileId,ownProfile=false}){
   const [resolvedId,setResolvedId]=useState(profileId || null);
@@ -48,7 +49,7 @@ export default function ProfileSocialBar({profileId,ownProfile=false}){
     <View style={styles.wrap}>
       <View style={styles.card}>
         {loading ? (
-          <ActivityIndicator color="#bca8ff"/>
+          <ActivityIndicator color={INK.blue}/>
         ) : (
           <>
             <View style={styles.countRow}>
@@ -95,14 +96,14 @@ export default function ProfileSocialBar({profileId,ownProfile=false}){
 }
 
 const styles=StyleSheet.create({
-  wrap:{backgroundColor:"#18181b",paddingHorizontal:18,paddingTop:14},
-  card:{backgroundColor:"#222226",borderWidth:1,borderColor:"#414147",borderRadius:17,padding:14,minHeight:102,justifyContent:"center"},
+  wrap:{backgroundColor:INK.paper,paddingHorizontal:18,paddingTop:14},
+  card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:17,padding:14,minHeight:102,justifyContent:"center"},
   countRow:{flexDirection:"row",alignItems:"center"},
   countButton:{flex:1,alignItems:"center",paddingVertical:4},
   countNumber:{color:"white",fontSize:20,fontWeight:"900"},
-  countLabel:{color:"#9d9da6",fontSize:11,fontWeight:"800",marginTop:3},
-  divider:{height:32,width:1,backgroundColor:"#45454c"},
+  countLabel:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:3},
+  divider:{height:32,width:1,backgroundColor:INK.card},
   actionRow:{alignItems:"center",marginTop:13},
-  discoverButton:{minWidth:150,minHeight:42,paddingHorizontal:20,paddingVertical:11,borderRadius:12,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  discoverButton:{minWidth:150,minHeight:42,paddingHorizontal:20,paddingVertical:11,borderRadius:12,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   discoverText:{color:"white",fontWeight:"900"}
 });

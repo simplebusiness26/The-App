@@ -14,6 +14,7 @@ import {supabase} from "../../../services/supabase";
 import LocationPicker from "../../../components/LocationPicker";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
+import {INK} from "../../../utils/tokens";
 
 export default function EditProperty(){
   const {id}=useLocalSearchParams();
@@ -155,13 +156,13 @@ export default function EditProperty(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   center:{flex:1,alignItems:"center",justifyContent:"center"},
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
   input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},
   multiline:{minHeight:100,textAlignVertical:"top"},
   button:{backgroundColor:"#222",padding:15,borderRadius:10},
-  deleteButton:{backgroundColor:"#c62828",padding:15,borderRadius:10,marginTop:14},
+  deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:14},
   buttonText:{color:"white",textAlign:"center",fontWeight:"bold"}
 });

@@ -5,6 +5,7 @@ import {supabase} from "../services/supabase";
 import LikeButton from "../components/LikeButton";
 import EndorseButton from "../components/EndorseButton";
 import {reasonsFor} from "../utils/trending";
+import {INK} from "../utils/tokens";
 
 function timeLabel(value){
   if(!value) return "";
@@ -101,7 +102,7 @@ export default function Feed(){
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#bca8ff"/>}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={INK.blue}/>}
     >
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
@@ -120,7 +121,7 @@ export default function Feed(){
         </Pressable>
       </View>
 
-      {loading && <ActivityIndicator size="large" color="#bca8ff" style={styles.loader}/>} 
+      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>} 
 
       {!loading && !!error && (
         <View style={styles.emptyCard}>
@@ -251,52 +252,52 @@ export default function Feed(){
 
 const styles=StyleSheet.create({
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:8},
-  reason:{color:"#bca8ff",backgroundColor:"#241d3a",borderRadius:20,paddingHorizontal:9,paddingVertical:4,fontSize:11,fontWeight:"800",overflow:"hidden"},
-  screen:{flex:1,backgroundColor:"#18181b"},
+  reason:{color:INK.blue,backgroundColor:INK.blue,borderRadius:20,paddingHorizontal:9,paddingVertical:4,fontSize:11,fontWeight:"800",overflow:"hidden"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
   headingRow:{marginBottom:16},
   headingText:{flex:1},
-  eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},
+  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
   title:{color:"white",fontSize:32,fontWeight:"900",marginTop:4},
-  subtitle:{color:"#a9a9b2",fontSize:14,lineHeight:21,marginTop:6,maxWidth:540},
+  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:6,maxWidth:540},
   quickActions:{flexDirection:"row",gap:10,marginBottom:17},
-  createButton:{flex:1,backgroundColor:"#3212b6",borderRadius:13,paddingVertical:13,alignItems:"center"},
+  createButton:{flex:1,backgroundColor:INK.blue,borderRadius:13,paddingVertical:13,alignItems:"center"},
   createText:{color:"white",fontWeight:"900"},
-  findButton:{flex:1,backgroundColor:"#29292e",borderColor:"#484850",borderWidth:1,borderRadius:13,paddingVertical:13,alignItems:"center"},
-  findText:{color:"#dedee5",fontWeight:"900"},
+  findButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:13,paddingVertical:13,alignItems:"center"},
+  findText:{color:INK.ink,fontWeight:"900"},
   loader:{marginTop:45},
-  card:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:17,padding:15,marginBottom:13},
+  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:15,marginBottom:13},
   actorRow:{flexDirection:"row",alignItems:"center"},
-  avatar:{width:45,height:45,borderRadius:23,backgroundColor:"#303036"},
-  avatarFallback:{width:45,height:45,borderRadius:23,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  avatar:{width:45,height:45,borderRadius:23,backgroundColor:INK.card},
+  avatarFallback:{width:45,height:45,borderRadius:23,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   avatarLetter:{color:"white",fontWeight:"900",fontSize:18},
   actorText:{flex:1,marginLeft:11},
   actorName:{color:"white",fontSize:15,fontWeight:"900"},
-  meta:{color:"#8f8f99",fontSize:11,marginTop:3},
-  caption:{color:"#ddddE5",fontSize:15,lineHeight:22,marginTop:14},
-  rating:{color:"#f5c542",fontSize:17,letterSpacing:1,marginTop:12},
-  emptyStars:{color:"#55555e"},
-  targetPill:{alignSelf:"flex-start",maxWidth:"100%",flexDirection:"row",alignItems:"center",backgroundColor:"#29233b",borderColor:"#524674",borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:7,marginTop:12},
+  meta:{color:INK.inkSoft,fontSize:11,marginTop:3},
+  caption:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:14},
+  rating:{color:INK.yellow,fontSize:17,letterSpacing:1,marginTop:12},
+  emptyStars:{color:INK.ink},
+  targetPill:{alignSelf:"flex-start",maxWidth:"100%",flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:7,marginTop:12},
   targetIcon:{fontSize:12,marginRight:5},
-  targetText:{color:"#cbbbf6",fontWeight:"800",fontSize:12,flexShrink:1},
-  media:{width:"100%",height:280,borderRadius:13,backgroundColor:"#303036",marginTop:13},
-  videoWrap:{height:280,borderRadius:13,overflow:"hidden",backgroundColor:"#0c0c0e",marginTop:13,alignItems:"center",justifyContent:"center"},
+  targetText:{color:INK.ink,fontWeight:"800",fontSize:12,flexShrink:1},
+  media:{width:"100%",height:280,borderRadius:13,backgroundColor:INK.card,marginTop:13},
+  videoWrap:{height:280,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,marginTop:13,alignItems:"center",justifyContent:"center"},
   videoPoster:{width:"100%",height:"100%"},
-  videoFallback:{position:"absolute",inset:0,backgroundColor:"#111114"},
+  videoFallback:{position:"absolute",inset:0,backgroundColor:INK.paper},
   playCircle:{position:"absolute",width:58,height:58,borderRadius:29,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
   playIcon:{color:"white",fontSize:23,marginLeft:3},
   duration:{position:"absolute",right:9,bottom:9,color:"white",backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
-  verified:{alignSelf:"flex-start",color:"#82dfa4",backgroundColor:"#123b25",borderColor:"#286640",borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
+  verified:{alignSelf:"flex-start",color:INK.green,backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
   actionRow:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14},
-  commentButton:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:"#29292e",borderWidth:1,borderColor:"#45454c"},
+  commentButton:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
   commentIcon:{fontSize:14},
-  commentText:{color:"#d4d4dc",fontWeight:"900",fontSize:12},
+  commentText:{color:INK.ink,fontWeight:"900",fontSize:12},
   placeButton:{marginLeft:"auto",paddingHorizontal:10,paddingVertical:9},
-  placeText:{color:"#bca8ff",fontSize:12,fontWeight:"900"},
-  emptyCard:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:17,padding:27,alignItems:"center",marginTop:18},
+  placeText:{color:INK.blue,fontSize:12,fontWeight:"900"},
+  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:27,alignItems:"center",marginTop:18},
   emptyIcon:{fontSize:36},
   emptyTitle:{color:"white",fontSize:20,fontWeight:"900",textAlign:"center",marginTop:9},
-  emptyText:{color:"#9d9da6",lineHeight:21,textAlign:"center",marginTop:7},
-  emptyButton:{backgroundColor:"#3212b6",borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:16},
+  emptyText:{color:INK.inkSoft,lineHeight:21,textAlign:"center",marginTop:7},
+  emptyButton:{backgroundColor:INK.blue,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:16},
   emptyButtonText:{color:"white",fontWeight:"900"}
 });

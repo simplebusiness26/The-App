@@ -11,6 +11,7 @@ import {
 import {useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../../services/supabase";
 import QRCodeGenerator from "../../../../components/QRCodeGenerator";
+import {INK} from "../../../../utils/tokens";
 
 const LISTING_CONFIG={
   business:{table:"businesses",ownerColumn:"owner_id",nameColumn:"name",label:"Business",targetType:"business"},
@@ -89,7 +90,7 @@ export default function PrintableListingQR(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#8b6de0"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   }
 
   if(error || !listing || !reviewCode){
@@ -129,20 +130,20 @@ export default function PrintableListingQR(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#eef1f6"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50,alignItems:"center"},
-  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:"#eef1f6"},
+  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.card},
   error:{fontSize:17,textAlign:"center"},
   printCard:{width:"100%",maxWidth:520,backgroundColor:"white",padding:28,borderRadius:18,alignItems:"center",borderWidth:1,borderColor:"#ddd"},
-  brand:{fontSize:22,fontWeight:"900",color:"#5633a8"},
+  brand:{fontSize:22,fontWeight:"900",color:INK.blue},
   title:{fontSize:28,fontWeight:"900",textAlign:"center",marginTop:12},
   subtitle:{fontSize:16,color:"#555",textAlign:"center",lineHeight:22,marginTop:8},
   qrWrap:{padding:22,backgroundColor:"white",marginTop:20},
-  bonusBox:{backgroundColor:"#e9f7ed",borderColor:"#91c9a1",borderWidth:1,borderRadius:12,padding:14,width:"100%",marginTop:8},
-  bonusTitle:{color:"#1f7135",fontWeight:"900",textAlign:"center"},
-  bonusText:{color:"#356244",textAlign:"center",lineHeight:20,marginTop:5},
+  bonusBox:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,width:"100%",marginTop:8},
+  bonusTitle:{color:INK.green,fontWeight:"900",textAlign:"center"},
+  bonusText:{color:INK.green,textAlign:"center",lineHeight:20,marginTop:5},
   footer:{fontSize:13,color:"#666",textAlign:"center",marginTop:15},
   printButton:{width:"100%",maxWidth:520,backgroundColor:"#222",padding:16,borderRadius:12,marginTop:16},
   printButtonText:{color:"white",fontWeight:"900",textAlign:"center"},
-  notice:{width:"100%",maxWidth:520,backgroundColor:"#fff4d6",padding:16,borderRadius:12,marginTop:16}
+  notice:{width:"100%",maxWidth:520,backgroundColor:INK.card,padding:16,borderRadius:12,marginTop:16}
 });

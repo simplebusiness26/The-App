@@ -12,6 +12,7 @@ import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
 import LocationPicker from "../../components/LocationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
+import {INK} from "../../utils/tokens";
 
 export default function AddProperty(){
   const {showFeedback}=useFeedback();
@@ -89,7 +90,7 @@ export default function AddProperty(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
   input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},

@@ -9,6 +9,7 @@ import MomentMediaPreview from "../../components/MomentMediaPreview";
 import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
 import AudienceCeiling from "../../components/AudienceCeiling";
 import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY,roundCoordinate} from "../../utils/places";
+import {INK} from "../../utils/tokens";
 
 // Packet 8e added three things to this screen, each with a boundary in the
 // database rather than only here:
@@ -352,7 +353,7 @@ export default function CreateMoment(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   }
 
   return(
@@ -399,7 +400,7 @@ export default function CreateMoment(){
         value={caption}
         onChangeText={setCaption}
         placeholder="What made this worth sharing?"
-        placeholderTextColor="#74747d"
+        placeholderTextColor={INK.inkSoft}
         style={styles.captionInput}
         multiline
         maxLength={500}
@@ -419,8 +420,8 @@ export default function CreateMoment(){
 
       {!!placeType && (
         <View style={styles.placesCard}>
-          <TextInput value={placeQuery} onChangeText={setPlaceQuery} placeholder="Search places" placeholderTextColor="#74747d" style={styles.placeSearch}/>
-          {loadingPlaces && <ActivityIndicator color="#bca8ff" style={{marginVertical:18}}/>}
+          <TextInput value={placeQuery} onChangeText={setPlaceQuery} placeholder="Search places" placeholderTextColor={INK.inkSoft} style={styles.placeSearch}/>
+          {loadingPlaces && <ActivityIndicator color={INK.blue} style={{marginVertical:18}}/>}
           {!loadingPlaces && filteredPlaces.slice(0,20).map(place=>(
             <Pressable key={place.id} style={[styles.placeRow,selectedPlace?.id===place.id && styles.placeRowSelected]} onPress={()=>setSelectedPlace(place)}>
               {place.displayImage ? <Image source={{uri:place.displayImage}} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
@@ -520,7 +521,7 @@ export default function CreateMoment(){
             onPress={coordinates ? ()=>setCoordinates(null) : addLocation}
           >
             {locating
-              ? <ActivityIndicator color="#d9ceff"/>
+              ? <ActivityIndicator color={INK.ink}/>
               : <Text style={styles.locationText}>
                   {coordinates ? "✓ Approximate location added — tap to remove" : "Add my approximate location"}
                 </Text>}
@@ -539,56 +540,56 @@ export default function CreateMoment(){
 }
 
 const styles=StyleSheet.create({
-  keep:{borderWidth:2,borderColor:"#45454c",borderRadius:12,padding:14,marginTop:12,backgroundColor:"#222226"},
-  keepOn:{borderColor:"#7fe0ab",backgroundColor:"#12291d"},
+  keep:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,marginTop:12,backgroundColor:INK.card},
+  keepOn:{borderColor:INK.green,backgroundColor:INK.green},
   keepTitle:{color:"white",fontWeight:"900",fontSize:14},
-  keepHint:{color:"#a5a5b0",fontSize:12,lineHeight:17,marginTop:4},
-  screen:{flex:1,backgroundColor:"#18181b"},
+  keepHint:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},
-  eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
   title:{color:"white",fontSize:31,fontWeight:"900",marginTop:4},
-  subtitle:{color:"#a9a9b2",fontSize:14,lineHeight:21,marginTop:7,marginBottom:17},
-  errorCard:{backgroundColor:"#441f25",borderColor:"#7f3541",borderWidth:1,borderRadius:13,padding:13,marginBottom:14},
-  errorText:{color:"#ffbdc7",lineHeight:19},
-  mediaCard:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:17,padding:12},
-  mediaEmpty:{height:220,borderRadius:13,backgroundColor:"#29292e",alignItems:"center",justifyContent:"center",padding:22},
+  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,marginBottom:17},
+  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:13,padding:13,marginBottom:14},
+  errorText:{color:INK.ink,lineHeight:19},
+  mediaCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:12},
+  mediaEmpty:{height:220,borderRadius:13,backgroundColor:INK.card,alignItems:"center",justifyContent:"center",padding:22},
   mediaEmptyIcon:{fontSize:36},
   mediaEmptyTitle:{color:"white",fontSize:19,fontWeight:"900",marginTop:9},
-  mediaEmptyText:{color:"#9d9da6",textAlign:"center",marginTop:6,lineHeight:19},
+  mediaEmptyText:{color:INK.inkSoft,textAlign:"center",marginTop:6,lineHeight:19},
   removeMediaButton:{alignSelf:"center",paddingHorizontal:12,paddingVertical:9,marginTop:5},
-  removeMediaText:{color:"#c7b9ef",fontSize:12,fontWeight:"900"},
+  removeMediaText:{color:INK.ink,fontSize:12,fontWeight:"900"},
   mediaButtons:{flexDirection:"row",gap:10,marginTop:11},
-  mediaButton:{flex:1,backgroundColor:"#302655",borderColor:"#5d4b91",borderWidth:1,borderRadius:11,paddingVertical:12,alignItems:"center"},
-  mediaButtonText:{color:"#e2d9ff",fontWeight:"900"},
+  mediaButton:{flex:1,backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:11,paddingVertical:12,alignItems:"center"},
+  mediaButtonText:{color:INK.ink,fontWeight:"900"},
   audienceRow:{flexDirection:"row",gap:9},
-  audience:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:12,padding:13},
-  audienceActive:{backgroundColor:"#2d2152",borderColor:"#644be0"},
+  audience:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},
+  audienceActive:{backgroundColor:INK.blue,borderColor:INK.blue},
   audienceTitle:{color:"white",fontWeight:"900"},
-  audienceHint:{color:"#85858e",fontSize:10,lineHeight:15,marginTop:3},
-  audienceNote:{color:"#a9a9b2",fontSize:12,lineHeight:18},
-  locationButton:{backgroundColor:"#29233d",borderColor:"#554777",borderWidth:1,borderRadius:12,padding:13,alignItems:"center"},
-  locationText:{color:"#d9ceff",fontWeight:"900"},
-  locationHint:{color:"#85858e",fontSize:11,lineHeight:16,marginTop:6},
+  audienceHint:{color:INK.inkSoft,fontSize:10,lineHeight:15,marginTop:3},
+  audienceNote:{color:INK.inkSoft,fontSize:12,lineHeight:18},
+  locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center"},
+  locationText:{color:INK.ink,fontWeight:"900"},
+  locationHint:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},
   label:{color:"white",fontSize:15,fontWeight:"900",marginTop:20,marginBottom:8},
-  optional:{color:"#85858e",fontWeight:"700"},
-  captionInput:{minHeight:120,backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,color:"white",fontSize:15,lineHeight:22,padding:14},
-  counter:{color:"#777780",fontSize:11,textAlign:"right",marginTop:5},
+  optional:{color:INK.inkSoft,fontWeight:"700"},
+  captionInput:{minHeight:120,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,color:INK.ink,fontSize:15,lineHeight:22,padding:14},
+  counter:{color:INK.inkSoft,fontSize:11,textAlign:"right",marginTop:5},
   typeRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
-  typeButton:{backgroundColor:"#252529",borderColor:"#414147",borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:8},
-  typeButtonActive:{backgroundColor:"#3212b6",borderColor:"#6245e8"},
-  typeText:{color:"#a3a3ac",fontSize:12,fontWeight:"900"},
+  typeButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:8},
+  typeButtonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
+  typeText:{color:INK.inkSoft,fontSize:12,fontWeight:"900"},
   typeTextActive:{color:"white"},
-  placesCard:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:11,marginTop:11},
-  placeSearch:{backgroundColor:"#2b2b30",borderColor:"#47474f",borderWidth:1,borderRadius:11,color:"white",paddingHorizontal:12,paddingVertical:11,marginBottom:8},
+  placesCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:11,marginTop:11},
+  placeSearch:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:11,color:INK.ink,paddingHorizontal:12,paddingVertical:11,marginBottom:8},
   placeRow:{flexDirection:"row",alignItems:"center",borderRadius:11,padding:8,marginTop:5},
-  placeRowSelected:{backgroundColor:"#302655",borderColor:"#5d4b91",borderWidth:1},
-  placeImage:{width:46,height:46,borderRadius:9,backgroundColor:"#303036"},
-  placeFallback:{width:46,height:46,borderRadius:9,backgroundColor:"#303036",alignItems:"center",justifyContent:"center"},
+  placeRowSelected:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1},
+  placeImage:{width:46,height:46,borderRadius:9,backgroundColor:INK.card},
+  placeFallback:{width:46,height:46,borderRadius:9,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
   placeName:{color:"white",fontWeight:"800",flex:1,marginLeft:10},
-  placeCheck:{color:"#c8b6ff",fontSize:18,fontWeight:"900",width:24,textAlign:"center"},
-  noPlaces:{color:"#92929b",textAlign:"center",paddingVertical:18},
-  publishButton:{backgroundColor:"#3212b6",borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},
+  placeCheck:{color:INK.inkSoft,fontSize:18,fontWeight:"900",width:24,textAlign:"center"},
+  noPlaces:{color:INK.inkSoft,textAlign:"center",paddingVertical:18},
+  publishButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},
   publishText:{color:"white",fontSize:16,fontWeight:"900"},
   disabled:{opacity:0.65}
 });

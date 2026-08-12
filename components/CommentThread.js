@@ -3,6 +3,7 @@ import {ActivityIndicator,Image,Pressable,StyleSheet,Text,TextInput,View} from "
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
+import {INK} from "../utils/tokens";
 
 const REPORT_REASONS=[
   {key:"spam",label:"Spam"},
@@ -161,7 +162,7 @@ export default function CommentThread({targetType,targetId,ownerId,onCountChange
           value={body}
           onChangeText={setBody}
           placeholder={user ? "Add a comment" : "Log in to comment"}
-          placeholderTextColor="#74747d"
+          placeholderTextColor={INK.inkSoft}
           style={styles.input}
           multiline
           maxLength={500}
@@ -177,7 +178,7 @@ export default function CommentThread({targetType,targetId,ownerId,onCountChange
       </View>
 
       {!!error && <Text style={styles.error}>{error}</Text>}
-      {loading && <ActivityIndicator color="#bca8ff" style={{marginVertical:20}}/>}
+      {loading && <ActivityIndicator color={INK.blue} style={{marginVertical:20}}/>}
       {!loading && comments.length===0 && <Text style={styles.empty}>No comments yet. Start the conversation.</Text>}
 
       {!loading && comments.map(comment=>{
@@ -225,38 +226,38 @@ const styles=StyleSheet.create({
   section:{marginTop:24},
   headingRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:11},
   title:{color:"white",fontSize:23,fontWeight:"900"},
-  count:{color:"#a58cff",fontWeight:"900"},
-  composer:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:15,padding:11},
+  count:{color:INK.blue,fontWeight:"900"},
+  composer:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:11},
   input:{minHeight:75,color:"white",fontSize:14,lineHeight:20,padding:3},
   composerBottom:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:7},
-  counter:{color:"#777780",fontSize:10},
-  postButton:{minWidth:78,backgroundColor:"#3212b6",borderRadius:10,paddingHorizontal:15,paddingVertical:10,alignItems:"center"},
+  counter:{color:INK.inkSoft,fontSize:10},
+  postButton:{minWidth:78,backgroundColor:INK.blue,borderRadius:10,paddingHorizontal:15,paddingVertical:10,alignItems:"center"},
   postText:{color:"white",fontWeight:"900"},
   disabled:{opacity:0.65},
-  error:{color:"#ffadb9",backgroundColor:"#441f25",borderRadius:10,padding:10,marginTop:9},
-  empty:{color:"#92929b",textAlign:"center",backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:18,marginTop:10},
-  commentCard:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:13,marginTop:10},
+  error:{color:INK.pink,backgroundColor:INK.red,borderRadius:10,padding:10,marginTop:9},
+  empty:{color:INK.inkSoft,textAlign:"center",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:18,marginTop:10},
+  commentCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:13,marginTop:10},
   commentProfile:{flexDirection:"row",alignItems:"center"},
-  avatar:{width:36,height:36,borderRadius:18,backgroundColor:"#303036"},
-  avatarFallback:{width:36,height:36,borderRadius:18,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  avatar:{width:36,height:36,borderRadius:18,backgroundColor:INK.card},
+  avatarFallback:{width:36,height:36,borderRadius:18,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   avatarLetter:{color:"white",fontWeight:"900",fontSize:14},
   commentTextWrap:{marginLeft:9},
   name:{color:"white",fontWeight:"900",fontSize:13},
-  time:{color:"#85858f",fontSize:10,marginTop:2},
-  body:{color:"#d1d1d9",fontSize:14,lineHeight:20,marginTop:10},
+  time:{color:INK.inkSoft,fontSize:10,marginTop:2},
+  body:{color:INK.ink,fontSize:14,lineHeight:20,marginTop:10},
   commentActions:{flexDirection:"row",gap:15,marginTop:10},
-  reportLink:{color:"#a9a0bc",fontSize:11,fontWeight:"800"},
-  deleteLink:{color:"#ff8d9d",fontSize:11,fontWeight:"800"},
-  reportPanel:{backgroundColor:"#29292e",borderRadius:12,padding:12,marginTop:11},
+  reportLink:{color:INK.inkSoft,fontSize:11,fontWeight:"800"},
+  deleteLink:{color:INK.pink,fontSize:11,fontWeight:"800"},
+  reportPanel:{backgroundColor:INK.card,borderRadius:12,padding:12,marginTop:11},
   reportTitle:{color:"white",fontSize:13,fontWeight:"900"},
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:9},
-  reasonButton:{borderColor:"#4b4b53",borderWidth:1,borderRadius:18,paddingHorizontal:10,paddingVertical:7},
-  reasonActive:{backgroundColor:"#3212b6",borderColor:"#6346e8"},
-  reasonText:{color:"#aaaab3",fontSize:10,fontWeight:"800"},
+  reasonButton:{borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:10,paddingVertical:7},
+  reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
+  reasonText:{color:INK.inkSoft,fontSize:10,fontWeight:"800"},
   reasonActiveText:{color:"white"},
   reportActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:12},
   cancelButton:{paddingHorizontal:12,paddingVertical:9},
-  cancelText:{color:"#aaaab3",fontWeight:"800"},
-  submitReportButton:{backgroundColor:"#8f171d",borderRadius:9,paddingHorizontal:13,paddingVertical:9},
+  cancelText:{color:INK.inkSoft,fontWeight:"800"},
+  submitReportButton:{backgroundColor:INK.red,borderRadius:9,paddingHorizontal:13,paddingVertical:9},
   submitReportText:{color:"white",fontWeight:"900",fontSize:12}
 });

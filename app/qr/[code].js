@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {INK} from "../../utils/tokens";
 
 const CONFIG={
   business:{table:"businesses",select:"id,name,image,photos",label:"Business",route:"business/review",image:(row)=>row?.image || row?.photos?.[0]},
@@ -88,7 +89,7 @@ export default function VerifiedReviewQR(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#a58cff"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   }
 
   if(error && !listing){
@@ -125,30 +126,30 @@ export default function VerifiedReviewQR(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:22,paddingBottom:60,alignItems:"center"},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center",padding:28},
-  verifiedIcon:{width:78,height:78,borderRadius:39,backgroundColor:"#0c5a24",alignItems:"center",justifyContent:"center",marginTop:18},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
+  verifiedIcon:{width:78,height:78,borderRadius:39,backgroundColor:INK.green,alignItems:"center",justifyContent:"center",marginTop:18},
   check:{color:"white",fontSize:43,fontWeight:"900"},
-  eyebrow:{color:"#80d99d",fontWeight:"900",fontSize:11,letterSpacing:0.8,marginTop:18},
+  eyebrow:{color:INK.green,fontWeight:"900",fontSize:11,letterSpacing:0.8,marginTop:18},
   title:{color:"white",fontSize:30,fontWeight:"900",textAlign:"center",marginTop:7},
-  subtitle:{color:"#b7b7bf",fontSize:15,lineHeight:22,textAlign:"center",marginTop:8,maxWidth:520},
-  listingCard:{width:"100%",maxWidth:520,backgroundColor:"#222226",borderColor:"#45454c",borderWidth:1,borderRadius:17,padding:14,marginTop:22},
-  image:{width:"100%",height:180,borderRadius:12,backgroundColor:"#303036"},
-  imageFallback:{width:"100%",height:150,borderRadius:12,backgroundColor:"#2b2935",alignItems:"center",justifyContent:"center"},
+  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,textAlign:"center",marginTop:8,maxWidth:520},
+  listingCard:{width:"100%",maxWidth:520,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:14,marginTop:22},
+  image:{width:"100%",height:180,borderRadius:12,backgroundColor:INK.card},
+  imageFallback:{width:"100%",height:150,borderRadius:12,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
   pin:{fontSize:40},
-  type:{color:"#a995e6",fontSize:10,fontWeight:"900",letterSpacing:0.7,marginTop:13},
+  type:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:0.7,marginTop:13},
   name:{color:"white",fontSize:22,fontWeight:"900",marginTop:4},
-  pointsCard:{width:"100%",maxWidth:520,backgroundColor:"#173923",borderColor:"#2d7046",borderWidth:1,borderRadius:14,padding:15,marginTop:13},
-  pointsTitle:{color:"#8fe1aa",fontWeight:"900",textAlign:"center"},
-  pointsText:{color:"#b9d8c3",fontSize:12,lineHeight:18,textAlign:"center",marginTop:5},
-  errorBox:{width:"100%",maxWidth:520,backgroundColor:"#3b171b",borderColor:"#80353d",borderWidth:1,borderRadius:12,padding:13,marginTop:13},
-  errorBoxText:{color:"#ffb3bb",fontWeight:"700",textAlign:"center"},
-  primaryButton:{width:"100%",maxWidth:520,backgroundColor:"#3212b6",padding:17,borderRadius:13,marginTop:18},
+  pointsCard:{width:"100%",maxWidth:520,backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:15,marginTop:13},
+  pointsTitle:{color:INK.green,fontWeight:"900",textAlign:"center"},
+  pointsText:{color:INK.ink,fontSize:12,lineHeight:18,textAlign:"center",marginTop:5},
+  errorBox:{width:"100%",maxWidth:520,backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:13,marginTop:13},
+  errorBoxText:{color:INK.ink,fontWeight:"700",textAlign:"center"},
+  primaryButton:{width:"100%",maxWidth:520,backgroundColor:INK.blue,padding:17,borderRadius:13,marginTop:18},
   primaryText:{color:"white",fontWeight:"900",textAlign:"center",fontSize:16},
-  ruleText:{color:"#888891",fontSize:11,lineHeight:17,textAlign:"center",maxWidth:500,marginTop:13},
+  ruleText:{color:INK.inkSoft,fontSize:11,lineHeight:17,textAlign:"center",maxWidth:500,marginTop:13},
   errorTitle:{color:"white",fontSize:24,fontWeight:"900"},
   errorText:{color:"#bbb",textAlign:"center",lineHeight:22,marginTop:8},
-  secondaryButton:{borderColor:"#66666e",borderWidth:1,borderRadius:11,paddingHorizontal:20,paddingVertical:12,marginTop:17},
+  secondaryButton:{borderColor:INK.ink,borderWidth:1,borderRadius:11,paddingHorizontal:20,paddingVertical:12,marginTop:17},
   secondaryText:{color:"white",fontWeight:"800"}
 });

@@ -3,6 +3,7 @@ import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Text,TextInput,V
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FollowButton from "../components/FollowButton";
+import {INK} from "../utils/tokens";
 
 function Avatar({profile}){
   if(profile.profile_photo){
@@ -76,13 +77,13 @@ export default function Explorers(){
         value={query}
         onChangeText={setQuery}
         placeholder="Search by name or area"
-        placeholderTextColor="#777780"
+        placeholderTextColor={INK.inkSoft}
         style={styles.search}
         maxLength={80}
         autoCapitalize="none"
       />
 
-      {loading && <ActivityIndicator size="large" color="#bca8ff" style={styles.loader}/>} 
+      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>} 
       {!loading && !!error && <View style={styles.empty}><Text style={styles.emptyTitle}>Could not load Explorers</Text><Text style={styles.emptyText}>{error}</Text></View>}
       {!loading && !error && filtered.length===0 && <View style={styles.empty}><Text style={styles.emptyTitle}>No Explorers found</Text><Text style={styles.emptyText}>Try a different name or area.</Text></View>}
 
@@ -108,25 +109,25 @@ export default function Explorers(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:60},
   heading:{marginBottom:18},
-  eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},
+  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
   title:{color:"white",fontSize:31,fontWeight:"900",marginTop:5},
-  subtitle:{color:"#a9a9b2",fontSize:14,lineHeight:21,marginTop:7,maxWidth:520},
-  search:{backgroundColor:"#242428",borderWidth:1,borderColor:"#47474f",borderRadius:14,color:"white",fontSize:16,paddingHorizontal:15,paddingVertical:14,marginBottom:16},
+  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,maxWidth:520},
+  search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:14,color:INK.ink,fontSize:16,paddingHorizontal:15,paddingVertical:14,marginBottom:16},
   loader:{marginTop:45},
-  card:{backgroundColor:"#222226",borderWidth:1,borderColor:"#414147",borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12},
+  card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12},
   profileLink:{flex:1,flexDirection:"row",alignItems:"center"},
-  avatar:{width:54,height:54,borderRadius:27,backgroundColor:"#303036"},
-  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.card},
+  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   avatarLetter:{color:"white",fontSize:21,fontWeight:"900"},
   profileText:{flex:1,marginLeft:12,paddingRight:8},
   name:{color:"white",fontSize:17,fontWeight:"900"},
-  area:{color:"#c2b1f4",fontSize:12,marginTop:3},
-  bio:{color:"#96969f",fontSize:12,lineHeight:17,marginTop:4},
-  empty:{backgroundColor:"#222226",borderWidth:1,borderColor:"#414147",borderRadius:16,padding:24,alignItems:"center",marginTop:15},
+  area:{color:INK.inkSoft,fontSize:12,marginTop:3},
+  bio:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
+  empty:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:24,alignItems:"center",marginTop:15},
   emptyTitle:{color:"white",fontSize:18,fontWeight:"900"},
-  emptyText:{color:"#9c9ca5",textAlign:"center",marginTop:6},
-  resultCount:{color:"#777780",textAlign:"center",fontSize:12,marginTop:12}
+  emptyText:{color:INK.inkSoft,textAlign:"center",marginTop:6},
+  resultCount:{color:INK.inkSoft,textAlign:"center",fontSize:12,marginTop:12}
 });

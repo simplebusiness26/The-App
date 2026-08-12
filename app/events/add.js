@@ -12,6 +12,7 @@ import {supabase} from "../../services/supabase";
 import EventFormFields from "../../components/EventFormFields";
 import {createDefaultEventForm,validateEventForm} from "../../utils/events";
 import {useFeedback} from "../../context/FeedbackContext";
+import {INK} from "../../utils/tokens";
 
 export default function AddEvent(){
   const {showFeedback}=useFeedback();
@@ -74,11 +75,11 @@ export default function AddEvent(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   title:{fontSize:30,fontWeight:"bold"},
   subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},
-  button:{backgroundColor:"#5633a8",padding:16,borderRadius:12,alignItems:"center"},
+  button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},
   disabled:{opacity:0.55},
   buttonText:{color:"white",fontWeight:"bold"}
 });

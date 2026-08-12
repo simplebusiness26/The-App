@@ -3,6 +3,7 @@ import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Text,View} from 
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import FollowButton from "../../components/FollowButton";
+import {INK} from "../../utils/tokens";
 
 function Avatar({profile}){
   if(profile?.profile_photo){
@@ -116,7 +117,7 @@ export default function Connections(){
         </Pressable>
       </View>
 
-      {loading && <ActivityIndicator size="large" color="#bca8ff" style={styles.loader}/>} 
+      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>} 
 
       {!loading && !!error && (
         <View style={styles.empty}>
@@ -151,29 +152,29 @@ export default function Connections(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:60},
   heading:{marginBottom:15},
-  eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},
+  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
   title:{color:"white",fontSize:28,fontWeight:"900",marginTop:5},
-  tabs:{flexDirection:"row",backgroundColor:"#222226",borderRadius:13,padding:4,marginBottom:16},
+  tabs:{flexDirection:"row",backgroundColor:INK.card,borderRadius:13,padding:4,marginBottom:16},
   tab:{flex:1,paddingVertical:11,borderRadius:10,alignItems:"center"},
-  activeTab:{backgroundColor:"#3212b6"},
-  tabText:{color:"#9999a2",fontWeight:"900"},
+  activeTab:{backgroundColor:INK.blue},
+  tabText:{color:INK.inkSoft,fontWeight:"900"},
   activeTabText:{color:"white"},
   loader:{marginTop:45},
-  card:{backgroundColor:"#222226",borderWidth:1,borderColor:"#414147",borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12},
+  card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12},
   profileLink:{flex:1,flexDirection:"row",alignItems:"center"},
-  avatar:{width:54,height:54,borderRadius:27,backgroundColor:"#303036"},
-  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.card},
+  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   avatarLetter:{color:"white",fontSize:21,fontWeight:"900"},
   profileText:{flex:1,marginLeft:12,paddingRight:8},
   name:{color:"white",fontSize:17,fontWeight:"900"},
-  area:{color:"#c2b1f4",fontSize:12,marginTop:3},
-  bio:{color:"#96969f",fontSize:12,lineHeight:17,marginTop:4},
-  empty:{backgroundColor:"#222226",borderWidth:1,borderColor:"#414147",borderRadius:16,padding:25,alignItems:"center",marginTop:10},
+  area:{color:INK.inkSoft,fontSize:12,marginTop:3},
+  bio:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
+  empty:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:25,alignItems:"center",marginTop:10},
   emptyTitle:{color:"white",fontSize:18,fontWeight:"900",textAlign:"center"},
-  emptyText:{color:"#9c9ca5",textAlign:"center",marginTop:7,lineHeight:20},
-  findButton:{backgroundColor:"#3212b6",borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:15},
+  emptyText:{color:INK.inkSoft,textAlign:"center",marginTop:7,lineHeight:20},
+  findButton:{backgroundColor:INK.blue,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:15},
   findText:{color:"white",fontWeight:"900"}
 });

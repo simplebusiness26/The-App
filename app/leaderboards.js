@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
+import {INK} from "../utils/tokens";
 
 function Avatar({row}){
   if(row.profile_photo){
@@ -178,7 +179,7 @@ export default function Leaderboards(){
           <Pressable style={styles.primaryButton} onPress={()=>router.push("/profile/edit")}><Text style={styles.primaryText}>Edit Profile</Text></Pressable>
         </View>
       ) : loading ? (
-        <View style={styles.loadingBox}><ActivityIndicator size="large" color="#a58cff"/></View>
+        <View style={styles.loadingBox}><ActivityIndicator size="large" color={INK.blue}/></View>
       ) : error ? (
         <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>
       ) : rows.length===0 ? (
@@ -227,49 +228,49 @@ export default function Leaderboards(){
 }
 
 const styles=StyleSheet.create({
-  rankCard:{backgroundColor:"#221d30",borderColor:"#50416e",borderWidth:1,borderRadius:16,padding:18,marginBottom:14,alignItems:"center"},
-  rankEyebrow:{color:"#a993ed",fontSize:10,fontWeight:"900",letterSpacing:0.7},
+  rankCard:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:16,padding:18,marginBottom:14,alignItems:"center"},
+  rankEyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:0.7},
   rankValue:{color:"white",fontSize:38,fontWeight:"900",marginTop:6},
-  rankMeta:{color:"#c9b9f7",fontSize:13,textAlign:"center",marginTop:6,lineHeight:19},
-  screen:{flex:1,backgroundColor:"#18181b"},
+  rankMeta:{color:INK.ink,fontSize:13,textAlign:"center",marginTop:6,lineHeight:19},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:60},
-  eyebrow:{color:"#aa96ee",fontSize:11,fontWeight:"900",letterSpacing:0.8},
+  eyebrow:{color:INK.blue,fontSize:11,fontWeight:"900",letterSpacing:0.8},
   title:{color:"white",fontSize:32,fontWeight:"900",marginTop:5},
-  subtitle:{color:"#aaaab3",fontSize:15,lineHeight:22,marginTop:7,marginBottom:17},
-  tabs:{flexDirection:"row",backgroundColor:"#222226",borderRadius:13,padding:4,marginBottom:9},
+  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:7,marginBottom:17},
+  tabs:{flexDirection:"row",backgroundColor:INK.card,borderRadius:13,padding:4,marginBottom:9},
   tab:{flex:1,padding:11,borderRadius:10,alignItems:"center"},
-  tabActive:{backgroundColor:"#3212b6"},
-  tabText:{color:"#9999a2",fontWeight:"900"},
+  tabActive:{backgroundColor:INK.blue},
+  tabText:{color:INK.inkSoft,fontWeight:"900"},
   tabTextActive:{color:"white"},
-  areaPill:{alignSelf:"flex-start",backgroundColor:"#27213a",borderColor:"#53467b",borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:7,marginTop:4,marginBottom:12},
-  areaText:{color:"#c9bbf3",fontWeight:"800",fontSize:12},
+  areaPill:{alignSelf:"flex-start",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:7,marginTop:4,marginBottom:12},
+  areaText:{color:INK.ink,fontWeight:"800",fontSize:12},
   loadingBox:{padding:50,alignItems:"center"},
-  noticeCard:{backgroundColor:"#222226",borderColor:"#44444b",borderWidth:1,borderRadius:16,padding:20,marginTop:8},
+  noticeCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:16,padding:20,marginTop:8},
   noticeTitle:{color:"white",fontSize:19,fontWeight:"900"},
-  noticeText:{color:"#aaaab3",lineHeight:21,marginTop:7},
-  primaryButton:{backgroundColor:"#3212b6",borderRadius:11,padding:14,marginTop:15},
+  noticeText:{color:INK.inkSoft,lineHeight:21,marginTop:7},
+  primaryButton:{backgroundColor:INK.blue,borderRadius:11,padding:14,marginTop:15},
   primaryText:{color:"white",fontWeight:"900",textAlign:"center"},
-  errorCard:{backgroundColor:"#3b171b",borderColor:"#80353d",borderWidth:1,borderRadius:13,padding:15},
-  errorText:{color:"#ffb2ba",fontWeight:"700"},
+  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:13,padding:15},
+  errorText:{color:INK.pink,fontWeight:"700"},
   list:{gap:9},
-  row:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:15,padding:12,flexDirection:"row",alignItems:"center"},
-  ownRow:{backgroundColor:"#271f3f",borderColor:"#6650a3"},
-  rankCircle:{width:42,height:42,borderRadius:21,backgroundColor:"#303036",alignItems:"center",justifyContent:"center",marginRight:10},
-  topRank:{backgroundColor:"#5a410a",borderColor:"#a27a19",borderWidth:1},
-  rank:{color:"#c4c4cc",fontWeight:"900",fontSize:12},
-  topRankText:{color:"#ffd668"},
-  avatar:{width:48,height:48,borderRadius:24,backgroundColor:"#303036"},
-  avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  row:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:12,flexDirection:"row",alignItems:"center"},
+  ownRow:{backgroundColor:INK.blue,borderColor:INK.blue},
+  rankCircle:{width:42,height:42,borderRadius:21,backgroundColor:INK.card,alignItems:"center",justifyContent:"center",marginRight:10},
+  topRank:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1},
+  rank:{color:INK.ink,fontWeight:"900",fontSize:12},
+  topRankText:{color:INK.yellow},
+  avatar:{width:48,height:48,borderRadius:24,backgroundColor:INK.card},
+  avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   avatarLetter:{color:"white",fontSize:20,fontWeight:"900"},
   person:{flex:1,marginLeft:10},
   name:{color:"white",fontWeight:"900",fontSize:16},
-  meta:{color:"#9f9fa8",fontSize:11,marginTop:3},
-  detail:{color:"#b7a9df",fontSize:10,marginTop:3},
+  meta:{color:INK.inkSoft,fontSize:11,marginTop:3},
+  detail:{color:INK.inkSoft,fontSize:10,marginTop:3},
   pointsBox:{alignItems:"center",marginLeft:8,minWidth:48},
-  points:{color:"#c4b0ff",fontSize:21,fontWeight:"900"},
-  pointsLabel:{color:"#87818f",fontSize:9,fontWeight:"900",letterSpacing:0.6},
-  rulesCard:{backgroundColor:"#211d2d",borderColor:"#4d4265",borderWidth:1,borderRadius:15,padding:17,marginTop:20},
+  points:{color:INK.blue,fontSize:21,fontWeight:"900"},
+  pointsLabel:{color:INK.inkSoft,fontSize:9,fontWeight:"900",letterSpacing:0.6},
+  rulesCard:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:15,padding:17,marginTop:20},
   rulesTitle:{color:"white",fontSize:18,fontWeight:"900",marginBottom:8},
-  rule:{color:"#c9c4d4",lineHeight:21},
-  ruleNote:{color:"#90899e",fontSize:11,lineHeight:17,marginTop:9}
+  rule:{color:INK.ink,lineHeight:21},
+  ruleNote:{color:INK.inkSoft,fontSize:11,lineHeight:17,marginTop:9}
 });

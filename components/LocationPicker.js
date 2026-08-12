@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import {supabase} from "../services/supabase";
 import {coordinate} from "../utils/coordinates";
+import {INK} from "../utils/tokens";
 
 export default function LocationPicker({
   initialAddress="",
@@ -152,15 +153,15 @@ const styles=StyleSheet.create({
   label:{fontSize:17,fontWeight:"bold",marginBottom:5},
   help:{color:"#666",lineHeight:20,marginBottom:10},
   input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",borderRadius:11,padding:14},
-  searchButton:{backgroundColor:"#275bd6",padding:14,borderRadius:10,marginTop:9},
+  searchButton:{backgroundColor:INK.blue,padding:14,borderRadius:10,marginTop:9},
   disabled:{opacity:0.55},
   searchButtonText:{color:"white",fontWeight:"bold",textAlign:"center"},
-  error:{color:"#b42318",marginTop:9},
-  result:{backgroundColor:"white",borderWidth:1,borderColor:"#d8d8d8",borderRadius:10,padding:13,marginTop:9},
+  error:{color:INK.red,marginTop:9},
+  result:{backgroundColor:"white",borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:13,marginTop:9},
   resultTitle:{fontWeight:"bold",marginBottom:4},
   resultAddress:{color:"#555",lineHeight:19},
-  selected:{backgroundColor:"#e6f6eb",borderWidth:1,borderColor:"#9bc9a7",borderRadius:10,padding:13,marginTop:10},
-  selectedTitle:{fontWeight:"bold",color:"#1f7135"},
+  selected:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:13,marginTop:10},
+  selectedTitle:{fontWeight:"bold",color:INK.green},
   selectedText:{marginTop:5,color:"#333"},
   attribution:{fontSize:11,color:"#777",marginTop:8}
 });

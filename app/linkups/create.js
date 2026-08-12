@@ -4,6 +4,7 @@ import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import LinkupForm from "../../components/LinkupForm";
 import {useFeedback} from "../../context/FeedbackContext";
+import {INK} from "../../utils/tokens";
 
 export default function CreateLinkup(){
   const {showFeedback}=useFeedback();
@@ -29,7 +30,7 @@ export default function CreateLinkup(){
     router.replace(`/linkups/${data}`);
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
+  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -43,6 +44,6 @@ export default function CreateLinkup(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},
-  eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:"white",fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:"#a9a9b2",lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:"#431f26",borderColor:"#7e3541",borderWidth:1,borderRadius:12,padding:12,marginTop:16},errorText:{color:"#ffc1c9"}
+  screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:"white",fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.ink}
 });

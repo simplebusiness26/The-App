@@ -1,6 +1,7 @@
 import React from "react";
 import {View,Text,TextInput,Pressable,StyleSheet} from "react-native";
 import LocationPicker from "./LocationPicker";
+import {INK} from "../utils/tokens";
 
 const CATEGORIES=["Community","Family","Food","Music","Arts","Outdoors"];
 
@@ -112,18 +113,18 @@ const styles=StyleSheet.create({
   label:{fontSize:17,fontWeight:"bold",marginBottom:8,marginTop:4},
   fieldLabel:{fontWeight:"600",color:"#444",marginBottom:7},
   help:{color:"#666",lineHeight:20,marginTop:-3,marginBottom:12},
-  input:{backgroundColor:"white",borderWidth:1,borderColor:"#c9cdd3",borderRadius:11,padding:14,marginBottom:14},
+  input:{backgroundColor:"white",borderWidth:1,borderColor:INK.ink,borderRadius:11,padding:14,marginBottom:14},
   multiline:{minHeight:115,textAlignVertical:"top"},
   row:{flexDirection:"row",gap:10},
   half:{flex:1},
   chipRow:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:14,marginTop:-5},
-  chip:{backgroundColor:"white",borderWidth:1,borderColor:"#c9cdd3",paddingHorizontal:11,paddingVertical:7,borderRadius:18},
-  selectedChip:{backgroundColor:"#eae4ff",borderColor:"#7657bd"},
-  chipText:{fontSize:12,fontWeight:"600",color:"#4b5563"},
-  selectedChipText:{color:"#5633a8"},
+  chip:{backgroundColor:"white",borderWidth:1,borderColor:INK.ink,paddingHorizontal:11,paddingVertical:7,borderRadius:18},
+  selectedChip:{backgroundColor:INK.card,borderColor:INK.blue},
+  chipText:{fontSize:12,fontWeight:"600",color:INK.ink},
+  selectedChipText:{color:INK.blue},
   statusRow:{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:22},
   statusButton:{paddingHorizontal:15,paddingVertical:10,borderRadius:20,borderWidth:1,borderColor:"#aaa",backgroundColor:"white"},
-  selectedStatus:{backgroundColor:"#5633a8",borderColor:"#5633a8"},
+  selectedStatus:{backgroundColor:INK.blue,borderColor:INK.blue},
   statusText:{textTransform:"capitalize",fontWeight:"600"},
   selectedStatusText:{color:"white"}
 });

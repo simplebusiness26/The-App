@@ -12,6 +12,7 @@ import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import LocationPicker from "../../components/LocationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
+import {INK} from "../../utils/tokens";
 
 export default function AddActivityClub(){
   const {showFeedback}=useFeedback();
@@ -109,5 +110,5 @@ export default function AddActivityClub(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},content:{padding:20,paddingBottom:50},title:{fontSize:30,fontWeight:"bold"},subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},button:{backgroundColor:"#5633a8",padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:"white",fontWeight:"bold"}
+  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},title:{fontSize:30,fontWeight:"bold"},subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:"white",fontWeight:"bold"}
 });

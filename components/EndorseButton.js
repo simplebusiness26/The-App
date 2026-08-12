@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
+import {INK} from "../utils/tokens";
 
 // Packet 8c: review reputation.
 //
@@ -101,7 +102,7 @@ export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,
       onPress={toggle}
     >
       {working
-        ? <ActivityIndicator size="small" color={endorsed ? "#8fe0ac" : "#d4d4dc"}/>
+        ? <ActivityIndicator size="small" color={endorsed ? INK.green : INK.inkSoft}/>
         : <Text style={[styles.icon,endorsed && styles.endorsedIcon]}>👍</Text>
       }
       <Text style={[styles.text,endorsed && styles.endorsedText]}>{count} Useful</Text>
@@ -110,10 +111,10 @@ export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,
 }
 
 const styles=StyleSheet.create({
-  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:"#29292e",borderWidth:1,borderColor:"#45454c"},
-  endorsedButton:{backgroundColor:"#123b25",borderColor:"#286640"},
+  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
+  endorsedButton:{backgroundColor:INK.green,borderColor:INK.green},
   icon:{fontSize:15,lineHeight:18},
   endorsedIcon:{},
-  text:{color:"#d4d4dc",fontSize:12,fontWeight:"900"},
-  endorsedText:{color:"#83e0a5"}
+  text:{color:INK.ink,fontSize:12,fontWeight:"900"},
+  endorsedText:{color:INK.green}
 });

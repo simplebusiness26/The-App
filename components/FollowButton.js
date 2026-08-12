@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
+import {INK} from "../utils/tokens";
 
 // Following one Explorer.
 //
@@ -173,13 +174,13 @@ const styles=StyleSheet.create({
     paddingHorizontal:20,
     paddingVertical:12,
     borderRadius:13,
-    backgroundColor:"#3212b6",
+    backgroundColor:INK.blue,
     alignItems:"center",
     justifyContent:"center"
   },
   compact:{minWidth:92,minHeight:38,paddingHorizontal:14,paddingVertical:9,borderRadius:11},
-  following:{backgroundColor:"#2b2b31",borderColor:"#64646d",borderWidth:1},
+  following:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1},
   disabled:{opacity:0.65},
   text:{color:"white",fontWeight:"900",fontSize:14},
-  followingText:{color:"#ddddE5"}
+  followingText:{color:INK.ink}
 });

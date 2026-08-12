@@ -14,6 +14,7 @@ import LocationPicker from "../../components/LocationPicker";
 import ClassificationPicker from "../../components/ClassificationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
 import {UNCLASSIFIED} from "../../utils/taxonomy";
+import {INK} from "../../utils/tokens";
 
 export default function AddBusiness(){
   const {showFeedback}=useFeedback();
@@ -114,7 +115,7 @@ export default function AddBusiness(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
   input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},

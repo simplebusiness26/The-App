@@ -18,6 +18,7 @@ import {useFocusEffect} from "expo-router";
 import QRCodeGenerator from "../../components/QRCodeGenerator";
 import GateNotice from "../../components/GateNotice";
 import {useManagerGate} from "../../hooks/useManagerGate";
+import {INK} from "../../utils/tokens";
 
 
 
@@ -292,7 +293,7 @@ marginTop:15
 
 
 addButton:{
-backgroundColor:"#0066ff",
+backgroundColor:INK.blue,
 padding:15,
 borderRadius:10,
 marginTop:25

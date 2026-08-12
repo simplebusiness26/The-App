@@ -14,6 +14,7 @@ import {router} from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
+import {INK} from "../utils/tokens";
 
 const TARGET_CONFIG={
   business:{
@@ -353,7 +354,7 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#8d6bff"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   }
 
   if(error && !target){
@@ -399,7 +400,7 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
       <TextInput
         style={styles.input}
         placeholder="Review title (required for video)"
-        placeholderTextColor="#8b8b94"
+        placeholderTextColor={INK.inkSoft}
         value={title}
         onChangeText={setTitle}
         maxLength={80}
@@ -409,7 +410,7 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
       <TextInput
         style={styles.textarea}
         placeholder="What was your experience like?"
-        placeholderTextColor="#8b8b94"
+        placeholderTextColor={INK.inkSoft}
         value={comment}
         onChangeText={setComment}
         multiline
@@ -475,51 +476,51 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:22,paddingBottom:60},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center",padding:28},
-  eyebrow:{color:"#bca9ff",fontWeight:"800",fontSize:12,letterSpacing:1},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
+  eyebrow:{color:INK.blue,fontWeight:"800",fontSize:12,letterSpacing:1},
   title:{color:"white",fontSize:30,fontWeight:"900",marginTop:6},
-  subtitle:{color:"#b8b8c0",fontSize:16,lineHeight:23,marginTop:7,marginBottom:18},
-  pointsCard:{backgroundColor:"#251d40",borderColor:"#594298",borderWidth:1,borderRadius:15,padding:16,flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:18},
-  pointsLabel:{color:"#bca9ff",fontSize:11,fontWeight:"900",letterSpacing:0.8},
+  subtitle:{color:INK.inkSoft,fontSize:16,lineHeight:23,marginTop:7,marginBottom:18},
+  pointsCard:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:15,padding:16,flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:18},
+  pointsLabel:{color:INK.blue,fontSize:11,fontWeight:"900",letterSpacing:0.8},
   pointsText:{color:"white",fontSize:23,fontWeight:"900",marginTop:3},
-  pointsBreakdown:{color:"#d2c7f4",fontSize:12,maxWidth:"44%",textAlign:"right"},
-  errorBox:{backgroundColor:"#3d171b",borderColor:"#83363d",borderWidth:1,borderRadius:12,padding:13,marginBottom:16},
-  errorText:{color:"#ffb5bc",lineHeight:20,fontWeight:"600"},
+  pointsBreakdown:{color:INK.ink,fontSize:12,maxWidth:"44%",textAlign:"right"},
+  errorBox:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:13,marginBottom:16},
+  errorText:{color:INK.ink,lineHeight:20,fontWeight:"600"},
   label:{color:"white",fontSize:17,fontWeight:"800"},
   stars:{flexDirection:"row",marginTop:9},
-  star:{color:"#f5c542",fontSize:38,marginRight:4},
-  ratingText:{color:"#b8b8c0",fontWeight:"700",marginTop:2,marginBottom:16},
-  input:{backgroundColor:"#222226",borderColor:"#44444b",borderWidth:1,borderRadius:12,padding:14,color:"white",fontSize:16,marginBottom:12},
-  textarea:{backgroundColor:"#222226",borderColor:"#44444b",borderWidth:1,borderRadius:12,padding:14,color:"white",fontSize:16,minHeight:130,textAlignVertical:"top"},
-  characterCount:{color:"#81818a",fontSize:12,textAlign:"right",marginTop:5},
+  star:{color:INK.yellow,fontSize:38,marginRight:4},
+  ratingText:{color:INK.inkSoft,fontWeight:"700",marginTop:2,marginBottom:16},
+  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:12},
+  textarea:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,minHeight:130,textAlignVertical:"top"},
+  characterCount:{color:INK.inkSoft,fontSize:12,textAlign:"right",marginTop:5},
   mediaHeadingRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:22,marginBottom:11},
   sectionTitle:{color:"white",fontSize:19,fontWeight:"900"},
-  sectionHelp:{color:"#9d9da6",fontSize:12,marginTop:3},
-  mediaCount:{color:"#bca9ff",fontWeight:"900"},
+  sectionHelp:{color:INK.inkSoft,fontSize:12,marginTop:3},
+  mediaCount:{color:INK.blue,fontWeight:"900"},
   imageRow:{paddingBottom:10},
   imageWrap:{width:115,height:115,marginRight:10,position:"relative"},
-  previewImage:{width:"100%",height:"100%",borderRadius:12,backgroundColor:"#303036"},
+  previewImage:{width:"100%",height:"100%",borderRadius:12,backgroundColor:INK.card},
   removeButton:{position:"absolute",right:6,top:6,width:28,height:28,borderRadius:14,backgroundColor:"rgba(0,0,0,0.78)",alignItems:"center",justifyContent:"center"},
   removeText:{color:"white",fontSize:21,lineHeight:23,fontWeight:"900"},
-  videoPreview:{backgroundColor:"#222226",borderColor:"#4d3a84",borderWidth:1,borderRadius:13,padding:13,flexDirection:"row",alignItems:"center",marginBottom:10},
-  playCircle:{width:45,height:45,borderRadius:23,backgroundColor:"#3012a8",alignItems:"center",justifyContent:"center"},
+  videoPreview:{backgroundColor:INK.card,borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:13,flexDirection:"row",alignItems:"center",marginBottom:10},
+  playCircle:{width:45,height:45,borderRadius:23,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   playIcon:{color:"white",fontSize:18,marginLeft:2},
   videoMeta:{flex:1,marginLeft:11},
   videoTitle:{color:"white",fontWeight:"900"},
-  videoText:{color:"#a9a9b2",fontSize:12,marginTop:3},
-  clearVideo:{color:"#ff9da5",fontWeight:"800",fontSize:12},
+  videoText:{color:INK.inkSoft,fontSize:12,marginTop:3},
+  clearVideo:{color:INK.pink,fontWeight:"800",fontSize:12},
   mediaButtons:{flexDirection:"row",gap:10},
-  mediaButton:{flex:1,borderColor:"#5b46a0",borderWidth:1,backgroundColor:"#252034",padding:13,borderRadius:11,alignItems:"center"},
-  mediaButtonText:{color:"#ddd5fa",fontWeight:"800"},
-  ruleText:{color:"#9999a2",fontSize:12,lineHeight:18,marginTop:14},
-  submitButton:{backgroundColor:"#3212b6",padding:17,borderRadius:13,alignItems:"center",marginTop:22},
+  mediaButton:{flex:1,borderColor:INK.blue,borderWidth:1,backgroundColor:INK.blue,padding:13,borderRadius:11,alignItems:"center"},
+  mediaButtonText:{color:INK.ink,fontWeight:"800"},
+  ruleText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:14},
+  submitButton:{backgroundColor:INK.blue,padding:17,borderRadius:13,alignItems:"center",marginTop:22},
   submitText:{color:"white",fontWeight:"900",fontSize:16,marginLeft:9},
   submitRow:{flexDirection:"row",alignItems:"center"},
   disabled:{opacity:0.5},
   fatalTitle:{color:"white",fontSize:24,fontWeight:"900"},
-  fatalText:{color:"#c3c3ca",textAlign:"center",lineHeight:22,marginTop:9},
-  secondaryButton:{marginTop:18,borderColor:"#777780",borderWidth:1,borderRadius:11,paddingHorizontal:20,paddingVertical:12},
+  fatalText:{color:INK.ink,textAlign:"center",lineHeight:22,marginTop:9},
+  secondaryButton:{marginTop:18,borderColor:INK.ink,borderWidth:1,borderRadius:11,paddingHorizontal:20,paddingVertical:12},
   secondaryButtonText:{color:"white",fontWeight:"800"}
 });

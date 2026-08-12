@@ -14,6 +14,7 @@ import {router} from "expo-router";
 // Shared with app/camera.js. Two copies of "is this one of ours" is how a code
 // starts working on one screen and not the other.
 import {extractQrCode} from "../utils/qr";
+import {INK} from "../utils/tokens";
 
 export default function Scan(){
   const [permission,requestPermission]=useCameraPermissions();
@@ -36,7 +37,7 @@ export default function Scan(){
   }
 
   if(!permission){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#a58cff"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   }
 
   return(
@@ -86,7 +87,7 @@ export default function Scan(){
         <TextInput
           style={styles.input}
           placeholder="QR code or Xplorer QR link"
-          placeholderTextColor="#878790"
+          placeholderTextColor={INK.inkSoft}
           autoCapitalize="none"
           autoCorrect={false}
           value={manualCode}
@@ -103,29 +104,29 @@ export default function Scan(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
-  container:{flexGrow:1,paddingBottom:110,backgroundColor:"#18181b",padding:20},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},
-  eyebrow:{color:"#8fe1aa",fontSize:11,fontWeight:"900",letterSpacing:0.8,marginTop:8},
+  screen:{flex:1,backgroundColor:INK.paper},
+  container:{flexGrow:1,paddingBottom:110,backgroundColor:INK.paper,padding:20},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  eyebrow:{color:INK.green,fontSize:11,fontWeight:"900",letterSpacing:0.8,marginTop:8},
   title:{color:"white",fontSize:29,fontWeight:"900",marginTop:5},
-  subtitle:{color:"#aaaab2",fontSize:14,lineHeight:21,marginTop:7,marginBottom:16},
-  cameraCard:{height:320,borderRadius:18,overflow:"hidden",backgroundColor:"#050505",position:"relative"},
+  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,marginBottom:16},
+  cameraCard:{height:320,borderRadius:18,overflow:"hidden",backgroundColor:INK.paper,position:"relative"},
   camera:{flex:1},
   target:{position:"absolute",left:"18%",right:"18%",top:"18%",bottom:"18%",borderWidth:3,borderColor:"white",borderRadius:18,padding:8},
   targetInner:{flex:1,borderWidth:1,borderColor:"rgba(255,255,255,0.45)",borderRadius:12},
-  permissionCard:{backgroundColor:"#222226",borderColor:"#44444b",borderWidth:1,borderRadius:16,padding:20},
+  permissionCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:16,padding:20},
   permissionTitle:{color:"white",fontSize:19,fontWeight:"900"},
-  permissionText:{color:"#aaaab2",lineHeight:20,marginTop:7},
-  primaryButton:{backgroundColor:"#3212b6",padding:15,borderRadius:12,marginTop:16},
+  permissionText:{color:INK.inkSoft,lineHeight:20,marginTop:7},
+  primaryButton:{backgroundColor:INK.blue,padding:15,borderRadius:12,marginTop:16},
   primaryText:{color:"white",fontWeight:"900",textAlign:"center"},
-  errorBox:{backgroundColor:"#3b171b",borderColor:"#80353d",borderWidth:1,borderRadius:12,padding:13,marginTop:12},
-  errorText:{color:"#ffb4bc",fontWeight:"700",textAlign:"center"},
-  secondaryButton:{borderColor:"#65656e",borderWidth:1,borderRadius:11,padding:13,marginTop:12},
+  errorBox:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:13,marginTop:12},
+  errorText:{color:INK.ink,fontWeight:"700",textAlign:"center"},
+  secondaryButton:{borderColor:INK.ink,borderWidth:1,borderRadius:11,padding:13,marginTop:12},
   secondaryText:{color:"white",fontWeight:"800",textAlign:"center"},
-  manualCard:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:15,padding:15,marginTop:17},
+  manualCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:15,marginTop:17},
   manualTitle:{color:"white",fontSize:17,fontWeight:"900"},
-  manualText:{color:"#9999a2",fontSize:12,lineHeight:18,marginTop:5},
-  input:{backgroundColor:"#29292e",borderColor:"#505057",borderWidth:1,borderRadius:10,padding:12,color:"white",marginTop:12},
-  manualButton:{backgroundColor:"#5633a8",padding:13,borderRadius:10,marginTop:10},
-  webNote:{color:"#777780",fontSize:10,textAlign:"center",marginTop:12}
+  manualText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:5},
+  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:10,padding:12,color:INK.ink,marginTop:12},
+  manualButton:{backgroundColor:INK.blue,padding:13,borderRadius:10,marginTop:10},
+  webNote:{color:INK.inkSoft,fontSize:10,textAlign:"center",marginTop:12}
 });

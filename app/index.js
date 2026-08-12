@@ -11,6 +11,7 @@ import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useNotifications} from "../context/NotificationContext";
 import {useDrawer} from "../context/DrawerContext";
+import {INK} from "../utils/tokens";
 
 const HOME_LAYOUT_VERSION="compact-v2";
 
@@ -162,11 +163,11 @@ export default function Home(){
 const styles=StyleSheet.create({
   screen:{
     flex:1,
-    backgroundColor:"#19191b"
+    backgroundColor:INK.paper
   },
   loadingContainer:{
     flex:1,
-    backgroundColor:"#19191b",
+    backgroundColor:INK.paper,
     alignItems:"center",
     justifyContent:"center"
   },
@@ -195,7 +196,7 @@ const styles=StyleSheet.create({
     textAlign:"center"
   },
   subtitle:{
-    color:"#c5c5ca",
+    color:INK.ink,
     fontSize:17,
     lineHeight:24,
     marginTop:10,
@@ -209,9 +210,9 @@ const styles=StyleSheet.create({
     paddingVertical:14,
     borderRadius:14,
     marginBottom:14,
-    backgroundColor:"#262629",
+    backgroundColor:INK.card,
     borderWidth:1,
-    borderColor:"#45454a",
+    borderColor:INK.ink,
     flexDirection:"row",
     alignItems:"center",
     justifyContent:"space-between"
@@ -225,7 +226,7 @@ const styles=StyleSheet.create({
     height:30,
     paddingHorizontal:8,
     borderRadius:15,
-    backgroundColor:"#b00000",
+    backgroundColor:INK.red,
     alignItems:"center",
     justifyContent:"center"
   },
@@ -246,18 +247,18 @@ const styles=StyleSheet.create({
     marginBottom:14
   },
   eventsButton:{
-    backgroundColor:"#2410a5"
+    backgroundColor:INK.blue
   },
   mapButton:{
-    backgroundColor:"#0d2fc5"
+    backgroundColor:INK.blue
   },
   menuButton:{
-    backgroundColor:"#080809",
+    backgroundColor:INK.paper,
     borderWidth:1,
-    borderColor:"#303034"
+    borderColor:INK.hair
   },
   adminButton:{
-    backgroundColor:"#5c18a8",
+    backgroundColor:INK.blue,
     marginTop:2
   },
   buttonIcon:{
@@ -289,15 +290,15 @@ const styles=StyleSheet.create({
     paddingHorizontal:10
   },
   loginButton:{
-    backgroundColor:"#080809",
+    backgroundColor:INK.paper,
     borderWidth:1,
-    borderColor:"#303034",
+    borderColor:INK.hair,
     marginRight:7
   },
   signupButton:{
-    backgroundColor:"#29292d",
+    backgroundColor:INK.card,
     borderWidth:1,
-    borderColor:"#48484e",
+    borderColor:INK.ink,
     marginLeft:7
   },
   authButtonText:{

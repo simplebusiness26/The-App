@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,RefreshControl,ScrollView,StyleSheet,Text,Vi
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
+import {INK} from "../../utils/tokens";
 
 export default function BlockedExplorers(){
   const {showFeedback}=useFeedback();
@@ -41,7 +42,7 @@ export default function BlockedExplorers(){
 
   function refresh(){setRefreshing(true);load(false);}
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
+  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>}>
@@ -53,4 +54,4 @@ export default function BlockedExplorers(){
   );
 }
 
-const styles=StyleSheet.create({screen:{flex:1,backgroundColor:"#18181b"},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},eyebrow:{color:"#a991f0",fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:"white",fontSize:31,fontWeight:"900",marginTop:4},subtitle:{color:"#aaaab3",lineHeight:21,marginTop:7,marginBottom:16},emptyCard:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:15,padding:28,alignItems:"center"},emptyIcon:{fontSize:38},emptyTitle:{color:"white",fontSize:18,fontWeight:"900",marginTop:8},emptyText:{color:"#9999a3",textAlign:"center",lineHeight:19,marginTop:5},card:{flexDirection:"row",alignItems:"center",backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:12,marginBottom:10},profile:{flex:1,flexDirection:"row",alignItems:"center"},avatar:{width:45,height:45,borderRadius:23,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},avatarText:{color:"white",fontWeight:"900",fontSize:18},profileText:{marginLeft:10},name:{color:"white",fontWeight:"900"},area:{color:"#8d8d96",fontSize:11,marginTop:3},unblock:{backgroundColor:"#3f2730",borderColor:"#73404c",borderWidth:1,borderRadius:10,minWidth:82,paddingVertical:10,alignItems:"center"},unblockText:{color:"#ffbdc7",fontWeight:"900",fontSize:11}});
+const styles=StyleSheet.create({screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:"white",fontSize:31,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:16},emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:28,alignItems:"center"},emptyIcon:{fontSize:38},emptyTitle:{color:"white",fontSize:18,fontWeight:"900",marginTop:8},emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:19,marginTop:5},card:{flexDirection:"row",alignItems:"center",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:12,marginBottom:10},profile:{flex:1,flexDirection:"row",alignItems:"center"},avatar:{width:45,height:45,borderRadius:23,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},avatarText:{color:"white",fontWeight:"900",fontSize:18},profileText:{marginLeft:10},name:{color:"white",fontWeight:"900"},area:{color:INK.inkSoft,fontSize:11,marginTop:3},unblock:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:10,minWidth:82,paddingVertical:10,alignItems:"center"},unblockText:{color:INK.ink,fontWeight:"900",fontSize:11}});

@@ -16,6 +16,7 @@ import ClassificationPicker from "../../../components/ClassificationPicker";
 import {UNCLASSIFIED} from "../../../utils/taxonomy";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
+import {INK} from "../../../utils/tokens";
 
 export default function EditBusiness(){
   const {id}=useLocalSearchParams();
@@ -178,5 +179,5 @@ export default function EditBusiness(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},content:{padding:20,paddingBottom:50},loading:{flex:1,justifyContent:"center",alignItems:"center"},title:{fontSize:30,fontWeight:"bold",marginBottom:20},input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},multiline:{minHeight:100,textAlignVertical:"top"},button:{backgroundColor:"#222",padding:15,borderRadius:10,marginTop:10},deleteButton:{backgroundColor:"#c62828",padding:15,borderRadius:10,marginTop:15},buttonText:{color:"white",textAlign:"center",fontWeight:"bold"}
+  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},loading:{flex:1,justifyContent:"center",alignItems:"center"},title:{fontSize:30,fontWeight:"bold",marginBottom:20},input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",padding:15,borderRadius:10,marginBottom:15},multiline:{minHeight:100,textAlignVertical:"top"},button:{backgroundColor:"#222",padding:15,borderRadius:10,marginTop:10},deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:15},buttonText:{color:"white",textAlign:"center",fontWeight:"bold"}
 });

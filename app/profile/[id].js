@@ -5,6 +5,7 @@ import ExplorerProfileScreen from "../../components/ExplorerProfileScreen";
 import ProfileSocialBar from "../../components/ProfileSocialBar";
 import ProfileSafetyActions from "../../components/ProfileSafetyActions";
 import MessageButton from "../../components/MessageButton";
+import {INK} from "../../utils/tokens";
 
 export default function PublicProfile(){
   const {id}=useLocalSearchParams();
@@ -34,6 +35,6 @@ export default function PublicProfile(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   messageRow:{alignItems:"center",marginTop:10}
 });

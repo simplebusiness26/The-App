@@ -194,31 +194,42 @@ const tokens=new Set(
 
 check(tokens.size>0,`${DESIGN_SYSTEM}: no colour tokens parsed — the token table has moved or changed shape`);
 
-// Files built to the design system. This list grows one packet at a time; the
-// rest of the app is full of untokenised colour and belongs to Packet 11, which
-// owns the pass that makes this check whole-app.
-const TOKENISED=[
-  TOKENS,
-  MARKERS,
-  PIN,
-  PREVIEW,
-  "components/TabBar.js",
-  "app/discover.js",
-  "app/create.js",
-  // Packet 8e's screens were built to the token table from the start, so they
-  // join the list rather than waiting for Packet 11.
-  "components/EntityFollowButton.js",
-  "app/places/index.js",
-  "app/places/[id].js",
-  "app/admin/public-places.js",
-  "app/memories/create.js",
-  "app/memories/[id].js",
-  // Packet 8b's My Map was built to the token table from the start.
-  "components/MyMap.js"
-];
+// Packet 20 finished: EVERY file in app/ and components/ is on the token table
+// now, so the list is no longer a list. It is "all of them, except the map".
+//
+// The four map surfaces are excluded because Packet 21 rebuilds them on
+// MapLibre for web, Android and iOS. Styling a file that is about to be
+// replaced is work thrown away twice, and an exclusion with a reason and an
+// end date is better than a colour that quietly never gets fixed.
+//
+// Hex inside a COMMENT is allowed. Several files explain which colour they used
+// to be and why it went; deleting that sentence to satisfy a grep would throw
+// away the reason and keep the rule.
+const SKIP=new Set([
+  "app/map.js",
+  "app/map.web.js",
+  "components/PlacesList.js",
+  "components/MemoryPins.js",
+  "components/MemoryPins.web.js"
+]);
+
+function everyScreen(dir,found=[]){
+  for(const entry of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){
+    const relative=`${dir}/${entry.name}`;
+    if(entry.isDirectory()){everyScreen(relative,found);continue;}
+    if(entry.name.endsWith(".js")) found.push(relative);
+  }
+  return found;
+}
+
+const TOKENISED=[...new Set([
+  TOKENS,MARKERS,PIN,PREVIEW,
+  ...everyScreen("app"),
+  ...everyScreen("components")
+])].filter((file)=>!SKIP.has(file));
 
 for(const source of TOKENISED){
-  const content=read(source);
+  const content=code(read(source));
 
   for(const match of content.matchAll(/#[0-9A-Fa-f]{6}\b/g)){
     check(

@@ -14,6 +14,7 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
 import {sendRecoveryEmail} from "../utils/passwordRecovery";
+import {INK} from "../utils/tokens";
 
 const CAPABILITIES=[
   {key:"businesses",label:"Businesses"},
@@ -315,7 +316,7 @@ export default function Settings(){
     : "You have nothing listed, so there is nothing to decide about — the tools just switch off.";
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#a58cff"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   }
 
   if(error){
@@ -342,7 +343,7 @@ export default function Settings(){
       <TextInput
         style={styles.input}
         placeholder="Town or area, e.g. Hastings"
-        placeholderTextColor="#888891"
+        placeholderTextColor={INK.inkSoft}
         value={area}
         onChangeText={setArea}
         maxLength={100}
@@ -583,59 +584,59 @@ export default function Settings(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:22,paddingBottom:70},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center",padding:40},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:40},
   title:{color:"white",fontSize:31,fontWeight:"900"},
-  subtitle:{color:"#aaaab3",fontSize:15,lineHeight:22,marginTop:6},
-  errorText:{color:"#ffb5bc",fontSize:16,fontWeight:"700",textAlign:"center",lineHeight:22},
+  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6},
+  errorText:{color:INK.ink,fontSize:16,fontWeight:"700",textAlign:"center",lineHeight:22},
   sectionTitle:{color:"white",fontSize:21,fontWeight:"900",marginTop:28,marginBottom:10},
-  helpText:{color:"#9999a2",lineHeight:20,marginBottom:12},
-  input:{backgroundColor:"#222226",borderColor:"#44444b",borderWidth:1,borderRadius:12,padding:14,color:"white",fontSize:16,marginBottom:13},
-  settingRow:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
+  helpText:{color:INK.inkSoft,lineHeight:20,marginBottom:12},
+  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:13},
+  settingRow:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
   settingTextWrap:{flex:1,paddingRight:12},
   settingTitle:{color:"white",fontWeight:"900",fontSize:16},
-  settingText:{color:"#9999a2",fontSize:12,lineHeight:18,marginTop:4},
-  linkCard:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
+  settingText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
+  linkCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
   linkTextWrap:{flex:1,paddingRight:12},
   linkTitle:{color:"white",fontWeight:"900",fontSize:16},
-  linkText:{color:"#9999a2",fontSize:12,lineHeight:18,marginTop:4},
-  chevron:{color:"#85858e",fontSize:26,fontWeight:"900"},
-  settingBlock:{paddingVertical:14,borderBottomWidth:1,borderBottomColor:"#2c2c33"},
+  linkText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
+  chevron:{color:INK.inkSoft,fontSize:26,fontWeight:"900"},
+  settingBlock:{paddingVertical:14,borderBottomWidth:1,borderBottomColor:INK.hair},
   choiceRow:{flexDirection:"row",gap:8,marginTop:11,marginBottom:9},
-  choice:{flex:1,backgroundColor:"#25252a",borderColor:"#44444c",borderWidth:1,borderRadius:11,paddingVertical:11,alignItems:"center"},
-  choiceActive:{backgroundColor:"#2d2152",borderColor:"#644be0"},
-  choiceTitle:{color:"#aaaab3",fontWeight:"800",fontSize:12},
+  choice:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:11,paddingVertical:11,alignItems:"center"},
+  choiceActive:{backgroundColor:INK.blue,borderColor:INK.blue},
+  choiceTitle:{color:INK.inkSoft,fontWeight:"800",fontSize:12},
   choiceTitleActive:{color:"white"},
-  confirmCard:{backgroundColor:"#1e1e22",borderColor:"#3a3a42",borderWidth:1,borderRadius:14,padding:16,marginBottom:11},
-  confirmTitle:{color:"#f4f4f8",fontSize:17,fontWeight:"900",marginBottom:8},
-  confirmText:{color:"#b9b9c4",fontSize:13,lineHeight:19,marginBottom:8},
-  confirmWarning:{color:"#f0c36d",fontSize:13,lineHeight:19,marginBottom:10,fontWeight:"700"},
+  confirmCard:{backgroundColor:INK.paper,borderColor:INK.hair,borderWidth:1,borderRadius:14,padding:16,marginBottom:11},
+  confirmTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginBottom:8},
+  confirmText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginBottom:8},
+  confirmWarning:{color:INK.yellow,fontSize:13,lineHeight:19,marginBottom:10,fontWeight:"700"},
   confirmRow:{flexDirection:"row",gap:10,marginTop:4},
-  confirmYes:{flex:1,backgroundColor:"#3212b6",borderRadius:12,paddingVertical:13,alignItems:"center"},
+  confirmYes:{flex:1,backgroundColor:INK.blue,borderRadius:12,paddingVertical:13,alignItems:"center"},
   confirmYesText:{color:"white",fontWeight:"900",fontSize:14},
-  confirmNo:{flex:1,backgroundColor:"#2b2b31",borderColor:"#4a4a55",borderWidth:1,borderRadius:12,paddingVertical:13,alignItems:"center"},
-  confirmNoText:{color:"#d5d5dc",fontWeight:"800",fontSize:14},
-  choiceCard:{backgroundColor:"#26262c",borderColor:"#43434e",borderWidth:1,borderRadius:12,padding:14,marginBottom:10},
-  choiceDanger:{borderColor:"#7a2a24"},
-  choiceTitle:{color:"#f4f4f8",fontSize:15,fontWeight:"900",marginBottom:5},
-  choiceText:{color:"#b9b9c4",fontSize:13,lineHeight:19},
+  confirmNo:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,paddingVertical:13,alignItems:"center"},
+  confirmNoText:{color:INK.ink,fontWeight:"800",fontSize:14},
+  choiceCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,marginBottom:10},
+  choiceDanger:{borderColor:INK.red},
+  choiceTitle:{color:INK.ink,fontSize:15,fontWeight:"900",marginBottom:5},
+  choiceText:{color:INK.inkSoft,fontSize:13,lineHeight:19},
   // Named for what it is rather than "danger": there is already a dangerButton
   // further down this same StyleSheet, and a duplicate key in an object literal
   // silently keeps the LAST one -- so this button would have quietly worn the
   // wrong style.
-  stopManagingButton:{backgroundColor:"#3a1c18",borderColor:"#7a2a24",borderWidth:1,borderRadius:12,paddingVertical:14,alignItems:"center",marginBottom:11},
-  stopManagingText:{color:"#f0a79c",fontWeight:"900",fontSize:14},
-  capabilityCard:{backgroundColor:"#1e1e22",borderColor:"#3a3a42",borderWidth:1,borderRadius:14,padding:6,marginBottom:11},
+  stopManagingButton:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,paddingVertical:14,alignItems:"center",marginBottom:11},
+  stopManagingText:{color:INK.pink,fontWeight:"900",fontSize:14},
+  capabilityCard:{backgroundColor:INK.paper,borderColor:INK.hair,borderWidth:1,borderRadius:14,padding:6,marginBottom:11},
   capabilityRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingHorizontal:10,paddingVertical:9},
-  capabilityLabel:{color:"#d5d5dc",fontSize:14,fontWeight:"700"},
+  capabilityLabel:{color:INK.ink,fontSize:14,fontWeight:"700"},
   capabilityPill:{fontSize:11,fontWeight:"900",overflow:"hidden",borderRadius:8,paddingHorizontal:9,paddingVertical:4,textTransform:"uppercase"},
-  pillOn:{backgroundColor:"#123f2c",color:"#7fe0ab"},
-  pillOff:{backgroundColor:"#33333a",color:"#9999a2"},
-  primaryButton:{backgroundColor:"#3212b6",padding:16,borderRadius:13,alignItems:"center",marginTop:8},
+  pillOn:{backgroundColor:INK.green,color:INK.green},
+  pillOff:{backgroundColor:INK.card,color:INK.inkSoft},
+  primaryButton:{backgroundColor:INK.blue,padding:16,borderRadius:13,alignItems:"center",marginTop:8},
   primaryText:{color:"white",fontWeight:"900",fontSize:16},
-  secondaryButton:{borderColor:"#66529e",borderWidth:1,borderRadius:13,padding:16,alignItems:"center"},
-  secondaryText:{color:"#d7cdf5",fontWeight:"900",fontSize:16},
-  dangerButton:{backgroundColor:"#b42318",padding:16,borderRadius:13,alignItems:"center"},
+  secondaryButton:{borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:16,alignItems:"center"},
+  secondaryText:{color:INK.ink,fontWeight:"900",fontSize:16},
+  dangerButton:{backgroundColor:INK.red,padding:16,borderRadius:13,alignItems:"center"},
   disabled:{opacity:0.55}
 });

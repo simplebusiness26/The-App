@@ -14,6 +14,7 @@ import {supabase} from "../../../services/supabase";
 import LocationPicker from "../../../components/LocationPicker";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
+import {INK} from "../../../utils/tokens";
 
 export default function EditActivityClub(){
   const {id}=useLocalSearchParams();
@@ -176,5 +177,5 @@ export default function EditActivityClub(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},content:{padding:20,paddingBottom:50},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},error:{fontSize:17,textAlign:"center"},title:{fontSize:30,fontWeight:"bold"},subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},label:{fontWeight:"bold",fontSize:16,marginBottom:10},statusRow:{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:20},statusButton:{paddingHorizontal:14,paddingVertical:10,borderRadius:20,borderWidth:1,borderColor:"#aaa",backgroundColor:"white"},selectedStatus:{backgroundColor:"#5633a8",borderColor:"#5633a8"},statusText:{textTransform:"capitalize",fontWeight:"600"},selectedStatusText:{color:"white"},button:{backgroundColor:"#5633a8",padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:"white",fontWeight:"bold"}
+  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},error:{fontSize:17,textAlign:"center"},title:{fontSize:30,fontWeight:"bold"},subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:"white",borderWidth:1,borderColor:"#ccc",borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},label:{fontWeight:"bold",fontSize:16,marginBottom:10},statusRow:{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:20},statusButton:{paddingHorizontal:14,paddingVertical:10,borderRadius:20,borderWidth:1,borderColor:"#aaa",backgroundColor:"white"},selectedStatus:{backgroundColor:INK.blue,borderColor:INK.blue},statusText:{textTransform:"capitalize",fontWeight:"600"},selectedStatusText:{color:"white"},button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:"white",fontWeight:"bold"}
 });

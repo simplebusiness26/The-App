@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {INK} from "../../utils/tokens";
 
 function formatPrice(value){
   const amount=Number(value || 0);
@@ -138,7 +139,7 @@ export default function ActivityClubs(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f6f8"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   title:{fontSize:32,fontWeight:"bold"},
   subtitle:{fontSize:16,color:"#555",lineHeight:23,marginTop:8,marginBottom:18},
@@ -147,14 +148,14 @@ const styles=StyleSheet.create({
   notice:{backgroundColor:"white",padding:20,borderRadius:14,borderWidth:1,borderColor:"#ddd"},
   noticeTitle:{fontSize:18,fontWeight:"bold",marginBottom:7},
   noticeText:{color:"#555",lineHeight:21},
-  card:{backgroundColor:"white",padding:18,borderRadius:16,borderWidth:1,borderColor:"#e1e1e1",marginBottom:16},
+  card:{backgroundColor:"white",padding:18,borderRadius:16,borderWidth:1,borderColor:INK.ink,marginBottom:16},
   badgeRow:{flexDirection:"row",justifyContent:"space-between"},
-  category:{backgroundColor:"#eae4ff",color:"#5633a8",paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
-  status:{backgroundColor:"#dff5e7",paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
+  category:{backgroundColor:INK.card,color:INK.blue,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
+  status:{backgroundColor:INK.card,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
   clubName:{fontSize:23,fontWeight:"bold",marginTop:14},
   location:{color:"#555",marginTop:6},
   description:{color:"#444",lineHeight:21,marginTop:12},
   statsRow:{flexDirection:"row",justifyContent:"space-between",marginTop:16},
   stat:{fontWeight:"600",color:"#333",fontSize:13},
-  viewText:{fontWeight:"bold",color:"#275bd6",marginTop:16}
+  viewText:{fontWeight:"bold",color:INK.blue,marginTop:16}
 });

@@ -10,6 +10,7 @@ import {
 import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {sendRecoveryEmail} from "../../utils/passwordRecovery";
+import {INK} from "../../utils/tokens";
 
 export default function ForgotPassword(){
   const [email,setEmail]=useState("");
@@ -103,12 +104,12 @@ const styles=StyleSheet.create({
   title:{fontSize:32,fontWeight:"bold",marginBottom:12},
   message:{fontSize:16,lineHeight:23,color:"#666",marginBottom:22},
   input:{borderWidth:1,borderColor:"#aaa",borderRadius:10,padding:15,marginBottom:15},
-  button:{backgroundColor:"#1729bd",padding:16,borderRadius:10,alignItems:"center"},
+  button:{backgroundColor:INK.blue,padding:16,borderRadius:10,alignItems:"center"},
   disabledButton:{opacity:0.55},
   buttonText:{color:"white",fontWeight:"bold"},
   linkButton:{marginTop:20,alignItems:"center",padding:8},
-  linkText:{fontWeight:"bold",color:"#275bd6"},
-  error:{color:"#c62828",marginBottom:15,lineHeight:20},
-  successCard:{borderWidth:1,borderColor:"#91c9a1",backgroundColor:"#e8f7ed",borderRadius:14,padding:20,marginBottom:18},
+  linkText:{fontWeight:"bold",color:INK.blue},
+  error:{color:INK.red,marginBottom:15,lineHeight:20},
+  successCard:{borderWidth:1,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
   successIcon:{fontSize:34,marginBottom:10}
 });

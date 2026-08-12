@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import {supabase} from "../../services/supabase";
 import {router,useLocalSearchParams} from "expo-router";
+import {INK} from "../../utils/tokens";
 
 const TEST_PASSWORD="password123";
 const TEST_SETUP_TOKEN="P0h11qYVK3Ev_wuTUfQxfLjXxj6rtK4vZf4Evq99xaE";
@@ -146,7 +147,7 @@ export default function Login(){
       <TextInput
         style={styles.input}
         placeholder="Email or test alias"
-        placeholderTextColor="#f1f1f3"
+        placeholderTextColor={INK.ink}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
@@ -157,7 +158,7 @@ export default function Login(){
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#f1f1f3"
+        placeholderTextColor={INK.ink}
         secureTextEntry
         autoCapitalize="none"
         value={password}
@@ -182,27 +183,27 @@ export default function Login(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#1b1b1d"},
+  screen:{flex:1,backgroundColor:INK.paper},
   container:{flexGrow:1,paddingHorizontal:30,paddingTop:56,paddingBottom:52},
   title:{color:"white",fontSize:46,lineHeight:54,fontWeight:"bold",marginBottom:46},
-  returnNotice:{backgroundColor:"#183021",borderColor:"#356644",borderWidth:1,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
-  returnTitle:{color:"#a8e7b9",fontWeight:"900",fontSize:15},
-  returnText:{color:"#c6d9cb",fontSize:12,lineHeight:18,marginTop:3},
-  quickPanel:{backgroundColor:"#1d1f2b",borderWidth:1,borderColor:"#4d5686",borderRadius:18,padding:18,marginBottom:44},
-  quickTitle:{fontSize:25,lineHeight:32,fontWeight:"bold",color:"#c8d3ff"},
-  quickHelp:{color:"#c7c7d0",fontSize:17,lineHeight:25,marginTop:7},
+  returnNotice:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
+  returnTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
+  returnText:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:3},
+  quickPanel:{backgroundColor:INK.blue,borderWidth:1,borderColor:INK.blue,borderRadius:18,padding:18,marginBottom:44},
+  quickTitle:{fontSize:25,lineHeight:32,fontWeight:"bold",color:INK.ink},
+  quickHelp:{color:INK.ink,fontSize:17,lineHeight:25,marginTop:7},
   quickRow:{flexDirection:"row",gap:14,marginTop:20},
-  quickButton:{flex:1,minHeight:116,backgroundColor:"#1300b9",borderRadius:16,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
+  quickButton:{flex:1,minHeight:116,backgroundColor:INK.blue,borderRadius:16,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
   quickCode:{color:"white",fontSize:34,fontWeight:"bold"},
   quickLabel:{color:"white",fontSize:16,marginTop:8,textAlign:"center"},
-  aliasHelp:{color:"#c7c7d0",fontSize:15,lineHeight:23,marginTop:18},
-  input:{color:"white",backgroundColor:"#1b1b1d",borderWidth:1,borderColor:"#555559",borderRadius:16,paddingHorizontal:22,paddingVertical:20,minHeight:78,fontSize:19,marginBottom:28},
+  aliasHelp:{color:INK.ink,fontSize:15,lineHeight:23,marginTop:18},
+  input:{color:INK.ink,backgroundColor:INK.paper,borderWidth:1,borderColor:INK.ink,borderRadius:16,paddingHorizontal:22,paddingVertical:20,minHeight:78,fontSize:19,marginBottom:28},
   forgotPassword:{alignSelf:"flex-end",paddingVertical:2,marginTop:-4,marginBottom:34},
-  forgotPasswordText:{color:"#8bb8ff",fontSize:19,fontWeight:"bold"},
-  button:{backgroundColor:"#050505",minHeight:78,paddingHorizontal:20,paddingVertical:20,borderRadius:16,alignItems:"center",justifyContent:"center"},
+  forgotPasswordText:{color:INK.blue,fontSize:19,fontWeight:"bold"},
+  button:{backgroundColor:INK.paper,minHeight:78,paddingHorizontal:20,paddingVertical:20,borderRadius:16,alignItems:"center",justifyContent:"center"},
   disabledButton:{opacity:0.55},
   buttonText:{color:"white",textAlign:"center",fontWeight:"bold",fontSize:20},
-  error:{color:"#ff8b94",fontSize:16,marginBottom:20,lineHeight:23},
+  error:{color:INK.pink,fontSize:16,marginBottom:20,lineHeight:23},
   signup:{marginTop:28,alignItems:"center",padding:8},
   signupText:{color:"white",fontSize:17}
 });

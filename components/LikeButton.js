@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
+import {INK} from "../utils/tokens";
 
 export default function LikeButton({targetType,targetId,initialCount=0,initialLiked=false,onChanged}){
   const {showFeedback}=useFeedback();
@@ -77,17 +78,17 @@ export default function LikeButton({targetType,targetId,initialCount=0,initialLi
       disabled={working}
       onPress={toggle}
     >
-      {working ? <ActivityIndicator size="small" color={liked?"#ff8ca1":"#d4d4dc"}/> : <Text style={[styles.icon,liked && styles.likedIcon]}>{liked ? "♥" : "♡"}</Text>}
+      {working ? <ActivityIndicator size="small" color={liked?INK.pink:INK.inkSoft}/> : <Text style={[styles.icon,liked && styles.likedIcon]}>{liked ? "♥" : "♡"}</Text>}
       <Text style={[styles.text,liked && styles.likedText]}>{count}</Text>
     </Pressable>
   );
 }
 
 const styles=StyleSheet.create({
-  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:"#29292e",borderWidth:1,borderColor:"#45454c"},
-  likedButton:{backgroundColor:"#401d28",borderColor:"#773348"},
-  icon:{color:"#d4d4dc",fontSize:20,lineHeight:20},
-  likedIcon:{color:"#ff809a"},
-  text:{color:"#d4d4dc",fontSize:12,fontWeight:"900"},
-  likedText:{color:"#ff9eb0"}
+  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
+  likedButton:{backgroundColor:INK.red,borderColor:INK.red},
+  icon:{color:INK.ink,fontSize:20,lineHeight:20},
+  likedIcon:{color:INK.pink},
+  text:{color:INK.ink,fontSize:12,fontWeight:"900"},
+  likedText:{color:INK.pink}
 });

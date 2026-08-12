@@ -5,6 +5,7 @@ import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import LikeButton from "../../components/LikeButton";
 import CommentThread from "../../components/CommentThread";
+import {INK} from "../../utils/tokens";
 
 const REPORT_REASONS=[
   {key:"spam",label:"Spam"},
@@ -149,7 +150,7 @@ export default function MomentDetail(){
     setShowReport(false);
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color="#bca8ff"/></View>;
+  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   if(error || !moment) return <View style={styles.center}><Text style={styles.errorTitle}>Moment unavailable</Text><Text style={styles.errorText}>{error}</Text></View>;
 
   const isOwner=!!user && user.id===moment.user_id;
@@ -250,52 +251,52 @@ export default function MomentDetail(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center",padding:28},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
   errorTitle:{color:"white",fontSize:22,fontWeight:"900"},
-  errorText:{color:"#aaaab3",textAlign:"center",marginTop:7},
+  errorText:{color:INK.inkSoft,textAlign:"center",marginTop:7},
   profileRow:{flexDirection:"row",alignItems:"center",marginBottom:13},
-  avatar:{width:48,height:48,borderRadius:24,backgroundColor:"#303036"},
-  avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  avatar:{width:48,height:48,borderRadius:24,backgroundColor:INK.card},
+  avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   avatarLetter:{color:"white",fontWeight:"900",fontSize:19},
   profileText:{marginLeft:11},
   name:{color:"white",fontSize:16,fontWeight:"900"},
-  date:{color:"#878790",fontSize:11,marginTop:3},
-  audienceBadge:{color:"#d9ceff",backgroundColor:"#29233d",borderColor:"#554777",borderWidth:1,borderRadius:99,overflow:"hidden",paddingHorizontal:9,paddingVertical:4,fontSize:9,fontWeight:"900",letterSpacing:1},
-  card:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:17,padding:12},
-  media:{width:"100%",height:420,borderRadius:13,backgroundColor:"#303036"},
-  videoWrap:{height:420,borderRadius:13,overflow:"hidden",backgroundColor:"#0c0c0e",alignItems:"center",justifyContent:"center"},
-  videoFallback:{position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:"#111114"},
+  date:{color:INK.inkSoft,fontSize:11,marginTop:3},
+  audienceBadge:{color:INK.card,backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:99,overflow:"hidden",paddingHorizontal:9,paddingVertical:4,fontSize:9,fontWeight:"900",letterSpacing:1},
+  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:12},
+  media:{width:"100%",height:420,borderRadius:13,backgroundColor:INK.card},
+  videoWrap:{height:420,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  videoFallback:{position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:INK.paper},
   playCircle:{position:"absolute",width:62,height:62,borderRadius:31,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
   playIcon:{color:"white",fontSize:25,marginLeft:4},
   duration:{position:"absolute",right:9,bottom:9,color:"white",backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
-  caption:{color:"#dedee6",fontSize:16,lineHeight:23,paddingHorizontal:4,marginTop:14},
-  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:"#29233b",borderColor:"#514474",borderWidth:1,borderRadius:13,padding:10,marginTop:14},
-  placeImage:{width:50,height:50,borderRadius:10,backgroundColor:"#303036"},
-  placeFallback:{width:50,height:50,borderRadius:10,backgroundColor:"#303036",alignItems:"center",justifyContent:"center"},
+  caption:{color:INK.ink,fontSize:16,lineHeight:23,paddingHorizontal:4,marginTop:14},
+  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:10,marginTop:14},
+  placeImage:{width:50,height:50,borderRadius:10,backgroundColor:INK.card},
+  placeFallback:{width:50,height:50,borderRadius:10,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
   placeText:{flex:1,marginLeft:10},
-  placeEyebrow:{color:"#9f8fce",fontSize:9,fontWeight:"900",letterSpacing:0.7},
+  placeEyebrow:{color:INK.blue,fontSize:9,fontWeight:"900",letterSpacing:0.7},
   placeName:{color:"white",fontWeight:"900",marginTop:3},
-  placeArrow:{color:"#bca8ff",fontSize:27},
+  placeArrow:{color:INK.blue,fontSize:27},
   actions:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14},
   secondaryButton:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:9},
-  secondaryText:{color:"#aaa2b9",fontWeight:"900",fontSize:12},
+  secondaryText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
   deleteButton:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:9},
-  deleteText:{color:"#ff8d9d",fontWeight:"900",fontSize:12},
-  panel:{backgroundColor:"#29292e",borderRadius:13,padding:13,marginTop:13},
-  deletePanel:{backgroundColor:"#3d2025",borderColor:"#79343e",borderWidth:1,borderRadius:13,padding:13,marginTop:13},
+  deleteText:{color:INK.pink,fontWeight:"900",fontSize:12},
+  panel:{backgroundColor:INK.card,borderRadius:13,padding:13,marginTop:13},
+  deletePanel:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:13,padding:13,marginTop:13},
   panelTitle:{color:"white",fontSize:14,fontWeight:"900"},
-  panelBody:{color:"#c7b7ba",fontSize:12,lineHeight:18,marginTop:6},
+  panelBody:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:6},
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10},
-  reasonButton:{borderColor:"#4b4b53",borderWidth:1,borderRadius:18,paddingHorizontal:10,paddingVertical:7},
-  reasonActive:{backgroundColor:"#3212b6",borderColor:"#6346e8"},
-  reasonText:{color:"#aaaab3",fontSize:10,fontWeight:"800"},
+  reasonButton:{borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:10,paddingVertical:7},
+  reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
+  reasonText:{color:INK.inkSoft,fontSize:10,fontWeight:"800"},
   reasonActiveText:{color:"white"},
   panelActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:13},
   cancelButton:{paddingHorizontal:12,paddingVertical:10},
-  cancelText:{color:"#aaaab3",fontWeight:"900",fontSize:12},
-  reportButton:{minWidth:120,backgroundColor:"#8f171d",borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
-  confirmDeleteButton:{minWidth:135,backgroundColor:"#b11924",borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
+  cancelText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
+  reportButton:{minWidth:120,backgroundColor:INK.red,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
+  confirmDeleteButton:{minWidth:135,backgroundColor:INK.red,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
   reportText:{color:"white",fontWeight:"900",fontSize:12}
 });

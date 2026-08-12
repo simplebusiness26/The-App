@@ -1,5 +1,6 @@
 import React from "react";
 import {Platform,StyleSheet,TextInput,View} from "react-native";
+import {INK} from "../utils/tokens";
 
 export default function DateTimeField({value,onChange,min}){
   if(Platform.OS==="web"){
@@ -11,10 +12,10 @@ export default function DateTimeField({value,onChange,min}){
       style:{
         width:"100%",
         boxSizing:"border-box",
-        backgroundColor:"#242429",
-        border:"1px solid #44444c",
+        backgroundColor:INK.card,
+        border:`1px solid ${INK.ink}`,
         borderRadius:12,
-        color:"white",
+        color:INK.ink,
         fontSize:16,
         padding:"13px 14px",
         colorScheme:"dark",
@@ -29,7 +30,7 @@ export default function DateTimeField({value,onChange,min}){
         value={value}
         onChangeText={onChange}
         placeholder="YYYY-MM-DDTHH:MM"
-        placeholderTextColor="#74747d"
+        placeholderTextColor={INK.inkSoft}
         autoCapitalize="none"
         style={styles.input}
       />
@@ -39,11 +40,11 @@ export default function DateTimeField({value,onChange,min}){
 
 const styles=StyleSheet.create({
   input:{
-    backgroundColor:"#242429",
-    borderColor:"#44444c",
+    backgroundColor:INK.card,
+    borderColor:INK.ink,
     borderWidth:1,
     borderRadius:12,
-    color:"white",
+    color:INK.ink,
     fontSize:16,
     paddingHorizontal:14,
     paddingVertical:13

@@ -3,6 +3,7 @@ import {View,Text,TextInput,Pressable,StyleSheet,ActivityIndicator} from "react-
 import {useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
+import {INK} from "../../utils/tokens";
 
 export default function ReviewAction(){
   const {id}=useLocalSearchParams();
@@ -168,7 +169,7 @@ export default function ReviewAction(){
 const styles=StyleSheet.create({
   container:{padding:20},
   centre:{flex:1,justifyContent:"center",alignItems:"center",padding:40},
-  errorText:{fontSize:16,textAlign:"center",color:"#b42318"},
+  errorText:{fontSize:16,textAlign:"center",color:INK.red},
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
   input:{borderWidth:1,padding:15,borderRadius:10,marginBottom:15},
   button:{backgroundColor:"#222",padding:15,borderRadius:10,marginTop:10},

@@ -13,6 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
 import {useFeedback} from "../../context/FeedbackContext";
+import {INK} from "../../utils/tokens";
 
 export default function EditProfile(){
   const {showFeedback}=useFeedback();
@@ -129,7 +130,7 @@ export default function EditProfile(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color="#a58cff"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
   }
 
   return(
@@ -147,13 +148,13 @@ export default function EditProfile(){
       </View>
 
       <Text style={styles.label}>Name</Text>
-      <TextInput style={styles.input} placeholder="Name" placeholderTextColor="#888891" value={name} onChangeText={setName} maxLength={80} editable={!saving}/>
+      <TextInput style={styles.input} placeholder="Name" placeholderTextColor={INK.inkSoft} value={name} onChangeText={setName} maxLength={80} editable={!saving}/>
 
       <Text style={styles.label}>Phone</Text>
-      <TextInput style={styles.input} placeholder="Phone number" placeholderTextColor="#888891" keyboardType="phone-pad" value={phone} onChangeText={setPhone} editable={!saving}/>
+      <TextInput style={styles.input} placeholder="Phone number" placeholderTextColor={INK.inkSoft} keyboardType="phone-pad" value={phone} onChangeText={setPhone} editable={!saving}/>
 
       <Text style={styles.label}>Bio</Text>
-      <TextInput style={styles.textarea} placeholder="A short bio about you" placeholderTextColor="#888891" value={bio} onChangeText={setBio} multiline maxLength={300} editable={!saving}/>
+      <TextInput style={styles.textarea} placeholder="A short bio about you" placeholderTextColor={INK.inkSoft} value={bio} onChangeText={setBio} multiline maxLength={300} editable={!saving}/>
       <Text style={styles.characterCount}>{bio.length}/300</Text>
 
       <Pressable style={styles.settingRow} onPress={()=>router.push("/settings")}>
@@ -172,31 +173,31 @@ export default function EditProfile(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:"#18181b"},
+  screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:22,paddingBottom:60},
-  center:{flex:1,backgroundColor:"#18181b",alignItems:"center",justifyContent:"center"},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
   title:{color:"white",fontSize:31,fontWeight:"900"},
-  subtitle:{color:"#aaaab3",fontSize:15,lineHeight:22,marginTop:6,marginBottom:18},
-  errorBox:{backgroundColor:"#3d171b",borderColor:"#83363d",borderWidth:1,borderRadius:12,padding:13,marginBottom:15},
-  errorText:{color:"#ffb5bc",fontWeight:"700",lineHeight:20},
+  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6,marginBottom:18},
+  errorBox:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:13,marginBottom:15},
+  errorText:{color:INK.ink,fontWeight:"700",lineHeight:20},
   photoSection:{alignItems:"center",marginBottom:22},
-  image:{width:120,height:120,borderRadius:60,backgroundColor:"#303036"},
-  imageFallback:{width:120,height:120,borderRadius:60,backgroundColor:"#3212b6",alignItems:"center",justifyContent:"center"},
+  image:{width:120,height:120,borderRadius:60,backgroundColor:INK.card},
+  imageFallback:{width:120,height:120,borderRadius:60,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
   imageLetter:{color:"white",fontSize:44,fontWeight:"900"},
-  photoButton:{borderColor:"#66529e",borderWidth:1,borderRadius:11,paddingHorizontal:18,paddingVertical:10,marginTop:12},
-  photoButtonText:{color:"#d7cdf5",fontWeight:"900"},
+  photoButton:{borderColor:INK.blue,borderWidth:1,borderRadius:11,paddingHorizontal:18,paddingVertical:10,marginTop:12},
+  photoButtonText:{color:INK.ink,fontWeight:"900"},
   label:{color:"white",fontWeight:"900",fontSize:14,marginBottom:7},
-  input:{backgroundColor:"#222226",borderColor:"#44444b",borderWidth:1,borderRadius:12,padding:14,color:"white",fontSize:16,marginBottom:15},
-  textarea:{backgroundColor:"#222226",borderColor:"#44444b",borderWidth:1,borderRadius:12,padding:14,color:"white",fontSize:16,minHeight:105,textAlignVertical:"top"},
-  characterCount:{color:"#85858e",fontSize:11,textAlign:"right",marginTop:5},
+  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:15},
+  textarea:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,minHeight:105,textAlignVertical:"top"},
+  characterCount:{color:INK.inkSoft,fontSize:11,textAlign:"right",marginTop:5},
   sectionTitle:{color:"white",fontSize:21,fontWeight:"900",marginTop:25},
-  helpText:{color:"#9999a2",lineHeight:20,marginTop:5,marginBottom:12},
-  settingRow:{backgroundColor:"#222226",borderColor:"#414147",borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
+  helpText:{color:INK.inkSoft,lineHeight:20,marginTop:5,marginBottom:12},
+  settingRow:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
   settingTextWrap:{flex:1,paddingRight:12},
   settingTitle:{color:"white",fontWeight:"900",fontSize:16},
-  settingText:{color:"#9999a2",fontSize:12,lineHeight:18,marginTop:4},
-  chevron:{color:"#85858e",fontSize:26,fontWeight:"900"},
-  saveButton:{backgroundColor:"#3212b6",padding:17,borderRadius:13,alignItems:"center",marginTop:24},
+  settingText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
+  chevron:{color:INK.inkSoft,fontSize:26,fontWeight:"900"},
+  saveButton:{backgroundColor:INK.blue,padding:17,borderRadius:13,alignItems:"center",marginTop:24},
   saveText:{color:"white",fontWeight:"900",fontSize:16,marginLeft:9},
   savingRow:{flexDirection:"row",alignItems:"center"},
   disabled:{opacity:0.55}

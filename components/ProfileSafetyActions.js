@@ -2,6 +2,7 @@ import React,{useEffect,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
+import {INK} from "../utils/tokens";
 
 const REASONS=["spam","harassment","unsafe","inappropriate","false_information","other"];
 
@@ -56,4 +57,4 @@ export default function ProfileSafetyActions({profileId}){
   );
 }
 
-const styles=StyleSheet.create({wrap:{paddingHorizontal:18,paddingTop:8},menuButton:{alignSelf:"flex-end",paddingHorizontal:12,paddingVertical:8},menuText:{color:"#b9a9e8",fontWeight:"900",fontSize:11},panel:{backgroundColor:"#242429",borderColor:"#44444c",borderWidth:1,borderRadius:13,padding:12,marginBottom:8},blockButton:{backgroundColor:"#5b2730",borderRadius:10,padding:11,alignItems:"center"},blockText:{color:"#ffd0d6",fontWeight:"900"},label:{color:"white",fontWeight:"900",fontSize:12,marginTop:13,marginBottom:8},reasons:{flexDirection:"row",flexWrap:"wrap",gap:6},reason:{borderColor:"#505058",borderWidth:1,borderRadius:17,paddingHorizontal:9,paddingVertical:6},reasonActive:{backgroundColor:"#3212b6",borderColor:"#654ce2"},reasonText:{color:"#aaaab3",fontSize:9,fontWeight:"800",textTransform:"capitalize"},reasonTextActive:{color:"white"},reportButton:{backgroundColor:"#8f171f",borderRadius:10,padding:11,alignItems:"center",marginTop:11},reportText:{color:"white",fontWeight:"900"}});
+const styles=StyleSheet.create({wrap:{paddingHorizontal:18,paddingTop:8},menuButton:{alignSelf:"flex-end",paddingHorizontal:12,paddingVertical:8},menuText:{color:INK.inkSoft,fontWeight:"900",fontSize:11},panel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:13,padding:12,marginBottom:8},blockButton:{backgroundColor:INK.red,borderRadius:10,padding:11,alignItems:"center"},blockText:{color:INK.ink,fontWeight:"900"},label:{color:"white",fontWeight:"900",fontSize:12,marginTop:13,marginBottom:8},reasons:{flexDirection:"row",flexWrap:"wrap",gap:6},reason:{borderColor:INK.ink,borderWidth:1,borderRadius:17,paddingHorizontal:9,paddingVertical:6},reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},reasonText:{color:INK.inkSoft,fontSize:9,fontWeight:"800",textTransform:"capitalize"},reasonTextActive:{color:"white"},reportButton:{backgroundColor:INK.red,borderRadius:10,padding:11,alignItems:"center",marginTop:11},reportText:{color:"white",fontWeight:"900"}});

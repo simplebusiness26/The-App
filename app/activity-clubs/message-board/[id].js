@@ -12,8 +12,15 @@ import {
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
 import {useFeedback} from "../../../context/FeedbackContext";
+import {INK} from "../../../utils/tokens";
 
-const MESSAGE_COLOURS=["#e7f0ff","#f1e8ff","#e4f6ea","#fff0dc","#ffe7ef","#e5f7f5","#f3f0df"];
+// Seven pastels, one per poster, so a thread is readable at a glance. They
+// were seven colours outside the token table -- a private palette that existed
+// only here, which is exactly what "never introduce a colour outside this list"
+// forbids. The same job is done by alternating the two surfaces the table
+// already has, and who said what is carried by the name above each message
+// rather than by a colour nobody has a key to.
+const MESSAGE_COLOURS=[INK.card,INK.paper];
 
 function colourForUser(userId){
   const value=String(userId || "member");
@@ -206,5 +213,5 @@ export default function ActivityClubMessageBoard(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f6f8"},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},header:{padding:20,backgroundColor:"white",borderBottomWidth:1,borderColor:"#ddd"},title:{fontSize:24,fontWeight:"bold"},subtitle:{color:"#666",marginTop:5},messageList:{flex:1},messageContent:{padding:16,paddingBottom:30},emptyBox:{backgroundColor:"white",padding:16,borderRadius:12,borderWidth:1,borderColor:"#ddd"},messageCard:{padding:14,borderRadius:16,borderWidth:1,borderColor:"rgba(0,0,0,0.08)",marginBottom:12,maxWidth:"88%"},ownMessage:{alignSelf:"flex-end"},otherMessage:{alignSelf:"flex-start"},authorRow:{flexDirection:"row",alignItems:"center"},avatar:{width:36,height:36,borderRadius:18,backgroundColor:"#ddd"},avatarFallback:{width:36,height:36,borderRadius:18,backgroundColor:"#343a55",alignItems:"center",justifyContent:"center"},avatarInitial:{color:"white",fontWeight:"bold"},authorTextWrap:{marginLeft:9,flex:1},author:{fontWeight:"bold",fontSize:15},body:{fontSize:16,lineHeight:22,marginTop:10},time:{fontSize:10,color:"#666",marginTop:2},composer:{padding:12,backgroundColor:"white",borderTopWidth:1,borderColor:"#ddd"},input:{borderWidth:1,borderColor:"#ccc",borderRadius:12,padding:12,minHeight:54,maxHeight:120},sendButton:{backgroundColor:"#5633a8",padding:14,borderRadius:10,marginTop:8},buttonText:{color:"white",fontWeight:"bold",textAlign:"center"},lock:{fontSize:42},errorTitle:{fontSize:24,fontWeight:"bold",marginTop:12},errorText:{textAlign:"center",color:"#555",lineHeight:22,marginTop:8},backButton:{backgroundColor:"#222",padding:14,borderRadius:10,marginTop:18,width:"100%"}
+  container:{flex:1,backgroundColor:INK.card},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},header:{padding:20,backgroundColor:"white",borderBottomWidth:1,borderColor:"#ddd"},title:{fontSize:24,fontWeight:"bold"},subtitle:{color:"#666",marginTop:5},messageList:{flex:1},messageContent:{padding:16,paddingBottom:30},emptyBox:{backgroundColor:"white",padding:16,borderRadius:12,borderWidth:1,borderColor:"#ddd"},messageCard:{padding:14,borderRadius:16,borderWidth:1,borderColor:"rgba(0,0,0,0.08)",marginBottom:12,maxWidth:"88%"},ownMessage:{alignSelf:"flex-end"},otherMessage:{alignSelf:"flex-start"},authorRow:{flexDirection:"row",alignItems:"center"},avatar:{width:36,height:36,borderRadius:18,backgroundColor:"#ddd"},avatarFallback:{width:36,height:36,borderRadius:18,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},avatarInitial:{color:"white",fontWeight:"bold"},authorTextWrap:{marginLeft:9,flex:1},author:{fontWeight:"bold",fontSize:15},body:{fontSize:16,lineHeight:22,marginTop:10},time:{fontSize:10,color:"#666",marginTop:2},composer:{padding:12,backgroundColor:"white",borderTopWidth:1,borderColor:"#ddd"},input:{borderWidth:1,borderColor:"#ccc",borderRadius:12,padding:12,minHeight:54,maxHeight:120},sendButton:{backgroundColor:INK.blue,padding:14,borderRadius:10,marginTop:8},buttonText:{color:"white",fontWeight:"bold",textAlign:"center"},lock:{fontSize:42},errorTitle:{fontSize:24,fontWeight:"bold",marginTop:12},errorText:{textAlign:"center",color:"#555",lineHeight:22,marginTop:8},backButton:{backgroundColor:"#222",padding:14,borderRadius:10,marginTop:18,width:"100%"}
 });

@@ -2,6 +2,7 @@ import React from "react";
 import {View,Text,Pressable,StyleSheet} from "react-native";
 import {CATEGORIES,typesForCategory,UNCLASSIFIED} from "../utils/taxonomy";
 import MarkerPreview from "./MarkerPreview";
+import {INK} from "../utils/tokens";
 
 // The only classification control in the app. It reads utils/taxonomy.js and
 // nothing else, so the forms cannot drift from the database catalogue -- the
@@ -79,8 +80,8 @@ const styles=StyleSheet.create({
   label:{fontWeight:"900",fontSize:14,marginBottom:7,marginTop:6},
   help:{color:"#777",fontSize:12,lineHeight:17,marginBottom:8},
   chips:{flexDirection:"row",flexWrap:"wrap",gap:8},
-  chip:{borderWidth:1,borderColor:"#c8c8d0",borderRadius:18,paddingHorizontal:13,paddingVertical:8},
-  chipActive:{backgroundColor:"#3212b6",borderColor:"#3212b6"},
+  chip:{borderWidth:1,borderColor:INK.ink,borderRadius:18,paddingHorizontal:13,paddingVertical:8},
+  chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},
   chipText:{fontSize:13,fontWeight:"700",color:"#333"},
   chipTextActive:{color:"white"}
 });

@@ -13,6 +13,7 @@ import {supabase} from "../../../services/supabase";
 import EventFormFields from "../../../components/EventFormFields";
 import {createDefaultEventForm,eventToForm,validateEventForm} from "../../../utils/events";
 import {useFeedback} from "../../../context/FeedbackContext";
+import {INK} from "../../../utils/tokens";
 
 export default function EditEvent(){
   const {id}=useLocalSearchParams();
@@ -176,15 +177,15 @@ export default function EditEvent(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:"#f5f7fb"},
+  container:{flex:1,backgroundColor:INK.card},
   content:{padding:20,paddingBottom:50},
   center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},
   error:{fontSize:17,textAlign:"center",lineHeight:24},
   title:{fontSize:30,fontWeight:"bold"},
   subtitle:{color:"#666",lineHeight:22,marginTop:7,marginBottom:20},
-  saveButton:{backgroundColor:"#5633a8",padding:16,borderRadius:12,alignItems:"center"},
-  deleteButton:{backgroundColor:"white",borderWidth:1,borderColor:"#b42318",padding:15,borderRadius:12,alignItems:"center",marginTop:12},
+  saveButton:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},
+  deleteButton:{backgroundColor:"white",borderWidth:1,borderColor:INK.red,padding:15,borderRadius:12,alignItems:"center",marginTop:12},
   disabled:{opacity:0.55},
   buttonText:{color:"white",fontWeight:"bold"},
-  deleteText:{color:"#b42318",fontWeight:"bold"}
+  deleteText:{color:INK.red,fontWeight:"bold"}
 });

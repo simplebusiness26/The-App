@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
+import {INK} from "../../utils/tokens";
 
 const RECOVERY_STORAGE_KEY="guestbook-password-recovery";
 const RECOVERY_MAX_AGE_MS=24*60*60*1000;
@@ -317,10 +318,10 @@ const styles=StyleSheet.create({
   message:{fontSize:16,lineHeight:23,color:"#666",marginBottom:22},
   checkingText:{marginTop:14,color:"#666"},
   input:{borderWidth:1,borderColor:"#aaa",borderRadius:10,padding:15,marginBottom:15},
-  button:{backgroundColor:"#1729bd",padding:16,borderRadius:10,alignItems:"center"},
+  button:{backgroundColor:INK.blue,padding:16,borderRadius:10,alignItems:"center"},
   disabledButton:{opacity:0.55},
   buttonText:{color:"white",fontWeight:"bold"},
-  error:{color:"#c62828",marginBottom:18,lineHeight:21},
-  successCard:{borderWidth:1,borderColor:"#91c9a1",backgroundColor:"#e8f7ed",borderRadius:14,padding:20,marginBottom:18},
-  successIcon:{fontSize:38,fontWeight:"bold",color:"#1f7135",marginBottom:8}
+  error:{color:INK.red,marginBottom:18,lineHeight:21},
+  successCard:{borderWidth:1,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
+  successIcon:{fontSize:38,fontWeight:"bold",color:INK.green,marginBottom:8}
 });
