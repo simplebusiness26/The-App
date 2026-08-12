@@ -199,3 +199,69 @@ console.error=(...args)=>{
   if(first.includes("react-test-renderer is deprecated")) return;
   originalError(...args);
 };
+
+// ---------------------------------------------------------------------------
+// Let queued animation frames land before the environment is torn down
+// ---------------------------------------------------------------------------
+//
+// THIS IS WHY CI WAS RED WHILE EVERY TEST PASSED.
+//
+// @react-native/jest-preset shims requestAnimationFrame as `setTimeout(cb,0)`
+// and provides no matching cancel. A component that schedules a frame during
+// render leaves that timeout queued; unmounting the tree does not clear it.
+// When the test file finishes, Jest tears the environment down, the timeout
+// then fires, and the callback touches `jest.now()` which no longer exists:
+//
+//   ReferenceError: You are trying to access a property or method of the Jest
+//   environment after it has been torn down.
+//
+// Run in parallel workers that error is swallowed and the run reports success.
+// Run with --runInBand -- which is exactly what `npm run test:ci` does -- it
+// lands in the main process and Jest exits 1 with every test passing and no
+// failure printed anywhere. CI failed at step 5 of 35 and skipped all 26 gates,
+// the web build, the browser gate and the audit, for 22 consecutive runs, while
+// `npm test` locally exited 0.
+//
+// So: one macrotask between the last test and teardown. Anything already queued
+// runs while the environment is still alive. It does not hide the error -- an
+// after-teardown access would still throw -- it removes the cause.
+// The frame shim, without the environment dependency.
+//
+// @react-native/jest-preset defines:
+//
+//   requestAnimationFrame: (cb) => setTimeout(() => cb(jest.now()), 0)
+//
+// `jest.now()` belongs to the Jest environment. A frame queued near the end of
+// a test file fires after Jest tears that environment down, and the call throws
+// ReferenceError: "you are trying to access a property or method of the Jest
+// environment after it has been torn down". There is no cancelAnimationFrame in
+// the preset, so the queued frame cannot be called off either.
+//
+// Run in parallel workers the error is swallowed. Run with --runInBand -- which
+// is what `npm run test:ci` does -- it lands in the main process and Jest exits
+// 1 with all 651 tests passing and no failure printed. CI failed at step 5 of 35
+// and skipped all 26 gates, the web build, the browser gate and the audit, for
+// 22 consecutive runs, while `npm test` exited 0 locally. That gap is the whole
+// reason this block exists.
+//
+// Same behaviour, Date.now instead of jest.now, and a real cancel.
+Object.defineProperty(global,"requestAnimationFrame",{
+  configurable:true,
+  writable:true,
+  value:(callback)=>setTimeout(()=>callback(Date.now()),0)
+});
+Object.defineProperty(global,"cancelAnimationFrame",{
+  configurable:true,
+  writable:true,
+  value:(handle)=>clearTimeout(handle)
+});
+
+afterEach(async()=>{
+  // Not under fake timers. A faked setTimeout never fires on its own, so
+  // awaiting one here would hang the hook until Jest's 30s timeout -- which is
+  // exactly what the first version of this did to every test that calls
+  // jest.useFakeTimers(). Sinon's fake carries a `.clock`; the real one does
+  // not, and jest.isMockFunction reports false for both.
+  if(setTimeout.clock!==undefined) return;
+  await new Promise((resolve)=>setTimeout(resolve,0));
+});
