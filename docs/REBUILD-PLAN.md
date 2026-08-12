@@ -56,8 +56,18 @@ and does not pull on its own.
 ### Not started
 
 Packet 9 (direct messages), 13 (drop the three mirror review tables — needs a
-production soak and Decision 7), 18 (Link-ups created from the map), 19a
-(endorsements as dated score events), 20 (the riso pass over 83 files).
+production soak and Decision 7), **21 (the cross-platform Living Map — added
+2026-08-12, and the next big one)**, 18 (Link-ups created from the map, now
+waiting on 21), 19a (endorsements as dated score events), 20 (the riso pass over
+83 files, also waiting on 21).
+
+**There is no interactive map in this app today, on any platform.** `app/map.js`
+falls back to `PlacesList` without a Google Maps key, `app/map.web.js` is
+`PlacesList` and always has been, and `components/MemoryPins.js` does the same
+thing again for My Map. Packet 21 is where that stops: MapLibre on web, Android
+and iOS, over one shared Living Map model, with OpenFreeMap as the current
+basemap and the provider kept swappable. It is inserted before 18 and 20 because
+both of them need a map to exist first.
 
 ### Packets 14 and 15 are superseded
 
@@ -679,9 +689,243 @@ counts as a park.
 **Done means:** a business cannot be checked into, and an existing check-in at a
 business either still works or is dealt with explicitly.
 
+### Packet 21 — The Living Map on web, Android and iOS
+
+The number is 21 because 0–20 are taken and a packet number is an identity, not
+a position. The **position** is here: after 17, before 18 and 20. Both of those
+now depend on it — you cannot start a Link-up from the map (18) without a map,
+and there is no point taking the map onto the token palette (20) until the map
+is the one we are keeping.
+
+#### What is actually there today
+
+Checked on `main2.0-Dev` at `23c441a`, not assumed.
+
+There is no interactive map anywhere in this app on any platform right now.
+
+- `app/map.js:28` reads `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` and returns
+  `PlacesList` when it is missing (`:30-32`). Behind that key is a real
+  `react-native-maps` `MapView` (`:201`) opening on Brighton
+  (`50.8225, -0.1372`, delta `0.12`).
+- `app/map.web.js` renders `PlacesList` and nothing else. `react-native-maps`
+  has no web build, so web has never had a map.
+- **There is a second native map the brief did not mention.**
+  `components/MemoryPins.js:4` imports `react-native-maps` as well, for My Map
+  on the profile, gated on the same key at `:29`, with
+  `components/MemoryPins.web.js` as its list twin. So `react-native-maps` is in
+  two files, not one, and both must be migrated or the dependency cannot be
+  removed.
+- `.github/workflows/build-apk.yml:29` passes `secrets.GOOGLE_MAPS_API_KEY`
+  into the APK build. Whether that secret is set is not knowable from the
+  repository — if it is, the built APK has been showing the Google map and the
+  web preview has not. Check it before Phase A so we know which behaviour we
+  are preserving.
+
+The rest of the Living Map is real and works. `utils/liveActivity.js` is
+already a pure normaliser over `get_live_discovery` with injected clocks and
+Now/Tonight/Weekend windows. `utils/markers.js` already owns marker semantics
+(icon = type, ink = state). `utils/placeCards.js` already builds cards and
+neighbours. `utils/coordinates.js` already rejects a missing coordinate without
+plotting it at 0,0. None of that is platform-specific and none of it needs
+rewriting.
+
+**What is duplicated is the loading and the state, not the meaning.**
+`app/map.js:47-104` and `components/PlacesList.js:33-91` are the same three
+Supabase reads, the same signed-out guard, the same error isolation, the same
+search matcher and the same type filter, written twice. That is the thing this
+packet extracts — and it is why the packet is affordable: most of the domain
+layer in the target diagram already exists.
+
+#### The decision
+
+MapLibre becomes Xplorer's map technology on web, Android and iOS.
+OpenFreeMap is the current basemap, style and tile source.
+
+OpenFreeMap is **not** described here as a stopgap. No decision has been made
+to move to Google or Mapbox, and this setup may well be what Xplorer keeps. It
+asks for no key, no account and no card, it allows commercial use, it states no
+request limit, and it can be self-hosted from published planet images if we
+ever outgrow the public instance. What the architecture must guarantee is that
+swapping the bottom layer later is a configuration change, not a rebuild.
+
+The one obligation it does carry is attribution — "OpenFreeMap © OpenMapTiles,
+data from OpenStreetMap" — which has to be on the map on every platform.
+
+#### Sub-phases
+
+**Phase A — one Living Map brain, current map untouched.**
+Extract the duplicated loading and state out of `app/map.js` and
+`components/PlacesList.js` into one shared module. It owns: the three static
+reads, the signed-out branch, the `get_live_discovery` call, error isolation so
+a failed live read leaves the static pins alone, coordinate validation, search,
+type filter, time window, the card set, marker descriptors and deep links. It
+returns a map-ready model and nothing platform-specific — no MapView, no DOM,
+no style URL.
+
+The repo's convention points at a hook in `hooks/` over a component
+(`useAdminGate`, `useManagerGate`) with the pure parts staying in `utils/`.
+`useLivingMap` is the obvious name; take it or better it, but do not put pure
+functions inside the hook — `utils/liveActivity.js` proves how much of this
+tests better as plain functions with an injected clock.
+
+Nothing renders differently at the end of Phase A. Both existing surfaces
+consume the shared model and every current test still passes. If that is not
+true, stop — the extraction is wrong.
+
+**Phase B — the web renderer.**
+`maplibre-gl` in `app/map.web.js` (or a `LivingMap.web` component behind it),
+pointed at the provider config module. This is the first time the browser
+preview shows a real map. Web is first because it is where the work can be seen
+without a build.
+
+**Phase C — the native renderer.**
+`@maplibre/maplibre-react-native` behind a `LivingMap.native`, same shared
+model, same markers, same cards. Introduce it **alongside** `react-native-maps`
+rather than in place of it, behind a switch, so the working native map is never
+the thing being debugged.
+
+**Phase D — parity.**
+Walk the whole existing feature list on both renderers, including
+`components/MemoryPins.js`, which moves to the same renderer rather than
+keeping a private map.
+
+**Phase E — retire the old map.**
+Only once D passes: remove `react-native-maps`, the two `apiKey` branches, the
+`android.config.googleMaps` block in `app.config.js:22-24`, the workflow env at
+`build-apk.yml:29`, and the `react-native-maps` mock in `test/setup.js:157`.
+Nothing else Google-related is touched — the map changing is not a reason to go
+near anything else.
+
+**Phase F — verification.**
+Full Jest suite, every `verify:*` gate, `verify:browser` against a real web
+export, and an APK built from the workflow and opened on a phone. iOS is
+verified by a build that compiles and runs, not by a screenshot of a simulator
+nobody kept.
+
+#### Expo and native build implications — the honest version
+
+- **Expo Go stops being an option for the native map.**
+  `@maplibre/maplibre-react-native` is not in the Expo SDK and cannot run in
+  Expo Go. It needs a development build with its config plugin
+  (`"@maplibre/maplibre-react-native"` in `plugins`).
+- **This costs Android nothing new.** `.github/workflows/build-apk.yml:60`
+  already runs `npx expo prebuild --platform android --clean` and then Gradle.
+  That is a custom native build. The plugin joins `expo-camera` in the existing
+  `plugins` array and the same workflow keeps working.
+- **iOS has no build at all today.** There is no iOS workflow, no Mac runner,
+  and no signing set up. "iOS architecture established and buildable" means a
+  build that actually compiles — which means either an EAS build or a Mac.
+  Budget it as its own piece of work; it is the largest genuinely new cost in
+  this packet and it is not a map problem.
+- **Architecture is fine.** Expo removed the legacy architecture in SDK 55; this
+  repo is on SDK 57 with React Native 0.86.2, so it is on the New Architecture
+  already. MapLibre React Native v11+ is New-Architecture-only and wants RN
+  ≥ 0.80. Compatible, with nothing to migrate.
+- **Replit stays the web preview.** MapLibre GL JS is a browser library and
+  needs no native build, so the browser preview keeps working the way it does
+  now — and for the first time will show the same map the phone shows.
+
+#### Risks, worst first
+
+1. **Bundling `maplibre-gl` under Metro.** MapLibre GL JS runs its tile work in
+   a web worker, and worker handling is the known rough edge when a bundler
+   other than Webpack/Vite is in play. This is the one thing that could turn
+   Phase B from a day into a week. **Spike it before committing to the packet**:
+   a throwaway branch that renders one OpenFreeMap style in the Expo web build
+   and nothing else. If Metro fights, `react-map-gl/maplibre` is the usual
+   escape hatch and is still MapLibre underneath.
+2. **Reaching a DOM node from inside react-native-web.** The web renderer needs
+   a real element to mount into. Part of the same spike.
+3. **Losing the working native map mid-migration.** Mitigated by Phase C
+   running both side by side and Phase E deleting nothing until D passes.
+4. **The gates and tests are written against the current architecture** and
+   will fail loudly the moment it changes. That is correct behaviour, not
+   breakage. See below.
+5. **A second Living Map appearing by accident** — the web renderer growing its
+   own Supabase reads because it was easier than threading the model through.
+   This is the failure `verify-living-map.cjs` was written to catch and the new
+   gate has to keep catching it.
+6. **OpenFreeMap availability.** A free public instance with no contract. The
+   provider module is the mitigation: swapping the style URL must be a
+   one-file change, and self-hosting is available if it ever matters.
+
+#### Provider isolation — the acceptance criterion, not a nicety
+
+One module owns the style URL, the attribution string and any provider-specific
+option. Feature code asks it for a style; it never types a hostname. The test
+for this is blunt: `tiles.openfreemap.org` appears in exactly one file, and
+changing that file changes the map on all three platforms.
+
+#### Testing
+
+`verify:livingmap`, `verify:cards` and `verify:mymap` all currently assert the
+architecture being replaced — `verify-map-cards.cjs:98` requires the API-key
+branch to exist, `verify-my-map.cjs:193` requires it in `MemoryPins`, and
+`verify-living-map.cjs` requires `app/map.web.js` to delegate to `PlacesList`.
+`test/map-cards.test.js:163,227` sets and unsets the key, and
+`test/living-map.test.js:250` calls `PlacesList` "the shipping path".
+
+**Do not delete any of them ahead of the migration.** They are the description
+of what has to survive. Rewrite each assertion into the product guarantee
+underneath it, one phase at a time, and keep the count honest — a gate that
+loses half its checks during a migration is a gate that stopped working.
+
+What the replacement checks must prove:
+
+- a real map renders on web, and on native
+- both consume the shared model, and neither queries Supabase for places itself
+- `get_live_discovery` stays the only answer to "what is happening"
+- businesses, properties, clubs and live activity all reach both renderers
+- search, All/Businesses/Properties/Activity Clubs, Happening, and
+  Now/Tonight/Weekend still work
+- marker semantics stay shared: icon = type, ink = state, three inks only
+- tapping a marker opens an Xplorer place card, not a provider popup
+- activity deep links survive
+- a signed-out visitor still gets static places
+- a failed live read leaves the static places alone
+- a row with no coordinates is not plotted at 0,0
+- `PlacesList` still exists and still works
+- the provider hostname appears in exactly one file
+- no Google Maps key and no Mapbox token is required by any map path
+
+Prefer behavioural tests over grep. Some of these — "a real map renders" —
+genuinely need a source-level check because a renderer cannot be mounted in
+Jest; say so in the gate rather than pretending otherwise.
+
+#### What this packet does not do
+
+No database migration. Every entity already carries coordinates and
+`get_live_discovery` already returns positions. If inspection during Phase A
+turns up a real missing field, it gets written up on its own with a reason —
+not smuggled in behind a renderer change.
+
+No new features. Clustering, viewport queries, user-location display, route
+overlays, Moments and Memories on the main map, live presence, guides,
+transport — none of them are built here. The architecture must not make them
+hard later, which mostly means: markers come from data rather than JSX, the
+camera is state rather than a prop nobody controls, and live updates replace a
+layer rather than remount the map. That is all.
+
+No change to Explorer location privacy. MapLibre can draw a user's position;
+whether anybody else may see it stays `profiles.visibility` and
+`can_see_content`, unchanged and unconsulted by the renderer.
+
+`app/discover.js:49-55` reads events, clubs and Link-ups directly as well as
+calling `get_live_discovery`. That duplication is real and predates this work.
+It is not a map surface, so it is out of scope here — noted so the next person
+does not think it was missed.
+
+**Done means:** a person opens Xplorer in the browser, on Android and on iOS
+and gets the same real, interactive, pannable Living Map, showing the same
+businesses, properties, clubs and live activity, with the same pins, the same
+cards, the same filters and the same deep links; `react-native-maps` is gone
+from `package.json`; no Google key or Mapbox token is required by any map path;
+and moving off OpenFreeMap later means editing one module.
+
 ### Packet 18 — Link-ups start on the map
 
-Create a Link-up from where you are on the map. Depends on Packet 6.
+Create a Link-up from where you are on the map. Depends on Packet 6 — and now
+on Packet 21, because until that lands there is no map to start one from.
 
 **Done means:** a Link-up can be made from the map with its location already
 filled in.
@@ -709,6 +953,9 @@ Only if Decision 8 lands on option B. Not built this round. See Decision 8 for
 the full shape and cost.
 
 ### Packet 20 — The riso pass
+
+Depends on Packet 21: there is no sense taking the map onto the token palette
+until the map is the one we are keeping.
 
 83 of the 112 files in `app/` and `components/` do not import `utils/tokens.js`
 and carry hand-written hex instead. Take them onto the tokens in
