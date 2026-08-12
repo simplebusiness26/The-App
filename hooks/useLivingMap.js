@@ -2,8 +2,9 @@ import {useCallback,useEffect,useMemo,useState} from "react";
 import {supabase} from "../services/supabase";
 import {classificationLabel} from "../utils/taxonomy";
 import {hasCoordinates} from "../utils/coordinates";
-import {markerForActivity} from "../utils/markers";
+import {heatAppearance,markerForActivity,markerForMemory,markerForMoment} from "../utils/markers";
 import {CARD_KINDS,toCard} from "../utils/placeCards";
+import {heatCells,isOnMapAt,memoryPinOpacity} from "../utils/mapLayers";
 import {
   DEFAULT_TIME_WINDOW,
   activitiesInWindow,
@@ -63,10 +64,16 @@ export function useLivingMap(){
   const [properties,setProperties]=useState([]);
   const [clubs,setClubs]=useState([]);
   const [activities,setActivities]=useState([]);
+  const [moments,setMoments]=useState([]);
+  const [memories,setMemories]=useState([]);
 
   const [search,setSearch]=useState("");
   const [typeFilter,setTypeFilter]=useState("all");
   const [showLive,setShowLive]=useState(true);
+  const [showPosts,setShowPosts]=useState(true);
+  // Off by default. Heat is an overview and the map's first job is "what is
+  // around me"; somebody asks for the busy view, they do not arrive wanting it.
+  const [showHeat,setShowHeat]=useState(false);
   const [timeWindow,setTimeWindow]=useState(DEFAULT_TIME_WINDOW);
 
   const [loading,setLoading]=useState(true);
@@ -131,11 +138,49 @@ export function useLivingMap(){
     setActivities(toActivities(data));
   },[]);
 
+  // What people have posted, where they posted it.
+  //
+  // WHO SEES WHAT IS NOT DECIDED HERE, AND CANNOT BE.
+  //
+  // These are plain selects. Row level security answers them, and it applies
+  // both halves of the rule: the audience on the post itself, and the ceiling
+  // on the author's profile -- a Moment marked 'everyone' by somebody whose
+  // profile says 'friends' is a friends Moment. That is
+  // guestbook_private.can_see_content(), it lives in the database, and a bug in
+  // this file cannot widen it by one row.
+  //
+  // Signed out, nothing is asked for at all. A visitor gets the places on the
+  // map and no people, which is the same line the living layer draws.
+  const loadPosts=useCallback(async()=>{
+    const {data:{user}}=await supabase.auth.getUser();
+
+    if(!user){
+      setMoments([]);
+      setMemories([]);
+      return;
+    }
+
+    const [momentResult,memoryResult]=await Promise.all([
+      supabase.from("explorer_moments")
+        .select("id,user_id,media_url,target_name,latitude,longitude,created_at,expires_at,status")
+        .eq("status","published"),
+      supabase.from("explorer_memories")
+        .select("id,user_id,title,media_url,target_name,latitude,longitude,created_at,map_until,status")
+        .eq("status","published")
+    ]);
+
+    if(momentResult.error) console.log(momentResult.error);
+    if(memoryResult.error) console.log(memoryResult.error);
+
+    setMoments(momentResult.data || []);
+    setMemories(memoryResult.data || []);
+  },[]);
+
   const reload=useCallback(async()=>{
     setLoading(true);
-    await Promise.all([loadPlaces(),loadActivity()]);
+    await Promise.all([loadPlaces(),loadActivity(),loadPosts()]);
     setLoading(false);
-  },[loadPlaces,loadActivity]);
+  },[loadPlaces,loadActivity,loadPosts]);
 
   useEffect(()=>{reload();},[reload]);
 
@@ -193,6 +238,76 @@ export function useLivingMap(){
       .map((item)=>({...item,marker:markerForActivity(item)}));
   },[activities,showLive,timeWindow,search]);
 
+  // ---------------------------------------------------------------------------
+  // Moments and Memories on the map
+  // ---------------------------------------------------------------------------
+  // A Moment is on the map until it expires; a Memory until its map window
+  // passes, fading through the last quarter of it. Both rules are
+  // utils/mapLayers.js -- written and tested three packets before there was a
+  // map to draw them on, which is why they are the same rule for every kind of
+  // thing rather than four rules that would disagree the first time one changed.
+  //
+  // A Memory leaving the map is NOT a Memory being deleted. It stays in the
+  // scrapbook; it stops being drawn here.
+  const posts=useMemo(()=>{
+    if(!showPosts) return [];
+    const now=Date.now();
+
+    const drawn=[];
+
+    for(const moment of moments){
+      if(!hasCoordinates(moment)) continue;
+      if(!isOnMapAt(moment,now)) continue;
+      drawn.push({
+        key:`moment-${moment.id}`,
+        kind:"moment",
+        id:moment.id,
+        user_id:moment.user_id,
+        latitude:Number(moment.latitude),
+        longitude:Number(moment.longitude),
+        marker:markerForMoment(),
+        opacity:1,
+        route:`/moments/${moment.id}`
+      });
+    }
+
+    for(const memory of memories){
+      if(!hasCoordinates(memory)) continue;
+      if(!isOnMapAt(memory,now)) continue;
+      drawn.push({
+        key:`memory-${memory.id}`,
+        kind:"memory",
+        id:memory.id,
+        user_id:memory.user_id,
+        latitude:Number(memory.latitude),
+        longitude:Number(memory.longitude),
+        marker:markerForMemory(memory),
+        opacity:memoryPinOpacity(memory,now),
+        route:`/memories/${memory.id}`
+      });
+    }
+
+    return drawn;
+  },[moments,memories,showPosts]);
+
+  // Where the app is being used, as ground rather than as pins.
+  //
+  // It is built from what this person can already see and nothing more, so it
+  // cannot become a side channel: a cell needs three contributions from at
+  // least two different Explorers before it exists at all, and it carries a
+  // count, never who. The two-poster floor is the point -- a count that only
+  // moves when one person posts is that person's movements with a number on it.
+  const heat=useMemo(()=>{
+    if(!showHeat) return [];
+
+    return heatCells(posts.map((post)=>({
+      latitude:post.latitude,
+      longitude:post.longitude,
+      user_id:post.user_id,
+      kind:post.kind
+    }))).map((cell)=>({...cell,...heatAppearance(cell)}));
+  },[posts,showHeat]);
+
   return{
     loading,
     error,
@@ -200,11 +315,15 @@ export function useLivingMap(){
     search,setSearch,
     typeFilter,setTypeFilter,
     showLive,setShowLive,
+    showPosts,setShowPosts,
+    showHeat,setShowHeat,
     timeWindow,setTimeWindow,
 
     places,
     cards,
     activity:liveActivity,
+    posts,
+    heat,
 
     reload
   };

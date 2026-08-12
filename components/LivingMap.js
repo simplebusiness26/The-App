@@ -42,11 +42,13 @@ function MapLibreMap({
   places=[],
   activity=[],
   pins=[],
+  heat=[],
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
   onSelectPlace,
-  onSelectActivity
+  onSelectActivity,
+  onDropPin
 }){
   const config=mapConfiguration();
 
@@ -54,6 +56,14 @@ function MapLibreMap({
     <Map
       style={[styles.map,style]}
       mapStyle={config.styleUrl}
+      // Press and hold on open water, so to speak: somewhere that is not a pin.
+      // It is how a Link-up gets dropped where somebody is looking rather than
+      // where a business happens to be.
+      onLongPress={(event)=>{
+        const point=event?.nativeEvent?.payload?.geometry?.coordinates;
+        if(!point) return;
+        onDropPin?.({longitude:point[0],latitude:point[1]});
+      }}
       /*
         NO BRANDING ON THE MAP, AND THE CREDIT MOVED RATHER THAN DROPPED
 
@@ -98,6 +108,29 @@ function MapLibreMap({
           zoom
         }}
       />
+
+      {/*
+        Heat goes down FIRST, under every pin, because it is ground rather than
+        an object -- a wash showing where the app is being used, not something
+        to tap. utils/mapLayers.js decides which cells exist at all: three
+        contributions from two different Explorers before one is drawn, and no
+        poster identity in the cell.
+      */}
+      {heat.map((cell)=>(
+        <Marker key={cell.key} id={cell.key} lngLat={[cell.longitude,cell.latitude]}>
+          <View
+            accessibilityLabel={cell.label}
+            style={[styles.heat,{
+              width:cell.size,
+              height:cell.size,
+              borderRadius:cell.size/2,
+              opacity:cell.opacity,
+              backgroundColor:cell.fill,
+              borderColor:cell.border
+            }]}
+          />
+        </Marker>
+      ))}
 
       {places.map((place)=>(
         <Marker
@@ -150,4 +183,10 @@ function MapLibreMap({
   );
 }
 
-const styles=StyleSheet.create({map:{flex:1}});
+const styles=StyleSheet.create({
+  map:{flex:1},
+  // Shape only. The colour comes from the cell, which utils/markers.js decided
+  // -- this file is not allowed to know what yellow means, for the same reason
+  // it is not allowed to know what a pin's ink means.
+  heat:{borderWidth:1}
+});

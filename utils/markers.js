@@ -333,3 +333,50 @@ export function markerForMemory(memory){
     claimed:true
   });
 }
+
+// A Moment on the map.
+//
+// Pink, and that is not decoration. MARKER_STATES.SCHEDULED means "something is
+// happening here", which is exactly what a Moment records and is the same thing
+// the activity pins say -- so a Moment reads as part of the living layer rather
+// than as another place. A Memory is blue because it records a place that
+// exists and is not itself an event.
+//
+// The star glyph is the only one in the table that means "worth marking" rather
+// than a kind of venue, which is the honest choice for a post about a place
+// rather than the place itself.
+export const MOMENT_TYPE_LABEL="Moment";
+
+export function markerForMoment(){
+  return buildMarker({
+    glyph:"star",
+    state:MARKER_STATES.SCHEDULED,
+    typeSentence:`${MOMENT_TYPE_LABEL}.`,
+    stateSentence:"Somebody posted from here.",
+    claimed:true
+  });
+}
+
+// Heat: how much has happened around a point, as ground rather than as a pin.
+//
+// It is NOT a marker and deliberately does not go through buildMarker. A marker
+// says something about a PLACE -- it exists, something is scheduled there -- and
+// heat is not a place; it is a count of what people have posted nearby. Giving
+// it a pin's shape and one of the pin inks would make the map say two different
+// things with one colour.
+//
+// Yellow because it is the one ink in the table that no pin in this app
+// currently uses: nothing produces an offer, so yellow is free to mean this
+// without colliding. Every cell still carries a sentence, because colour is
+// never the only carrier of meaning.
+export function heatAppearance(cell){
+  return{
+    fill:INK.yellow,
+    border:INK.ink,
+    // 44px to 96px across, so a busier cell reads as busier without one of them
+    // swallowing the map.
+    size:Math.min(96,44+(cell?.weight || 0)*6),
+    opacity:Math.min(0.45,0.15+(cell?.weight || 0)*0.03),
+    label:`A busy area. ${cell?.contributions || 0} posts from ${cell?.posterCount || 0} Explorers.`
+  };
+}

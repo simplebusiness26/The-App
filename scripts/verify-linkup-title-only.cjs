@@ -26,7 +26,10 @@ const form=read("components/LinkupForm.js");
 const migration=read("supabase/migrations/20260802212100_quick_create_linkup.sql").toLowerCase();
 
 check(createScreen.includes('import LinkupForm from "../../components/LinkupForm"'),"create screen: full LinkupForm import is missing");
-check(createScreen.includes('<LinkupForm onSubmit={create} working={working} titleOnly/>'),"create screen: full form is not configured for title-only submission");
+// A pattern rather than the exact characters -- see the note in
+// verify-linkup-create-navigation.cjs. The guarantee is "the create screen
+// renders the full form in title-only mode", not "these props in this order".
+check(/<LinkupForm[^>]*\bonSubmit=\{create\}[^>]*\btitleOnly\b/.test(createScreen),"create screen: full form is not configured for title-only submission");
 check(createScreen.includes('rpc("create_linkup"'),"create screen: create_linkup RPC is missing");
 check(!createScreen.includes('rpc("quick_create_linkup"'),"create screen: obsolete quick-create-only RPC is still used");
 

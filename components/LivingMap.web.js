@@ -93,15 +93,31 @@ function pinElement(marker,onPress){
 // ONE RENDERER, TWO MAPS -- see the note in LivingMap.js. `pins` is the general
 // layer: a key, a position, a marker descriptor and an optional opacity, which
 // is how My Map draws Memories that fade as their time runs out.
+// Heat is ground, not an object: a wash showing where the app is being used.
+// Not a pin, not tappable, and deliberately not built out of the marker
+// language -- utils/markers.js says what a PIN means and a heat cell is not one.
+function heatElement(cell){
+  const element=document.createElement("div");
+  element.setAttribute("aria-label",cell.label);
+  element.style.cssText=[
+    `width:${cell.size}px`,`height:${cell.size}px`,`border-radius:${cell.size/2}px`,
+    `background:${cell.fill}`,`border:1px solid ${cell.border}`,
+    `opacity:${cell.opacity}`,"pointer-events:none"
+  ].join(";");
+  return element;
+}
+
 export default function LivingMap({
   places=[],
   activity=[],
   pins=[],
+  heat=[],
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
   onSelectPlace,
   onSelectActivity,
+  onDropPin,
   onUnavailable
 }){
   const host=useRef(null);
@@ -130,6 +146,14 @@ export default function LivingMap({
 
     map.current.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
 
+    // Long press to drop a Link-up. A touch browser fires `contextmenu` on a
+    // press and hold, which is the same gesture as the native map's onLongPress
+    // -- so the two platforms ask for it the same way even though the event
+    // arrives under a different name.
+    map.current.on("contextmenu",(event)=>{
+      onDropPin?.({longitude:event.lngLat.lng,latitude:event.lngLat.lat});
+    });
+
     // A map that will not load must not be a blank rectangle. MapLibre reports
     // a missing style, a dead tile host and a browser with no WebGL through the
     // same event, and any of them means the same thing to somebody using the
@@ -147,13 +171,22 @@ export default function LivingMap({
       map.current?.remove();
       map.current=null;
     };
-  },[config.styleUrl,config.attribution,onUnavailable]);
+  },[config.styleUrl,config.attribution,onUnavailable,onDropPin,centre,zoom]);
 
   const draw=useCallback(()=>{
     if(!map.current) return;
 
     for(const marker of drawn.current) marker.remove();
     drawn.current=[];
+
+    // First, so it sits under every pin.
+    for(const cell of heat){
+      drawn.current.push(
+        new maplibregl.Marker({element:heatElement(cell)})
+          .setLngLat([Number(cell.longitude),Number(cell.latitude)])
+          .addTo(map.current)
+      );
+    }
 
     for(const place of places){
       const element=pinElement(place.card?.marker,()=>onSelectPlace?.(place));
@@ -186,7 +219,7 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,activity,pins,onSelectPlace,onSelectActivity]);
+  },[places,activity,pins,heat,onSelectPlace,onSelectActivity]);
 
   useEffect(()=>{
     if(!map.current) return;

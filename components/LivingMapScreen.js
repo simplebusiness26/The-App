@@ -6,6 +6,7 @@ import PlacesList from "./PlacesList";
 import PlaceCards from "./PlaceCards";
 import FloatingLogin from "./FloatingLogin";
 import {cardsAround} from "../utils/placeCards";
+import {linkupLocationFrom} from "../utils/mapLayers";
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {INK} from "../utils/tokens";
@@ -32,6 +33,8 @@ export default function LivingMapScreen(){
   // that will not load. The list is what somebody gets then, and it says why
   // rather than leaving a blank rectangle.
   const [mapFailed,setMapFailed]=useState("");
+  // A point somebody pressed and held, waiting for them to confirm.
+  const [dropped,setDropped]=useState(null);
 
   const tapped=map.cards.find((card)=>card.key===openKey) || null;
 
@@ -109,6 +112,24 @@ export default function LivingMapScreen(){
           </Pressable>
 
           <Pressable
+            style={[styles.filterButton,map.showPosts && styles.selectedFilter]}
+            accessibilityRole="button"
+            accessibilityLabel={map.showPosts ? "Hide Moments and Memories" : "Show Moments and Memories"}
+            onPress={()=>map.setShowPosts(!map.showPosts)}
+          >
+            <Text style={map.showPosts ? styles.selectedFilterText : styles.filterText}>Posts</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.filterButton,map.showHeat && styles.selectedFilter]}
+            accessibilityRole="button"
+            accessibilityLabel={map.showHeat ? "Hide busy areas" : "Show busy areas"}
+            onPress={()=>map.setShowHeat(!map.showHeat)}
+          >
+            <Text style={map.showHeat ? styles.selectedFilterText : styles.filterText}>Busy</Text>
+          </Pressable>
+
+          <Pressable
             style={styles.filterButton}
             accessibilityRole="button"
             accessibilityLabel="Show a list instead of the map"
@@ -135,10 +156,52 @@ export default function LivingMapScreen(){
       <LivingMap
         places={map.places}
         activity={map.activity}
+        pins={map.posts.map((post)=>({...post,onPress:()=>router.push(post.route)}))}
+        heat={map.heat}
         onSelectPlace={(place)=>setOpenKey(place.card?.key || null)}
         onSelectActivity={(item)=>item.deepLink && router.push(item.deepLink)}
+        onDropPin={(at)=>setDropped(linkupLocationFrom(at))}
         onUnavailable={(why)=>setMapFailed(why || "unavailable")}
       />
+
+      {/*
+        PRESS AND HOLD THE MAP TO START A LINK-UP THERE.
+        It asks first. A long press is easy to do by accident while panning,
+        and sending somebody to a form they did not ask for is worse than one
+        extra tap. The point is ROUNDED before it is offered -- a meeting point
+        is a corner of a park, not a doorstep -- and the sheet says so in words
+        rather than leaving somebody to assume.
+      */}
+      {!!dropped && (
+        <View style={styles.dropCard}>
+          <Text style={styles.dropTitle}>Start a Link-up here?</Text>
+          <Text style={styles.dropText}>
+            The spot is rounded to about a street, not the exact point you held.
+          </Text>
+          <View style={styles.dropRow}>
+            <Pressable
+              style={styles.dropCancel}
+              accessibilityRole="button"
+              accessibilityLabel="Not here"
+              onPress={()=>setDropped(null)}
+            >
+              <Text style={styles.dropCancelText}>Not here</Text>
+            </Pressable>
+            <Pressable
+              style={styles.dropGo}
+              accessibilityRole="button"
+              accessibilityLabel="Start a Link-up here"
+              onPress={()=>{
+                const at=dropped;
+                setDropped(null);
+                router.push(`/linkups/create?lat=${at.latitude}&lng=${at.longitude}`);
+              }}
+            >
+              <Text style={styles.dropGoText}>Start a Link-up</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Only draws itself for somebody who is signed out, and never over an
           open card. The app opens on this screen now, so this is the way in. */}
@@ -168,6 +231,14 @@ const styles=StyleSheet.create({
     borderRadius:20,borderWidth:2,borderColor:INK.ink
   },
   selectedFilter:{backgroundColor:INK.ink,borderColor:INK.ink},
+  dropCard:{position:"absolute",left:14,right:14,bottom:96,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16,padding:16,zIndex:30},
+  dropTitle:{color:INK.ink,fontSize:17,fontWeight:"900"},
+  dropText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:6},
+  dropRow:{flexDirection:"row",gap:10,marginTop:14},
+  dropCancel:{flex:1,minHeight:44,borderRadius:12,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
+  dropCancelText:{color:INK.ink,fontWeight:"900"},
+  dropGo:{flex:1,minHeight:44,borderRadius:12,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
+  dropGoText:{color:INK.card,fontWeight:"900"},
   filterText:{fontWeight:"600",color:INK.ink},
   selectedFilterText:{color:INK.card,fontWeight:"bold"},
   switch:{

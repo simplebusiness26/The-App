@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from "react";
 import {ActivityIndicator,ScrollView,StyleSheet,Text,View} from "react-native";
-import {router} from "expo-router";
+import {router,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import LinkupForm from "../../components/LinkupForm";
 import {useFeedback} from "../../context/FeedbackContext";
@@ -8,6 +8,14 @@ import {INK} from "../../utils/tokens";
 
 export default function CreateLinkup(){
   const {showFeedback}=useFeedback();
+  // A point pressed and held on the map. components/LivingMapScreen rounds it
+  // through utils/mapLayers.linkupLocationFrom before it gets here -- a meeting
+  // point is a corner of a park, not a doorstep -- so this only has to carry it
+  // in, not decide anything about it.
+  const params=useLocalSearchParams();
+  const dropped=Number.isFinite(Number(params.lat)) && Number.isFinite(Number(params.lng))
+    ? {latitude:Number(params.lat),longitude:Number(params.lng)}
+    : null;
   const [loading,setLoading]=useState(true);
   const [allowed,setAllowed]=useState(false);
   const [working,setWorking]=useState(false);
@@ -38,7 +46,7 @@ export default function CreateLinkup(){
       <Text style={styles.title}>Create Link-up</Text>
       <Text style={styles.subtitle}>Invite local Explorers to something simple, public and easy to join.</Text>
       {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
-      {allowed && <LinkupForm onSubmit={create} working={working} titleOnly/>} 
+      {allowed && <LinkupForm onSubmit={create} working={working} titleOnly initial={dropped}/>} 
     </ScrollView>
   );
 }

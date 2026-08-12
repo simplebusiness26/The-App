@@ -31,7 +31,11 @@ const checks=[
   [!index.includes('onPress={()=>router.push("/linkups/create")}'),"Create Link-up must not fall back to broken press-only navigation"],
   [create.includes("export default function CreateLinkup"),"Create Link-up route component is missing"],
   [create.includes('rpc("create_linkup"'),"Create Link-up route is not connected to create_linkup"],
-  [create.includes('<LinkupForm onSubmit={create} working={working} titleOnly/>'),"Create route must retain the full form with title-only validation"],
+  // A pattern, not the exact characters. This asserted one literal string and
+  // broke the moment the form gained `initial` -- the prop that carries a point
+  // somebody pressed and held on the map. What matters is that the create route
+  // still renders the full form in title-only mode, not the order of its props.
+  [/<LinkupForm[^>]*\bonSubmit=\{create\}[^>]*\btitleOnly\b/.test(create),"Create route must retain the full form with title-only validation"],
   [layout.includes('name="linkups/create"'),"Root router does not register linkups/create"],
   [form.includes('titleOnly=false'),"LinkupForm title-only mode is missing"],
   [titleValidation>=0,"Title validation is missing"],
