@@ -67,19 +67,34 @@ and does not pull on its own.
 | 21 C — MapLibre native, old map on a switch | shipped · `587a48e` |
 | 21 D — cross-platform parity, proven | shipped · `c2f92df` |
 | 20 second half — 399 colours, 194 unreadable pairs fixed | shipped |
+| No branding on the map; credit on startup and in Settings | shipped |
+| 21 E — the Google map deleted, My Map onto MapLibre | shipped |
+| 18 + M&M 8/9/10/12 — the four map layers drawn | shipped |
 
 ### Not started
 
-**Nothing, except the two follow-ups Packet 21 deliberately left.**
+**One thing, and it needs a credit card rather than a decision.**
 
-- **Phase E** — remove `react-native-maps`, `components/LivingMap.legacy.js`
-  and the Google Maps config. Held back on purpose: the MapLibre map has not
-  been opened on a real phone yet, and `EXPO_PUBLIC_LEGACY_MAP=1` brings the old
-  one back in one variable. It goes the moment the new one has been seen.
 - **iOS is configured and NOT compiled.** The MapLibre plugin covers it and
   `npx expo config` resolves clean, but there is no Mac, no Apple signing and no
-  EAS login in this environment. It is one build command away rather than a
-  day away, and that is the honest state of it.
+  EAS login in this environment. It needs the $99/year Apple Developer Program
+  and either a Mac or a cloud build service. Owner is buying the account.
+
+**Phase E is done.** `react-native-maps` is uninstalled,
+`components/LivingMap.legacy.js` and its web twin are deleted,
+`EXPO_PUBLIC_LEGACY_MAP` is gone and the Google Maps block is out of
+`app.config.js`. My Map had to move first -- it was the last thing holding the
+library, and the last map in the app carrying somebody else's logo. Rather than
+a second MapLibre setup, `components/LivingMap` gained a general `pins` layer,
+so there is one renderer per platform for the whole app.
+
+**The four map layers are drawn.** Moments and Memories as pins, Memories
+fading through the last quarter of their window, busy areas as heat, and press
+and hold to drop a Link-up. `utils/mapLayers.js` had all four rules already;
+this was the drawing. `20260812210000` had to come first: the read policies
+still asked for the word `public` while the app writes `everyone`, so every
+Moment was invisible to everyone but its author, and neither rule applied the
+author's profile ceiling.
 
 Parked by your decision:
 
