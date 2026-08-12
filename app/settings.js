@@ -8,12 +8,18 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
-  Alert
+  Alert,
+  Linking
 } from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
 import {sendRecoveryEmail} from "../utils/passwordRecovery";
+import {
+  ATTRIBUTION,
+  ATTRIBUTION_COPYRIGHT,
+  ATTRIBUTION_URL
+} from "../utils/mapProvider";
 import {INK} from "../utils/tokens";
 
 const CAPABILITIES=[
@@ -579,6 +585,41 @@ export default function Settings(){
       <Pressable style={styles.dangerButton} onPress={confirmLogout}>
         <Text style={styles.primaryText}>Log out</Text>
       </Pressable>
+
+      {/*
+        About and licences.
+
+        THE PERMANENT HOME OF THE MAP CREDIT.
+
+        The map itself carries no attribution control any more -- both of
+        MapLibre's are turned off in components/LivingMap.js and
+        LivingMap.web.js. That is only defensible because the credit is still in
+        the app, in two places that cannot be missed: the startup screen shows
+        it for five seconds on every launch, and this section states it
+        permanently with a link to the licence.
+
+        If this section is ever deleted, the map has to get its credit back.
+        test/map-attribution.test.js is what enforces that.
+      */}
+      <Text style={styles.sectionTitle}>About and licences</Text>
+      <View style={styles.licenceCard}>
+        <Text style={styles.licenceTitle}>Map data</Text>
+        <Text style={styles.licenceText}>{ATTRIBUTION}</Text>
+        <Text style={styles.licenceText}>{ATTRIBUTION_COPYRIGHT}</Text>
+        <Text style={styles.licenceSmall}>
+          Xplorer&apos;s maps are built from OpenStreetMap, a free map of the
+          world made by volunteers. The data is available under the Open
+          Database Licence.
+        </Text>
+        <Pressable
+          style={styles.licenceLink}
+          accessibilityRole="link"
+          accessibilityLabel="Open the OpenStreetMap copyright and licence page"
+          onPress={()=>Linking.openURL(ATTRIBUTION_URL)}
+        >
+          <Text style={styles.licenceLinkText}>{ATTRIBUTION_URL}</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -598,6 +639,12 @@ const styles=StyleSheet.create({
   settingTitle:{color:INK.ink,fontWeight:"900",fontSize:16},
   settingText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
   linkCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
+  licenceCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:16},
+  licenceTitle:{color:INK.ink,fontWeight:"900",fontSize:16,marginBottom:7},
+  licenceText:{color:INK.ink,fontSize:14,lineHeight:20},
+  licenceSmall:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:9},
+  licenceLink:{marginTop:11,minHeight:44,justifyContent:"center"},
+  licenceLinkText:{color:INK.blue,fontWeight:"800",fontSize:13,textDecorationLine:"underline"},
   linkTextWrap:{flex:1,paddingRight:12},
   linkTitle:{color:INK.ink,fontWeight:"900",fontSize:16},
   linkText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},

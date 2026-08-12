@@ -399,10 +399,17 @@ async function main(){
       cdp.on(stub);
 
       await cdp.send("Page.navigate",{url:`http://127.0.0.1:${port}${route}`},sessionId);
-      // 2.6s is enough for a screen that reads a table. A map is not: it
+      // 2.6s was enough for a screen that reads a table. A map is not: it
       // fetches a style, then sprites, then vector tiles, and Packet 21's
       // spike sat at "constructed" purely because nothing waited for that.
-      await new Promise(r=>setTimeout(r,Number(process.env.SETTLE_MS || 2600)));
+      //
+      // 6.2s now, and the extra is not padding. components/StartupSplash.js
+      // covers the whole app for a fixed five seconds on every start -- that is
+      // where the OpenStreetMap credit lives now that the map carries none --
+      // and it covers this browser too. At 2.6s this gate would have read the
+      // splash on all 42 routes and called every one of them "ok", which is
+      // exactly the blindness the login-redirect check below exists to stop.
+      await new Promise(r=>setTimeout(r,Number(process.env.SETTLE_MS || 6200)));
 
       let text="";
       try{
@@ -424,6 +431,12 @@ async function main(){
       // that lands on login is not a rendered route.
       if(!route.startsWith("/auth/") && /Quick test login|Don.t have an account/.test(text)){
         unique.push("redirected to the login screen — the stubbed session did not apply");
+      }
+
+      // Same trap, different cover. If the splash is still up, what was
+      // measured is the splash and not the route.
+      if(/Map data from OpenStreetMap/.test(text)){
+        unique.push("still showing the startup splash — raise SETTLE_MS above the splash duration");
       }
 
       if(process.env.DUMP_ROUTE===route){

@@ -104,15 +104,15 @@ export default function LivingMap({places=[],activity=[],onSelectPlace,onSelectA
       style:config.styleUrl,
       center:[DEFAULT_CENTRE.longitude,DEFAULT_CENTRE.latitude],
       zoom:12,
-      // The licence requires the credit to be visible, and OpenFreeMap's own
-      // styles carry it -- passing ours as well printed it twice. The provider
-      // module keeps the string for a style that does not supply one, and for
-      // anything that needs to say where the map came from in words.
+      // No control at all, and no logo. MapLibre GL JS adds an attribution
+      // control unless told not to; `false` means it is never created, so
+      // there is nothing on the map to hide. Nothing is covered or clipped.
       //
-      // compact:true makes it a small (i) that opens on tap rather than a bar
-      // of text across the bottom of the map. Same credit, and the licence is
-      // satisfied either way -- it has to be reachable, not large.
-      attributionControl:{compact:true}
+      // The OpenStreetMap credit itself has not left the app -- it cannot, the
+      // data is OpenStreetMap's. components/StartupSplash.js shows it for five
+      // seconds on every launch and Settings carries the permanent wording and
+      // the licence link. utils/mapProvider.js still owns the exact string.
+      attributionControl:false
     });
 
     map.current.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");

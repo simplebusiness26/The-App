@@ -4,6 +4,7 @@ import {router} from "expo-router";
 import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
 import PlaceCards from "./PlaceCards";
+import FloatingLogin from "./FloatingLogin";
 import {cardsAround} from "../utils/placeCards";
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {TIME_WINDOWS} from "../utils/liveActivity";
@@ -138,6 +139,10 @@ export default function LivingMapScreen(){
         onSelectActivity={(item)=>item.deepLink && router.push(item.deepLink)}
         onUnavailable={(why)=>setMapFailed(why || "unavailable")}
       />
+
+      {/* Only draws itself for somebody who is signed out, and never over an
+          open card. The app opens on this screen now, so this is the way in. */}
+      {!tapped && <FloatingLogin/>}
 
       {!!tapped && (
         <PlaceCards

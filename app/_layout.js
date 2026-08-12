@@ -9,6 +9,7 @@ import {FeedbackProvider} from "../context/FeedbackContext";
 import {NotificationProvider} from "../context/NotificationContext";
 import {DrawerProvider} from "../context/DrawerContext";
 import ErrorBoundary from "../components/ErrorBoundary";
+import StartupSplash from "../components/StartupSplash";
 
 export const unstable_settings={initialRouteName:"index"};
 
@@ -123,6 +124,17 @@ export default function Layout(){
 
               <TabBar/>
               <QuickAccessDrawer/>
+
+              {/*
+                Last child, so it covers the header, the tab bar and whatever
+                route the app opened on. It is HERE rather than on the home
+                route because the credit it carries has to be shown on every
+                start -- a deep link straight to a place page is still the app
+                starting, and the map data is still OpenStreetMap's.
+
+                It removes itself after five seconds and does not come back.
+              */}
+              <StartupSplash/>
             </View>
           </DrawerProvider>
         </NotificationProvider>

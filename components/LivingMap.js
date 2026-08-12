@@ -41,22 +41,28 @@ function MapLibreMap({places=[],activity=[],onSelectPlace,onSelectActivity}){
       style={styles.map}
       mapStyle={config.styleUrl}
       /*
-        THE CREDIT IS SMALL, NOT GONE
+        NO BRANDING ON THE MAP, AND THE CREDIT MOVED RATHER THAN DROPPED
 
-        The map data is OpenStreetMap's, and the licence it is free under says
-        the credit has to be on the map. Removing it is not a setting, it is a
-        breach -- so it becomes a small round (i) in the bottom right instead,
-        which is exactly what Google and Mapbox do with theirs. Tapping it shows
-        the full wording.
+        Both of MapLibre's own controls are off: the logo, and the built-in
+        attribution button. They are turned OFF at the component, not covered
+        over -- nothing is drawn and then hidden.
+
+        The OpenStreetMap credit has not gone from the app. It could not: the
+        map data is OpenStreetMap's and the licence it is free under requires
+        the credit. It now appears in two places instead of on the map --
+        components/StartupSplash.js shows "Map data from OpenStreetMap" for five
+        seconds every time the app opens, and Settings carries the permanent
+        wording and the link to the licence. Both are in
+        docs/design-system.md's attribution note.
 
         These are also the RIGHT prop names. `attributionEnabled` and
-        `logoEnabled` were v10's; on v11 they are `attribution` and `logo`, so
-        the old ones did nothing at all and the map was drawing the MapLibre
-        logo and the long credit bar because both default to on. That is the bar
-        that was across the bottom.
+        `logoEnabled` were v10's; on v11 they are `attribution` and `logo`.
+        scripts/verify-native-map-props.cjs checks them against the installed
+        package, because a React component ignores a prop it does not know in
+        silence -- which is how the logo and the credit bar came to be drawn
+        here in the first place.
       */
-      attribution
-      attributionPosition={{bottom:10,right:10}}
+      attribution={false}
       logo={false}
     >
       {/*
