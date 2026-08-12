@@ -7,6 +7,7 @@ import {useFeedback} from "../../context/FeedbackContext";
 import {CLUB_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
 import PlaceLayout from "../../components/PlaceLayout";
+import MessageButton from "../../components/MessageButton";
 import FavouriteButton from "../../components/FavouriteButton";
 import EntityFollowButton from "../../components/EntityFollowButton";
 
@@ -215,6 +216,11 @@ export default function ActivityClubProfile(){
       } : null}
       beforeReviews={club ? (
         <View style={styles.stack}>
+          {/*
+            Anybody may ask whoever runs this club a question about it. It
+            renders only when the club actually has a manager.
+          */}
+          <MessageButton targetType="activity_club" targetId={club.id}/>
           {isManager && (
             <Pressable
               style={styles.primary}

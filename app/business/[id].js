@@ -7,6 +7,7 @@ import {typeLabelForBusiness} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
 import {nearestFirst} from "../../utils/geo";
 import PlaceLayout from "../../components/PlaceLayout";
+import MessageButton from "../../components/MessageButton";
 import ClaimButton from "../../components/ClaimButton";
 import FavouriteButton from "../../components/FavouriteButton";
 import EntityFollowButton from "../../components/EntityFollowButton";
@@ -169,6 +170,14 @@ export default function BusinessPage(){
       ) : null}
       actions={business ? (
         <>
+          {/*
+            Anybody may ask whoever runs this place a question about it. It
+            renders only when the listing actually has a manager -- the
+            database refuses an unclaimed one and says so.
+          */}
+          <View style={styles.messageManagerRow}>
+            <MessageButton targetType="business" targetId={business.id}/>
+          </View>
           <View style={styles.actionRow}>
             {!!business.phone && (
               <Pressable style={styles.action} accessibilityRole="button" accessibilityLabel="Call this business" onPress={callBusiness}>
@@ -206,6 +215,7 @@ export default function BusinessPage(){
 
 
 const styles=StyleSheet.create({
+  messageManagerRow:{marginBottom:10,alignItems:"flex-start"},
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
   editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
   editText:{color:INK.ink,fontWeight:"800"},

@@ -7,6 +7,7 @@ import {formatEventPrice,formatEventRange,normalizeExternalUrl} from "../../util
 import {EVENT_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
 import PlaceLayout from "../../components/PlaceLayout";
+import MessageButton from "../../components/MessageButton";
 import FavouriteButton from "../../components/FavouriteButton";
 import EntityFollowButton from "../../components/EntityFollowButton";
 
@@ -145,6 +146,14 @@ export default function EventDetails(){
       } : null}
       actions={event ? (
         <>
+          {/*
+            Anybody may ask whoever runs this place a question about it. It
+            renders only when the listing actually has a manager -- the
+            database refuses an unclaimed one and says so.
+          */}
+          <View style={styles.messageManagerRow}>
+            <MessageButton targetType="event" targetId={event.id}/>
+          </View>
           {event.status==="published" && !!event.booking_url && (
             <Pressable
               style={styles.secondary}
@@ -211,6 +220,7 @@ export default function EventDetails(){
 }
 
 const styles=StyleSheet.create({
+  messageManagerRow:{marginBottom:10,alignItems:"flex-start"},
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
   primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginBottom:10},
   primaryText:{color:INK.card,fontWeight:"800"},

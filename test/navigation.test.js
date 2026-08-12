@@ -126,9 +126,10 @@ describe("no route was lost",()=>{
   const ADDED=["create","discover","places/index","places/[id]","admin/public-places",
     "admin/listings","admin/activities","admin/moderation","admin/explorers",
     "admin/areas","admin/audit","memories/create","memories/[id]",
-    // Messages has a tab but no feature behind it yet. The screen says so
-    // rather than faking an inbox -- see app/messages.js.
-    "messages",
+    // Messages was a tab with an honest "not built yet" screen behind it while
+    // the footer was being judged with all five slots in place. Packet 9 built
+    // the feature, so the single file became an inbox and a thread.
+    "messages/index","messages/[id]",
     // Parks became reviewable in 20260811140000 and app/places/[id].js has
     // listed reviews ever since, with no screen anywhere to write one on. This
     // is that screen -- the same shared form every other place type uses.
