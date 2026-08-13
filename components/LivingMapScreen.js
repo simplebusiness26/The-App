@@ -84,16 +84,6 @@ export default function LivingMapScreen(){
   const [historical,setHistorical]=useState(false);
   const [at,setAt]=useState(null);
 
-  const range=useMemo(()=>timelineRange(map.memoryRows),[map.memoryRows]);
-  const when=at===null ? range.to : at;
-
-  useEffect(()=>{
-    const timer=setInterval(()=>setTick((current)=>current+1),BUBBLE_MS);
-    return()=>clearInterval(timer);
-  },[]);
-
-  const tapped=map.cards.find((card)=>card.key===openKey) || null;
-
   const candidates=useMemo(()=>candidatesFrom({
     places:map.places,
     activity:map.activity,
@@ -101,6 +91,28 @@ export default function LivingMapScreen(){
     appearance:bubbleAppearance(),
     confetti:celebrationPieces()
   }),[map.places,map.activity,map.reviewShots]);
+  const candidateCount=candidates.length;
+
+  const range=useMemo(()=>timelineRange(map.memoryRows),[map.memoryRows]);
+  const when=at===null ? range.to : at;
+
+  // Only while there is something to rotate. A map with no eligible bubbles --
+  // which is most maps, most of the time, since both Manager switches default
+  // to off -- has no reason to wake up every four seconds and re-render.
+  //
+  // It is also correctness, not just thrift: a timer that keeps firing on an
+  // unmounted screen updates state after the screen is gone. In the test suite
+  // that surfaces as "Cannot log after tests are done" and a run that exits 1
+  // with every test passing, which is exactly the CI failure this project spent
+  // a day on last week.
+  useEffect(()=>{
+    if(!candidateCount) return undefined;
+    const timer=setInterval(()=>setTick((current)=>current+1),BUBBLE_MS);
+    return()=>clearInterval(timer);
+  },[candidateCount]);
+
+  const tapped=map.cards.find((card)=>card.key===openKey) || null;
+
 
   const bubbles=useMemo(()=>{
     const automatic=bubblesAt(candidates,{tick,selectedKey:openBubble?.key || null});

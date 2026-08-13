@@ -74,11 +74,28 @@ function rowKeys(tree){
   ).length;
 }
 
+// Every tree this file makes, so it can be taken down again.
+//
+// FlatList is a VirtualizedList, and a VirtualizedList schedules a timer to
+// work out which rows to keep mounted. Left mounted, that timer fires after
+// Jest has torn the test environment down, which makes the RUN exit 1 while
+// every test still passes -- the exact shape of the CI failure this project
+// had a week ago, and the reason the exit code is now checked rather than the
+// summary line.
+const trees=[];
+
+afterEach(async()=>{
+  for(const tree of trees.splice(0)){
+    await act(async()=>{tree.unmount();});
+  }
+});
+
 async function mount(){
   const Feed=require("../app/feed").default;
   let tree;
   await act(async()=>{tree=create(wrap(React.createElement(Feed)));});
   await act(async()=>{});
+  trees.push(tree);
   return tree;
 }
 
