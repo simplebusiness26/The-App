@@ -354,6 +354,12 @@ export function useLivingMap(){
     posts,
     heat,
     reviewShots,
+    // The raw rows, for the Memories-only historical map. That mode uses
+    // utils/memoryTimeline.js rather than the live-map rule -- "what happened
+    // here" and "what is on the map now" are different questions, and isOnMapAt
+    // would hide every Memory whose map window has passed, which is all the old
+    // ones and therefore the entire point of a history.
+    memoryRows:memories,
 
     reload
   };

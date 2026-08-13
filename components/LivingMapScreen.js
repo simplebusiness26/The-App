@@ -12,6 +12,17 @@ import {routeAppearance,bubbleAppearance,celebrationPieces} from "../utils/marke
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {candidatesFrom} from "../utils/bubbleCandidates";
 import {createDoubleTap} from "../utils/doubleTap";
+import TimeSlider from "./TimeSlider";
+import {
+  memoriesAt,
+  timelineRange,
+  positionOf,
+  timeAtPosition,
+  timelineLabel,
+  WINDOW_DAYS,
+  DAY_MS
+} from "../utils/memoryTimeline";
+import {markerForMemory} from "../utils/markers";
 import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {INK} from "../utils/tokens";
@@ -62,6 +73,19 @@ export default function LivingMapScreen(){
   // other's double tap. Native gets a tap counter; the web map already has a
   // real dblclick event and calls through directly.
   const heatTap=useMemo(()=>createDoubleTap(),[]);
+
+  // MEMORIES ONLY: the map becomes a history.
+  //
+  // "What happened here?" is a different question from "what is happening
+  // now?", so it gets a different map rather than a filter on this one. The
+  // slider moves a ten-day window through time and what changes is which
+  // Memories are PROMINENT -- nothing is hidden, expired or deleted by moving
+  // it. See utils/memoryTimeline.js.
+  const [historical,setHistorical]=useState(false);
+  const [at,setAt]=useState(null);
+
+  const range=useMemo(()=>timelineRange(map.memoryRows),[map.memoryRows]);
+  const when=at===null ? range.to : at;
 
   useEffect(()=>{
     const timer=setInterval(()=>setTick((current)=>current+1),BUBBLE_MS);
@@ -175,6 +199,30 @@ export default function LivingMapScreen(){
             <Text style={map.showHeat ? styles.selectedFilterText : styles.filterText}>Busy</Text>
           </Pressable>
 
+          {/*
+            MEMORIES ONLY -- and the map becomes a history rather than a filter
+            of the live one. Everything else goes off, because "what happened
+            here" and "what is happening now" are two maps, not two layers.
+          */}
+          <Pressable
+            style={[styles.filterButton,historical && styles.selectedFilter]}
+            accessibilityRole="button"
+            accessibilityState={{selected:historical}}
+            accessibilityLabel={historical ? "Leave the Memories timeline" : "Show Memories on a timeline"}
+            onPress={()=>{
+              const next=!historical;
+              setHistorical(next);
+              setAt(null);
+              setRevealed(null);
+              // The live layers are a different question and would only get in
+              // the way of this one.
+              if(next){map.setShowLive(false);map.setShowPosts(false);map.setShowHeat(false);}
+              else{map.setShowPosts(true);}
+            }}
+          >
+            <Text style={historical ? styles.selectedFilterText : styles.filterText}>Memories</Text>
+          </Pressable>
+
           <Pressable
             style={styles.filterButton}
             accessibilityRole="button"
@@ -202,7 +250,22 @@ export default function LivingMapScreen(){
       <LivingMap
         places={map.places}
         activity={map.activity}
-        pins={map.posts.map((post)=>({...post,onPress:()=>router.push(post.route)}))}
+        pins={
+          historical
+            ? memoriesAt(map.memoryRows,when)
+                .filter((entry)=>entry.memory.latitude!==null && entry.memory.longitude!==null)
+                .map(({memory,prominence})=>({
+                  key:`memory-${memory.id}`,
+                  latitude:Number(memory.latitude),
+                  longitude:Number(memory.longitude),
+                  marker:markerForMemory(memory),
+                  // Presentation only. A Memory at 0 is simply not in this
+                  // ten-day window; it is untouched everywhere else in the app.
+                  opacity:prominence,
+                  onPress:()=>router.push(`/memories/${memory.id}`)
+                }))
+            : map.posts.map((post)=>({...post,onPress:()=>router.push(post.route)}))
+        }
         heat={map.heat}
         route={route}
         bubbles={bubbles}
@@ -307,6 +370,20 @@ export default function LivingMapScreen(){
         </View>
       )}
 
+      {historical && (
+        <View style={styles.timeline} pointerEvents="box-none">
+          <TimeSlider
+            position={positionOf(when,range)}
+            label={range.empty ? "No Memories to look back through yet" : timelineLabel(when)}
+            onChange={(next)=>setAt(timeAtPosition(next,range))}
+            onStep={(direction)=>{
+              const stepped=when+direction*WINDOW_DAYS*DAY_MS;
+              setAt(Math.min(range.to,Math.max(range.from,stepped)));
+            }}
+          />
+        </View>
+      )}
+
       {/*
         WHAT IS HAPPENING HERE.
         Moments stay out of the bubble rotation -- there are more of them than
@@ -371,6 +448,7 @@ const styles=StyleSheet.create({
   container:{flex:1,backgroundColor:INK.paper},
   // Above the card sheet, out of the way of the search box.
   directions:{position:"absolute",left:12,right:12,bottom:12,zIndex:15},
+  timeline:{position:"absolute",left:12,right:12,bottom:12,zIndex:14},
   reveal:{position:"absolute",left:12,right:12,bottom:12,zIndex:16,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:12},
   revealHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
   revealTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
