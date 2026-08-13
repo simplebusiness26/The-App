@@ -33,7 +33,8 @@
     "verify:contrast": "node scripts/verify-contrast.cjs",
     "verify:nativemap": "node scripts/verify-native-map-props.cjs",
     "verify:audience": "node scripts/verify-audience-vocabulary.cjs",
-    "verify:camera": "node scripts/verify-camera-only-creation.cjs"
+    "verify:camera": "node scripts/verify-camera-only-creation.cjs",
+    "verify:audit": "node scripts/verify-audit.cjs"
   },
   "dependencies": {
     "@maplibre/maplibre-react-native": "^11.3.6",

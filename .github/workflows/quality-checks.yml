@@ -166,20 +166,23 @@ jobs:
           REQUIRE_BROWSER: "1"
         run: npm run verify:browser
 
-      # Moved to the end, and it is the only step here that fails on something
-      # this repository cannot fix. The 15 high-severity advisories are all
-      # transitive under expo, metro and react-native -- upstream framework
-      # packages -- so clearing them means an Expo upgrade, not a change in this
-      # app. (react-native-maps used to be named here too; it is uninstalled.)
+      # `npm audit --audit-level=moderate` used to be here, and before that it
+      # was the FIRST step -- which meant a red audit stopped the whole job
+      # before a single test ran, and no test, gate or browser check executed in
+      # CI at all for twenty-two runs.
       #
-      # It used to be the FIRST step, which meant a red audit stopped the entire
-      # job before a single test ran. Every run on this branch was failing here
-      # and no test, gate or browser check had executed in CI at all. A failing
-      # step that hides every other result is worse than a failing step at the
-      # end: the audit still goes red and still blocks the run, but everything
-      # that can pass now runs and reports first.
-      - name: Require clean dependency audit
-        run: npm audit --audit-level=moderate
+      # Moving it to the end fixed that half. This fixes the other half: it was
+      # STILL always red, and could not be made green from this repository. All
+      # 15 advisories trace to one package, image-size, reached through metro,
+      # which is Expo's bundler -- npm's only offered fix is a downgrade to
+      # expo@53. A step that can never pass is worse than no step: it teaches
+      # everybody to ignore the job, which is precisely how the first failure
+      # went unnoticed for three weeks.
+      #
+      # So the advisories are accepted in writing, with a reason and a date, in
+      # scripts/verify-audit.cjs -- and anything NOT on that list still fails.
+      - name: Require a reviewed dependency audit
+        run: npm run verify:audit
 
       - name: Upload web build
         uses: actions/upload-artifact@v4
