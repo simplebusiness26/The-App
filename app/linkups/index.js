@@ -4,6 +4,7 @@ import {Link,router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {effectiveLinkupStatus,formatDateTime,statusLabel,timeUntil} from "../../utils/linkups";
 import {INK} from "../../utils/tokens";
+import {audienceShortLabel} from "../../utils/audience";
 
 export default function LinkupsIndex(){
   const [user,setUser]=useState(null);
@@ -103,7 +104,10 @@ export default function LinkupsIndex(){
               <Text style={styles.creator}>By {creator?.full_name || "Explorer"}</Text>
               <Text style={styles.capacity}>{item.attendee_count}/{item.max_attendees} joined</Text>
             </View>
-            {item.visibility==="followers" && <Text style={styles.followersOnly}>Friends only</Text>}
+            {/* Anything narrower than everyone gets said out loud. The test
+                was against "followers", a word Link-ups no longer hold, so this
+                badge had silently stopped appearing at all. */}
+            {item.visibility!=="everyone" && <Text style={styles.followersOnly}>{audienceShortLabel(item.visibility)} only</Text>}
           </Pressable>
         );
       })}

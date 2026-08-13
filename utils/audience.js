@@ -45,6 +45,27 @@ export function audienceLabel(audience){
   return AUDIENCE_LABEL[audience] || "nobody";
 }
 
+// The same six words as a short noun, for a badge or a stat where a sentence
+// fragment would not fit. It exists so that a screen needing "Friends" in a
+// pill does not write its own mapping -- app/linkups/[id].js did exactly that,
+// as `visibility==="followers" ? "Friends" : "Public"`, and once Link-ups
+// stopped storing 'followers' every Friends-only Link-up told its members it
+// was Public. A privacy control that lies is worse than one that is missing.
+//
+// Same fall-through as everything else here: unrecognised reads as Nobody.
+export const AUDIENCE_SHORT_LABEL={
+  nobody:"Nobody",
+  selected:"Chosen Explorers",
+  close_friends:"Close friends",
+  friends:"Friends",
+  followers:"Followers",
+  everyone:"Everyone"
+};
+
+export function audienceShortLabel(audience){
+  return AUDIENCE_SHORT_LABEL[audience] || "Nobody";
+}
+
 // Given the profile setting and the audience chosen for one post, who actually
 // ends up seeing it. The narrower of the two, every time.
 export function effectiveAudience(profileVisibility,postAudience){

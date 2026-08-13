@@ -2,6 +2,7 @@ import React,{useMemo,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Location from "expo-location";
 import DateTimeField from "./DateTimeField";
+import AudienceCeiling from "./AudienceCeiling";
 import {localInputToIso,toLocalInputValue} from "../utils/linkups";
 import {INK} from "../utils/tokens";
 
@@ -160,13 +161,27 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
         <View style={styles.warningCard}>
           <Text style={styles.warningTitle}>Everyone means everyone</Text>
           <Text style={styles.warningText}>Every Explorer signed in to Xplorer can see this Link-up: the title, the description, the area, the public meeting place and the time. Not only people you know.</Text>
-          <Text style={styles.warningText}>Your exact meeting instructions stay hidden until someone joins. If your profile visibility is set narrower than everyone, that narrower setting still wins.</Text>
+          <Text style={styles.warningText}>Your exact meeting instructions stay hidden until someone joins.</Text>
           <Pressable style={styles.acknowledgeRow} onPress={()=>{setUnderstoodEveryone(!understoodEveryone);setError("");}} accessibilityRole="checkbox" accessibilityState={{checked:understoodEveryone}}>
             <View style={[styles.acknowledgeBox,understoodEveryone&&styles.acknowledgeBoxOn]}><Text style={styles.acknowledgeTick}>{understoodEveryone?"✓":""}</Text></View>
             <Text style={styles.acknowledgeText}>I understand this Link-up is visible to every Explorer.</Text>
           </Pressable>
         </View>
       )}
+
+      {/*
+        The profile ceiling, said out loud and with the actual setting in it.
+        Moments (app/moments/create.js) and check-ins (app/checkins/create.js)
+        have warned about this since the ceiling existed; Link-ups were the one
+        place that stayed silent, so a new Explorer -- whose visibility starts
+        at `nobody`, correctly -- could post an invitation, be told "Your
+        Link-up is live", and have it be visible to no one.
+
+        It replaces half a sentence that used to sit inside the Everyone card:
+        that one only appeared for Everyone, and could not name the setting
+        because the form never reads it. This component reads it itself.
+      */}
+      <AudienceCeiling audience={visibility}/>
 
       <View style={styles.safetyCard}>
         <Text style={styles.safetyTitle}>Safety</Text>

@@ -119,7 +119,7 @@ export default function MemoryPage(){
     }
 
     showFeedback(
-      value==="private"
+      value==="nobody"
         ? "Once the live period ends, only you will see it."
         : `Afterwards it stays visible to ${visibilityLabel(ARCHIVE_VISIBILITY,value)}.`,
       "success",

@@ -89,6 +89,13 @@ jobs:
       - name: Verify friends-only means both people
         run: npm run verify:friends
 
+      # Added after the Keep a Memory screen spent two days sending 'private'
+      # to a database that had stopped accepting it. Every unit test passed
+      # throughout, because they all compared the app's words to the app's own
+      # words. This one knows what the database allows.
+      - name: Verify one audience vocabulary, with no banned synonyms
+        run: npm run verify:audience
+
       - name: Verify every screen can actually be read
         run: npm run verify:contrast
 

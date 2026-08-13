@@ -178,9 +178,16 @@ contains("components/ExplorerProfileScreen.js",[
 // 6. The screens say both decisions out loud
 // ---------------------------------------------------------------------------
 
+// 'private' and 'public', until 2026-08-13. This gate asserted them, which is
+// part of why the bug lived: the canonical-audience migration made the database
+// refuse both words, nobody could keep a Memory at all, and every check in this
+// file went on passing because it was comparing the app to itself. The closed
+// setting is still the default -- it is now spelled the way the database spells
+// it. scripts/verify-audience-vocabulary.cjs is the check that reads the words
+// rather than trusting them.
 contains("utils/memories.js",[
-  "DEFAULT_MEMORY_VISIBILITY=\"private\"",
-  "DEFAULT_ARCHIVE_VISIBILITY=\"private\"",
+  "DEFAULT_MEMORY_VISIBILITY=\"nobody\"",
+  "DEFAULT_ARCHIVE_VISIBILITY=\"nobody\"",
   "MEMORY_VISIBILITY",
   "ARCHIVE_VISIBILITY",
   "LIVE_DURATIONS"
@@ -189,8 +196,8 @@ contains("utils/memories.js",[
 const memoriesUtil=read("utils/memories.js");
 
 check(
-  /\{\s*key:"private"/.test(memoriesUtil.slice(memoriesUtil.indexOf("MEMORY_VISIBILITY"))),
-  "utils/memories.js: private is no longer the first live audience — the closed setting is the default"
+  /\{\s*key:"nobody"/.test(memoriesUtil.slice(memoriesUtil.indexOf("MEMORY_VISIBILITY"))),
+  "utils/memories.js: nobody is no longer the first live audience — the closed setting is the default"
 );
 
 contains("app/memories/create.js",[

@@ -88,19 +88,43 @@ describe("the two phases",()=>{
 
   it("reads the live audience while live and the archive audience afterwards",()=>{
     const now=Date.now();
-    const live={visibility:"public",archive_visibility:"private",live_until:new Date(now+hour).toISOString()};
-    const expired={visibility:"public",archive_visibility:"private",live_until:new Date(now-hour).toISOString()};
+    const live={visibility:"everyone",archive_visibility:"nobody",live_until:new Date(now+hour).toISOString()};
+    const expired={visibility:"everyone",archive_visibility:"nobody",live_until:new Date(now-hour).toISOString()};
 
-    expect(memories.currentAudience(live,now)).toBe("Public");
+    expect(memories.currentAudience(live,now)).toBe("Everyone");
     // The whole packet in one assertion: same row, later, nobody's but its own.
     expect(memories.currentAudience(expired,now)).toBe("Only me");
   });
 
   it("defaults both settings to the closed one",()=>{
-    expect(memories.DEFAULT_MEMORY_VISIBILITY).toBe("private");
-    expect(memories.DEFAULT_ARCHIVE_VISIBILITY).toBe("private");
-    expect(memories.MEMORY_VISIBILITY[0].key).toBe("private");
-    expect(memories.ARCHIVE_VISIBILITY[0].key).toBe("private");
+    expect(memories.DEFAULT_MEMORY_VISIBILITY).toBe("nobody");
+    expect(memories.DEFAULT_ARCHIVE_VISIBILITY).toBe("nobody");
+    expect(memories.MEMORY_VISIBILITY[0].key).toBe("nobody");
+    expect(memories.ARCHIVE_VISIBILITY[0].key).toBe("nobody");
+  });
+
+  // THE ASSERTION THIS FILE WAS MISSING.
+  //
+  // Every test above compares the app's words to the app's own words, so all of
+  // them passed for two days while the screen was sending 'private' to a
+  // database that refuses it and nobody could keep a Memory at all. Checking
+  // the words against the CONSTRAINT is the only version of this test that
+  // could have failed.
+  //
+  // The list is copied from explorer_memories_visibility_check and
+  // explorer_memories_archive_visibility_check on the live project, which are
+  // in turn what 20260811220000_canonical_audience.sql wrote.
+  it("offers only words the database accepts",()=>{
+    const ALLOWED=["nobody","selected","close_friends","friends","followers","everyone"];
+
+    for(const option of memories.MEMORY_VISIBILITY){
+      expect(ALLOWED).toContain(option.key);
+    }
+    for(const option of memories.ARCHIVE_VISIBILITY){
+      expect(ALLOWED).toContain(option.key);
+    }
+    expect(ALLOWED).toContain(memories.DEFAULT_MEMORY_VISIBILITY);
+    expect(ALLOWED).toContain(memories.DEFAULT_ARCHIVE_VISIBILITY);
   });
 
   it("builds a live_until in the future",()=>{
@@ -141,20 +165,20 @@ describe("the create screen",()=>{
     expect(textOf(tree.toJSON())).toContain("This starts at \"Only me\" whatever you chose above");
   });
 
-  it("hides the live period while the Memory is private, and shows it once it is not",async()=>{
+  it("hides the live period while the Memory is only-me, and shows it once it is not",async()=>{
     installFixture({user:{id:"explorer-1"}});
     const tree=await mount();
 
     expect(textOf(tree.toJSON())).not.toContain("HOW LONG IT STAYS LIVE");
 
     await act(async()=>{
-      pressable(tree,"Public: Any Explorer, while it is live").props.onPress();
+      pressable(tree,"Everyone: Any Explorer, while it is live").props.onPress();
     });
 
     expect(textOf(tree.toJSON())).toContain("HOW LONG IT STAYS LIVE");
   });
 
-  it("saves a private Memory with no live period and a private archive",async()=>{
+  it("saves an only-me Memory with no live period and a closed archive",async()=>{
     installFixture({user:{id:"explorer-1"},tables:{explorer_memories:[{id:"mem-1"}]}});
     const tree=await mount();
 
@@ -169,13 +193,13 @@ describe("the create screen",()=>{
     expect(builder).not.toBeNull();
 
     const payload=builder.insert.mock.calls[0][0];
-    expect(payload.visibility).toBe("private");
+    expect(payload.visibility).toBe("nobody");
     expect(payload.live_until).toBeNull();
-    expect(payload.archive_visibility).toBe("private");
+    expect(payload.archive_visibility).toBe("nobody");
     expect(payload.show_on_profile).toBe(false);
   });
 
-  it("gives a public Memory a live period and still leaves its archive private",async()=>{
+  it("gives an everyone Memory a live period and still leaves its archive closed",async()=>{
     installFixture({user:{id:"explorer-1"},tables:{explorer_memories:[{id:"mem-2"}]}});
     const tree=await mount();
 
@@ -183,18 +207,18 @@ describe("the create screen",()=>{
       field(tree,"Memory title").props.onChangeText("Pier at sunset");
     });
     await act(async()=>{
-      pressable(tree,"Public: Any Explorer, while it is live").props.onPress();
+      pressable(tree,"Everyone: Any Explorer, while it is live").props.onPress();
     });
     await act(async()=>{
       pressable(tree,"Save this Memory").props.onPress();
     });
 
     const payload=lastCallTo("explorer_memories").insert.mock.calls[0][0];
-    expect(payload.visibility).toBe("public");
+    expect(payload.visibility).toBe("everyone");
     expect(typeof payload.live_until).toBe("string");
     expect(new Date(payload.live_until).getTime()).toBeGreaterThan(Date.now());
     // Chosen once, for the live phase only. The archive is a second decision.
-    expect(payload.archive_visibility).toBe("private");
+    expect(payload.archive_visibility).toBe("nobody");
   });
 });
 

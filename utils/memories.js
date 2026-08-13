@@ -5,32 +5,50 @@
 // decided by the database -- these are the words the screens use to say the
 // same thing to a person.
 
-// Who can read it. Private first, and private is the default: RULES.md says a
+// THESE WORDS USED TO BE 'private' AND 'public', AND KEEPING A MEMORY WAS
+// BROKEN THE WHOLE TIME THEY WERE.
+//
+// 20260811220000_canonical_audience.sql put the whole database on one audience
+// vocabulary -- nobody, selected, close_friends, friends, followers, everyone
+// -- and added CHECK constraints refusing anything else. This file kept
+// offering 'private' and 'public', and DEFAULT_MEMORY_VISIBILITY was 'private',
+// so the DEFAULT path through app/memories/create.js was rejected by the
+// database every time. Proved against the live project before changing it:
+// private=REJECTED, public=REJECTED, and all four words below ACCEPTED.
+//
+// The mapping was not a judgement call. It is what each label already said:
+// "Only me -- nobody else, ever" is nobody, and "any Explorer" is everyone.
+//
+// scripts/verify-audience-vocabulary.cjs now fails the build if either word
+// comes back as an audience anywhere in the app. Nothing caught this for two
+// days because every test compared the app's words to the app's own words.
+
+// Who can read it. Nobody first, and nobody is the default: RULES.md says a
 // visibility flag defaults to the closed setting.
 export const MEMORY_VISIBILITY=[
-  {key:"private",label:"Only me",hint:"Nobody else, ever"},
+  {key:"nobody",label:"Only me",hint:"Nobody else, ever"},
   {key:"friends",label:"Friends",hint:"Explorers you follow who follow you back"},
   {key:"selected",label:"Chosen Explorers",hint:"Only the people you pick"},
-  {key:"public",label:"Public",hint:"Any Explorer, while it is live"}
+  {key:"everyone",label:"Everyone",hint:"Any Explorer, while it is live"}
 ];
 
-export const DEFAULT_MEMORY_VISIBILITY="private";
+export const DEFAULT_MEMORY_VISIBILITY="nobody";
 
 // What happens to it afterwards. Deliberately a separate list with the same
 // values: the archive is a second decision, not a continuation of the first.
 export const ARCHIVE_VISIBILITY=[
-  {key:"private",label:"Only me",hint:"It stays yours once the live period ends"},
+  {key:"nobody",label:"Only me",hint:"It stays yours once the live period ends"},
   {key:"friends",label:"Friends",hint:"Mutual follows keep access afterwards"},
   {key:"selected",label:"Chosen Explorers",hint:"The people you picked keep access"},
-  {key:"public",label:"Public",hint:"Anyone can find it in your archive"}
+  {key:"everyone",label:"Everyone",hint:"Any Explorer can find it in your archive"}
 ];
 
 // Never copied from `visibility`. Consenting to be seen today is not
 // consenting to be seen forever, so the archive starts closed and the creator
 // opens it deliberately or not at all.
-export const DEFAULT_ARCHIVE_VISIBILITY="private";
+export const DEFAULT_ARCHIVE_VISIBILITY="nobody";
 
-// How long the live period runs. A private Memory needs none; everything else
+// How long the live period runs. An only-me Memory needs none; everything else
 // must have one, because anything that reveals where somebody was has to stop.
 export const LIVE_DURATIONS=[
   {key:"day",label:"24 hours",hours:24},

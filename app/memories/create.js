@@ -59,7 +59,11 @@ export default function CreateMemory(){
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");
 
-  const isPrivate=visibility==="private";
+  // "nobody", not "private". The old word is refused by the database -- see
+  // the note at the top of utils/memories.js. This one also decides whether the
+  // Memory gets a live period at all, so a stale word here would have given an
+  // only-me Memory an expiry it should never have had.
+  const isPrivate=visibility==="nobody";
 
   useEffect(()=>{loadUser();},[]);
   useEffect(()=>()=>releaseSocialAsset(asset),[asset]);
@@ -206,7 +210,7 @@ export default function CreateMemory(){
       showFeedback(
         isPrivate
           ? "Kept on your own map. Nobody else can see it."
-          : `Live for now, then ${archiveVisibility==="private" ? "yours alone" : "kept in your archive"}.`,
+          : `Live for now, then ${archiveVisibility==="nobody" ? "yours alone" : "kept in your archive"}.`,
         "success",
         "Memory saved"
       );

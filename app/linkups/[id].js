@@ -5,6 +5,7 @@ import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import {effectiveLinkupStatus,formatDateTime,statusLabel} from "../../utils/linkups";
 import {LINKUP_TYPE_LABEL} from "../../utils/markers";
+import {audienceShortLabel} from "../../utils/audience";
 import {INK} from "../../utils/tokens";
 import PlaceLayout from "../../components/PlaceLayout";
 
@@ -137,7 +138,12 @@ export default function LinkupDetail(){
       ]}
       stats={linkup ? [
         {value:`${linkup.attendee_count}/${linkup.max_attendees}`,label:"joined"},
-        {value:linkup.visibility==="followers" ? "Friends" : "Public",label:"who can see it"}
+        // Read the value, do not guess it from one comparison. This line used
+        // to say `visibility==="followers" ? "Friends" : "Public"`, and Link-ups
+        // have stored `friends` or `everyone` since the audience rename -- so
+        // every Friends-only Link-up fell through and announced itself as
+        // Public to the people in it.
+        {value:audienceShortLabel(linkup.visibility),label:"who can see it"}
       ] : null}
       beforeActions={linkup ? (
         <View style={styles.stack}>

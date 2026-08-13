@@ -31,7 +31,8 @@
     "verify:permissions": "node scripts/verify-one-permission-point.cjs",
     "verify:friends": "node scripts/verify-friends-visibility.cjs",
     "verify:contrast": "node scripts/verify-contrast.cjs",
-    "verify:nativemap": "node scripts/verify-native-map-props.cjs"
+    "verify:nativemap": "node scripts/verify-native-map-props.cjs",
+    "verify:audience": "node scripts/verify-audience-vocabulary.cjs"
   },
   "dependencies": {
     "@maplibre/maplibre-react-native": "^11.3.6",
