@@ -1,12 +1,13 @@
-import React,{useCallback,useRef,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {
   View,Text,TextInput,Pressable,ScrollView,ActivityIndicator,
-  KeyboardAvoidingView,Platform,StyleSheet
+  StyleSheet
 } from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import {entityRoute,entityTypeLabel} from "../../utils/places";
+import useKeyboardInset from "../../hooks/useKeyboardInset";
 import {INK} from "../../utils/tokens";
 
 // One conversation.
@@ -35,6 +36,14 @@ export default function Conversation(){
   const [sending,setSending]=useState(false);
   const [error,setError]=useState("");
   const scroller=useRef(null);
+  // Whether the thread has been scrolled to the bottom once for this
+  // conversation. Everything after that is the reader's business.
+  const settled=useRef(false);
+  // Set while the reader has deliberately scrolled up. Nothing may yank them
+  // back down while this is true.
+  const readingHistory=useRef(false);
+
+  const keyboard=useKeyboardInset();
 
   const load=useCallback(async()=>{
     if(!conversationId) return;
@@ -93,10 +102,26 @@ export default function Conversation(){
       return;
     }
 
+    // The draft is cleared only after the database accepted it. A send that
+    // fails above returns with the text still in the box -- losing what
+    // somebody typed because the network blinked is not an acceptable way to
+    // report a network problem.
     setDraft("");
     await load();
+    // Sending is the one action that always returns you to the bottom: you
+    // wrote it, you should see it land.
+    readingHistory.current=false;
     scroller.current?.scrollToEnd?.({animated:true});
   }
+
+  // Opening the keyboard shortens the thread. If the reader was at the bottom,
+  // keep them there -- otherwise the last message slides up behind the composer
+  // at exactly the moment they are about to reply to it.
+  useEffect(()=>{
+    if(keyboard<=0 || readingHistory.current) return;
+    const timer=setTimeout(()=>scroller.current?.scrollToEnd?.({animated:false}),50);
+    return()=>clearTimeout(timer);
+  },[keyboard]);
 
   if(loading){
     return <View style={styles.centre}><ActivityIndicator size="large" color={INK.ink}/></View>;
@@ -111,10 +136,12 @@ export default function Conversation(){
     : null;
 
   return(
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS==="ios" ? "padding" : undefined}
-    >
+    // The keyboard's height, applied as padding on the screen itself. See
+    // hooks/useKeyboardInset.js for why this is not a KeyboardAvoidingView:
+    // the old one had no behaviour on Android at all, and Expo's edge-to-edge
+    // default means the window no longer resizes underneath it, so the keyboard
+    // simply covered the composer.
+    <View style={[styles.screen,{paddingBottom:keyboard}]}>
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
@@ -142,7 +169,24 @@ export default function Conversation(){
         ref={scroller}
         style={styles.thread}
         contentContainerStyle={styles.threadContent}
-        onContentSizeChange={()=>scroller.current?.scrollToEnd?.({animated:false})}
+        keyboardShouldPersistTaps="handled"
+        // Was: scrollToEnd on EVERY content size change. That fires whenever
+        // anything reflows -- an image settling, the keyboard opening, a
+        // re-render -- so scrolling up to read older messages yanked the view
+        // back to the bottom. The thread now settles at the bottom once, and
+        // after that only a message being sent moves it.
+        onContentSizeChange={()=>{
+          if(settled.current || readingHistory.current) return;
+          settled.current=true;
+          scroller.current?.scrollToEnd?.({animated:false});
+        }}
+        onScroll={(event)=>{
+          const {layoutMeasurement,contentOffset,contentSize}=event.nativeEvent;
+          const fromBottom=contentSize.height-(contentOffset.y+layoutMeasurement.height);
+          // A small margin, because "at the bottom" is never exactly zero.
+          readingHistory.current=fromBottom>80;
+        }}
+        scrollEventThrottle={64}
       >
         {!messages.length && (
           <Text style={styles.muted}>
@@ -187,7 +231,7 @@ export default function Conversation(){
           <Text style={styles.sendText}>{sending ? "…" : "Send"}</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -205,7 +249,12 @@ const styles=StyleSheet.create({
   theirs:{alignSelf:"flex-start",backgroundColor:INK.card},
   body:{color:INK.ink,fontSize:14,lineHeight:20},
   mineBody:{color:INK.card},
-  composer:{flexDirection:"row",alignItems:"flex-end",gap:9,padding:12,paddingBottom:96,borderTopWidth:2,borderTopColor:INK.ink,backgroundColor:INK.card},
+  // paddingBottom was 96, a hand-tuned clearance for the tab bar. It double
+  // counted: components/TabBar.js renders as a SIBLING of the Stack in
+  // app/_layout.js, so this screen's box already stops above it. The only thing
+  // actually overlapping is the 20px strip the raised centre button rises into,
+  // so 28 clears it with room to spare -- and gives 68px of screen back.
+  composer:{flexDirection:"row",alignItems:"flex-end",gap:9,padding:12,paddingBottom:28,borderTopWidth:2,borderTopColor:INK.ink,backgroundColor:INK.card},
   input:{flex:1,minHeight:44,maxHeight:120,borderWidth:2,borderColor:INK.hair,borderRadius:12,paddingHorizontal:12,paddingVertical:10,color:INK.ink,backgroundColor:INK.paper,textAlignVertical:"top"},
   send:{minHeight:44,justifyContent:"center",paddingHorizontal:18,borderRadius:99,backgroundColor:INK.ink},
   sendOff:{opacity:0.4},
