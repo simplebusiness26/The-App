@@ -369,6 +369,25 @@ export function markerForMoment(){
 // currently uses: nothing produces an offer, so yellow is free to mean this
 // without colliding. Every cell still carries a sentence, because colour is
 // never the only carrier of meaning.
+// How a route is drawn. Here for the same reason heatAppearance is: the map
+// renderers are forbidden from knowing what a colour MEANS
+// (test/living-map-cross-platform.test.js bans INK.blue/pink/yellow in either
+// of them), so the appearance is decided in this file and handed over.
+//
+// INK, not one of the three inks. Blue, pink and yellow say what state a PLACE
+// is in; a route is not a place and borrowing one would make the map lie. A
+// paper-coloured casing underneath keeps the line readable over dark tiles,
+// water and heat alike.
+export function routeAppearance(){
+  return {
+    colour:INK.ink,
+    width:5,
+    casingColour:INK.paper,
+    casingWidth:9,
+    label:"Your route"
+  };
+}
+
 export function heatAppearance(cell){
   return{
     fill:INK.yellow,

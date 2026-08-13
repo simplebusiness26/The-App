@@ -112,6 +112,7 @@ export default function LivingMap({
   activity=[],
   pins=[],
   heat=[],
+  route=null,
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
@@ -173,8 +174,56 @@ export default function LivingMap({
     };
   },[config.styleUrl,config.attribution,onUnavailable,onDropPin,centre,zoom]);
 
+  // The route is a STYLE LAYER, not a marker -- a line of a thousand points
+  // cannot be a DOM element the way a pin can. Source and layers are created
+  // once and then fed new coordinates, because removing and re-adding a layer
+  // on every render makes the line flicker.
+  const drawRoute=useCallback(()=>{
+    const instance=map.current;
+    if(!instance || !instance.isStyleLoaded?.()) return;
+
+    const line=route?.line || [];
+    const data={type:"Feature",properties:{},geometry:{type:"LineString",coordinates:line}};
+
+    if(instance.getSource("xplorer-route")){
+      instance.getSource("xplorer-route").setData(data);
+    }else if(route?.colour && route?.casingColour){
+      // The layers are only created once there is a route to describe them.
+      // A fallback colour here would be a hex literal in a renderer, which is
+      // exactly what scripts/verify-marker-assignment.cjs refuses -- and it
+      // would be this file deciding what a route looks like, which is the
+      // decision that belongs in utils/markers.js.
+      instance.addSource("xplorer-route",{type:"geojson",data});
+      // Casing under the line, so it reads over dark tiles and over heat.
+      instance.addLayer({
+        id:"xplorer-route-casing",
+        type:"line",
+        source:"xplorer-route",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":route.casingColour,"line-width":route.casingWidth}
+      });
+      instance.addLayer({
+        id:"xplorer-route-line",
+        type:"line",
+        source:"xplorer-route",
+        layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":route.colour,"line-width":route.width}
+      });
+    }
+
+    // An empty LineString draws nothing, so clearing a route is setting it to
+    // no coordinates rather than tearing the layers down.
+    for(const id of ["xplorer-route-casing","xplorer-route-line"]){
+      if(instance.getLayer(id)){
+        instance.setLayoutProperty(id,"visibility",line.length ? "visible" : "none");
+      }
+    }
+  },[route]);
+
   const draw=useCallback(()=>{
     if(!map.current) return;
+
+    drawRoute();
 
     for(const marker of drawn.current) marker.remove();
     drawn.current=[];
@@ -219,7 +268,7 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,activity,pins,heat,onSelectPlace,onSelectActivity]);
+  },[places,activity,pins,heat,drawRoute,onSelectPlace,onSelectActivity]);
 
   useEffect(()=>{
     if(!map.current) return;

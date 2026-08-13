@@ -5,8 +5,10 @@ import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
 import PlaceCards from "./PlaceCards";
 import FloatingLogin from "./FloatingLogin";
+import Directions from "./Directions";
 import {cardsAround} from "../utils/placeCards";
 import {linkupLocationFrom} from "../utils/mapLayers";
+import {routeAppearance} from "../utils/markers";
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {INK} from "../utils/tokens";
@@ -35,6 +37,10 @@ export default function LivingMapScreen(){
   const [mapFailed,setMapFailed]=useState("");
   // A point somebody pressed and held, waiting for them to confirm.
   const [dropped,setDropped]=useState(null);
+  // The route currently drawn, or null. The model comes from utils/routing and
+  // is turned into the drawing instruction here -- neither map renderer knows
+  // what a routing provider is, and neither knows what a colour means.
+  const [route,setRoute]=useState(null);
 
   const tapped=map.cards.find((card)=>card.key===openKey) || null;
 
@@ -158,6 +164,7 @@ export default function LivingMapScreen(){
         activity={map.activity}
         pins={map.posts.map((post)=>({...post,onPress:()=>router.push(post.route)}))}
         heat={map.heat}
+        route={route}
         onSelectPlace={(place)=>setOpenKey(place.card?.key || null)}
         onSelectActivity={(item)=>item.deepLink && router.push(item.deepLink)}
         onDropPin={(at)=>setDropped(linkupLocationFrom(at))}
@@ -207,11 +214,42 @@ export default function LivingMapScreen(){
           open card. The app opens on this screen now, so this is the way in. */}
       {!tapped && <FloatingLogin/>}
 
+      {/*
+        DIRECTIONS, ON THE MAP THAT WILL DRAW THEM.
+        The destination is whatever pin is open. Putting this here rather than
+        on each entity page means one component, one location permission and one
+        route on screen at a time -- and the route appears on the map somebody
+        is already looking at rather than on a page with no map.
+
+        The Explorer's position never leaves this device except as the routing
+        request itself. See the note in components/Directions.js.
+      */}
+      {!!tapped && Number.isFinite(Number(tapped.latitude)) && Number.isFinite(Number(tapped.longitude)) && (
+        <View style={styles.directions} pointerEvents="box-none">
+          <Directions
+            destination={{latitude:tapped.latitude,longitude:tapped.longitude}}
+            destinationName={tapped.title || tapped.name || "this place"}
+            onRoute={(model)=>{
+              if(!model){setRoute(null);return;}
+              const look=routeAppearance();
+              setRoute({
+                // [lng,lat] for the map, converted once, here.
+                line:model.geometry.map((point)=>[point.longitude,point.latitude]),
+                colour:look.colour,
+                width:look.width,
+                casingColour:look.casingColour,
+                casingWidth:look.casingWidth
+              });
+            }}
+          />
+        </View>
+      )}
+
       {!!tapped && (
         <PlaceCards
           cards={cardsAround(tapped,map.cards)}
           startKey={tapped.key}
-          onClose={()=>setOpenKey(null)}
+          onClose={()=>{setOpenKey(null);setRoute(null);}}
         />
       )}
     </View>
@@ -220,6 +258,8 @@ export default function LivingMapScreen(){
 
 const styles=StyleSheet.create({
   container:{flex:1,backgroundColor:INK.paper},
+  // Above the card sheet, out of the way of the search box.
+  directions:{position:"absolute",left:12,right:12,bottom:12,zIndex:15},
   top:{position:"absolute",top:18,width:"100%",zIndex:10,padding:10},
   search:{
     backgroundColor:INK.card,padding:15,borderRadius:10,

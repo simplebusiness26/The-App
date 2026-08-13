@@ -1,6 +1,6 @@
 import React from "react";
 import {View,StyleSheet} from "react-native";
-import {Map,Camera,Marker} from "@maplibre/maplibre-react-native";
+import {Map,Camera,Marker,GeoJSONSource,Layer} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
 import {mapConfiguration} from "../utils/mapProvider";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
@@ -43,6 +43,7 @@ function MapLibreMap({
   activity=[],
   pins=[],
   heat=[],
+  route=null,
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
@@ -116,6 +117,42 @@ function MapLibreMap({
         contributions from two different Explorers before one is drawn, and no
         poster identity in the cell.
       */}
+      {/*
+        The route, under every pin and over the tiles. A line is geography, not
+        a thing to tap, so it goes down first alongside the heat -- and it must
+        never cover the pin somebody is navigating to.
+
+        GeoJSONSource + Layer, NOT ShapeSource + LineLayer. Those were the v10
+        names; v11 renamed the source and folded every layer type into one
+        `Layer` with a `type`. scripts/verify-native-map-props.cjs exists
+        because four props were silently renamed in that same upgrade and the
+        map drew nothing for a fortnight.
+      */}
+      {!!route?.line?.length && (
+        <GeoJSONSource
+          id="xplorer-route"
+          data={{
+            type:"Feature",
+            properties:{},
+            geometry:{type:"LineString",coordinates:route.line}
+          }}
+        >
+          {/* The casing first, so the line is readable over dark tiles. */}
+          <Layer
+            id="xplorer-route-casing"
+            type="line"
+            layout={{"line-cap":"round","line-join":"round"}}
+            paint={{"line-color":route.casingColour,"line-width":route.casingWidth}}
+          />
+          <Layer
+            id="xplorer-route-line"
+            type="line"
+            layout={{"line-cap":"round","line-join":"round"}}
+            paint={{"line-color":route.colour,"line-width":route.width}}
+          />
+        </GeoJSONSource>
+      )}
+
       {heat.map((cell)=>(
         <Marker key={cell.key} id={cell.key} lngLat={[cell.longitude,cell.latitude]}>
           <View
