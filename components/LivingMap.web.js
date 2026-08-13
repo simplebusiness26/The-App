@@ -199,14 +199,20 @@ function bubbleElement(bubble,onPress){
   return wrap;
 }
 
-function heatElement(cell){
+function heatElement(cell,onDoubleTap){
   const element=document.createElement("div");
-  element.setAttribute("aria-label",cell.label);
-  element.style.cssText=[
-    `width:${cell.size}px`,`height:${cell.size}px`,`border-radius:${cell.size/2}px`,
-    `background:${cell.fill}`,`border:1px solid ${cell.border}`,
-    `opacity:${cell.opacity}`,"pointer-events:none"
-  ].join(";");
+  element.style.cssText=
+    `width:${cell.size}px;height:${cell.size}px;border-radius:50%;`+
+    `background:${cell.fill};border:1px solid ${cell.border};opacity:${cell.opacity};`+
+    // Was pointer-events:none. It is tappable now, but ONLY for a double tap --
+    // a single click still falls through to the map, so panning and the
+    // long-press that drops a Link-up are unaffected. See utils/doubleTap.js.
+    "cursor:pointer;";
+  element.setAttribute("aria-label",`${cell.label} Double tap to see what is happening here.`);
+  element.addEventListener("dblclick",(event)=>{
+    event.stopPropagation();
+    onDoubleTap?.(cell);
+  });
   return element;
 }
 
@@ -217,6 +223,7 @@ export default function LivingMap({
   heat=[],
   route=null,
   bubbles=[],
+  onHeatDoubleTap,
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
@@ -336,7 +343,7 @@ export default function LivingMap({
     // First, so it sits under every pin.
     for(const cell of heat){
       drawn.current.push(
-        new maplibregl.Marker({element:heatElement(cell)})
+        new maplibregl.Marker({element:heatElement(cell,onHeatDoubleTap)})
           .setLngLat([Number(cell.longitude),Number(cell.latitude)])
           .addTo(map.current)
       );
@@ -383,7 +390,7 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,activity,pins,heat,bubbles,drawRoute,onSelectPlace,onSelectActivity,onSelectBubble]);
+  },[places,activity,pins,heat,bubbles,drawRoute,onSelectPlace,onSelectActivity,onSelectBubble,onHeatDoubleTap]);
 
   useEffect(()=>{
     if(!map.current) return;

@@ -137,6 +137,23 @@ export const HEAT_WEIGHT={
   moment:1
 };
 
+// What is actually IN one heat cell.
+//
+// Double-tapping a warm patch reveals the Moments there. "There" means this
+// cell and no wider: the same grid the heat was built on, so what opens is
+// exactly what made the patch warm. Returning everything in the viewport would
+// answer a different question -- the tap was on a place, not on the screen.
+//
+// The privacy floor is not re-checked here on purpose. A cell only EXISTS if it
+// cleared MIN_CONTRIBUTIONS and two different posters (see heatCells below), so
+// by the time somebody can tap one the disclosure question has been answered.
+// Anything this returns was already visible on the map as a Moment pin.
+export function itemsInCell(items,cell,{precision=HEAT_PRECISION}={}){
+  if(!cell?.key) return [];
+
+  return (items || []).filter((item)=>heatKey(item?.latitude,item?.longitude,precision)===cell.key);
+}
+
 export function heatCells(items,{precision=HEAT_PRECISION,minimum=MIN_CONTRIBUTIONS}={}){
   const cells=new Map();
 

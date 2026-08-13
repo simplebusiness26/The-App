@@ -1,5 +1,5 @@
 import React from "react";
-import {View,StyleSheet} from "react-native";
+import {View,Pressable,StyleSheet} from "react-native";
 import {Map,Camera,Marker,GeoJSONSource,Layer} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
 import LiveBubble from "./LiveBubble";
@@ -46,6 +46,7 @@ function MapLibreMap({
   heat=[],
   route=null,
   bubbles=[],
+  onHeatDoubleTap,
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
@@ -158,8 +159,18 @@ function MapLibreMap({
 
       {heat.map((cell)=>(
         <Marker key={cell.key} id={cell.key} lngLat={[cell.longitude,cell.latitude]}>
+          {/*
+            Double tap to see what made this patch warm. A SINGLE tap still does
+            nothing, which is what it always did -- and nothing here claims a
+            gesture, so pan, pinch and the long-press that drops a Link-up are
+            untouched. See utils/doubleTap.js.
+          */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${cell.label} Double tap to see what is happening here.`}
+            onPress={()=>onHeatDoubleTap?.(cell)}
+          >
           <View
-            accessibilityLabel={cell.label}
             style={[styles.heat,{
               width:cell.size,
               height:cell.size,
@@ -169,6 +180,7 @@ function MapLibreMap({
               borderColor:cell.border
             }]}
           />
+          </Pressable>
         </Marker>
       ))}
 

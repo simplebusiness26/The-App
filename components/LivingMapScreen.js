@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState} from "react";
-import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
+import {View,Text,TextInput,Pressable,ScrollView,StyleSheet,Platform} from "react-native";
 import {router} from "expo-router";
 import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
@@ -7,10 +7,11 @@ import PlaceCards from "./PlaceCards";
 import FloatingLogin from "./FloatingLogin";
 import Directions from "./Directions";
 import {cardsAround} from "../utils/placeCards";
-import {linkupLocationFrom} from "../utils/mapLayers";
+import {linkupLocationFrom,itemsInCell} from "../utils/mapLayers";
 import {routeAppearance,bubbleAppearance,celebrationPieces} from "../utils/markers";
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {candidatesFrom} from "../utils/bubbleCandidates";
+import {createDoubleTap} from "../utils/doubleTap";
 import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {INK} from "../utils/tokens";
@@ -54,6 +55,13 @@ export default function LivingMapScreen(){
   // A bubble somebody tapped. It is not part of the rotation and does not use
   // up one of the three: it stays until they close it.
   const [openBubble,setOpenBubble]=useState(null);
+  // The Moments revealed by double-tapping a warm patch, or null.
+  const [revealed,setRevealed]=useState(null);
+
+  // One recogniser for every heat cell, so two cells cannot half-complete each
+  // other's double tap. Native gets a tap counter; the web map already has a
+  // real dblclick event and calls through directly.
+  const heatTap=useMemo(()=>createDoubleTap(),[]);
 
   useEffect(()=>{
     const timer=setInterval(()=>setTick((current)=>current+1),BUBBLE_MS);
@@ -204,6 +212,21 @@ export default function LivingMapScreen(){
           if(bubble?.route){router.push(bubble.route);return;}
           setOpenBubble(bubble || null);
         }}
+        onHeatDoubleTap={(cell)=>{
+          // On web this arrives from a real dblclick and the counter is a
+          // no-op; on native it is the second of two taps that decides.
+          if(Platform.OS!=="web" && !heatTap.tap(cell.key)) return;
+
+          // Only what is IN this cell. The tap was on a place, not on the
+          // screen, so returning the whole viewport would answer a different
+          // question. utils/mapLayers.js does the matching on the same grid the
+          // heat was built from.
+          const moments=itemsInCell(
+            map.posts.filter((post)=>post.kind==="moment"),
+            cell
+          );
+          setRevealed({cell,moments});
+        }}
         onSelectPlace={(place)=>setOpenKey(place.card?.key || null)}
         onSelectActivity={(item)=>item.deepLink && router.push(item.deepLink)}
         onDropPin={(at)=>setDropped(linkupLocationFrom(at))}
@@ -284,6 +307,55 @@ export default function LivingMapScreen(){
         </View>
       )}
 
+      {/*
+        WHAT IS HAPPENING HERE.
+        Moments stay out of the bubble rotation -- there are more of them than
+        everything else combined and they would drown it. The heatmap is their
+        map presence, and this is how you open one.
+      */}
+      {!!revealed && (
+        <View style={styles.reveal}>
+          <View style={styles.revealHead}>
+            <Text style={styles.revealTitle}>
+              {revealed.moments.length
+                ? `${revealed.moments.length} Moment${revealed.moments.length===1 ? "" : "s"} here`
+                : "Nothing to open here"}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close what is happening here"
+              hitSlop={10}
+              onPress={()=>{setRevealed(null);heatTap.reset();}}
+            >
+              <Text style={styles.revealClose}>✕</Text>
+            </Pressable>
+          </View>
+
+          {!revealed.moments.length && (
+            <Text style={styles.revealEmpty}>
+              This area is warm from posts you cannot open — a Memory, or a review.
+              Moments expire, so a busy patch can outlast them.
+            </Text>
+          )}
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.revealRow}>
+            {revealed.moments.map((moment)=>(
+              <Pressable
+                key={moment.key || moment.id}
+                style={styles.revealCard}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${moment.title || "this Moment"}`}
+                onPress={()=>router.push(moment.route)}
+              >
+                <Text style={styles.revealCardTitle} numberOfLines={2}>
+                  {moment.title || "A Moment"}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {!!tapped && (
         <PlaceCards
           cards={cardsAround(tapped,map.cards)}
@@ -299,6 +371,14 @@ const styles=StyleSheet.create({
   container:{flex:1,backgroundColor:INK.paper},
   // Above the card sheet, out of the way of the search box.
   directions:{position:"absolute",left:12,right:12,bottom:12,zIndex:15},
+  reveal:{position:"absolute",left:12,right:12,bottom:12,zIndex:16,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:12},
+  revealHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
+  revealTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
+  revealClose:{color:INK.ink,fontWeight:"900",fontSize:18},
+  revealEmpty:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:8},
+  revealRow:{gap:8,paddingTop:10,paddingRight:4},
+  revealCard:{width:150,minHeight:56,justifyContent:"center",backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:11,padding:10},
+  revealCardTitle:{color:INK.ink,fontWeight:"800",fontSize:12,lineHeight:17},
   top:{position:"absolute",top:18,width:"100%",zIndex:10,padding:10},
   search:{
     backgroundColor:INK.card,padding:15,borderRadius:10,
