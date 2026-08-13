@@ -272,6 +272,7 @@ export default function MemoryPage(){
         <LikeButton
           targetType="memory"
           targetId={memory.id}
+          viewerId={viewer?.id || null}
           initialCount={likes.count}
           initialLiked={likes.liked}
           onChanged={(next)=>setLikes({count:next.count,liked:next.liked})}

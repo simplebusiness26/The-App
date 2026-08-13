@@ -37,7 +37,12 @@ function code(content){
 
 const ENDORSE="components/EndorseButton.js";
 const LIKE="components/LikeButton.js";
-const FEED="app/feed.js";
+// The feed CARD, not the feed screen. app/feed.js was one 300-line file until
+// the row was lifted into components/FeedCard.js so it could be memoised --
+// forty rows rebuilding on every state change was a real part of why the feed
+// scrolled badly. These checks are about which button a row shows, so they
+// follow the row.
+const FEED="components/FeedCard.js";
 const PROFILE="components/ExplorerProfileScreen.js";
 const VIDEO_COMMENTS="app/social-comments/[id].js";
 const MOMENT_DETAIL="app/moments/[id].js";
@@ -82,7 +87,11 @@ check(/liked \? "Remove like" : "Like"/.test(like),`${LIKE}: Like/Remove like wo
 // ---------------------------------------------------------------------------
 
 const feed=code(read(FEED));
-check(/import EndorseButton from "\.\.\/components\/EndorseButton"/.test(feed),`${FEED}: does not import EndorseButton`);
+// Either spelling of the path. The row used to live in app/feed.js and import
+// "../components/EndorseButton"; it now lives beside it and imports
+// "./EndorseButton". What the gate cares about is that the row gets the button
+// from the one component, not the shape of the relative path.
+check(/import EndorseButton from "(\.\.\/components|\.)\/EndorseButton"/.test(feed),`${FEED}: does not import EndorseButton`);
 check(/<EndorseButton/.test(feed),`${FEED}: does not render EndorseButton for review feed items`);
 check(/<LikeButton/.test(feed),`${FEED}: Moments must still render LikeButton in the feed`);
 // A Memory takes a Like, never a Useful. Useful endorses a review and pays its

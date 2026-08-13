@@ -69,10 +69,14 @@ contains("utils/drawer.js",[
 // value -- so the test could not fail, and pinning it in a gate is what kept
 // the parallel-user-type model alive. The requirement underneath it was
 // "refuse somebody who is not signed in", which is what is checked instead.
+// Split in two because the feed row moved to components/FeedCard.js. The
+// screen keeps the fetch, the sign-in refusal and the navigation; the row keeps
+// the buttons. Checking for <LikeButton in app/feed.js after that move would
+// have failed on a change that broke nothing -- and, worse, would have been
+// "fixed" by pasting the string back into a file that no longer draws it.
 contains("app/feed.js",[
   'rpc("get_explorer_social_feed"',
   'router.replace("/auth/login")',
-  '<LikeButton',
   // Packet 11 retired 'video_review' as a comment target. Comments used to
   // need a review with a published video on it, so the text and photo reviews
   // most people write could be endorsed but never answered. One name for the
@@ -80,6 +84,12 @@ contains("app/feed.js",[
   'type:"review"',
   'router.push(`/moments/${item.item_id}`)',
   'router.push("/moments/create")'
+]);
+
+// The half that moved with the row.
+contains("components/FeedCard.js",[
+  '<LikeButton',
+  '<EndorseButton'
 ]);
 
 contains("app/moments/create.js",[

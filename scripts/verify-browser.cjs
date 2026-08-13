@@ -419,14 +419,35 @@ async function main(){
       // exactly the blindness the login-redirect check below exists to stop.
       await new Promise(r=>setTimeout(r,Number(process.env.SETTLE_MS || 6200)));
 
-      let text="";
-      try{
-        const evaluated=await cdp.send("Runtime.evaluate",{
-          expression:"document.body ? document.body.innerText : ''",
-          returnByValue:true
-        },sessionId);
-        text=(evaluated?.result?.value || "").trim();
-      }catch{ /* the page is already the failure */ }
+      const bodyText=async()=>{
+        try{
+          const evaluated=await cdp.send("Runtime.evaluate",{
+            expression:"document.body ? document.body.innerText : ''",
+            returnByValue:true
+          },sessionId);
+          return (evaluated?.result?.value || "").trim();
+        }catch{ return ""; /* the page is already the failure */ }
+      };
+
+      let text=await bodyText();
+
+      // WAIT FOR THE SPLASH, DO NOT GUESS AT IT.
+      //
+      // 6.2s against a 5s splash is 1.2s of margin, and on a loaded machine
+      // that is not enough -- two runs in a row failed here on different
+      // routes, each time reporting a healthy screen as "still showing the
+      // startup splash". A fixed sleep tuned to a timer is a flake generator:
+      // it goes red at random, which teaches everybody to re-run the job, which
+      // is exactly how a gate stops meaning anything.
+      //
+      // So the splash is now WAITED for rather than slept past. Up to four more
+      // seconds, checked twice a second, and it stops the moment the splash is
+      // gone. On a fast machine this costs nothing.
+      const splashGone=Date.now()+4000;
+      while(/Map data from OpenStreetMap/.test(text) && Date.now()<splashGone){
+        await new Promise(r=>setTimeout(r,500));
+        text=await bodyText();
+      }
 
       await cdp.send("Target.closeTarget",{targetId}).catch(()=>{});
 
@@ -444,7 +465,7 @@ async function main(){
       // Same trap, different cover. If the splash is still up, what was
       // measured is the splash and not the route.
       if(/Map data from OpenStreetMap/.test(text)){
-        unique.push("still showing the startup splash — raise SETTLE_MS above the splash duration");
+        unique.push("still showing the startup splash after waiting it out — the splash is longer than SPLASH_MS says, or the page is stuck");
       }
 
       if(process.env.DUMP_ROUTE===route){

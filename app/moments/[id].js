@@ -211,7 +211,7 @@ export default function MomentDetail(){
         )}
 
         <View style={styles.actions}>
-          <LikeButton targetType="moment" targetId={moment.id} initialCount={likeCount} initialLiked={viewerLiked}/>
+          <LikeButton targetType="moment" targetId={moment.id} viewerId={user?.id || null} initialCount={likeCount} initialLiked={viewerLiked}/>
           {!isOwner && <Pressable style={styles.secondaryButton} onPress={()=>setShowReport(current=>!current)}><Text style={styles.secondaryText}>Report</Text></Pressable>}
           {isOwner && <Pressable style={styles.deleteButton} onPress={()=>setConfirmDelete(true)}><Text style={styles.deleteText}>Delete</Text></Pressable>}
         </View>

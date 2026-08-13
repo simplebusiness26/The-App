@@ -31,7 +31,9 @@ function code(source){
 }
 
 const MODEL="utils/trending.js";
-const FEED="app/feed.js";
+// components/FeedCard.js since the row was extracted from app/feed.js for
+// memoisation. The reason pills are drawn by the row.
+const FEED="components/FeedCard.js";
 const MIGRATION="supabase/migrations/20260810030000_feed_source_reasons_and_trending.sql";
 
 const model=code(read(MODEL));

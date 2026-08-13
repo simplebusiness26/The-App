@@ -5,21 +5,30 @@ import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
 import {INK} from "../utils/tokens";
 
-export default function LikeButton({targetType,targetId,initialCount=0,initialLiked=false,onChanged}){
+// viewerId is a PROP, and that is the whole point of this signature.
+//
+// This component used to call supabase.auth.getUser() in its own effect. One
+// button, one call -- fine on a place page. The feed renders one of these per
+// card, so a screen of twenty Moments fired twenty auth calls on mount, plus
+// the screen's own, for an answer every one of them was asking about the same
+// person. It was measurably the largest thing the feed did on load.
+//
+// EndorseButton has always taken viewerId as a prop. This now matches it.
+// Callers that genuinely have no viewer to hand can pass nothing: the button
+// still renders and a press sends them to log in, which is what the effect
+// produced anyway.
+export default function LikeButton({targetType,targetId,viewerId=null,initialCount=0,initialLiked=false,onChanged}){
   const {showFeedback}=useFeedback();
-  const [user,setUser]=useState(null);
   const [liked,setLiked]=useState(!!initialLiked);
   const [count,setCount]=useState(Number(initialCount || 0));
   const [working,setWorking]=useState(false);
+
+  const user=viewerId ? {id:viewerId} : null;
 
   useEffect(()=>{
     setLiked(!!initialLiked);
     setCount(Number(initialCount || 0));
   },[initialLiked,initialCount,targetId]);
-
-  useEffect(()=>{
-    supabase.auth.getUser().then(({data})=>setUser(data.user || null));
-  },[]);
 
   const toggle=useCallback(async()=>{
     if(working || !targetId) return;
