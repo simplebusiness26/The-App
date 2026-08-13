@@ -10,6 +10,7 @@ import {NotificationProvider} from "../context/NotificationContext";
 import {DrawerProvider} from "../context/DrawerContext";
 import ErrorBoundary from "../components/ErrorBoundary";
 import StartupSplash from "../components/StartupSplash";
+import VisibilityWelcome from "../components/VisibilityWelcome";
 import {INK} from "../utils/tokens";
 
 export const unstable_settings={initialRouteName:"index"};
@@ -125,6 +126,16 @@ export default function Layout(){
 
               <TabBar/>
               <QuickAccessDrawer/>
+
+              {/*
+                Shown once, to a new Explorer, before they post into a void they
+                did not know they were in. It sets nothing on anybody's behalf --
+                see the note in components/VisibilityWelcome.js. Placed here
+                rather than on a route because the app opens on the map and a
+                deep link straight to a place page is still somebody's first
+                time; it renders nothing at all once seen.
+              */}
+              <VisibilityWelcome/>
 
               {/*
                 Last child, so it covers the header, the tab bar and whatever
