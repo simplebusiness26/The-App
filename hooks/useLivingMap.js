@@ -66,6 +66,7 @@ export function useLivingMap(){
   const [activities,setActivities]=useState([]);
   const [moments,setMoments]=useState([]);
   const [memories,setMemories]=useState([]);
+  const [reviewShots,setReviewShots]=useState([]);
 
   const [search,setSearch]=useState("");
   const [typeFilter,setTypeFilter]=useState("all");
@@ -82,8 +83,11 @@ export function useLivingMap(){
   const loadPlaces=useCallback(async()=>{
     const [businessResult,propertyResult,clubResult]=await Promise.all([
       supabase.from("businesses").select("id,name,category,business_type,claimed,address,latitude,longitude"),
-      supabase.from("properties").select("id,name,address,latitude,longitude"),
-      supabase.from("activity_clubs").select("id,name,category,location,address,latitude,longitude,status").in("status",["open","full"])
+      // show_availability / rooms_available / spaces_available are the Manager
+      // switches behind the live bubbles (20260813050000). Both default false,
+      // so asking for them changes nothing until a Manager turns one on.
+      supabase.from("properties").select("id,name,address,latitude,longitude,show_availability,rooms_available"),
+      supabase.from("activity_clubs").select("id,name,category,location,address,latitude,longitude,status,spaces_available").in("status",["open","full"])
     ]);
 
     // One failed read must not empty the others. Three separate queries, three
@@ -176,11 +180,36 @@ export function useLivingMap(){
     setMemories(memoryResult.data || []);
   },[]);
 
+  // Reviews that have a PHOTO, for the live bubbles.
+  //
+  // Only ever the photo and which listing it belongs to -- no comment, no
+  // rating, no reviewer. A review bubble is the picture; everything else lives
+  // on the review, which is where tapping it goes. Asking for less here is not
+  // an optimisation, it is the bubble's rule enforced at the query.
+  //
+  // Bounded, unlike the rest of this hook. Sixty is more than can ever be on
+  // screen at once given the collision rule, and it is the newest sixty.
+  const loadReviewShots=useCallback(async()=>{
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user){setReviewShots([]);return;}
+
+    const {data,error:shotError}=await supabase
+      .from("review_media")
+      .select("id,review_id,media_url,media_type,moderation_status,created_at,explorer_reviews!inner(id,target_type,target_id,status)")
+      .eq("media_type","image")
+      .eq("moderation_status","published")
+      .order("created_at",{ascending:false})
+      .limit(60);
+
+    if(shotError){console.log(shotError);setReviewShots([]);return;}
+    setReviewShots(data || []);
+  },[]);
+
   const reload=useCallback(async()=>{
     setLoading(true);
-    await Promise.all([loadPlaces(),loadActivity(),loadPosts()]);
+    await Promise.all([loadPlaces(),loadActivity(),loadPosts(),loadReviewShots()]);
     setLoading(false);
-  },[loadPlaces,loadActivity,loadPosts]);
+  },[loadPlaces,loadActivity,loadPosts,loadReviewShots]);
 
   useEffect(()=>{reload();},[reload]);
 
@@ -324,6 +353,7 @@ export function useLivingMap(){
     activity:liveActivity,
     posts,
     heat,
+    reviewShots,
 
     reload
   };

@@ -1,4 +1,4 @@
-import React,{useState} from "react";
+import React,{useEffect,useMemo,useState} from "react";
 import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
 import {router} from "expo-router";
 import LivingMap from "./LivingMap";
@@ -8,8 +8,10 @@ import FloatingLogin from "./FloatingLogin";
 import Directions from "./Directions";
 import {cardsAround} from "../utils/placeCards";
 import {linkupLocationFrom} from "../utils/mapLayers";
-import {routeAppearance} from "../utils/markers";
+import {routeAppearance,bubbleAppearance,celebrationPieces} from "../utils/markers";
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
+import {candidatesFrom} from "../utils/bubbleCandidates";
+import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {INK} from "../utils/tokens";
 
@@ -42,7 +44,37 @@ export default function LivingMapScreen(){
   // what a routing provider is, and neither knows what a colour means.
   const [route,setRoute]=useState(null);
 
+  // THE BUBBLE ROTATION.
+  //
+  // One counter, one interval, for the whole map. Every bubble on screen is
+  // chosen from it by utils/liveBubbles.js -- no marker starts a timer of its
+  // own, which is the difference between three bubbles taking turns and twenty
+  // popups competing.
+  const [tick,setTick]=useState(0);
+  // A bubble somebody tapped. It is not part of the rotation and does not use
+  // up one of the three: it stays until they close it.
+  const [openBubble,setOpenBubble]=useState(null);
+
+  useEffect(()=>{
+    const timer=setInterval(()=>setTick((current)=>current+1),BUBBLE_MS);
+    return()=>clearInterval(timer);
+  },[]);
+
   const tapped=map.cards.find((card)=>card.key===openKey) || null;
+
+  const candidates=useMemo(()=>candidatesFrom({
+    places:map.places,
+    activity:map.activity,
+    reviewShots:map.reviewShots,
+    appearance:bubbleAppearance(),
+    confetti:celebrationPieces()
+  }),[map.places,map.activity,map.reviewShots]);
+
+  const bubbles=useMemo(()=>{
+    const automatic=bubblesAt(candidates,{tick,selectedKey:openBubble?.key || null});
+    // The tapped one is drawn as well as the three, never instead of one.
+    return openBubble ? [...automatic,openBubble] : automatic;
+  },[candidates,tick,openBubble]);
 
   // The list is a VIEW of the same Living Map, not a fallback for not having
   // one. It is kept because it works when the map will not load, because it is
@@ -165,6 +197,13 @@ export default function LivingMapScreen(){
         pins={map.posts.map((post)=>({...post,onPress:()=>router.push(post.route)}))}
         heat={map.heat}
         route={route}
+        bubbles={bubbles}
+        onSelectBubble={(bubble)=>{
+          // Tapping a bubble opens the exact thing it is about. A review bubble
+          // opens that review, not the place it is of.
+          if(bubble?.route){router.push(bubble.route);return;}
+          setOpenBubble(bubble || null);
+        }}
         onSelectPlace={(place)=>setOpenKey(place.card?.key || null)}
         onSelectActivity={(item)=>item.deepLink && router.push(item.deepLink)}
         onDropPin={(at)=>setDropped(linkupLocationFrom(at))}

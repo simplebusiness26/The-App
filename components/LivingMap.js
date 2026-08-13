@@ -2,6 +2,7 @@ import React from "react";
 import {View,StyleSheet} from "react-native";
 import {Map,Camera,Marker,GeoJSONSource,Layer} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
+import LiveBubble from "./LiveBubble";
 import {mapConfiguration} from "../utils/mapProvider";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 
@@ -44,11 +45,13 @@ function MapLibreMap({
   pins=[],
   heat=[],
   route=null,
+  bubbles=[],
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
   onSelectPlace,
   onSelectActivity,
+  onSelectBubble,
   onDropPin
 }){
   const config=mapConfiguration();
@@ -214,6 +217,23 @@ function MapLibreMap({
           <View style={{opacity:pin.opacity ?? 1}}>
             <PlaceMarker marker={pin.marker}/>
           </View>
+        </Marker>
+      ))}
+
+      {/*
+        Bubbles last, above every pin, because a bubble that a pin covers is a
+        bubble nobody reads. WHICH bubbles these are was decided in
+        utils/liveBubbles.js -- no marker here chooses to show one, which is
+        the whole point of having a controller.
+      */}
+      {bubbles.map((bubble)=>(
+        <Marker
+          key={`bubble-${bubble.key}`}
+          id={`bubble-${bubble.key}`}
+          lngLat={[Number(bubble.longitude),Number(bubble.latitude)]}
+          anchor={{x:0.5,y:1.35}}
+        >
+          <LiveBubble bubble={bubble} onPress={onSelectBubble}/>
         </Marker>
       ))}
     </Map>

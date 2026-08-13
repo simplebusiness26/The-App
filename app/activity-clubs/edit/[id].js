@@ -29,6 +29,9 @@ export default function EditActivityClub(){
   const [price,setPrice]=useState("0");
   const [memberLimit,setMemberLimit]=useState("20");
   const [status,setStatus]=useState("open");
+  // The map switch. Off by default, and off means the club is still on the map
+  // and still joinable -- it simply does not advertise.
+  const [spacesAvailable,setSpacesAvailable]=useState(false);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");
@@ -69,6 +72,7 @@ export default function EditActivityClub(){
     setPrice(String(data.price ?? 0));
     setMemberLimit(String(data.member_limit ?? 20));
     setStatus(data.status || "open");
+    setSpacesAvailable(data.spaces_available===true);
     setLoading(false);
   }
 
@@ -122,7 +126,8 @@ export default function EditActivityClub(){
         longitude:Number(longitude),
         price:numericPrice,
         member_limit:numericLimit,
-        status
+        status,
+        spaces_available:spacesAvailable
       })
       .eq("id",id)
       .eq("manager_id",user.id);
@@ -159,6 +164,26 @@ export default function EditActivityClub(){
 
       <TextInput style={styles.input} placeholder="Price per session" value={price} onChangeText={setPrice} keyboardType="decimal-pad"/>
       <TextInput style={styles.input} placeholder="Maximum approved members" value={memberLimit} onChangeText={setMemberLimit} keyboardType="number-pad"/>
+
+      {/*
+        SPACES OPEN, ON THE MAP.
+        A claim about a club only its Manager can know is true, so only its
+        Manager can make it. Off is the default and off removes the BUBBLE, not
+        the pin -- the club stays on the map, searchable and joinable, it just
+        does not shout. See utils/liveBubbles.js.
+      */}
+      <Text style={styles.label}>Show &quot;Spaces open&quot; on the map</Text>
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{checked:spacesAvailable}}
+        accessibilityLabel="Show spaces open on the map"
+        style={[styles.statusButton,spacesAvailable && styles.selectedStatus,{marginBottom:20,alignSelf:"flex-start"}]}
+        onPress={()=>setSpacesAvailable((current)=>!current)}
+      >
+        <Text style={[styles.statusText,spacesAvailable && styles.selectedStatusText]}>
+          {spacesAvailable ? "On — a small bubble can appear over this club" : "Off"}
+        </Text>
+      </Pressable>
 
       <Text style={styles.label}>Listing status</Text>
       <View style={styles.statusRow}>

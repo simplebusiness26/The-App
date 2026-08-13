@@ -29,6 +29,12 @@ export default function EditProperty(){
   const [address,setAddress]=useState("");
   const [latitude,setLatitude]=useState(null);
   const [longitude,setLongitude]=useState(null);
+  // The map switches. Both off by default; off removes the BUBBLE, never the
+  // pin. rooms is deliberately free text and may stay empty -- there is no
+  // inventory system behind this and the map says "Available" without a number
+  // rather than inventing one. See utils/liveBubbles.js.
+  const [showAvailability,setShowAvailability]=useState(false);
+  const [roomsAvailable,setRoomsAvailable]=useState("");
 
   useFocusEffect(
     useCallback(()=>{
@@ -64,6 +70,8 @@ export default function EditProperty(){
     setHost(data.host || "");
     setDescription(data.description || "");
     setBookingUrl(data.booking_url || "");
+    setShowAvailability(data.show_availability===true);
+    setRoomsAvailable(data.rooms_available===null || data.rooms_available===undefined ? "" : String(data.rooms_available));
     setAddress(data.address || "");
     setLatitude(data.latitude ?? null);
     setLongitude(data.longitude ?? null);
@@ -97,7 +105,10 @@ export default function EditProperty(){
         booking_url:bookingUrl.trim(),
         address,
         latitude:Number(latitude),
-        longitude:Number(longitude)
+        longitude:Number(longitude),
+        show_availability:showAvailability,
+        // Empty means "not stated", which is not the same as zero.
+        rooms_available:roomsAvailable.trim()==="" ? null : Number(roomsAvailable.trim())
       })
       .eq("id",property.id);
 
@@ -143,6 +154,41 @@ export default function EditProperty(){
       <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
       <TextInput style={styles.input} placeholder="Booking URL" value={bookingUrl} onChangeText={setBookingUrl}/>
 
+      {/*
+        AVAILABILITY, ON THE MAP.
+        Only a Manager can know whether this is true, so only a Manager can say
+        it. Off by default, and off removes the bubble rather than the pin.
+      */}
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{checked:showAvailability}}
+        accessibilityLabel="Show availability on the map"
+        style={[styles.toggle,showAvailability && styles.toggleOn]}
+        onPress={()=>setShowAvailability((current)=>!current)}
+      >
+        <Text style={styles.toggleText}>
+          {showAvailability ? "On — availability can appear on the map" : "Show availability on the map"}
+        </Text>
+      </Pressable>
+
+      {showAvailability && (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Rooms available (optional)"
+            keyboardType="number-pad"
+            maxLength={2}
+            value={roomsAvailable}
+            onChangeText={setRoomsAvailable}
+            accessibilityLabel="Rooms available, optional"
+          />
+          <Text style={styles.help}>
+            Leave this empty and the map simply says &quot;Available&quot;. Xplorer does not
+            track bookings, so it will never claim a number you have not given it.
+          </Text>
+        </>
+      )}
+
       <LocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
 
       <Pressable style={styles.button} onPress={save} disabled={saving}>
@@ -162,6 +208,10 @@ const styles=StyleSheet.create({
   title:{fontSize:30,fontWeight:"bold",marginBottom:20},
   input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},
   multiline:{minHeight:100,textAlignVertical:"top"},
+  toggle:{borderWidth:2,borderColor:INK.hair,borderRadius:11,padding:14,marginBottom:14,minHeight:44,justifyContent:"center"},
+  toggleOn:{borderColor:INK.ink},
+  toggleText:{color:INK.ink,fontWeight:"800"},
+  help:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:-6,marginBottom:14},
   button:{backgroundColor:INK.ink,padding:15,borderRadius:10},
   deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:14},
   buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}

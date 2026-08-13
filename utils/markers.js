@@ -388,6 +388,36 @@ export function routeAppearance(){
   };
 }
 
+// How a live bubble is painted, and the confetti palette.
+//
+// Here rather than in either renderer for the usual reason: a renderer draws,
+// it does not decide what a colour means, and test/living-map-cross-platform
+// forbids INK.blue/pink/yellow appearing in one.
+//
+// THE CONFETTI IS A RECORDED EXCEPTION. docs/design-system.md says the three
+// inks only ever say what state a PLACE is in and are never decoration. The
+// owner asked for a celebration burst on a live Event and, told about the
+// conflict, chose the confetti. So it exists, in exactly one place, fired once,
+// only for an Event that is actually happening. It is a decision, not drift.
+export function bubbleAppearance(){
+  return {
+    card:INK.card,
+    ink:INK.ink,
+    blank:INK.hair
+  };
+}
+
+export function celebrationPieces(){
+  return [
+    {x:-26,y:-30,spin:"120deg",colour:INK.blue},
+    {x:-9,y:-40,spin:"-90deg",colour:INK.pink},
+    {x:10,y:-38,spin:"200deg",colour:INK.yellow},
+    {x:26,y:-26,spin:"-140deg",colour:INK.blue},
+    {x:-18,y:-16,spin:"70deg",colour:INK.yellow},
+    {x:18,y:-14,spin:"-40deg",colour:INK.pink}
+  ];
+}
+
 export function heatAppearance(cell){
   return{
     fill:INK.yellow,

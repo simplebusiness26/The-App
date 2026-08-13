@@ -96,6 +96,109 @@ function pinElement(marker,onPress){
 // Heat is ground, not an object: a wash showing where the app is being used.
 // Not a pin, not tappable, and deliberately not built out of the marker
 // language -- utils/markers.js says what a PIN means and a heat cell is not one.
+// One bubble, as a DOM element. Same rules as the native one in
+// components/LiveBubble.js: it does not decide whether it should exist
+// (utils/liveBubbles.js does, for all of them at once), it never moves or
+// resizes the map, and a review bubble is the PHOTO rather than a card of text.
+//
+// The fade is a CSS transition rather than an animation library -- the app has
+// none, and adding one needs asking. The keyframes for the confetti are
+// injected once, below.
+// The confetti keyframes, injected once. The app has no animation library and
+// adding one needs asking, so a stylesheet rule is the whole mechanism. The
+// piece carries its own destination in CSS custom properties, which is what
+// lets six pieces share one keyframe.
+//
+// prefers-reduced-motion is honoured by simply not starting the burst -- the
+// bubble itself still appears, because it is information rather than decoration.
+let confettiStyleInstalled=false;
+
+function installConfettiStyle(){
+  if(confettiStyleInstalled || typeof document==="undefined") return;
+  confettiStyleInstalled=true;
+
+  const style=document.createElement("style");
+  style.textContent=
+    "@keyframes xplorer-confetti{"+
+    "from{transform:translate(0,0) rotate(0deg);opacity:1;}"+
+    "70%{opacity:1;}"+
+    "to{transform:translate(var(--cx),var(--cy)) rotate(var(--cr));opacity:0;}"+
+    "}"+
+    "@media (prefers-reduced-motion: reduce){"+
+    "[data-xplorer-confetti] i{animation:none !important;opacity:0 !important;}"+
+    "}";
+  document.head.appendChild(style);
+}
+
+function bubbleElement(bubble,onPress){
+  // Painted from what the screen handed over -- utils/markers.js decides what a
+  // colour means, this file only draws.
+  const chrome=bubble.chrome || {};
+  const wrap=document.createElement("div");
+  wrap.style.cssText="position:relative;display:flex;flex-direction:column;align-items:center;opacity:0;transition:opacity 260ms ease-out;";
+
+  if(bubble.celebrate){
+    installConfettiStyle();
+    const burst=document.createElement("div");
+    burst.setAttribute("data-xplorer-confetti","");
+    burst.style.cssText="position:absolute;inset:0;pointer-events:none;";
+    // ONE burst, no loop. See the note on CONFETTI in components/LiveBubble.js:
+    // using the three inks as decoration is a recorded decision, not drift.
+    (bubble.confetti || []).forEach((piece,index)=>{
+      const bit=document.createElement("i");
+      bit.style.cssText=
+        `position:absolute;left:50%;top:50%;width:6px;height:9px;border-radius:1px;`+
+        `background:${piece.colour};`+
+        `animation:xplorer-confetti 900ms ease-out ${index*30}ms 1 both;`+
+        `--cx:${piece.x}px;--cy:${piece.y}px;--cr:${piece.spin};`;
+      burst.appendChild(bit);
+    });
+    wrap.appendChild(burst);
+  }
+
+  const body=document.createElement("button");
+  body.type="button";
+  body.setAttribute("aria-label",bubble.label || bubble.text || "Open");
+
+  if(bubble.imageUrl){
+    body.style.cssText=
+      `padding:3px;border-radius:16px;border:2px solid ${chrome.ink};`+
+      `background:${chrome.card};box-shadow:2px 2px 0 ${chrome.ink};cursor:pointer;`;
+    const image=document.createElement("img");
+    image.src=bubble.imageUrl;
+    image.alt="";
+    image.style.cssText=`width:92px;height:92px;border-radius:13px;object-fit:cover;display:block;background:${chrome.blank};`;
+    body.appendChild(image);
+  }else{
+    body.style.cssText=
+      `padding:8px 11px;border-radius:14px;border:2px solid ${chrome.ink};`+
+      `background:${chrome.card};box-shadow:2px 2px 0 ${chrome.ink};cursor:pointer;`+
+      `font-weight:900;font-size:12px;color:${chrome.ink};max-width:190px;`+
+      "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+    body.textContent=bubble.text || "";
+  }
+
+  body.addEventListener("click",(event)=>{
+    event.stopPropagation();
+    onPress?.(bubble);
+  });
+
+  wrap.appendChild(body);
+
+  // The tail: what makes it point at its pin rather than float near it.
+  const tail=document.createElement("div");
+  tail.style.cssText=
+    `width:10px;height:10px;margin-top:-6px;background:${chrome.card};`+
+    `border-right:2px solid ${chrome.ink};border-bottom:2px solid ${chrome.ink};`+
+    "transform:rotate(45deg);pointer-events:none;";
+  wrap.appendChild(tail);
+
+  // Next frame, so the transition has something to run from.
+  requestAnimationFrame(()=>{wrap.style.opacity="1";});
+
+  return wrap;
+}
+
 function heatElement(cell){
   const element=document.createElement("div");
   element.setAttribute("aria-label",cell.label);
@@ -113,11 +216,13 @@ export default function LivingMap({
   pins=[],
   heat=[],
   route=null,
+  bubbles=[],
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
   onSelectPlace,
   onSelectActivity,
+  onSelectBubble,
   onDropPin,
   onUnavailable
 }){
@@ -268,7 +373,17 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,activity,pins,heat,drawRoute,onSelectPlace,onSelectActivity]);
+    // Bubbles last, above every pin -- a bubble a pin covers is a bubble nobody
+    // reads. WHICH bubbles these are was decided in utils/liveBubbles.js; no
+    // marker here chooses to show one.
+    for(const bubble of bubbles){
+      drawn.current.push(
+        new maplibregl.Marker({element:bubbleElement(bubble,onSelectBubble),anchor:"bottom"})
+          .setLngLat([Number(bubble.longitude),Number(bubble.latitude)])
+          .addTo(map.current)
+      );
+    }
+  },[places,activity,pins,heat,bubbles,drawRoute,onSelectPlace,onSelectActivity,onSelectBubble]);
 
   useEffect(()=>{
     if(!map.current) return;
