@@ -17,6 +17,7 @@
 
 const React=require("react");
 const {act,create}=require("react-test-renderer");
+const {Text}=require("react-native");
 
 // The stub the component sees. Each test sets it before rendering.
 const demo={enabled:true,offMessage:"Demo logins are off in this build.",accounts:[]};
@@ -45,16 +46,20 @@ function byLabel(tree,label){
   )[0];
 }
 
-async function tapWordmark(tree,times){
+// The login screen's own heading is the target -- there is no separate logo to
+// tap, on purpose.
+async function tapHeading(tree,times){
   for(let i=0;i<times;i+=1){
     // Re-found every time: the component re-renders between taps.
-    await act(async()=>{byLabel(tree,"Xplorer").props.onPress();});
+    await act(async()=>{byLabel(tree,"Login").props.onPress();});
   }
 }
 
 async function render(props){
   let tree;
-  await act(async()=>{tree=create(React.createElement(DemoLogins,props));});
+  await act(async()=>{
+    tree=create(React.createElement(DemoLogins,props,React.createElement(Text,null,"Login")));
+  });
   return tree;
 }
 
@@ -121,13 +126,13 @@ beforeEach(()=>{
   ];
 });
 
-test("four taps show nothing; the fifth opens the panel",async()=>{
+test("four taps on the heading show nothing; the fifth opens the panel",async()=>{
   const tree=await render({onPick:jest.fn()});
 
-  await tapWordmark(tree,4);
+  await tapHeading(tree,4);
   expect(textOf(tree.toJSON())).not.toContain("Demo logins");
 
-  await tapWordmark(tree,1);
+  await tapHeading(tree,1);
   expect(textOf(tree.toJSON())).toContain("Demo logins");
 });
 
@@ -135,7 +140,7 @@ test("pressing an account hands its credentials back to the login screen",async(
   const onPick=jest.fn();
   const tree=await render({onPick});
 
-  await tapWordmark(tree,5);
+  await tapHeading(tree,5);
   await act(async()=>{byLabel(tree,"Log in as Manager").props.onPress();});
 
   expect(onPick).toHaveBeenCalledTimes(1);
@@ -147,7 +152,7 @@ test("in a build with no demo password the panel opens empty and says why",async
   demo.accounts=[];
 
   const tree=await render({onPick:jest.fn()});
-  await tapWordmark(tree,5);
+  await tapHeading(tree,5);
 
   const shown=textOf(tree.toJSON());
   expect(shown).toContain("Demo logins are off in this build");

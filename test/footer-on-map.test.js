@@ -95,7 +95,11 @@ describe("the footer works while you are on the map",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("paints the strip above the bar instead of leaving it see-through",async()=>{
+  // The black line came back to this file twice, and the second fix caused the
+  // owner's next report -- "the map button is no longer floating above the
+  // footer". Both halves are asserted together now, because fixing either one
+  // on its own is what kept breaking the other.
+  it("lifts the strip over the screen, so nothing black can show through it",async()=>{
     const tree=await renderAt("/map");
 
     // The footer's outermost box. Found by role rather than by position, since
@@ -106,13 +110,41 @@ describe("the footer works while you are on the map",()=>{
     )[0];
     const outer=flatten(shell.props.style);
 
-    // Transparent here showed whatever is behind the app, and behind the app is
-    // black. That strip IS the black bar the owner reported.
-    expect(outer.backgroundColor).not.toBe("transparent");
-    expect(outer.backgroundColor).toBeTruthy();
-    // And the top line moved out here with it, so there is one edge rather than
-    // a line floating in the middle of a painted block.
-    expect(outer.borderTopWidth).toBe(2);
+    // A see-through strip is fine ONLY because the box is pulled up over the
+    // screen above it, so what shows through is that screen. Painting it was
+    // the previous fix and it is what flattened the button into the bar.
+    expect(outer.marginTop).toBeLessThan(0);
+
+    await act(async()=>{tree.unmount();});
+  });
+
+  it("keeps the top line on the bar, so the raised button straddles it",async()=>{
+    const tree=await renderAt("/map");
+
+    const shell=tree.root.findAll(
+      (node)=>node.props?.accessibilityRole==="tablist",
+      {deep:true}
+    )[0];
+    const outer=flatten(shell.props.style);
+
+    // The line belongs where the footer starts. On the outer box it sat at the
+    // top of the strip instead, with the button below it rather than on it.
+    expect(outer.borderTopWidth).toBeFalsy();
+
+    // The bar is the painted block with the line, and it is shorter than the
+    // box around it -- that difference is the room the button rises into.
+    const bar=tree.root.findAll(
+      (node)=>{
+        const style=flatten(node.props?.style);
+        return style.position==="absolute" && style.bottom===0 && style.flexDirection==="row";
+      },
+      {deep:true}
+    )[0];
+    const barStyle=flatten(bar.props.style);
+
+    expect(barStyle.borderTopWidth).toBe(2);
+    expect(barStyle.backgroundColor).toBeTruthy();
+    expect(barStyle.height).toBeLessThan(flatten(shell.props.style).height);
 
     await act(async()=>{tree.unmount();});
   });

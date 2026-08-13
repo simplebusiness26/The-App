@@ -317,20 +317,35 @@ export default function TabBar(){
 }
 
 const styles=StyleSheet.create({
-  // The whole footer is one block of card, top edge included.
+  // THE BLACK LINE, AND WHY THE BUTTON STOPPED FLOATING.
   //
-  // It used to be transparent above the bar, to give the raised button somewhere
-  // to sit that was not outside its parent -- Android clips overflowing
-  // children. That worked, but a transparent strip shows whatever is behind the
-  // app, and behind the app is black: that is the black bar above the
-  // navigation. Painting it card and moving the border up to the outer edge
-  // keeps the button where it is and leaves one footer with one line on top.
+  // The raised button needs room above the bar to rise into, and Android clips
+  // a child drawn outside its parent -- so the footer's box has always been
+  // RAISE taller than the bar itself, with the button sitting in that strip.
+  //
+  // First version: the strip was see-through. A see-through strip shows
+  // whatever is behind the app, and behind the app is black. That was the black
+  // line above the navigation.
+  //
+  // Second version painted the strip card and moved the top line to the outer
+  // edge. That killed the black, and it also killed the float: a button sitting
+  // in a card-coloured strip on top of a card-coloured bar is not floating
+  // above anything, it is just a circle inside a taller footer.
+  //
+  // This version fixes the cause instead. `marginTop:-RAISE` lifts the strip
+  // over the bottom of the screen above it, so there is now SCREEN behind the
+  // strip rather than the outside of the app. It can go back to being
+  // see-through -- there is nothing black left to show through -- the top line
+  // goes back onto the bar where the footer actually starts, and the button
+  // straddles that line the way it used to. Whatever is on screen shows either
+  // side of it: paper on most screens, the map on the map.
+  //
+  // The strip only overlaps the last RAISE pixels of the screen, which is the
+  // same room the button occupied before and nothing lays content in.
   container:{
     width:"100%",
-    backgroundColor:INK.card,
-    // The borders are the print register, and not optional.
-    borderTopWidth:2,
-    borderTopColor:INK.ink
+    marginTop:-RAISE,
+    backgroundColor:"transparent"
   },
   bar:{
     position:"absolute",
@@ -339,7 +354,11 @@ const styles=StyleSheet.create({
     bottom:0,
     flexDirection:"row",
     alignItems:"flex-start",
-    backgroundColor:INK.card
+    backgroundColor:INK.card,
+    // The borders are the print register, and not optional. On the bar, not on
+    // the box around it: this is where the footer starts.
+    borderTopWidth:2,
+    borderTopColor:INK.ink
   },
   // 44px is the tap-target floor even where the visible target is smaller.
   tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:6},

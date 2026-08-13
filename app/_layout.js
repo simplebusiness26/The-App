@@ -10,6 +10,7 @@ import {NotificationProvider} from "../context/NotificationContext";
 import {DrawerProvider} from "../context/DrawerContext";
 import ErrorBoundary from "../components/ErrorBoundary";
 import StartupSplash from "../components/StartupSplash";
+import {INK} from "../utils/tokens";
 
 export const unstable_settings={initialRouteName:"index"};
 
@@ -145,6 +146,11 @@ export default function Layout(){
 }
 
 const styles=StyleSheet.create({
-  shell:{flex:1},
+  // Paper, not nothing. With no colour here the app's own backdrop is whatever
+  // the platform puts behind it, and on both web and Android that is black --
+  // which is what showed through the footer's see-through strip and read as a
+  // black line above the navigation. The footer no longer relies on this, but
+  // an unpainted root is how that class of bug happens in the first place.
+  shell:{flex:1,backgroundColor:INK.paper},
   stack:{flex:1}
 });

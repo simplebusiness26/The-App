@@ -3,12 +3,16 @@ import {View,Text,Pressable,StyleSheet} from "react-native";
 import {DEMO_ENABLED,DEMO_OFF_MESSAGE,demoAccounts} from "../utils/demoLogins";
 import {INK} from "../utils/tokens";
 
-// The wordmark on the login screen, and the way into the demo accounts.
+// The way into the demo accounts: five taps on the login screen's own heading.
 //
-// Five taps on the wordmark opens the list. It is a deliberately awkward
-// gesture: nobody arrives at it by accident, and it is not a control sitting on
-// the screen where a real person can see it and press it -- which is exactly
-// what the old quick-login panel was.
+// It wraps whatever it is given rather than drawing a logo of its own. The
+// first version added an Xplorer wordmark above the title purely to have
+// something to tap, which is a piece of branding invented to hide a gesture
+// behind -- the heading was already there and already says Login.
+//
+// Five taps is a deliberately awkward gesture: nobody arrives at it by
+// accident, and it is not a control sitting on the screen where a real person
+// can see it and press it, which is exactly what the old quick-login panel was.
 //
 // The taps are not the security. utils/demoLogins.js is: a build without
 // EXPO_PUBLIC_DEMO_PASSWORD has no password in it, so the panel that opens has
@@ -17,7 +21,7 @@ import {INK} from "../utils/tokens";
 
 export const TAPS_TO_OPEN=5;
 
-export default function DemoLogins({onPick,disabled=false}){
+export default function DemoLogins({onPick,disabled=false,label="Login",children}){
   const [taps,setTaps]=useState(0);
   const [open,setOpen]=useState(false);
 
@@ -36,13 +40,11 @@ export default function DemoLogins({onPick,disabled=false}){
 
   return(
     <View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Xplorer"
-        onPress={tap}
-        style={styles.wordmarkTarget}
-      >
-        <Text style={styles.wordmark}>Xplorer</Text>
+      {/* The heading itself is the target. It keeps its own styling -- this
+          adds a press handler and nothing visual, so the screen looks exactly
+          as it did and there is nothing on it hinting that taps are counted. */}
+      <Pressable accessibilityRole="header" accessibilityLabel={label} onPress={tap}>
+        {children}
       </Pressable>
 
       {open && (
@@ -80,11 +82,6 @@ export default function DemoLogins({onPick,disabled=false}){
 }
 
 const styles=StyleSheet.create({
-  // 44 high so the tap target is a real one, and centred so the wordmark reads
-  // as branding rather than as a button.
-  wordmarkTarget:{minHeight:44,alignItems:"center",justifyContent:"center"},
-  wordmark:{color:INK.ink,fontSize:26,fontWeight:"900",letterSpacing:-0.5},
-
   panel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:14,marginTop:14},
   panelHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
   panelTitle:{color:INK.ink,fontWeight:"900",fontSize:16},

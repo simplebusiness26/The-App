@@ -83,6 +83,9 @@ export default function Login(){
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
+      {/* The Login heading is also the way into the demo accounts: five taps.
+          See components/DemoLogins.js. It is wrapped rather than replaced, so
+          the screen looks exactly the same to anybody who is not counting. */}
       <DemoLogins
         disabled={loading}
         onPick={(account)=>{
@@ -90,9 +93,9 @@ export default function Login(){
           setPassword(account.password);
           signIn(account.email,account.password);
         }}
-      />
-
-      <Text style={styles.title}>Login</Text>
+      >
+        <Text style={styles.title}>Login</Text>
+      </DemoLogins>
 
       {destination!=="/" && (
         <View style={styles.returnNotice}>
@@ -141,8 +144,8 @@ export default function Login(){
 
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
-  container:{flexGrow:1,paddingHorizontal:30,paddingTop:40,paddingBottom:52},
-  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"bold",marginTop:22,marginBottom:46},
+  container:{flexGrow:1,paddingHorizontal:30,paddingTop:56,paddingBottom:52},
+  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"bold",marginBottom:46},
   returnNotice:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
   returnTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
   returnText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:3},
