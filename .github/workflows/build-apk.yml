@@ -27,6 +27,23 @@ jobs:
       EXPO_PUBLIC_SUPABASE_URL: https://yzpthslwsvesgndzdqai.supabase.co
       EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_vHyb7Rbz7aCh3WyyWZG7HQ_LQoK8wy5
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      # The demo logins -- five taps on the word Login opens them.
+      #
+      # THIS IS WHY THE PANEL SAID "off in this build". The variables were only
+      # ever read from a local .env, and this workflow is where the APK is
+      # actually made, so the phone build never saw them. Setting them locally
+      # could not have worked.
+      #
+      # Secrets rather than literals: EXPO_PUBLIC_ values are baked into the APK
+      # and anybody holding it can read them, so this password is only ever as
+      # private as the builds are. Keeping it out of the repository at least
+      # means the source is not a second copy of it.
+      #
+      # Add both at Settings > Secrets and variables > Actions. Left unset, the
+      # panel reports itself off -- which is the right behaviour for any build
+      # going to somebody other than the owner.
+      EXPO_PUBLIC_DEMO_PASSWORD: ${{ secrets.EXPO_PUBLIC_DEMO_PASSWORD }}
+      EXPO_PUBLIC_DEMO_ADMIN_EMAIL: ${{ secrets.EXPO_PUBLIC_DEMO_ADMIN_EMAIL }}
 
     steps:
       - name: Check out selected branch
