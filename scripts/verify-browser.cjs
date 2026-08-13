@@ -241,7 +241,18 @@ async function main(){
   const userDataDir=fs.mkdtempSync(path.join(require("os").tmpdir(),"xplorer-browser-"));
 
   const browser=spawn(chromium,[
-    "--headless=new","--remote-debugging-port=9333","--no-sandbox",
+    // PORT 0, NOT A FIXED ONE.
+    //
+    // This asked for 9333 and then polled http://127.0.0.1:9333/json/version.
+    // It worked on every machine it was written on and timed out on GitHub's
+    // runner -- Chrome started (the job even terminated it as an orphan) and
+    // simply never answered there. Guessing at the reason is the wrong fix.
+    //
+    // 0 tells Chrome to pick a free port and write the one it chose into
+    // DevToolsActivePort in the user-data-dir. That file is the browser's own
+    // answer to "where are you", so it cannot be wrong, and it removes the
+    // second failure mode too: a fixed port already in use by something else.
+    "--headless=new","--remote-debugging-port=0","--no-sandbox",
     // --disable-gpu was here and it made a map untestable: MapLibre draws with
     // WebGL, and without a context it throws before it ever renders. SwiftShader
     // is a software renderer, so the map draws on a machine with no graphics
@@ -256,8 +267,19 @@ async function main(){
   const results=[];
 
   try{
+    // Chrome writes the port it chose on the first line of this file, once it
+    // is actually listening. Waiting for the file is waiting for the browser
+    // to be ready, rather than hoping it is.
+    const portFile=path.join(userDataDir,"DevToolsActivePort");
+
+    const devtoolsPort=await waitFor(()=>{
+      if(!fs.existsSync(portFile)) return null;
+      const first=fs.readFileSync(portFile,"utf8").split("\n")[0].trim();
+      return /^\d+$/.test(first) ? first : null;
+    },45000,"Chromium devtools port");
+
     const version=JSON.parse(await waitFor(
-      ()=>get("http://127.0.0.1:9333/json/version").catch(()=>null),
+      ()=>get(`http://127.0.0.1:${devtoolsPort}/json/version`).catch(()=>null),
       20000,"Chromium devtools"
     ));
 
