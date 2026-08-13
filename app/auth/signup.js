@@ -100,7 +100,19 @@ error
 
 email:email.trim(),
 
-password
+password,
+
+// The name and phone travel WITH the account, so the database can build the
+// profile itself. Without this the on_auth_user_created trigger has an email
+// and nothing else, and an account created while email confirmation is on --
+// where this screen returns early, below, with no session to insert with --
+// would end up with a profile carrying no name at all.
+options:{
+data:{
+full_name:name.trim(),
+phone:phone.trim()
+}
+}
 
 });
 
