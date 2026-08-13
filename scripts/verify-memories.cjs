@@ -251,7 +251,12 @@ for(const [file,banned,why] of [
 }
 
 contains("app/_layout.js",['name="memories/create"','name="memories/[id]"']);
-contains("utils/drawer.js",['route:"/memories/create"']);
+// The drawer used to carry "Keep a memory" straight to /memories/create --
+// one of three routes to a Memory that never opened a camera. Moments and
+// Memories are made at the camera now, so what the drawer must still offer is
+// a way to START one, not a way to skip it. See
+// scripts/verify-camera-only-creation.cjs.
+contains("utils/drawer.js",['route:"/camera"']);
 
 if(failures.length){
   console.error(`Memories check failed (${passed} passed, ${failures.length} failed):\n`);

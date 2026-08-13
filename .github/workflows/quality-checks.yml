@@ -96,6 +96,13 @@ jobs:
       - name: Verify one audience vocabulary, with no banned synonyms
         run: npm run verify:audience
 
+      # A Moment and a Memory are made at the camera. There were four ways to
+      # make a Memory and only one of them opened one; this checks the entry
+      # points, because that is where the rule quietly breaks -- somebody adds
+      # a helpful "add a Memory" button to a display surface and it is undone.
+      - name: Verify Moments and Memories are only created at the camera
+        run: npm run verify:camera
+
       - name: Verify every screen can actually be read
         run: npm run verify:contrast
 

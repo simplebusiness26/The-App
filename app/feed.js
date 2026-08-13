@@ -187,7 +187,8 @@ export default function Feed(){
       </View>
 
       <View style={styles.quickActions}>
-        <Pressable style={styles.createButton} onPress={()=>router.push("/moments/create")}>
+        {/* The camera, not the uploader. A Moment is made by taking a photo. */}
+        <Pressable style={styles.createButton} onPress={()=>router.push("/camera")}>
           <Text style={styles.createText}>＋ New Moment</Text>
         </Pressable>
         <Pressable style={styles.findButton} onPress={()=>router.push("/explorers")}>

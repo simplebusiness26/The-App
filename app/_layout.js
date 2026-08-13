@@ -42,7 +42,6 @@ export default function Layout(){
           <Stack.Screen name="messages/index"/>
           <Stack.Screen name="messages/[id]"/>
           <Stack.Screen name="discover"/>
-          <Stack.Screen name="create"/>
           <Stack.Screen name="scan"/>
           <Stack.Screen name="camera"/>
           <Stack.Screen name="qr/[code]"/>

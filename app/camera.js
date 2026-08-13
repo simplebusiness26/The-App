@@ -9,7 +9,7 @@ import {
   Platform
 } from "react-native";
 import {CameraView,useCameraPermissions} from "expo-camera";
-import {router,useFocusEffect} from "expo-router";
+import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {extractQrCode} from "../utils/qr";
 import {INK} from "../utils/tokens";
 
@@ -41,6 +41,7 @@ import {INK} from "../utils/tokens";
 // takes the picture and hands the file to whichever of them you chose.
 
 export default function Camera(){
+  const params=useLocalSearchParams();
   const [permission,requestPermission]=useCameraPermissions();
   const cameraRef=useRef(null);
 
@@ -89,9 +90,22 @@ export default function Camera(){
   }
 
   // The two screens both read `photo` and start with it already chosen.
+  //
+  // Anything the camera was OPENED with travels through to them. A place page
+  // says "post a Moment here" and now routes via the camera, so the place it
+  // meant has to survive the round trip -- otherwise camera-only creation would
+  // have quietly cost every Moment its place.
   function use(destination){
     if(!photo?.uri) return;
-    router.push(`${destination}?photo=${encodeURIComponent(photo.uri)}`);
+
+    const carried=["target_type","target_id"]
+      .map((key)=>{
+        const value=Array.isArray(params[key]) ? params[key][0] : params[key];
+        return value ? `&${key}=${encodeURIComponent(value)}` : "";
+      })
+      .join("");
+
+    router.push(`${destination}?photo=${encodeURIComponent(photo.uri)}${carried}`);
   }
 
   if(!permission){

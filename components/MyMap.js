@@ -100,15 +100,21 @@ export default function MyMap({ownerId,viewerId}){
       {!loading && !error && !plottable.length && (
         <View style={styles.card}>
           <Text style={styles.body}>
-            Keep a Memory of a place you went and it will appear here on your own map.
+            Take a photo of a place you went, keep it as a Memory, and it will appear here on your own map.
           </Text>
+          {/*
+            Opens the camera, not an uploader. This button used to go straight
+            to /memories/create -- a second way to make a Memory that never went
+            near the camera. A display surface may offer a SHORTCUT to the
+            camera; it may not become a creation surface of its own.
+          */}
           <Pressable
             style={styles.action}
             accessibilityRole="button"
-            accessibilityLabel="Keep a Memory"
-            onPress={()=>router.push("/memories/create")}
+            accessibilityLabel="Open the camera"
+            onPress={()=>router.push("/camera")}
           >
-            <Text style={styles.actionText}>Keep a Memory</Text>
+            <Text style={styles.actionText}>Open the camera</Text>
           </Pressable>
         </View>
       )}

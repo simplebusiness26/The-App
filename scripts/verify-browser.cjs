@@ -49,7 +49,7 @@ const dist=path.join(root,process.env.DIST_DIR || "dist");
 // screen loads its data path rather than sitting on a missing param.
 const ID="198295b9-47ae-4d5e-982a-b96249ac91ac";
 const ROUTES=[
-  "/","/map","/discover","/create","/leaderboards","/profile","/feed","/live",
+  "/","/map","/discover","/leaderboards","/profile","/feed","/live",
   "/linkups","/linkups/create","/places","/explorers","/notifications","/settings",
   "/memories/create","/moments/create","/checkins/create","/saved","/scan",
   `/profile/${ID}`,`/business/${ID}`,`/property/${ID}`,`/events/${ID}`,

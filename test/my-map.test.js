@@ -198,7 +198,10 @@ describe("what it reads",()=>{
     const tree=await render(React.createElement(MyMap,{ownerId:OWNER,viewerId:OWNER}));
     const text=textOf(tree.toJSON());
 
-    expect(text).toContain("Keep a Memory of a place you went");
+    // The empty state points at the camera now: Moments and Memories are made
+    // by taking a photo, and this used to be one of three routes to a Memory
+    // that never opened one. It still tells the owner what to DO.
+    expect(text).toContain("Take a photo of a place you went");
     expect(text).not.toMatch(/Nothing here yet/i);
   });
 

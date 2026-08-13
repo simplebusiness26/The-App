@@ -57,7 +57,11 @@ export const SECTIONS=[
     rows:[
       {label:"Profile",route:"/profile",gate:GATES.SIGNED_IN},
       {label:"Check in",route:"/checkins/create",gate:GATES.SIGNED_IN},
-      {label:"Keep a memory",route:"/memories/create",gate:GATES.SIGNED_IN},
+      // "Keep a memory" pointed at /memories/create, which opened the photo
+      // LIBRARY -- one of three ways to make a Memory without ever opening the
+      // camera. Moments and Memories are made at the camera now, so the row
+      // that offers the act is the camera itself.
+      {label:"Take a photo",route:"/camera",gate:GATES.SIGNED_IN},
       {label:"Scan a review code",route:"/scan",gate:GATES.SIGNED_IN},
       // The on-ramp. /manager/dashboard is where an Explorer requests the
       // capability to manage something, so it cannot sit behind a section that

@@ -83,7 +83,11 @@ contains("app/feed.js",[
   // thing now, and every published review takes a comment.
   'type:"review"',
   'router.push(`/moments/${item.item_id}`)',
-  'router.push("/moments/create")'
+  // The camera, not the uploader. The feed's "New Moment" used to push to
+  // /moments/create, which opens the photo library -- a creation route that
+  // never went near a camera. What must hold is that the feed still OFFERS the
+  // act; where it sends you is the camera-only rule's business.
+  'router.push("/camera")'
 ]);
 
 // The half that moved with the row.

@@ -250,8 +250,13 @@ check(
   `${MAP}: uses a banned empty-state phrase — write an instruction`
 );
 
+// The instruction, not one particular wording of it. The empty state used to
+// say "Keep a Memory" and push to /memories/create; it now says take a photo
+// and opens the camera, because that is where a Memory is made. What the rule
+// protects is that it tells the owner what to DO -- the banned phrases above
+// are the failure this is paired with.
 check(
-  /Keep a Memory/.test(map),
+  /Take a photo|Keep a Memory/.test(map),
   `${MAP}: empty state does not tell a person what to do`
 );
 

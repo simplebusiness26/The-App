@@ -84,6 +84,21 @@ export default function CreateMoment(){
     setMediaType("image");
   },[cameraPhoto,asset]);
 
+  // CAMERA ONLY.
+  //
+  // This screen is the second half of the camera flow -- caption, place,
+  // audience -- not a standalone uploader. Reached with no photo it used to
+  // open the photo LIBRARY, which made it a second way to create that never
+  // went near a camera. Three routes did exactly that.
+  //
+  // Arriving with nothing sends you to the camera rather than showing an empty
+  // form. The in-screen picker stays for what the camera cannot capture (video)
+  // and for replacing a shot you have already taken; both of those are still
+  // inside the flow, which is the thing the rule is about.
+  useEffect(()=>{
+    if(!cameraPhoto && !asset) router.replace("/camera");
+  },[cameraPhoto,asset]);
+
   // Opened from a place page with the place already chosen.
   useEffect(()=>{
     if(user && presetType && presetId && PLACE_TYPES[presetType] && !placeType){

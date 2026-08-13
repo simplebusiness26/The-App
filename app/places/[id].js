@@ -138,7 +138,7 @@ export default function PublicPlacePage(){
             style={styles.primary}
             accessibilityRole="button"
             accessibilityLabel={`Post a Moment at ${place.name}`}
-            onPress={()=>router.push(`/moments/create?target_type=public_place&target_id=${place.id}`)}
+            onPress={()=>router.push(`/camera?target_type=public_place&target_id=${place.id}`)}
           >
             <Text style={styles.primaryText}>Post a Moment here</Text>
           </Pressable>
