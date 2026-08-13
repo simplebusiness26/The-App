@@ -18,6 +18,9 @@
 // everything else, because there are more of them than of anything else. See
 // utils/mapLayers.js.
 
+import {bubbleLimitFor,pixelDistance,MIN_BUBBLE_SEPARATION_PX} from "./mapZoom";
+import {numberOrNull} from "./coordinates";
+
 // Two or three. Three is the brief's ceiling; the shape of the map decides
 // whether the third one has anywhere to go without covering another pin.
 export const MAX_AUTOMATIC_BUBBLES=3;
@@ -129,29 +132,105 @@ export function inViewport(candidate,viewport){
 // Collision
 // ---------------------------------------------------------------------------
 
-// Two bubbles within this many degrees of each other would overlap on screen.
-// Roughly 300m at these latitudes -- deliberately generous, because a bubble
-// covering another bubble is worse than one fewer bubble.
-export const COLLISION_DEGREES=0.003;
+// WHAT THIS USED TO BE, AND WHY IT DID NOT WORK
+//
+// A fixed COLLISION_DEGREES=0.003, described here as "roughly 300m at these
+// latitudes". It is -- and at zoom 10, 300m is about two pixels, so the rule
+// that was meant to keep bubbles apart did nothing at all at exactly the zoom
+// the owner was complaining about. Bubbles sat on top of each other and on top
+// of pins they had nothing to do with.
+//
+// Overlap is a screen problem and is now measured on the screen, in pixels, by
+// utils/mapZoom.js. A missing zoom falls back to a fixed degree separation
+// rather than to none: before the map has reported anything, some spacing is
+// better than a heap.
+export const FALLBACK_COLLISION_DEGREES=0.003;
 
-function collides(candidate,chosen){
-  return chosen.some((other)=>
-    Math.abs(Number(candidate.latitude)-Number(other.latitude))<COLLISION_DEGREES &&
-    Math.abs(Number(candidate.longitude)-Number(other.longitude))<COLLISION_DEGREES
-  );
+function collides(candidate,chosen,zoom){
+  if(numberOrNull(zoom)===null){
+    return chosen.some((other)=>
+      Math.abs(Number(candidate.latitude)-Number(other.latitude))<FALLBACK_COLLISION_DEGREES &&
+      Math.abs(Number(candidate.longitude)-Number(other.longitude))<FALLBACK_COLLISION_DEGREES
+    );
+  }
+
+  return chosen.some((other)=>pixelDistance(candidate,other,zoom)<MIN_BUBBLE_SEPARATION_PX);
 }
 
 // ---------------------------------------------------------------------------
 // The controller
 // ---------------------------------------------------------------------------
 
-// `tick` advances once per BUBBLE_MS. Passing it in rather than reading a clock
+// Round-robin across kinds, so three slots are three different sorts of thing.
+//
+// The old order was priority-then-key, which put every review photo together --
+// and there are more reviews with photos than of anything else, so in practice
+// the map showed photos, photos, photos. The owner: "I want a variety of
+// bubbles", and the photos are "too prominent".
+//
+// Priority still decides which member of a kind goes first, and which kind gets
+// the slot when there is only one. It no longer decides all three.
+function interleaveByKind(ordered){
+  const byKind=new Map();
+  for(const candidate of ordered){
+    const kind=candidate.kind || "other";
+    const bucket=byKind.get(kind) || [];
+    bucket.push(candidate);
+    byKind.set(kind,bucket);
+  }
+
+  // Kinds in priority order, so with one slot the event still wins.
+  const kinds=[...byKind.keys()].sort((a,b)=>bubblePriority(a)-bubblePriority(b));
+
+  const woven=[];
+  let taken=true;
+  while(taken){
+    taken=false;
+    for(const kind of kinds){
+      const bucket=byKind.get(kind);
+      if(!bucket.length) continue;
+      woven.push(bucket.shift());
+      taken=true;
+    }
+  }
+
+  return woven;
+}
+
+// `tick` advances once per interval. Passing it in rather than reading a clock
 // is what makes the rotation testable: the same tick always produces the same
 // bubbles.
-export function bubblesAt(candidates,{tick=0,viewport=null,limit=MAX_AUTOMATIC_BUBBLES,selectedKey=null}={}){
+//
+// `zoom` and `viewport` are the two things this never used to be told. Without
+// them inViewport() returned true for everything and the limit was a fixed
+// three at every zoom, which is why bubbles appeared for off-screen places at
+// county level. See utils/mapZoom.js.
+//
+// `visibleAnchors`, when given, is the set of pin keys drawn on their own -- a
+// candidate whose pin was swallowed by a cluster is not eligible, because a
+// bubble pointing into a heap of pins is the "random places" complaint.
+export function bubblesAt(candidates,{
+  tick=0,
+  viewport=null,
+  zoom=null,
+  limit=null,
+  selectedKey=null,
+  visibleAnchors=null
+}={}){
+  // numberOrNull, not Number.isFinite(Number(x)): Number(null) is 0, so the
+  // obvious check reads "no limit given" as "a limit of zero" and the map shows
+  // nothing at all. See utils/coordinates.js. Caught by the tests that already
+  // existed, which is the only reason it is not still in here.
+  const cap=numberOrNull(limit)!==null
+    ? Number(limit)
+    : (numberOrNull(zoom)!==null ? bubbleLimitFor(zoom) : MAX_AUTOMATIC_BUBBLES);
+
+  if(cap<=0) return [];
+
   const eligible=(candidates || [])
     .filter((candidate)=>candidate && candidate.key)
     .filter((candidate)=>inViewport(candidate,viewport))
+    .filter((candidate)=>!visibleAnchors || !candidate.anchorKey || visibleAnchors.has(candidate.anchorKey))
     // A selected bubble is not part of the automatic rotation. It stays open
     // because somebody opened it, and it must not use up one of the three.
     .filter((candidate)=>candidate.key!==selectedKey);
@@ -167,15 +246,17 @@ export function bubblesAt(candidates,{tick=0,viewport=null,limit=MAX_AUTOMATIC_B
     return String(a.key).localeCompare(String(b.key));
   });
 
-  // Rotate the whole list by the tick, so everything gets a turn rather than
-  // the top three being the only things anybody ever sees.
-  const offset=ordered.length ? (tick % ordered.length) : 0;
-  const rotated=[...ordered.slice(offset),...ordered.slice(0,offset)];
+  const woven=interleaveByKind(ordered);
+
+  // Rotate by the tick, so everything gets a turn rather than the top few being
+  // the only things anybody ever sees.
+  const offset=woven.length ? (tick % woven.length) : 0;
+  const rotated=[...woven.slice(offset),...woven.slice(0,offset)];
 
   const chosen=[];
   for(const candidate of rotated){
-    if(chosen.length>=limit) break;
-    if(collides(candidate,chosen)) continue;
+    if(chosen.length>=cap) break;
+    if(collides(candidate,chosen,zoom)) continue;
     chosen.push(candidate);
   }
 

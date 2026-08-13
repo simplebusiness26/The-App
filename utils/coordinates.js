@@ -19,6 +19,16 @@
 // rejected is the absence of a value, not the value zero.
 
 export function coordinate(value){
+  return numberOrNull(value);
+}
+
+// The same check, under the name it actually deserves: "was a number given?".
+//
+// It is not only coordinates that need it. utils/mapZoom.js asks it of a zoom
+// level and utils/liveBubbles.js of a bubble limit, and both had the identical
+// bug within an hour of being written -- a missing zoom read as zoom 0, a
+// missing limit read as "show nothing". Three callers, so it gets a name.
+export function numberOrNull(value){
   if(value===null || value===undefined || value==="") return null;
   const parsed=Number(value);
   return Number.isFinite(parsed) ? parsed : null;

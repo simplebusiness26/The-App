@@ -163,3 +163,92 @@ test("only an event actually happening gets the celebration",()=>{
   expect(bubbles.eventDeservesCelebration({starts_at:at(180),ends_at:at(300)},now)).toBe(false);
   expect(bubbles.eventDeservesCelebration({starts_at:at(30),ends_at:at(120)},now)).toBe(false);
 });
+
+// ---------------------------------------------------------------------------
+// Zoom, and the pin a bubble belongs to
+// ---------------------------------------------------------------------------
+//
+// The owner, on the Android build: "you got pop ups that aren't even at the
+// location, they're just popping up in random places, and they're also popping
+// up when you're so far out the map". Both halves are below.
+
+test("far out shows one bubble, a street shows three",()=>{
+  const many=spread(9);
+
+  expect(bubbles.bubblesAt(many,{tick:0,zoom:9}).length).toBe(1);
+  expect(bubbles.bubblesAt(many,{tick:0,zoom:13}).length).toBe(2);
+  expect(bubbles.bubblesAt(many,{tick:0,zoom:16}).length).toBe(3);
+});
+
+test("a bubble may not point at a pin that a cluster swallowed",()=>{
+  const some=[
+    {key:"review-1",kind:"review",anchorKey:"business-1",latitude:50.85,longitude:0.57},
+    {key:"review-2",kind:"review",anchorKey:"business-2",latitude:51.20,longitude:0.90}
+  ];
+
+  // business-2 is inside a cluster, so only the first may surface.
+  const shown=bubbles.bubblesAt(some,{tick:0,zoom:16,visibleAnchors:new Set(["business-1"])});
+  expect(shown.map((entry)=>entry.key)).toEqual(["review-1"]);
+});
+
+test("with nothing drawn on its own, nothing bubbles at all",()=>{
+  const some=[{key:"review-1",kind:"review",anchorKey:"business-1",latitude:50.85,longitude:0.57}];
+  expect(bubbles.bubblesAt(some,{tick:0,zoom:16,visibleAnchors:new Set()})).toEqual([]);
+});
+
+// The map is drawn before it has reported a viewport, and a candidate written
+// before this change carries no anchor. Neither may empty the map.
+test("no anchor set given means no anchor filtering",()=>{
+  const some=[{key:"review-1",kind:"review",anchorKey:"business-1",latitude:50.85,longitude:0.57}];
+  expect(bubbles.bubblesAt(some,{tick:0,zoom:16}).length).toBe(1);
+});
+
+// Collision used to be a fixed 0.003 degrees -- "roughly 300m", which at county
+// zoom is about two pixels. So the rule that was meant to stop bubbles
+// overlapping did nothing at exactly the zoom being complained about.
+test("two places a few hundred metres apart collide far out and not close in",()=>{
+  const together=[
+    {key:"a",kind:"review",latitude:50.8500,longitude:0.5700},
+    {key:"b",kind:"review",latitude:50.8530,longitude:0.5700}
+  ];
+
+  expect(bubbles.bubblesAt(together,{tick:0,zoom:16}).length).toBe(2);
+  expect(bubbles.bubblesAt(together,{tick:0,zoom:12,limit:3}).length).toBe(1);
+});
+
+// "I want a variety of bubbles" -- the photos are "too prominent". There are
+// more reviews with photos than of anything else, and the old order was
+// priority-then-key, so in practice the map showed photos, photos, photos.
+test("three slots are three different kinds of thing, not three photos",()=>{
+  const mixed=[
+    ...Array.from({length:6},(_,i)=>candidate(`r-${i}`,"review",50.85+i*0.05,0.57+i*0.05)),
+    candidate("e-1","event",52.10,1.60),
+    candidate("c-1","activity_club",52.40,1.90)
+  ];
+
+  const kinds=bubbles.bubblesAt(mixed,{tick:0,zoom:16}).map((entry)=>entry.kind);
+  expect(new Set(kinds).size).toBe(3);
+  // The event still goes first: priority decides the order, it no longer
+  // decides all three slots.
+  expect(kinds[0]).toBe("event");
+});
+
+test("with one slot the most important kind still wins",()=>{
+  const mixed=[
+    candidate("r-1","review",50.85,0.57),
+    candidate("e-1","event",52.10,1.60)
+  ];
+
+  expect(bubbles.bubblesAt(mixed,{tick:0,zoom:9}).map((entry)=>entry.kind)).toEqual(["event"]);
+});
+
+test("everything still gets a turn as the rotation advances",()=>{
+  const many=spread(9);
+  const seen=new Set();
+
+  for(let tick=0;tick<9;tick+=1){
+    for(const shown of bubbles.bubblesAt(many,{tick,zoom:16})) seen.add(shown.key);
+  }
+
+  expect(seen.size).toBe(9);
+});

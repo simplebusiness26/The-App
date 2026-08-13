@@ -45,6 +45,9 @@ export function candidatesFrom({places=[],activity=[],reviewShots=[],now=Date.no
       candidates.push({
         key:`club-${place.id}`,
         kind:"activity_club",
+        // Which PIN this bubble belongs to. utils/liveBubbles.js refuses a
+        // bubble whose pin is not drawn on its own -- see the note there.
+        anchorKey:place.card?.key || `club-${place.id}`,
         latitude:place.latitude,
         longitude:place.longitude,
         text:"Spaces open",
@@ -60,6 +63,7 @@ export function candidatesFrom({places=[],activity=[],reviewShots=[],now=Date.no
       candidates.push({
         key:`property-${place.id}`,
         kind:"property",
+        anchorKey:place.card?.key || `property-${place.id}`,
         latitude:place.latitude,
         longitude:place.longitude,
         text,
@@ -81,6 +85,9 @@ export function candidatesFrom({places=[],activity=[],reviewShots=[],now=Date.no
     candidates.push({
       key:`event-${item.id || item.key}`,
       kind:"event",
+      // The live layer is not clustered -- there is little of it and it is the
+      // interesting half -- so an event's pin is always its own.
+      anchorKey:item.key,
       latitude:item.latitude,
       longitude:item.longitude,
       text,
@@ -107,6 +114,11 @@ export function candidatesFrom({places=[],activity=[],reviewShots=[],now=Date.no
     candidates.push({
       key:`review-${shot.id}`,
       kind:"review",
+      // A review has no coordinates of its own -- it borrows the listing's, and
+      // always has. What is new is that it can only surface when that listing's
+      // pin is drawn on its own, so the photo can no longer hang over a cluster
+      // with its tail pointing at nothing in particular.
+      anchorKey:place.card?.key || `${place.kind}-${place.id}`,
       latitude:place.latitude,
       longitude:place.longitude,
       // The bubble IS the photo. No caption, no rating, no reviewer.
