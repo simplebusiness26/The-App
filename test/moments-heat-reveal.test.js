@@ -162,3 +162,70 @@ test("the long press that drops a Link-up is still wired on both maps",()=>{
   expect(native).not.toMatch(/onHeatDoubleTap/);
   expect(web).not.toMatch(/dblclick/);
 });
+
+// ---------------------------------------------------------------------------
+// "In the heat map OR IN THE AREA"
+// ---------------------------------------------------------------------------
+//
+// The grid square is about a kilometre across. The circle drawn on screen is 44
+// to 96 PIXELS across and centred on the first post that landed in the square,
+// so the two do not line up: tap the visible wash near its edge and the
+// coordinates fall in the square next door, and the panel opens saying "nothing
+// to open here" over a patch that is plainly warm.
+
+test("the ring around a square is the eight squares touching it, and itself",()=>{
+  const {neighbourKeys}=require("../utils/mapLayers");
+
+  const keys=neighbourKeys("50.85,0.57");
+
+  expect(keys.size).toBe(9);
+  expect(keys.has("50.85,0.57")).toBe(true);
+  expect(keys.has("50.86,0.58")).toBe(true);
+  expect(keys.has("50.84,0.56")).toBe(true);
+  // Two squares out is a different area, not a neighbouring one.
+  expect(keys.has("50.87,0.57")).toBe(false);
+});
+
+test("the exact square is asked first, and widening is a separate request",()=>{
+  const {itemsInCell,heatKey}=require("../utils/mapLayers");
+
+  const here={id:"here",latitude:50.8500,longitude:0.5700};
+  const nextDoor={id:"next",latitude:50.8600,longitude:0.5700};
+  const milesOff={id:"far",latitude:51.9000,longitude:0.9000};
+
+  const cell={key:heatKey(here.latitude,here.longitude)};
+  const items=[here,nextDoor,milesOff];
+
+  // Narrow: only what is genuinely in this square.
+  expect(itemsInCell(items,cell).map((item)=>item.id)).toEqual(["here"]);
+
+  // Widened: this square and the ring, and nothing beyond it.
+  const around=itemsInCell(items,cell,{neighbours:true}).map((item)=>item.id);
+  expect(around).toContain("here");
+  expect(around).toContain("next");
+  expect(around).not.toContain("far");
+});
+
+test("a post with no coordinates is never counted as being anywhere",()=>{
+  const {itemsInCell,heatKey}=require("../utils/mapLayers");
+
+  const cell={key:heatKey(50.85,0.57)};
+  const items=[{id:"nowhere",latitude:null,longitude:null},{id:"empty"}];
+
+  expect(itemsInCell(items,cell)).toEqual([]);
+  expect(itemsInCell(items,cell,{neighbours:true})).toEqual([]);
+});
+
+test("the screen asks narrow first and only then widens, and says which it got",()=>{
+  const fs=require("fs");
+  const path=require("path");
+  const screen=fs.readFileSync(
+    path.join(path.resolve(__dirname,".."),"components","LivingMapScreen.js"),"utf8"
+  );
+
+  // Narrow first: "here" is a stronger claim than "around here" and must not be
+  // made when only the second is true.
+  expect(screen).toMatch(/itemsInCell\(moments,cell\)/);
+  expect(screen).toMatch(/itemsInCell\(moments,cell,\{neighbours:true\}\)/);
+  expect(screen).toMatch(/widened/);
+});

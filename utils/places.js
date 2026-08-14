@@ -86,6 +86,44 @@ export function roundCoordinate(value){
   return Number(number.toFixed(COORDINATE_PRECISION));
 }
 
+// ---------------------------------------------------------------------------
+// How precise a post says it is
+// ---------------------------------------------------------------------------
+//
+// The owner: "the app needs to take your location coz that's how it knows where
+// to put your moment on the map, and at least if you don't want your exact
+// location on the map it goes to your area -- same with memory."
+//
+// So there are two answers, not one, and neither is the default. RULES.md:
+// every visibility flag starts off and opt-in is never the fallback branch.
+// Sending nothing is still the third answer, and still what happens if somebody
+// touches neither button.
+//
+// Roughly a kilometre. The same grid utils/mapLayers.js rounds a Link-up's
+// meeting point to, and the same grid the heat is built on -- "this corner of
+// town", not a doorstep.
+export const AREA_PRECISION=2;
+
+export const LOCATION_DETAIL={
+  EXACT:"exact",
+  AREA:"area"
+};
+
+export function roundToArea(value){
+  if(value===null || value===undefined) return null;
+  const number=Number(value);
+  if(!Number.isFinite(number)) return null;
+  return Number(number.toFixed(AREA_PRECISION));
+}
+
+// One rounder, so a screen cannot say "your area only" and send a doorstep.
+// An unrecognised detail rounds to the AREA, not to the exact spot: being
+// vaguer than asked is a mistake somebody can live with, the other way round
+// is not.
+export function roundLocation(value,detail){
+  return detail===LOCATION_DETAIL.EXACT ? roundCoordinate(value) : roundToArea(value);
+}
+
 // A canonical area, written the way it is displayed: "Hastings, East Sussex".
 export function areaLabel(area){
   if(!area) return "";

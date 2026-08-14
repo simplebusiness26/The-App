@@ -8,7 +8,8 @@ import {useFeedback} from "../../context/FeedbackContext";
 import MomentMediaPreview from "../../components/MomentMediaPreview";
 import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
 import AudienceCeiling from "../../components/AudienceCeiling";
-import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY,roundCoordinate} from "../../utils/places";
+import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY} from "../../utils/places";
+import AddLocation from "../../components/AddLocation";
 import {INK} from "../../utils/tokens";
 
 // Packet 8e added three things to this screen, each with a boundary in the
@@ -63,7 +64,6 @@ export default function CreateMoment(){
   // somebody makes, not one they fail to undo.
   const [keepAsMemory,setKeepAsMemory]=useState(false);
   const [coordinates,setCoordinates]=useState(null);
-  const [locating,setLocating]=useState(false);
   const [loading,setLoading]=useState(true);
   const [loadingPlaces,setLoadingPlaces]=useState(false);
   const [publishing,setPublishing]=useState(false);
@@ -128,29 +128,11 @@ export default function CreateMoment(){
     setLoading(false);
   }
 
-  // Never automatic. A Moment carries a location because somebody pressed a
-  // button that says so, and a refusal is a refusal -- the Explorer's own area
-  // is used instead by the database, with no coordinates at all.
-  async function addLocation(){
-    setLocating(true);
-    setError("");
-
-    try{
-      const permission=await Location.requestForegroundPermissionsAsync();
-      if(permission.status!=="granted") throw new Error("Location permission was not granted, so this Moment will carry your area only.");
-
-      const position=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});
-      setCoordinates({
-        latitude:roundCoordinate(position.coords.latitude),
-        longitude:roundCoordinate(position.coords.longitude)
-      });
-    }catch(locationError){
-      setCoordinates(null);
-      setError(locationError.message || "Your location could not be added.");
-    }
-
-    setLocating(false);
-  }
+  // The location control is components/AddLocation.js now, shared with
+  // app/memories/create.js -- a Memory had no location handling at all, and two
+  // screens rounding a coordinate two ways is how one of them ends up sending a
+  // doorstep. Nothing here is automatic and nothing is on by default; see the
+  // privacy note in that file.
 
   async function requestPermission(){
     if(Platform.OS==="web") return true;
@@ -322,7 +304,11 @@ export default function CreateMoment(){
       // Coordinates are sent only for a standalone Moment. An attached one is
       // snapshotted from the place itself on insert, so sending the device's
       // position with it would be a second, disagreeing answer.
-      const deviceLocation=!selectedPlace && coordinates ? coordinates : {};
+      // latitude and longitude only. `detail` is how precise the screen chose
+      // to be and is not a column -- sending it would fail the insert.
+      const deviceLocation=!selectedPlace && coordinates
+        ? {latitude:coordinates.latitude,longitude:coordinates.longitude}
+        : {};
 
       const {data:moment,error:insertError}=await supabase
         .from("explorer_moments")
@@ -527,23 +513,7 @@ export default function CreateMoment(){
 
       {!selectedPlace && (
         <>
-          <Text style={styles.label}>Location <Text style={styles.optional}>(optional)</Text></Text>
-          <Pressable
-            style={styles.locationButton}
-            disabled={locating}
-            accessibilityRole="button"
-            accessibilityLabel={coordinates ? "Remove the location from this Moment" : "Add your approximate location"}
-            onPress={coordinates ? ()=>setCoordinates(null) : addLocation}
-          >
-            {locating
-              ? <ActivityIndicator color={INK.ink}/>
-              : <Text style={styles.locationText}>
-                  {coordinates ? "✓ Approximate location added — tap to remove" : "Add my approximate location"}
-                </Text>}
-          </Pressable>
-          <Text style={styles.locationHint}>
-            Rounded to roughly 100 metres before it is sent. Skip it and this Moment carries your area only.
-          </Text>
+          <AddLocation value={coordinates} onChange={setCoordinates} thing="Moment"/>
         </>
       )}
 

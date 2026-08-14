@@ -353,7 +353,7 @@ contains("app/moments/create.js",[
   "actor_type:official ? placeType : \"explorer\"",
   "actor_id:official ? selectedPlace.id : user.id",
   "public_place:{label:\"Public place\"",
-  "roundCoordinate"
+  "<AddLocation"
 ]);
 
 const create=read("app/moments/create.js");
@@ -368,14 +368,65 @@ check(
   "app/moments/create.js: offers official posting without comparing the viewer to the listing's manager"
 );
 
+// ---------------------------------------------------------------------------
+// Where a post says it happened
+// ---------------------------------------------------------------------------
+//
+// This used to check one screen's own location button. It is one shared control
+// now -- components/AddLocation.js -- because a Memory had NO location handling
+// at all: app/memories/create.js never asked and never sent, so a standalone
+// Memory carried no coordinates and could not appear on the map. Two screens
+// each rounding a coordinate their own way is how one of them ships a doorstep.
+//
+// The owner asked for the second precision: "if you don't want your exact
+// location on the map it goes to your area, same with memory."
+
+const LOCATION="components/AddLocation.js";
+const addLocation=read(LOCATION);
+
+for(const screen of ["app/moments/create.js","app/memories/create.js"]){
+  const source=read(screen);
+
+  check(
+    /<AddLocation/.test(source),
+    `${screen}: must offer the shared location control`
+  );
+  check(
+    !/getCurrentPositionAsync|requestForegroundPermissionsAsync/.test(source),
+    `${screen}: reads the device position itself — asking belongs in ${LOCATION}, once`
+  );
+  check(
+    /\{!selectedPlace &&/.test(source),
+    `${screen}: must only offer a location for a standalone post — an attached one takes the place's own coordinates on insert`
+  );
+}
+
+// Never on mount, never on render: only inside a handler for a button that
+// says what it does.
 check(
-  !/getCurrentPositionAsync[\s\S]{0,400}useEffect/.test(create),
-  "app/moments/create.js: reads the device position outside an explicit action"
+  !/(useEffect|useMemo)\([\s\S]{0,300}requestForegroundPermissionsAsync/.test(addLocation),
+  `${LOCATION}: asks for the location permission outside an explicit action`
 );
 
+// Rounded on the device, so a precise coordinate never leaves it. The database
+// rounds again on insert; that is the floor, not the protection.
 check(
-  create.includes("onPress={coordinates ? ()=>setCoordinates(null) : addLocation}"),
-  "app/moments/create.js: the location control is no longer an explicit, reversible tap"
+  /roundLocation\(/.test(addLocation),
+  `${LOCATION}: must round through roundLocation() so "my area only" cannot send a doorstep`
+);
+
+// Nothing is on by default, and every answer is reversible.
+check(
+  /accessibilityState=\{\{selected:active\}\}/.test(addLocation),
+  `${LOCATION}: must say which precision is selected`
+);
+check(
+  /if\(active\)\{onChange\?\.\(null\)/.test(addLocation),
+  `${LOCATION}: the location control is no longer an explicit, reversible tap`
+);
+check(
+  !/useState\((true|LOCATION_DETAIL)/.test(addLocation),
+  `${LOCATION}: a precision is preselected — RULES.md, opt-in is never the fallback branch`
 );
 
 contains("app/checkins/create.js",[

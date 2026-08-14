@@ -16,6 +16,7 @@ import {
 import {PUBLIC_PLACE_TYPES} from "../../utils/places";
 import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,uploadSocialAsset} from "../../utils/socialMedia";
 import AudienceCeiling from "../../components/AudienceCeiling";
+import AddLocation from "../../components/AddLocation";
 import {INK} from "../../utils/tokens";
 
 // Packet 8d: keeping something on purpose.
@@ -54,6 +55,13 @@ export default function CreateMemory(){
   const [archiveVisibility,setArchiveVisibility]=useState(DEFAULT_ARCHIVE_VISIBILITY);
   const [duration,setDuration]=useState(DEFAULT_LIVE_DURATION);
   const [showOnProfile,setShowOnProfile]=useState(false);
+  // WHERE THIS MEMORY HAPPENED, AND IT HAD NOWHERE TO GO BEFORE.
+  //
+  // This screen never asked for a location and never sent one, so a Memory that
+  // was not attached to a listing carried no coordinates and never appeared on
+  // the map at all -- the trigger in 20260805120300 only fills them in from an
+  // attached place. Nothing is on by default; see components/AddLocation.js.
+  const [coordinates,setCoordinates]=useState(null);
   const [loading,setLoading]=useState(true);
   const [loadingPlaces,setLoadingPlaces]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -211,6 +219,12 @@ export default function CreateMemory(){
           media_url:mediaUrl,
           target_type:selectedPlace ? placeType : null,
           target_id:selectedPlace?.id || null,
+          // Standalone only. An attached Memory is snapshotted from the place
+          // itself on insert, so sending the device's position with it would be
+          // a second, disagreeing answer.
+          ...(!selectedPlace && coordinates
+            ? {latitude:coordinates.latitude,longitude:coordinates.longitude}
+            : {}),
           visibility,
           live_until:isPrivate ? null : liveUntilFrom(duration),
           archive_visibility:archiveVisibility,
@@ -347,6 +361,13 @@ export default function CreateMemory(){
           {!loadingPlaces && !filteredPlaces.length && <Text style={styles.muted}>No matching places.</Text>}
         </View>
       )}
+
+      {/*
+        Only when it is not attached to a place. An attached Memory takes that
+        place's coordinates on insert, so offering a second answer here would
+        let the screen and the database disagree about where it happened.
+      */}
+      {!selectedPlace && <AddLocation value={coordinates} onChange={setCoordinates} thing="Memory"/>}
 
       <Text style={styles.label}>WHO CAN SEE IT WHILE IT IS LIVE</Text>
       {MEMORY_VISIBILITY.map((option)=>(
