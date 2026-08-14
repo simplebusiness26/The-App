@@ -249,9 +249,18 @@ test("nothing outside utils/routing/valhalla.js knows what Valhalla is",()=>{
     }
   }
 
-  // utils/routing/index.js imports the module by name, which is the one
-  // legitimate mention -- it is the file whose job is choosing a provider.
-  expect(offenders.filter((f)=>f!==path.join("utils","routing","index.js"))).toEqual([]);
+  // Two legitimate mentions.
+  //
+  // utils/routing/index.js imports the module by name -- it is the file whose
+  // job is choosing a provider.
+  //
+  // utils/legal.js names it because a privacy policy has to say WHO processes
+  // your data, and "a routing service" is not an answer. The rule this gate
+  // defends is that nothing DECIDES anything about Valhalla outside its own
+  // file; naming the company you send a coordinate to is the opposite of that
+  // problem.
+  const allowed=[path.join("utils","routing","index.js"),path.join("utils","legal.js")];
+  expect(offenders.filter((f)=>!allowed.includes(f))).toEqual([]);
 });
 
 test("neither map renderer decides what a route looks like",()=>{

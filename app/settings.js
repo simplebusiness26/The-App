@@ -667,6 +667,31 @@ export default function Settings(){
       </View>
 
       {/*
+        THE TWO DOCUMENTS BOTH STORES REQUIRE.
+
+        Reachable from here and from sign-up, because a policy nobody can find
+        is not a policy. Both are marked as drafts on the screen itself -- see
+        the note in utils/legal.js.
+      */}
+      <Text style={styles.sectionTitle}>Privacy and terms</Text>
+      <Pressable
+        style={styles.secondaryButton}
+        accessibilityRole="button"
+        accessibilityLabel="Read the privacy policy"
+        onPress={()=>router.push("/legal/privacy")}
+      >
+        <Text style={styles.secondaryText}>Privacy policy</Text>
+      </Pressable>
+      <Pressable
+        style={styles.secondaryButton}
+        accessibilityRole="button"
+        accessibilityLabel="Read the terms"
+        onPress={()=>router.push("/legal/terms")}
+      >
+        <Text style={styles.secondaryText}>Terms</Text>
+      </Pressable>
+
+      {/*
         About and licences.
 
         THE PERMANENT HOME OF THE MAP CREDIT.

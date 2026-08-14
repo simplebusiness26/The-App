@@ -82,6 +82,8 @@ export default function Layout(){
         <Stack screenOptions={{headerShown:false}}>
           <Stack.Screen name="index" options={{headerShown:false}}/>
           <Stack.Screen name="settings"/>
+          <Stack.Screen name="legal/privacy"/>
+          <Stack.Screen name="legal/terms"/>
           <Stack.Screen name="map"/>
           <Stack.Screen name="messages/index"/>
           <Stack.Screen name="messages/[id]"/>

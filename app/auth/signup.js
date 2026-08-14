@@ -355,7 +355,33 @@ Create Account
 
 </Pressable>
 
+{/*
+  BOTH STORES REQUIRE THESE TO BE REACHABLE BEFORE SOMEBODY SIGNS UP, and
+  it is the right place for them anyway: this is the moment a person is
+  deciding whether to hand anything over. Both are marked as drafts on
+  the screen itself -- see utils/legal.js.
+*/}
+<Text style={styles.legalNote}>
+By creating an account you agree to the terms, and to the privacy policy
+below.
+</Text>
 
+<View style={styles.legalRow}>
+<Pressable
+accessibilityRole="button"
+accessibilityLabel="Read the terms"
+onPress={()=>router.push("/legal/terms")}
+>
+<Text style={styles.legalLink}>Terms</Text>
+</Pressable>
+<Pressable
+accessibilityRole="button"
+accessibilityLabel="Read the privacy policy"
+onPress={()=>router.push("/legal/privacy")}
+>
+<Text style={styles.legalLink}>Privacy policy</Text>
+</Pressable>
+</View>
 
 </ScrollView>
 
@@ -383,6 +409,10 @@ borderRadius:10,
 padding:15,
 marginBottom:15
 },
+
+legalNote:{color:INK.ink,fontSize:13,lineHeight:20,marginTop:26,textAlign:"center"},
+legalRow:{flexDirection:"row",justifyContent:"center",gap:22,marginTop:10,paddingBottom:8},
+legalLink:{color:INK.blue,fontSize:14,fontWeight:"800",minHeight:44,lineHeight:44},
 
 button:{
 backgroundColor:INK.card,

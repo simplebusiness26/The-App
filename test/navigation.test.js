@@ -137,7 +137,13 @@ describe("no route was lost",()=>{
     // The camera. The centre button said Camera and opened /moments/create --
     // the PHOTO LIBRARY -- so the one control named after a camera was the one
     // that could not take a picture.
-    "camera"];
+    "camera",
+    // Both stores require a privacy policy and terms to be reachable before
+    // publishing, and there were none. The text is utils/legal.js -- drafted
+    // from what the schema actually does, and marked as a draft on the screen
+    // itself, because a policy that looks finished is worse than one that says
+    // it is not.
+    "legal/privacy","legal/terms"];
 
   // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
   // old menu page once every link has a new home." Every link did -- that is
