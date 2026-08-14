@@ -1,6 +1,10 @@
 node_modules/
 .expo/
 dist/
+# The CI web export, and any local copy of it. `dist/` alone did not cover
+# dist-ci, so a build got committed by a git add -A and had to be taken back out.
+dist-ci/
+dist-*/
 .env
 .env.*
 !.env.example
