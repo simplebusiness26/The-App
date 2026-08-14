@@ -1,11 +1,11 @@
-import React,{useRef} from "react";
+import React,{useEffect,useRef} from "react";
 import {View,Text,Pressable,StyleSheet} from "react-native";
 import {Map,Camera,Marker,GeoJSONSource,Layer} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
 import LiveBubble from "./LiveBubble";
 import {mapConfiguration} from "../utils/mapProvider";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
-import {CLUSTER_ZOOM_STEP} from "../utils/mapZoom";
+import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM} from "../utils/mapZoom";
 import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
 import {heatmapPaint} from "../utils/markers";
 
@@ -46,6 +46,7 @@ function MapLibreMap({
   places=[],
   activity=[],
   clusters=[],
+  focus=null,
   pins=[],
   heat=null,
   route=null,
@@ -67,6 +68,23 @@ function MapLibreMap({
   // Reading it back off the camera is not possible on native; it is only ever
   // pushed out, through onRegionDidChange.
   const level=useRef(zoom);
+
+  // SENT HERE FROM DISCOVER, WITH SOMETHING TO LOOK AT.
+  //
+  // "See on the map" on a Discover card. The camera stays UNCONTROLLED --
+  // handing it a new `center` prop would drag the map back there on every
+  // render, which is the bug initialViewState exists to avoid -- so this is one
+  // imperative move, made when the target changes and never again.
+  const focusKey=focus ? `${focus.latitude},${focus.longitude}` : null;
+
+  useEffect(()=>{
+    if(!focusKey) return;
+    const [latitude,longitude]=focusKey.split(",").map(Number);
+    if(!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+    camera.current?.flyTo({center:[longitude,latitude],zoom:FOCUS_ZOOM,duration:800});
+    level.current=FOCUS_ZOOM;
+  },[focusKey]);
 
   // Tapping a cluster moves the camera in. The camera belongs to the renderer,
   // so the move is made here and the screen is only told it happened.

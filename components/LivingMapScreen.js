@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useMemo,useState} from "react";
 import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
-import {router} from "expo-router";
+import {router,useLocalSearchParams} from "expo-router";
 import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
 import FloatingLogin from "./FloatingLogin";
@@ -48,6 +48,17 @@ export default function LivingMapScreen(){
   // screen it meant the search box started below the map instead of on it. The
   // controls clear the floating chips instead of clearing a bar.
   const clearHeader=useHeaderClearance();
+
+  // "See on the map", from a Discover card. Read once into state rather than
+  // straight into a prop, so panning away from it does not snap back the next
+  // time this screen re-renders -- which, with the bubble rotation, is every
+  // few seconds.
+  const params=useLocalSearchParams();
+  const [focus]=useState(()=>{
+    const latitude=Number(Array.isArray(params.lat) ? params.lat[0] : params.lat);
+    const longitude=Number(Array.isArray(params.lng) ? params.lng[0] : params.lng);
+    return Number.isFinite(latitude) && Number.isFinite(longitude) ? {latitude,longitude} : null;
+  });
   const [openKey,setOpenKey]=useState(null);
   // Only ever set when the map itself cannot run. The List used to be a filter
   // button as well; browsing is Discover's job and the owner asked for it back
@@ -392,6 +403,7 @@ export default function LivingMapScreen(){
       <LivingMap
         places={clustered.singles}
         clusters={clusters}
+        focus={focus}
         activity={map.activity}
         pins={
           historical

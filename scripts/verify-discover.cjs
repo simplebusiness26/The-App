@@ -51,17 +51,19 @@ const engine=code(read(ENGINE));
 // setItems is where the screen decides what exists. Each value must be a
 // recommend() call: a raw array there is a section that skipped the rule.
 
-// There is more than one setItems call: the signed-out branch clears it with
-// setItems({}). Matching the first one found that empty object and reported "no
-// sections", which is a check failing for a reason that has nothing to do with
-// what it is checking. The one that matters is the one with sections in it.
-const setItemsCalls=[...screen.matchAll(/setItems\(\{([\s\S]*?)\}\);/g)]
-  .map((match)=>match[1])
-  .filter((body)=>body.includes(":"));
+// There is more than one place this can be written: the signed-out branch
+// clears it with setItems({}), and the sections are built into a named object
+// first now so their scores can be filled in with ONE query before they are
+// shown. Both shapes are read, and the biggest object literal with keys in it
+// is the section table whichever way it was written.
+const setItemsCalls=[
+  ...[...screen.matchAll(/setItems\(\{([\s\S]*?)\}\);/g)].map((match)=>match[1]),
+  ...[...screen.matchAll(/const sections=\{([\s\S]*?)\n    \};/g)].map((match)=>match[1])
+].filter((body)=>body.includes(":"));
 
 const setItems=setItemsCalls.sort((a,b)=>b.length-a.length)[0] || null;
 
-check(!!setItems,`${SCREEN}: could not find a setItems call with sections in it — the shape of this screen has changed and this check needs rewriting`);
+check(!!setItems,`${SCREEN}: could not find the section table — the shape of this screen has changed and this check needs rewriting`);
 
 if(setItems){
   const assignments=[...setItems.matchAll(/["']?([a-z-]+)["']?\s*:\s*([^,\n]+)/g)];

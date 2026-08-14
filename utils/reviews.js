@@ -155,6 +155,44 @@ export async function loadPlaceRating(targetType,targetId){
   return {average:averageRating(data),count:data.length};
 }
 
+// Scores for a whole screen of cards, in ONE query.
+//
+// Discover shows thirty-odd cards and every one of them carries a review score.
+// Asking per card is thirty round trips on a screen that has to feel instant,
+// and it is the mistake app/feed.js made with LikeButton -- forty cards, forty
+// auth.getUser() calls, and a feed that crawled.
+//
+// Keyed `type:id`, which is the same shape utils/bubbleCandidates.js uses to
+// look a listing up. The map's word for a club and a review's word for it
+// differ, so callers pass reviewTargetType() -- see utils/placeCards.js.
+export async function loadPlaceRatings(targets){
+  const wanted=(targets || []).filter((target)=>target?.type && target?.id);
+  if(!wanted.length) return new Map();
+
+  const {data,error}=await supabase
+    .from("explorer_reviews")
+    .select("target_type,target_id,rating")
+    .in("target_id",[...new Set(wanted.map((target)=>target.id))])
+    .eq("status","published");
+
+  // No scores is a card without a score, not a screen that refuses to load.
+  if(error || !data) return new Map();
+
+  const byTarget=new Map();
+  for(const row of data){
+    const key=`${row.target_type}:${row.target_id}`;
+    const found=byTarget.get(key) || [];
+    found.push(row);
+    byTarget.set(key,found);
+  }
+
+  const scores=new Map();
+  for(const [key,rows] of byTarget){
+    scores.set(key,{average:averageRating(rows),count:rows.length});
+  }
+  return scores;
+}
+
 // The average a place page shows next to its rating. Kept here so four screens
 // cannot round it four different ways.
 export function averageRating(reviews){

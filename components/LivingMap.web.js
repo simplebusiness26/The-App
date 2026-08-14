@@ -5,7 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import {mapConfiguration} from "../utils/mapProvider";
 import {glyphPrimitives,heatmapPaint} from "../utils/markers";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
-import {CLUSTER_ZOOM_STEP} from "../utils/mapZoom";
+import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM} from "../utils/mapZoom";
 import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
 import {INK} from "../utils/tokens";
 
@@ -237,6 +237,7 @@ export default function LivingMap({
   places=[],
   activity=[],
   clusters=[],
+  focus=null,
   pins=[],
   heat=null,
   route=null,
@@ -408,6 +409,19 @@ export default function LivingMap({
       }
     }
   },[route]);
+
+  // SENT HERE FROM DISCOVER, WITH SOMETHING TO LOOK AT. One imperative move
+  // when the target changes -- see the note in components/LivingMap.js about
+  // why the camera stays uncontrolled.
+  const focusKey=focus ? `${focus.latitude},${focus.longitude}` : null;
+
+  useEffect(()=>{
+    if(!focusKey || !map.current) return;
+    const [latitude,longitude]=focusKey.split(",").map(Number);
+    if(!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+    map.current.flyTo({center:[longitude,latitude],zoom:FOCUS_ZOOM,duration:800});
+  },[focusKey]);
 
   // The heat layer. Source and layer created once and then fed new points --
   // adding and removing a layer on every render makes the wash flicker, the

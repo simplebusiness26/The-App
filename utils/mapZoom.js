@@ -79,6 +79,12 @@ export function clusteringOn(zoom){
 // somebody from a county to a doorstep in one jump.
 export const CLUSTER_ZOOM_STEP=2;
 
+// Where the map lands when Discover sends it somewhere. Inside the CLOSE band,
+// so the thing you asked to see is drawn as its own pin rather than swallowed
+// by a cluster -- being flown to a cluster and having to tap again would be the
+// map ignoring the question.
+export const FOCUS_ZOOM=16;
+
 // ---------------------------------------------------------------------------
 // Degrees and pixels
 // ---------------------------------------------------------------------------
