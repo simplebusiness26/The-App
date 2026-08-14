@@ -257,21 +257,22 @@ describe("the controls survived the move",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("keeps the list reachable, as a view of the same model",async()=>{
+  // THE LIST BUTTON HAS GONE FROM THE MAP'S FILTER ROW.
+  //
+  // The owner: the List option "should be the Discover page's job". Browsing a
+  // list of places on the map's own filter row was the map competing with the
+  // page built for browsing.
+  //
+  // The list itself is untouched, and the test below this one is the one that
+  // matters: when the map cannot run, the list is still what somebody gets.
+  it("no longer offers a list button among the filters",async()=>{
     fixture();
     const tree=await renderMap();
 
-    const toList=tree.root.findAll(
-      (node)=>node.props?.accessibilityLabel==="Show a list instead of the map"
-        && typeof node.props?.onPress==="function",
+    expect(tree.root.findAll(
+      (node)=>node.props?.accessibilityLabel==="Show a list instead of the map",
       {deep:true}
-    )[0];
-
-    expect(toList).toBeTruthy();
-    await act(async()=>{toList.props.onPress();});
-
-    expect(textOf(tree.toJSON())).toContain("The Lamb and Flag");
-    expect(tree.root.findAll((node)=>node.type==="MapLibreMap",{deep:true})).toHaveLength(0);
+    )).toHaveLength(0);
 
     await act(async()=>{tree.unmount();});
   });
@@ -310,7 +311,7 @@ describe("when the map itself cannot run",()=>{
 });
 
 describe("Xplorer renders the Xplorer experience",()=>{
-  it("opens its own place card rather than a provider popup",async()=>{
+  it("opens its own place panel rather than a provider popup",async()=>{
     fixture();
     const tree=await renderMap();
 
@@ -322,8 +323,12 @@ describe("Xplorer renders the Xplorer experience",()=>{
     await act(async()=>{pin.props.onPress();});
 
     const labels=labelsOf(tree.toJSON()).join(" ");
-    expect(labels).toContain("Close place card");
+    // Named after the place, because there is one panel for the place that was
+    // tapped rather than a sheet of eight to swipe through.
+    expect(labels).toContain("Close The Lamb and Flag");
     expect(labels).toContain("Open The Lamb and Flag");
+    // And the route is inside it, not in a second card in the same corner.
+    expect(labels).toContain("Get directions");
 
     await act(async()=>{tree.unmount();});
   });

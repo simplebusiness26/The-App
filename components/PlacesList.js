@@ -2,8 +2,8 @@ import React,{useState} from "react";
 import {View,Text,StyleSheet,Pressable,TextInput,ScrollView} from "react-native";
 import {router} from "expo-router";
 import PlaceMarker from "./PlaceMarker";
-import PlaceCards from "./PlaceCards";
-import {CARD_KINDS,cardsAround,toCard} from "../utils/placeCards";
+import PlacePanel from "./PlacePanel";
+import {CARD_KINDS,toCard} from "../utils/placeCards";
 import {classificationLabel} from "../utils/taxonomy";
 import {markerForActivity} from "../utils/markers";
 import {ACTIVITY_STATE_SENTENCE,TIME_WINDOWS} from "../utils/liveActivity";
@@ -52,10 +52,11 @@ export default function PlacesList({header}){
   const filteredProperties=map.places.filter((row)=>row.kind===CARD_KINDS.PROPERTY);
   const filteredClubs=map.places.filter((row)=>row.kind===CARD_KINDS.CLUB);
 
-  const cards=map.cards;
   const visibleActivity=map.activity;
 
-  const tapped=cards.find((card)=>card.key===openKey) || null;
+  // The whole row, not just its card: components/PlacePanel.js shows the
+  // picture and the description, and both live on the row.
+  const tapped=map.places.find((row)=>row.card?.key===openKey) || null;
 
   return(
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -163,13 +164,9 @@ export default function PlacesList({header}){
         </Pressable>)}
       </>}
 
-      {!!tapped && (
-        <PlaceCards
-          cards={cardsAround(tapped,cards)}
-          startKey={tapped.key}
-          onClose={()=>setOpenKey(null)}
-        />
-      )}
+      {/* The same panel the map opens, so the two surfaces cannot grow two
+          different ideas of what a place looks like. */}
+      {!!tapped && <PlacePanel place={tapped} onClose={()=>setOpenKey(null)}/>}
     </ScrollView>
   );
 }

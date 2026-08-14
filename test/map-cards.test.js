@@ -19,7 +19,7 @@ const {FeedbackProvider}=require("../context/FeedbackContext");
 const {NotificationProvider}=require("../context/NotificationContext");
 
 const {installFixture,textOf,labelsOf}=require("./fixture");
-const {CARD_KINDS,cardsAround,toCard,indexOfCard}=require("../utils/placeCards");
+const {CARD_KINDS,toCard,heroImageFor,summaryFor,reviewTargetType}=require("../utils/placeCards");
 const {nearestFirst,distanceRank}=require("../utils/geo");
 
 const BUSINESSES=[
@@ -78,32 +78,53 @@ describe("the card set",()=>{
     ...CLUBS.map((row)=>toCard(CARD_KINDS.CLUB,row))
   ];
 
-  it("puts the tapped place first, whatever is nearest",()=>{
-    // Swiping back must return you to what you tapped, not to whichever place
-    // happens to be closest to it. Asserted on a far-away place so that
-    // "sorted by distance from itself" cannot pass by accident -- the tapped
-    // card is always zero distance from itself, which made an earlier attempt
-    // to break this check quietly succeed.
-    const tapped=cards.find((card)=>card.key==="business-b3");
-    const around=cardsAround(tapped,cards);
+  // WHAT REPLACED THE SWIPE SET
+  //
+  // cardsAround() built "the tapped place, then its eight nearest", and
+  // components/PlaceCards.js drew them as a swipeable sheet captioned "1 of 8
+  // nearby". Both are gone. The owner: "I don't want that place card to come
+  // up" -- it sat in the same corner as Directions and covered the route --
+  // and browsing a list of nearby places is Discover's job.
+  //
+  // What the panel needs instead is below: one place, its picture, its type,
+  // its score and a sentence.
 
-    expect(around.map((card)=>card.key)).toContain("business-b3");
-    expect(around[0].key).toBe("business-b3");
+  it("finds the hero image wherever that kind of place keeps it",()=>{
+    // Three tables built at different times: a business has `image` and a
+    // `photos` array, a property has `photos`, a club has `image_url`.
+    expect(heroImageFor({kind:CARD_KINDS.BUSINESS,image:"a.jpg",photos:["b.jpg"]})).toBe("a.jpg");
+    expect(heroImageFor({kind:CARD_KINDS.BUSINESS,photos:["b.jpg"]})).toBe("b.jpg");
+    expect(heroImageFor({kind:CARD_KINDS.PROPERTY,photos:["c.jpg"]})).toBe("c.jpg");
+    expect(heroImageFor({kind:CARD_KINDS.CLUB,image_url:"d.jpg"})).toBe("d.jpg");
   });
 
-  it("orders the rest by distance from it",()=>{
-    const tapped=cards.find((card)=>card.key==="business-b1");
-    const around=cardsAround(tapped,cards).map((card)=>card.key);
-
-    // b3 is a long way off, so it comes last of the four neighbours.
-    expect(around[0]).toBe("business-b1");
-    expect(around[around.length-1]).toBe("business-b3");
+  it("shows no picture rather than somebody else's",()=>{
+    // A manager who has uploaded nothing gets an empty block that says so. A
+    // stock photograph of somewhere else would be the map telling a lie.
+    expect(heroImageFor({kind:CARD_KINDS.BUSINESS})).toBeNull();
+    expect(heroImageFor({kind:CARD_KINDS.PROPERTY,photos:[]})).toBeNull();
+    expect(heroImageFor({kind:CARD_KINDS.CLUB})).toBeNull();
+    expect(heroImageFor(null)).toBeNull();
   });
 
-  it("never repeats the tapped place inside its own neighbours",()=>{
-    const tapped=cards.find((card)=>card.key==="property-p1");
-    const keys=cardsAround(tapped,cards).map((card)=>card.key);
-    expect(new Set(keys).size).toBe(keys.length);
+  it("cuts a long description at the end of a word",()=>{
+    const long="A ".repeat(200);
+    const cut=summaryFor({description:long});
+    expect(cut.length).toBeLessThan(long.length);
+    expect(cut.endsWith("\u2026")).toBe(true);
+
+    // A short one is left alone, with no trailing ellipsis to imply more.
+    expect(summaryFor({description:"A small pub by the harbour."})).toBe("A small pub by the harbour.");
+    expect(summaryFor({description:null})).toBe("");
+    expect(summaryFor(null)).toBe("");
+  });
+
+  it("translates the map's word for a club into the reviews' word",()=>{
+    // The map says "club", a review says "activity_club". Both are real, and
+    // asking for the wrong one returns zero reviews in silence.
+    expect(reviewTargetType(CARD_KINDS.CLUB)).toBe("activity_club");
+    expect(reviewTargetType(CARD_KINDS.BUSINESS)).toBe("business");
+    expect(reviewTargetType(CARD_KINDS.PROPERTY)).toBe("property");
   });
 
   it("keys by kind as well as id, because three tables have their own ids",()=>{
@@ -126,16 +147,16 @@ describe("the card set",()=>{
   });
 
   it("keeps a place with no coordinates rather than dropping it",()=>{
-    // A stay whose position nobody recorded is still a stay.
+    // A stay whose position nobody recorded is still a stay. It has no pin, but
+    // it still has a card, a page and a name.
     const noCoords=toCard(CARD_KINDS.PROPERTY,{id:"p9",name:"Nowhere",address:"?"});
-    const tapped=cards[0];
-    expect(cardsAround(tapped,[...cards,noCoords]).map((c)=>c.key)).toContain("property-p9");
+    expect(noCoords.key).toBe("property-p9");
+    expect(noCoords.route).toBe("/property/p9");
   });
 
   it("survives being handed nothing",()=>{
-    expect(cardsAround(null,cards)).toEqual([]);
     expect(toCard("nonsense",{id:"x"})).toBeNull();
-    expect(indexOfCard(cards,"missing")).toBe(0);
+    expect(toCard(CARD_KINDS.BUSINESS,null)).toBeNull();
   });
 });
 
@@ -211,7 +232,7 @@ describe("the map keeps its position",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("opens a card on the tapped place, and closes it again",async()=>{
+  it("opens one panel on the tapped place, with the directions inside it",async()=>{
     fixture();
     const tree=await render(require("../app/map").default);
 
@@ -219,18 +240,29 @@ describe("the map keeps its position",()=>{
     await act(async()=>{markers[0].props.onPress();});
 
     const labels=labelsOf(tree.toJSON()).join(" ");
-    expect(labels).toContain("Close place card");
-    expect(textOf(tree.toJSON())).toContain("nearby");
+
+    // Named, not "place card". One panel, for the place that was tapped.
+    expect(labels).toContain("Close The Lamb and Flag");
+    expect(labels).toContain("Open The Lamb and Flag");
+
+    // THE WHOLE POINT OF THE CHANGE. Directions used to be a separate card at
+    // the same bottom corner as the swipe sheet, so asking for a route put a
+    // place card over the answer. They are in the panel now, and a panel
+    // cannot cover itself.
+    expect(labels).toContain("Get directions");
+
+    // And the swipe set has gone with it: no "1 of 8 nearby".
+    expect(textOf(tree.toJSON())).not.toContain("nearby");
 
     // Dismissing leaves the map exactly where it was.
     const regionWhileOpen=nodes(tree.toJSON(),"MapLibreCamera")[0].props.initialViewState;
     expect(regionWhileOpen).toBeTruthy();
-    const close=pressable(tree,"Close place card");
+    const close=pressable(tree,"Close The Lamb and Flag");
     expect(close).not.toBeNull();
 
     await act(async()=>{close.props.onPress();});
 
-    expect(labelsOf(tree.toJSON()).join(" ")).not.toContain("Close place card");
+    expect(labelsOf(tree.toJSON()).join(" ")).not.toContain("Close The Lamb and Flag");
     expect(nodes(tree.toJSON(),"MapLibreCamera")[0].props.initialViewState).toEqual(regionWhileOpen);
 
     await act(async()=>{tree.unmount();});
@@ -257,44 +289,47 @@ describe("the map no longer needs a Google key, and the list is still there",()=
     await act(async()=>{tree.unmount();});
   });
 
-  it("still offers the list, as a view rather than a fallback",async()=>{
+  // THE LIST BUTTON HAS GONE FROM THE MAP'S FILTER ROW.
+  //
+  // The owner: the List option "should be the Discover page's job". So these
+  // render components/PlacesList.js directly. It is still the surface that
+  // shows when the map cannot load, and still the better one for a screen
+  // reader -- what changed is that it is no longer a filter competing with the
+  // page built for browsing.
+  it("no longer offers a list button on the map",async()=>{
     fixture();
     const tree=await render(require("../app/map").default);
 
     const toList=tree.root.findAll(
-      (node)=>node.props?.accessibilityLabel==="Show a list instead of the map"
-        && typeof node.props?.onPress==="function",
+      (node)=>node.props?.accessibilityLabel==="Show a list instead of the map",
       {deep:true}
-    )[0];
+    );
 
-    expect(toList).toBeTruthy();
-    await act(async()=>{toList.props.onPress();});
+    expect(toList).toHaveLength(0);
+    await act(async()=>{tree.unmount();});
+  });
 
-    // The same places, in a list, from the same Living Map model.
+  it("still shows the same places in a list, from the same model",async()=>{
+    fixture();
+    const tree=await render(require("../components/PlacesList").default);
+
     expect(textOf(tree.toJSON())).toContain("The Lamb and Flag");
     expect(nodes(tree.toJSON(),"MapLibreMap")).toHaveLength(0);
 
     await act(async()=>{tree.unmount();});
   });
 
-  it("opens the same card from a list row",async()=>{
+  it("opens the same panel from a list row",async()=>{
     fixture();
-    const tree=await render(require("../app/map").default);
-
-    const toList=tree.root.findAll(
-      (node)=>node.props?.accessibilityLabel==="Show a list instead of the map"
-        && typeof node.props?.onPress==="function",
-      {deep:true}
-    )[0];
-    await act(async()=>{toList.props.onPress();});
+    const tree=await render(require("../components/PlacesList").default);
 
     const row=pressable(tree,"The Lamb and Flag");
     expect(row).not.toBeNull();
     await act(async()=>{row.props.onPress();});
 
     const labels=labelsOf(tree.toJSON()).join(" ");
-    expect(labels).toContain("Close place card");
-    // The card offers the full page rather than replacing it.
+    expect(labels).toContain("Close The Lamb and Flag");
+    // The panel offers the full page rather than replacing it.
     expect(labels).toContain("Open The Lamb and Flag");
 
     await act(async()=>{tree.unmount();});

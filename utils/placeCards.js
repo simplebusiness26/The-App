@@ -9,7 +9,6 @@
 // in components/PlacesList.js is what actually ships, and the brief says in so
 // many words: "do not assume a map".
 
-import {nearestFirst} from "./geo";
 import {
   CLUB_TYPE_LABEL,
   PROPERTY_TYPE_LABEL,
@@ -75,18 +74,49 @@ function base(kind,row,rest){
   };
 }
 
-// The swipeable set: the place that was tapped, then its neighbours by
-// distance. The tapped place is always first, so opening a card and swiping
-// back returns you to what you tapped rather than to whatever happened to be
-// nearest.
-export function cardsAround(tapped,everything,limit=8){
-  if(!tapped) return [];
+// The map's word for a listing type and a review's word for the same thing are
+// not the same word: the map says "club", a review says "activity_club". Both
+// are real and neither is wrong, so the translation lives here, once, rather
+// than in every caller that needs to ask about a place's reviews.
+export const REVIEW_TARGET_TYPE={
+  [CARD_KINDS.BUSINESS]:"business",
+  [CARD_KINDS.PROPERTY]:"property",
+  [CARD_KINDS.CLUB]:"activity_club"
+};
 
-  const others=(everything || []).filter((card)=>card && card.key!==tapped.key);
-  return [tapped,...nearestFirst(tapped,others).slice(0,Math.max(0,limit-1))];
+export function reviewTargetType(kind){
+  return REVIEW_TARGET_TYPE[kind] || kind || null;
 }
 
-export function indexOfCard(cards,key){
-  const found=(cards || []).findIndex((card)=>card.key===key);
-  return found<0 ? 0 : found;
+// The picture at the top of the map panel.
+//
+// Three tables, three different columns, because they were built at different
+// times: a business has `image` and a `photos` array, a property has `photos`
+// only, a club has `image_url`. A manager who has uploaded nothing gets no
+// picture rather than a broken one -- components/PlacePanel.js draws a plain
+// type-coloured block, which is honest about there being no photo.
+export function heroImageFor(place){
+  if(!place) return null;
+
+  const first=(list)=>Array.isArray(list) ? list.find(Boolean) || null : null;
+
+  if(place.kind===CARD_KINDS.BUSINESS) return place.image || first(place.photos);
+  if(place.kind===CARD_KINDS.PROPERTY) return first(place.photos);
+  if(place.kind===CARD_KINDS.CLUB) return place.image_url || null;
+  return null;
+}
+
+// A sentence, not a page. The panel is a glance before somebody decides whether
+// to open the place, so a description that runs to paragraphs is cut at the end
+// of a word rather than mid-syllable.
+export const SUMMARY_LIMIT=140;
+
+export function summaryFor(place,limit=SUMMARY_LIMIT){
+  const text=String(place?.description || "").replace(/\s+/g," ").trim();
+  if(!text) return "";
+  if(text.length<=limit) return text;
+
+  const cut=text.slice(0,limit);
+  const lastSpace=cut.lastIndexOf(" ");
+  return `${(lastSpace>40 ? cut.slice(0,lastSpace) : cut).replace(/[.,;:]$/,"")}…`;
 }

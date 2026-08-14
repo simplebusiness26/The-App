@@ -44,7 +44,7 @@ function code(content){
 const MAP="components/LivingMap.js";
 const SCREEN="components/LivingMapScreen.js";
 const LIST="components/PlacesList.js";
-const SHEET="components/PlaceCards.js";
+const PANEL="components/PlacePanel.js";
 const MODEL="utils/placeCards.js";
 
 // ---------------------------------------------------------------------------
@@ -82,12 +82,35 @@ check(
 // and the Google Maps configuration are all gone -- and with them the last
 // third-party logo in the app.
 
-// The sheet is a Modal, so it renders outside the map's view tree. Inside it,
-// every card open would re-render the map.
+// ---------------------------------------------------------------------------
+// 1b. Directions live INSIDE the panel, not beside it
+// ---------------------------------------------------------------------------
+//
+// components/PlaceCards.js used to be a swipeable "1 of 8 nearby" sheet at
+// bottom:12, and the Directions card sat at bottom:12 too -- the same corner,
+// so asking for a route put a place card over the answer. The owner: "I don't
+// want that place card to come up... it gets in the way of the directions",
+// and Directions should carry "the hero image, the review score and a brief
+// summary, all in one thing".
+//
+// One panel cannot cover itself, so the rule is that there is only one.
 check(
-  /<Modal/.test(code(read(SHEET))),
-  `${SHEET}: the card must render in a Modal, so opening one cannot re-render the map beneath it`
+  /<Directions/.test(code(read(PANEL))),
+  `${PANEL}: must render Directions itself — a separate directions card in the same corner is what the panel replaced`
 );
+check(
+  !/<Directions/.test(code(read(SCREEN))),
+  `${SCREEN}: must not render Directions beside the panel — that is the overlap this replaced`
+);
+
+// The swipe is gone with it. Swiping to a place nobody tapped answered a
+// question nobody asked, and browsing belongs on Discover.
+for(const surface of [SCREEN,LIST,PANEL]){
+  check(
+    !/cardsAround\(|PlaceCards/.test(code(read(surface))),
+    `${surface}: the swipeable place-card sheet is gone — one panel for the place that was tapped`
+  );
+}
 
 // ---------------------------------------------------------------------------
 // 2. Both surfaces offer the card, and neither assumes a map
@@ -97,13 +120,20 @@ for(const surface of [SCREEN,LIST]){
   const content=code(read(surface));
 
   check(
-    /<PlaceCards/.test(content),
-    `${surface}: does not offer the bottom card`
+    /<PlacePanel/.test(content),
+    `${surface}: does not offer the place panel`
   );
-  check(
-    /cardsAround\(/.test(content),
-    `${surface}: must build its card set with cardsAround(), so the tapped place stays first`
-  );
+}
+
+// The panel shows what the owner asked it to show, and each piece comes from
+// the one place that decides it.
+const panel=code(read(PANEL));
+for(const [pattern,what] of [
+  [/heroImageFor\(/,"the hero image"],
+  [/loadPlaceRating\(/,"the review score"],
+  [/summaryFor\(/,"a short summary"]
+]){
+  check(pattern.test(panel),`${PANEL}: must show ${what}`);
 }
 
 // The list must not import a native-only map library: it is what renders when
@@ -113,8 +143,8 @@ check(
   `${LIST}: must not import react-native-maps — it is the surface that runs when the map does not`
 );
 check(
-  !/react-native-maps/.test(code(read(SHEET))),
-  `${SHEET}: must not import react-native-maps — the card is shown with and without a map`
+  !/react-native-maps/.test(code(read(PANEL))),
+  `${PANEL}: must not import react-native-maps — the panel is shown with and without a map`
 );
 
 // THE OPPOSITE OF WHAT THIS USED TO CHECK.
@@ -135,17 +165,13 @@ for(const surface of [MAP,SCREEN,"components/LivingMap.web.js","hooks/useLivingM
 // 3. Reduced motion
 // ---------------------------------------------------------------------------
 //
-// design-system.md: "prefers-reduced-motion: reduce disables all of it."
-
-const sheet=code(read(SHEET));
-
+// The sliding modal this rule was written for is gone with components/
+// PlaceCards.js. The panel does not animate at all, so the honest version of
+// "reduced motion disables all of it" is that there is no motion to disable --
+// and the way to keep that true is to refuse one being added quietly.
 check(
-  /isReduceMotionEnabled/.test(sheet),
-  `${SHEET}: must ask whether reduced motion is on`
-);
-check(
-  /animationType=\{reduceMotion\s*\?\s*"none"/.test(sheet),
-  `${SHEET}: must not slide when reduced motion is on`
+  !/Animated|animationType|LayoutAnimation/.test(panel),
+  `${PANEL}: the panel does not animate. Adding one needs the reduced-motion branch that components/PlaceCards.js used to carry.`
 );
 
 // ---------------------------------------------------------------------------
@@ -165,11 +191,6 @@ for(const banned of ["react-native-gesture-handler","react-native-reanimated","@
   );
 }
 
-check(
-  /PanResponder/.test(sheet),
-  `${SHEET}: the drag is built on PanResponder`
-);
-
 // ---------------------------------------------------------------------------
 // 5. The colours are tokens
 // ---------------------------------------------------------------------------
@@ -178,7 +199,7 @@ const tokens=new Set(
   [...read("docs/design-system.md").matchAll(/#[0-9A-Fa-f]{6}\b/g)].map((m)=>m[0].toUpperCase())
 );
 
-for(const file of [SHEET,MODEL]){
+for(const file of [PANEL,MODEL]){
   for(const match of read(file).matchAll(/#[0-9A-Fa-f]{6}\b/g)){
     check(
       tokens.has(match[0].toUpperCase()),

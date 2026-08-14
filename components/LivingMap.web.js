@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import {mapConfiguration} from "../utils/mapProvider";
 import {glyphPrimitives} from "../utils/markers";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
+import {CLUSTER_ZOOM_STEP} from "../utils/mapZoom";
 import {INK} from "../utils/tokens";
 
 // The web renderer. MapLibre GL JS, drawing what useLivingMap worked out.
@@ -199,31 +200,58 @@ function bubbleElement(bubble,onPress){
   return wrap;
 }
 
-function heatElement(cell,onDoubleTap){
-  const element=document.createElement("div");
+function heatElement(cell,onOpen){
+  const element=document.createElement("button");
+  element.type="button";
   element.style.cssText=
-    `width:${cell.size}px;height:${cell.size}px;border-radius:50%;`+
+    `width:${cell.size}px;height:${cell.size}px;border-radius:50%;padding:0;`+
     `background:${cell.fill};border:1px solid ${cell.border};opacity:${cell.opacity};`+
-    // Was pointer-events:none. It is tappable now, but ONLY for a double tap --
-    // a single click still falls through to the map, so panning and the
-    // long-press that drops a Link-up are unaffected. See utils/doubleTap.js.
     "cursor:pointer;";
-  element.setAttribute("aria-label",`${cell.label} Double tap to see what is happening here.`);
-  element.addEventListener("dblclick",(event)=>{
+  element.setAttribute("aria-label",`${cell.label} Open to see what is happening here.`);
+
+  // ONE TAP, NOT TWO. It was a double-click event, matched to the native map's
+  // tap counter -- and on the phone MapLibre's double-tap-to-zoom won that race
+  // every time, so the owner double-tapped a warm patch and only ever zoomed
+  // in. A single tap on heat did nothing before this, so nothing is taken away,
+  // and there is no gesture left to lose. Panning is unaffected: a click is not
+  // a drag.
+  element.addEventListener("click",(event)=>{
     event.stopPropagation();
-    onDoubleTap?.(cell);
+    onOpen?.(cell);
   });
+  return element;
+}
+
+// A cluster: one circle with a count in it, standing for the pins underneath.
+// utils/markers.js decided what it looks like -- see the note there about why it
+// is not one of the three inks.
+function clusterElement(cluster,onPress){
+  const element=document.createElement("button");
+  element.type="button";
+  element.setAttribute("aria-label",cluster.label || "Several places here");
+  element.style.cssText=[
+    `width:${cluster.size}px`,`height:${cluster.size}px`,`border-radius:${cluster.size/2}px`,
+    `background:${cluster.fill}`,`border:2px solid ${cluster.border}`,
+    `color:${cluster.ink}`,"font-weight:900","font-size:13px",
+    "display:flex","align-items:center","justify-content:center","padding:0","cursor:pointer"
+  ].join(";");
+  element.textContent=String(cluster.count);
+
+  element.addEventListener("click",(event)=>{event.stopPropagation();onPress?.(cluster);});
   return element;
 }
 
 export default function LivingMap({
   places=[],
   activity=[],
+  clusters=[],
   pins=[],
   heat=[],
   route=null,
   bubbles=[],
-  onHeatDoubleTap,
+  onOpenHeat,
+  onSelectCluster,
+  onViewportChange,
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
@@ -237,6 +265,18 @@ export default function LivingMap({
   const map=useRef(null);
   const drawn=useRef([]);
   const config=mapConfiguration();
+
+  // THE CALLBACKS ARE HELD IN A REF, AND THE MAP IS BUILT ONCE.
+  //
+  // They used to be in the setup effect's dependency list. Every one of them
+  // arrives as an inline arrow from components/LivingMapScreen.js, so every one
+  // was a new function on every render -- and the effect's cleanup calls
+  // map.remove(). The bubble rotation re-renders that screen every few seconds,
+  // so the whole MapLibre instance was being destroyed and rebuilt on a timer,
+  // throwing away the position and zoom somebody had just set. "The map is
+  // janky" had more than one cause.
+  const handlers=useRef({});
+  handlers.current={onDropPin,onUnavailable,onViewportChange};
 
   useEffect(()=>{
     if(map.current || !host.current) return;
@@ -264,8 +304,30 @@ export default function LivingMap({
     // -- so the two platforms ask for it the same way even though the event
     // arrives under a different name.
     map.current.on("contextmenu",(event)=>{
-      onDropPin?.({longitude:event.lngLat.lng,latitude:event.lngLat.lat});
+      handlers.current.onDropPin?.({longitude:event.lngLat.lng,latitude:event.lngLat.lat});
     });
+
+    // WHERE THE MAP IS LOOKING, REPORTED UP.
+    //
+    // Nothing did this before, which is why utils/liveBubbles.js had an
+    // inViewport() that was never given a viewport and a rotation that showed
+    // three bubbles at county zoom. `moveend` covers pan, zoom, pinch and
+    // flyTo; `load` fires it once so the screen is not waiting for a gesture
+    // before it knows anything.
+    const report=()=>{
+      const instance=map.current;
+      if(!instance) return;
+      const bounds=instance.getBounds();
+      handlers.current.onViewportChange?.({
+        north:bounds.getNorth(),
+        south:bounds.getSouth(),
+        east:bounds.getEast(),
+        west:bounds.getWest(),
+        zoom:instance.getZoom()
+      });
+    };
+    map.current.on("load",report);
+    map.current.on("moveend",report);
 
     // A map that will not load must not be a blank rectangle. MapLibre reports
     // a missing style, a dead tile host and a browser with no WebGL through the
@@ -276,7 +338,7 @@ export default function LivingMap({
       // Tile-level errors are noisy and survivable -- one missing tile is not a
       // broken map. Only a failure to get a style or a context is fatal.
       if(/WebGL|style|Style|Failed to fetch|NetworkError/.test(message)){
-        onUnavailable?.(message);
+        handlers.current.onUnavailable?.(message);
       }
     });
 
@@ -284,7 +346,12 @@ export default function LivingMap({
       map.current?.remove();
       map.current=null;
     };
-  },[config.styleUrl,config.attribution,onUnavailable,onDropPin,centre,zoom]);
+    // The style URL only. `centre` and `zoom` are the STARTING position and
+    // re-reading them would drag the map back to Brighton on every change --
+    // the same reason the native renderer uses initialViewState rather than a
+    // controlled camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[config.styleUrl]);
 
   // The route is a STYLE LAYER, not a marker -- a line of a thousand points
   // cannot be a DOM element the way a pin can. Source and layers are created
@@ -343,8 +410,31 @@ export default function LivingMap({
     // First, so it sits under every pin.
     for(const cell of heat){
       drawn.current.push(
-        new maplibregl.Marker({element:heatElement(cell,onHeatDoubleTap)})
+        new maplibregl.Marker({element:heatElement(cell,onOpenHeat)})
           .setLngLat([Number(cell.longitude),Number(cell.latitude)])
+          .addTo(map.current)
+      );
+    }
+
+    // Clusters stand in for the places underneath them, so they are drawn
+    // INSTEAD of those pins, not as well -- `places` is already only what
+    // utils/mapClusters.js left as singles.
+    // Tapping one moves the camera in. The camera is the renderer's -- the
+    // screen has no way to reach it and should not grow one -- so the move
+    // happens here and the screen is told, in case it wants to close a panel.
+    const openCluster=(cluster)=>{
+      map.current?.flyTo({
+        center:[Number(cluster.longitude),Number(cluster.latitude)],
+        zoom:Math.min(18,(map.current.getZoom() || 12)+CLUSTER_ZOOM_STEP),
+        duration:600
+      });
+      onSelectCluster?.(cluster);
+    };
+
+    for(const cluster of clusters){
+      drawn.current.push(
+        new maplibregl.Marker({element:clusterElement(cluster,openCluster)})
+          .setLngLat([Number(cluster.longitude),Number(cluster.latitude)])
           .addTo(map.current)
       );
     }
@@ -390,7 +480,7 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,activity,pins,heat,bubbles,drawRoute,onSelectPlace,onSelectActivity,onSelectBubble,onHeatDoubleTap]);
+  },[places,activity,clusters,pins,heat,bubbles,drawRoute,onSelectPlace,onSelectActivity,onSelectBubble,onOpenHeat,onSelectCluster]);
 
   useEffect(()=>{
     if(!map.current) return;
@@ -404,7 +494,7 @@ export default function LivingMap({
       {/* Read by scripts/verify-browser.cjs: a map that failed silently looks
           exactly like one that worked. */}
       <Text style={styles.marker} nativeID="living-map-state">
-        {`LIVING MAP ${places.length} places ${activity.length} live ${pins.length} pins`}
+        {`LIVING MAP ${places.length} places ${activity.length} live ${pins.length} pins ${clusters.length} clusters ${bubbles.length} bubbles`}
       </Text>
     </View>
   );

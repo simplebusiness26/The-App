@@ -1,17 +1,16 @@
-import React,{useEffect,useMemo,useState} from "react";
-import {View,Text,TextInput,Pressable,ScrollView,StyleSheet,Platform} from "react-native";
+import React,{useCallback,useEffect,useMemo,useState} from "react";
+import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
 import {router} from "expo-router";
 import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
-import PlaceCards from "./PlaceCards";
 import FloatingLogin from "./FloatingLogin";
-import Directions from "./Directions";
-import {cardsAround} from "../utils/placeCards";
 import {linkupLocationFrom,itemsInCell} from "../utils/mapLayers";
-import {routeAppearance,bubbleAppearance,celebrationPieces} from "../utils/markers";
+import {routeAppearance,bubbleAppearance,celebrationPieces,clusterAppearance} from "../utils/markers";
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {candidatesFrom} from "../utils/bubbleCandidates";
-import {createDoubleTap} from "../utils/doubleTap";
+import {clusterPins,visibleKeys} from "../utils/mapClusters";
+import {bubbleIntervalFor} from "../utils/mapZoom";
+import PlacePanel from "./PlacePanel";
 import TimeSlider from "./TimeSlider";
 import {
   memoriesAt,
@@ -44,7 +43,17 @@ import {INK} from "../utils/tokens";
 export default function LivingMapScreen(){
   const map=useLivingMap();
   const [openKey,setOpenKey]=useState(null);
+  // Only ever set when the map itself cannot run. The List used to be a filter
+  // button as well; browsing is Discover's job and the owner asked for it back
+  // there, so this is now the failure branch and nothing else.
   const [asList,setAsList]=useState(false);
+  // Where the map is looking: {north,south,east,west,zoom}, reported by
+  // whichever renderer is in front of somebody. Null until it says.
+  //
+  // This is the thing the map never had. utils/liveBubbles.js has had an
+  // inViewport() since it was written and nobody ever gave it a viewport, so
+  // three bubbles rotated at county zoom for off-screen places.
+  const [viewport,setViewport]=useState(null);
   // Set when the map itself cannot run -- no WebGL, a dead tile host, a style
   // that will not load. The list is what somebody gets then, and it says why
   // rather than leaving a blank rectangle.
@@ -66,13 +75,8 @@ export default function LivingMapScreen(){
   // A bubble somebody tapped. It is not part of the rotation and does not use
   // up one of the three: it stays until they close it.
   const [openBubble,setOpenBubble]=useState(null);
-  // The Moments revealed by double-tapping a warm patch, or null.
+  // The Moments revealed by tapping a warm patch, or null.
   const [revealed,setRevealed]=useState(null);
-
-  // One recogniser for every heat cell, so two cells cannot half-complete each
-  // other's double tap. Native gets a tap counter; the web map already has a
-  // real dblclick event and calls through directly.
-  const heatTap=useMemo(()=>createDoubleTap(),[]);
 
   // MEMORIES ONLY: the map becomes a history.
   //
@@ -93,6 +97,33 @@ export default function LivingMapScreen(){
   }),[map.places,map.activity,map.reviewShots]);
   const candidateCount=candidates.length;
 
+  // PINS THAT WOULD OVERLAP BECOME ONE PIN WITH A NUMBER ON IT.
+  //
+  // hooks/useLivingMap.js reads every business, property and club with no limit
+  // and no bounds, and until now every one of them was drawn whatever the zoom.
+  // The owner, looking at the county view: "it's all clustered together".
+  //
+  // The live layer is deliberately NOT clustered. There is little of it, it is
+  // the half worth looking at, and collapsing a Link-up into a count would hide
+  // the thing the map exists to show.
+  const clustered=useMemo(
+    ()=>clusterPins(map.places,{zoom:viewport?.zoom}),
+    [map.places,viewport?.zoom]
+  );
+
+  const clusters=useMemo(
+    ()=>clustered.clusters.map((cluster)=>({...cluster,...clusterAppearance(cluster.count)})),
+    [clustered.clusters]
+  );
+
+  // The pins drawn on their own. A bubble may only point at one of these --
+  // see utils/liveBubbles.js. This is the fix for "pop ups that aren't even at
+  // the location": a bubble can no longer hang over a heap of pins.
+  const visibleAnchors=useMemo(
+    ()=>visibleKeys([...clustered.singles,...map.activity]),
+    [clustered.singles,map.activity]
+  );
+
   const range=useMemo(()=>timelineRange(map.memoryRows),[map.memoryRows]);
   const when=at===null ? range.to : at;
 
@@ -105,20 +136,97 @@ export default function LivingMapScreen(){
   // that surfaces as "Cannot log after tests are done" and a run that exits 1
   // with every test passing, which is exactly the CI failure this project spent
   // a day on last week.
+  //
+  // The interval now follows the zoom. Count was only half the complaint --
+  // "I don't want it to be this frequent" is a rate, and one bubble changing
+  // every four seconds is still a flicker. See utils/mapZoom.js.
+  const interval=bubbleIntervalFor(viewport?.zoom);
+
   useEffect(()=>{
     if(!candidateCount) return undefined;
-    const timer=setInterval(()=>setTick((current)=>current+1),BUBBLE_MS);
+    const timer=setInterval(()=>setTick((current)=>current+1),interval);
     return()=>clearInterval(timer);
-  },[candidateCount]);
+  },[candidateCount,interval]);
 
-  const tapped=map.cards.find((card)=>card.key===openKey) || null;
-
+  // The whole place row, not just its card: the panel wants the picture and the
+  // description, which live on the row.
+  const tapped=map.places.find((place)=>place.card?.key===openKey) || null;
 
   const bubbles=useMemo(()=>{
-    const automatic=bubblesAt(candidates,{tick,selectedKey:openBubble?.key || null});
-    // The tapped one is drawn as well as the three, never instead of one.
+    const automatic=bubblesAt(candidates,{
+      tick,
+      viewport,
+      zoom:viewport?.zoom ?? null,
+      visibleAnchors,
+      selectedKey:openBubble?.key || null
+    });
+    // The tapped one is drawn as well, never instead of one.
     return openBubble ? [...automatic,openBubble] : automatic;
-  },[candidates,tick,openBubble]);
+  },[candidates,tick,viewport,visibleAnchors,openBubble]);
+
+  // ---------------------------------------------------------------------------
+  // Handlers, held steady on purpose
+  // ---------------------------------------------------------------------------
+  // These were inline arrows, so every one was a new function on every render.
+  // components/LivingMap.web.js had them in its setup effect's dependency list
+  // and that effect's cleanup calls map.remove() -- so the bubble rotation,
+  // which re-renders this screen every few seconds, was destroying and
+  // rebuilding the entire MapLibre instance on a timer, throwing away the
+  // position and zoom somebody had just set.
+
+  const handleViewportChange=useCallback((next)=>{
+    setViewport((current)=>{
+      // Same view, same object: a re-render of everything downstream for a
+      // viewport that did not move is exactly the kind of churn this map has
+      // too much of already.
+      if(current
+        && current.zoom===next.zoom
+        && current.north===next.north
+        && current.south===next.south
+        && current.east===next.east
+        && current.west===next.west) return current;
+      return next;
+    });
+  },[]);
+
+  const handleDropPin=useCallback((at)=>setDropped(linkupLocationFrom(at)),[]);
+  const handleUnavailable=useCallback((why)=>setMapFailed(why || "unavailable"),[]);
+  const handleSelectPlace=useCallback((place)=>setOpenKey(place.card?.key || null),[]);
+  const handleSelectActivity=useCallback((item)=>{
+    if(item.deepLink) router.push(item.deepLink);
+  },[]);
+
+  // A cluster tap moves the camera, which the renderer does for itself. All
+  // this has to do is get the open panel out of the way of where you are going.
+  const handleSelectCluster=useCallback(()=>{
+    setOpenKey(null);
+    setRoute(null);
+  },[]);
+
+  const handleSelectBubble=useCallback((bubble)=>{
+    // Tapping a bubble opens the exact thing it is about. A review bubble opens
+    // that review, not the place it is of.
+    if(bubble?.route){router.push(bubble.route);return;}
+    setOpenBubble(bubble || null);
+  },[]);
+
+  // ONE TAP ON A WARM PATCH, NOT TWO.
+  //
+  // It was a double tap, counted by utils/doubleTap.js -- and MapLibre's own
+  // double-tap-to-zoom is on by default on both platforms, so the map's gesture
+  // won that race every time and the owner only ever zoomed in.
+  const handleOpenHeat=useCallback((cell)=>{
+    // Only what is in this patch. The tap was on a place, not on the screen, so
+    // returning the whole viewport would answer a different question. The exact
+    // grid square first; if it is empty, the ring around it, because the circle
+    // somebody can see does not line up with the square the heat was built from
+    // and a tap near its edge lands next door.
+    const moments=map.posts.filter((post)=>post.kind==="moment");
+    const here=itemsInCell(moments,cell);
+    const nearby=here.length ? [] : itemsInCell(moments,cell,{neighbours:true});
+
+    setRevealed({cell,moments:here.length ? here : nearby,widened:!here.length && nearby.length>0});
+  },[map.posts]);
 
   // The list is a VIEW of the same Living Map, not a fallback for not having
   // one. It is kept because it works when the map will not load, because it is
@@ -235,14 +343,17 @@ export default function LivingMapScreen(){
             <Text style={historical ? styles.selectedFilterText : styles.filterText}>Memories</Text>
           </Pressable>
 
-          <Pressable
-            style={styles.filterButton}
-            accessibilityRole="button"
-            accessibilityLabel="Show a list instead of the map"
-            onPress={()=>setAsList(true)}
-          >
-            <Text style={styles.filterText}>List</Text>
-          </Pressable>
+          {/*
+            THE LIST BUTTON HAS GONE FROM HERE.
+
+            Browsing a list of places is Discover's job -- the owner asked for
+            it back there, with the search bar and a way to return to the map.
+            A second browse surface on the map's own filter row was the map
+            competing with the page built for it.
+
+            components/PlacesList.js is untouched and still renders below when
+            the map cannot load. That is a failure branch, not a filter.
+          */}
 
           {TIME_WINDOWS.map(({key,label})=>(
             <Pressable
@@ -260,7 +371,8 @@ export default function LivingMapScreen(){
       </View>
 
       <LivingMap
-        places={map.places}
+        places={clustered.singles}
+        clusters={clusters}
         activity={map.activity}
         pins={
           historical
@@ -281,31 +393,14 @@ export default function LivingMapScreen(){
         heat={map.heat}
         route={route}
         bubbles={bubbles}
-        onSelectBubble={(bubble)=>{
-          // Tapping a bubble opens the exact thing it is about. A review bubble
-          // opens that review, not the place it is of.
-          if(bubble?.route){router.push(bubble.route);return;}
-          setOpenBubble(bubble || null);
-        }}
-        onHeatDoubleTap={(cell)=>{
-          // On web this arrives from a real dblclick and the counter is a
-          // no-op; on native it is the second of two taps that decides.
-          if(Platform.OS!=="web" && !heatTap.tap(cell.key)) return;
-
-          // Only what is IN this cell. The tap was on a place, not on the
-          // screen, so returning the whole viewport would answer a different
-          // question. utils/mapLayers.js does the matching on the same grid the
-          // heat was built from.
-          const moments=itemsInCell(
-            map.posts.filter((post)=>post.kind==="moment"),
-            cell
-          );
-          setRevealed({cell,moments});
-        }}
-        onSelectPlace={(place)=>setOpenKey(place.card?.key || null)}
-        onSelectActivity={(item)=>item.deepLink && router.push(item.deepLink)}
-        onDropPin={(at)=>setDropped(linkupLocationFrom(at))}
-        onUnavailable={(why)=>setMapFailed(why || "unavailable")}
+        onSelectBubble={handleSelectBubble}
+        onOpenHeat={handleOpenHeat}
+        onSelectCluster={handleSelectCluster}
+        onViewportChange={handleViewportChange}
+        onSelectPlace={handleSelectPlace}
+        onSelectActivity={handleSelectActivity}
+        onDropPin={handleDropPin}
+        onUnavailable={handleUnavailable}
       />
 
       {/*
@@ -351,37 +446,6 @@ export default function LivingMapScreen(){
           open card. The app opens on this screen now, so this is the way in. */}
       {!tapped && <FloatingLogin/>}
 
-      {/*
-        DIRECTIONS, ON THE MAP THAT WILL DRAW THEM.
-        The destination is whatever pin is open. Putting this here rather than
-        on each entity page means one component, one location permission and one
-        route on screen at a time -- and the route appears on the map somebody
-        is already looking at rather than on a page with no map.
-
-        The Explorer's position never leaves this device except as the routing
-        request itself. See the note in components/Directions.js.
-      */}
-      {!!tapped && Number.isFinite(Number(tapped.latitude)) && Number.isFinite(Number(tapped.longitude)) && (
-        <View style={styles.directions} pointerEvents="box-none">
-          <Directions
-            destination={{latitude:tapped.latitude,longitude:tapped.longitude}}
-            destinationName={tapped.title || tapped.name || "this place"}
-            onRoute={(model)=>{
-              if(!model){setRoute(null);return;}
-              const look=routeAppearance();
-              setRoute({
-                // [lng,lat] for the map, converted once, here.
-                line:model.geometry.map((point)=>[point.longitude,point.latitude]),
-                colour:look.colour,
-                width:look.width,
-                casingColour:look.casingColour,
-                casingWidth:look.casingWidth
-              });
-            }}
-          />
-        </View>
-      )}
-
       {historical && (
         <View style={styles.timeline} pointerEvents="box-none">
           <TimeSlider
@@ -407,14 +471,14 @@ export default function LivingMapScreen(){
           <View style={styles.revealHead}>
             <Text style={styles.revealTitle}>
               {revealed.moments.length
-                ? `${revealed.moments.length} Moment${revealed.moments.length===1 ? "" : "s"} here`
+                ? `${revealed.moments.length} Moment${revealed.moments.length===1 ? "" : "s"} ${revealed.widened ? "around here" : "here"}`
                 : "Nothing to open here"}
             </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close what is happening here"
               hitSlop={10}
-              onPress={()=>{setRevealed(null);heatTap.reset();}}
+              onPress={()=>setRevealed(null)}
             >
               <Text style={styles.revealClose}>✕</Text>
             </Pressable>
@@ -445,11 +509,33 @@ export default function LivingMapScreen(){
         </View>
       )}
 
+      {/*
+        ONE PANEL FOR THE PLACE SOMEBODY TAPPED, DIRECTIONS INCLUDED.
+
+        It used to be two things in the same corner: components/PlaceCards.js,
+        a swipeable "1 of 8 nearby" sheet, and a separate Directions card, both
+        pinned to bottom:12. So asking for a route put a card over the answer.
+
+        The owner: "I don't want that place card to come up", and the directions
+        should carry "the hero image, the review score and a brief summary of
+        the business, all in one thing". One panel cannot cover itself.
+      */}
       {!!tapped && (
-        <PlaceCards
-          cards={cardsAround(tapped,map.cards)}
-          startKey={tapped.key}
+        <PlacePanel
+          place={tapped}
           onClose={()=>{setOpenKey(null);setRoute(null);}}
+          onRoute={(model)=>{
+            if(!model){setRoute(null);return;}
+            const look=routeAppearance();
+            setRoute({
+              // [lng,lat] for the map, converted once, here.
+              line:model.geometry.map((point)=>[point.longitude,point.latitude]),
+              colour:look.colour,
+              width:look.width,
+              casingColour:look.casingColour,
+              casingWidth:look.casingWidth
+            });
+          }}
         />
       )}
     </View>

@@ -148,10 +148,50 @@ export const HEAT_WEIGHT={
 // cleared MIN_CONTRIBUTIONS and two different posters (see heatCells below), so
 // by the time somebody can tap one the disclosure question has been answered.
 // Anything this returns was already visible on the map as a Moment pin.
-export function itemsInCell(items,cell,{precision=HEAT_PRECISION}={}){
+// WHY `neighbours` EXISTS
+//
+// The grid square is about a kilometre across. The circle drawn on screen is
+// 44 to 96 PIXELS across and centred on the first post that landed in the
+// square, so the two do not line up -- tap the visible wash near its edge and
+// the coordinates fall in the square next door, and the panel opens saying
+// "nothing to open here" over a patch that is plainly warm.
+//
+// The owner: "make sure that when you double tap, you see the moment within the
+// heat map OR IN THE AREA". So the exact square is asked first, and the ring of
+// eight around it is the fallback. The caller says which one it got, because
+// "here" and "near here" are different claims.
+export function itemsInCell(items,cell,{precision=HEAT_PRECISION,neighbours=false}={}){
   if(!cell?.key) return [];
 
-  return (items || []).filter((item)=>heatKey(item?.latitude,item?.longitude,precision)===cell.key);
+  const keys=neighbours ? neighbourKeys(cell.key,precision) : new Set([cell.key]);
+
+  return (items || []).filter((item)=>{
+    const key=heatKey(item?.latitude,item?.longitude,precision);
+    return key!==null && keys.has(key);
+  });
+}
+
+// The eight squares around one, and the one itself. Built by walking the grid
+// rather than by widening the precision: rounding to one fewer decimal place
+// would make a cell ten times bigger in each direction, which is a different
+// area, not the neighbouring one.
+export function neighbourKeys(key,precision=HEAT_PRECISION){
+  const keys=new Set();
+  if(!key) return keys;
+
+  const [latitude,longitude]=String(key).split(",").map(Number);
+  if(!Number.isFinite(latitude) || !Number.isFinite(longitude)) return keys;
+
+  const step=Math.pow(10,-precision);
+
+  for(let row=-1;row<=1;row+=1){
+    for(let column=-1;column<=1;column+=1){
+      const near=heatKey(latitude+row*step,longitude+column*step,precision);
+      if(near) keys.add(near);
+    }
+  }
+
+  return keys;
 }
 
 export function heatCells(items,{precision=HEAT_PRECISION,minimum=MIN_CONTRIBUTIONS}={}){

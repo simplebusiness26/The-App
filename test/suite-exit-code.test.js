@@ -69,7 +69,9 @@ test("the bubble rotation does not run when there is nothing to rotate",()=>{
   // and a timer still firing on an unmounted screen is what turned the whole
   // suite red while every test passed.
   expect(screen).toMatch(/if\(!candidateCount\) return undefined;/);
-  expect(screen).toMatch(/\},\[candidateCount\]\);/);
+  // The interval is in the list too now: it follows the zoom, so a change of
+  // zoom must restart the timer rather than leave the old rate running.
+  expect(screen).toMatch(/\},\[candidateCount,interval\]\);/);
 });
 
 test("tests that mount a virtualised list unmount it again",()=>{

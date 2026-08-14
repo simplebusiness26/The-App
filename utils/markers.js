@@ -418,6 +418,29 @@ export function celebrationPieces(){
   ];
 }
 
+// How a cluster of pins is drawn: one circle with a number in it.
+//
+// INK AND CARD, NOT ONE OF THE THREE INKS. Blue, pink and yellow say what state
+// a PLACE is in (MARKER_STATES above). A cluster is not a place -- it is
+// "there are nine things here, come closer" -- and borrowing a state colour
+// would make the map claim nine businesses share a state they have not got.
+//
+// It carries its own sentence for the same reason every pin does: colour, and
+// here size, is never the only carrier of meaning.
+export function clusterAppearance(count){
+  const many=Math.max(0,Number(count) || 0);
+
+  return{
+    fill:INK.card,
+    border:INK.ink,
+    ink:INK.ink,
+    // 38px to 60px across. Big enough to read a two-digit number, never big
+    // enough to be mistaken for the heat wash underneath it.
+    size:Math.min(60,38+Math.min(many,40)*0.6),
+    label:`${many} places here. Open to zoom in.`
+  };
+}
+
 export function heatAppearance(cell){
   return{
     fill:INK.yellow,

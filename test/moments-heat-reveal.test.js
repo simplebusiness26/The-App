@@ -147,7 +147,18 @@ test("the long press that drops a Link-up is still wired on both maps",()=>{
 
   expect(native).toMatch(/onLongPress/);
   expect(web).toMatch(/contextmenu/);
-  // And the heat layer is what gained the tap, not the map itself.
-  expect(native).toMatch(/onHeatDoubleTap/);
-  expect(web).toMatch(/dblclick/);
+
+  // ONE TAP ON THE HEAT, NOT TWO.
+  //
+  // It was a double tap on both platforms, counted by utils/doubleTap.js. That
+  // could never work: MapLibre's own double-tap-to-zoom is on by default and
+  // nothing turned it off, so the map's gesture won the race against a 320ms
+  // counter every time and the owner only ever zoomed in.
+  //
+  // A single tap on a heat cell did nothing before, so nothing was taken away
+  // -- and there is now no gesture left to lose.
+  expect(native).toMatch(/onOpenHeat/);
+  expect(web).toMatch(/onOpenHeat/);
+  expect(native).not.toMatch(/onHeatDoubleTap/);
+  expect(web).not.toMatch(/dblclick/);
 });

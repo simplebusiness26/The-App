@@ -74,6 +74,11 @@ export function clusteringOn(zoom){
   return zoomBand(zoom)!==ZOOM_BANDS.CLOSE;
 }
 
+// How far in one tap on a cluster takes you. Two levels is a quarter of the
+// area, which is enough for a cluster to visibly break apart without throwing
+// somebody from a county to a doorstep in one jump.
+export const CLUSTER_ZOOM_STEP=2;
+
 // ---------------------------------------------------------------------------
 // Degrees and pixels
 // ---------------------------------------------------------------------------

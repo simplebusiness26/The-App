@@ -127,6 +127,34 @@ export async function loadPlaceReviews(targetType,targetId){
   };
 }
 
+// Just the score, for the map panel.
+//
+// The place PAGES load every review with its photos, its reviewer and its
+// manager reply, because that is what they show. Tapping a pin only needs two
+// numbers, and pulling a page's worth of rows to compute them would make the
+// panel slow at the exact moment it has to feel instant.
+//
+// NOT businesses.review_count. That column exists and is not maintained --
+// 20260803212705_enable_rls_businesses_properties.sql:25 says so in as many
+// words -- so reading it would show a number that is quietly wrong.
+//
+// A failure is not an error here. A panel with no score is fine; a panel that
+// refuses to open because a count did not come back is not.
+export async function loadPlaceRating(targetType,targetId){
+  if(!targetType || !targetId) return {average:null,count:0};
+
+  const {data,error}=await supabase
+    .from("explorer_reviews")
+    .select("rating")
+    .eq("target_type",targetType)
+    .eq("target_id",targetId)
+    .eq("status","published");
+
+  if(error || !data?.length) return {average:null,count:0};
+
+  return {average:averageRating(data),count:data.length};
+}
+
 // The average a place page shows next to its rating. Kept here so four screens
 // cannot round it four different ways.
 export function averageRating(reviews){

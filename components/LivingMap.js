@@ -1,10 +1,11 @@
-import React from "react";
-import {View,Pressable,StyleSheet} from "react-native";
+import React,{useRef} from "react";
+import {View,Text,Pressable,StyleSheet} from "react-native";
 import {Map,Camera,Marker,GeoJSONSource,Layer} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
 import LiveBubble from "./LiveBubble";
 import {mapConfiguration} from "../utils/mapProvider";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
+import {CLUSTER_ZOOM_STEP} from "../utils/mapZoom";
 
 // The native renderer: MapLibre on Android and iOS.
 //
@@ -42,11 +43,14 @@ export default function LivingMap(props){
 function MapLibreMap({
   places=[],
   activity=[],
+  clusters=[],
   pins=[],
   heat=[],
   route=null,
   bubbles=[],
-  onHeatDoubleTap,
+  onOpenHeat,
+  onSelectCluster,
+  onViewportChange,
   centre=DEFAULT_CENTRE,
   zoom=12,
   style,
@@ -56,11 +60,52 @@ function MapLibreMap({
   onDropPin
 }){
   const config=mapConfiguration();
+  const camera=useRef(null);
+  // The last zoom the map reported, so a cluster tap knows what to add to.
+  // Reading it back off the camera is not possible on native; it is only ever
+  // pushed out, through onRegionDidChange.
+  const level=useRef(zoom);
+
+  // Tapping a cluster moves the camera in. The camera belongs to the renderer,
+  // so the move is made here and the screen is only told it happened.
+  // `initialViewState` is untouched -- the camera stays UNCONTROLLED, which is
+  // what stops a re-render dragging the map back to Brighton.
+  function openCluster(cluster){
+    camera.current?.flyTo({
+      center:[Number(cluster.longitude),Number(cluster.latitude)],
+      zoom:Math.min(18,(Number(level.current) || 12)+CLUSTER_ZOOM_STEP),
+      duration:600
+    });
+    onSelectCluster?.(cluster);
+  }
 
   return(
     <Map
       style={[styles.map,style]}
       mapStyle={config.styleUrl}
+      /*
+        WHERE THE MAP IS LOOKING, REPORTED UP.
+
+        Nothing did this before. utils/liveBubbles.js has had an inViewport()
+        since it was written and was never given a viewport, so it never
+        filtered anything, and the bubble count was a fixed three whether you
+        were in a street or looking at the county.
+
+        onRegionDidChange carries a ViewStateChangeEvent (see the installed
+        package's src/components/map/Map.tsx): {center, zoom, bearing, pitch,
+        bounds}. `bounds` is a flat GeoJSON-order array -- [west, south, east,
+        north] -- and getting that order wrong would silently invert the filter,
+        so it is destructured by name here and asserted in the tests.
+      */
+      onRegionDidChange={(event)=>{
+        const state=event?.nativeEvent;
+        const bounds=state?.bounds;
+        if(!Array.isArray(bounds) || bounds.length<4) return;
+
+        const [west,south,east,north]=bounds;
+        level.current=state.zoom;
+        onViewportChange?.({north,south,east,west,zoom:state.zoom});
+      }}
       // Press and hold on open water, so to speak: somewhere that is not a pin.
       // It is how a Link-up gets dropped where somebody is looking rather than
       // where a business happens to be.
@@ -108,6 +153,7 @@ function MapLibreMap({
         with no instructions: zoomed all the way out.
       */}
       <Camera
+        ref={camera}
         initialViewState={{
           center:[Number(centre.longitude),Number(centre.latitude)],
           zoom
@@ -160,15 +206,23 @@ function MapLibreMap({
       {heat.map((cell)=>(
         <Marker key={cell.key} id={cell.key} lngLat={[cell.longitude,cell.latitude]}>
           {/*
-            Double tap to see what made this patch warm. A SINGLE tap still does
-            nothing, which is what it always did -- and nothing here claims a
-            gesture, so pan, pinch and the long-press that drops a Link-up are
-            untouched. See utils/doubleTap.js.
+            ONE TAP TO SEE WHAT MADE THIS PATCH WARM.
+
+            It was a double tap, counted by utils/doubleTap.js. That could never
+            work: MapLibre's own double-tap-to-zoom is on by default
+            (`doubleTapZoom`, and nothing turned it off), so the map's gesture
+            won the race against a 320ms counter every time. The owner
+            double-tapped a warm patch and only ever zoomed in.
+
+            A single tap on heat did nothing before, so nothing is taken away,
+            and there is no gesture left to lose. Pan, pinch and the long-press
+            that drops a Link-up are untouched -- a Pressable does not fire on a
+            drag.
           */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${cell.label} Double tap to see what is happening here.`}
-            onPress={()=>onHeatDoubleTap?.(cell)}
+            accessibilityLabel={`${cell.label} Open to see what is happening here.`}
+            onPress={()=>onOpenHeat?.(cell)}
           >
           <View
             style={[styles.heat,{
@@ -180,6 +234,31 @@ function MapLibreMap({
               borderColor:cell.border
             }]}
           />
+          </Pressable>
+        </Marker>
+      ))}
+
+      {/*
+        Clusters stand IN PLACE OF the pins underneath them, not as well:
+        `places` is already only what utils/mapClusters.js left as singles.
+        Drawn from the same descriptor the web renderer uses, so a cluster is
+        the same circle with the same number on both platforms.
+      */}
+      {clusters.map((cluster)=>(
+        <Marker key={cluster.key} id={cluster.key} lngLat={[cluster.longitude,cluster.latitude]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={cluster.label}
+            onPress={()=>openCluster(cluster)}
+            style={[styles.cluster,{
+              width:cluster.size,
+              height:cluster.size,
+              borderRadius:cluster.size/2,
+              backgroundColor:cluster.fill,
+              borderColor:cluster.border
+            }]}
+          >
+            <Text style={[styles.clusterCount,{color:cluster.ink}]}>{cluster.count}</Text>
           </Pressable>
         </Marker>
       ))}
@@ -257,5 +336,7 @@ const styles=StyleSheet.create({
   // Shape only. The colour comes from the cell, which utils/markers.js decided
   // -- this file is not allowed to know what yellow means, for the same reason
   // it is not allowed to know what a pin's ink means.
-  heat:{borderWidth:1}
+  heat:{borderWidth:1},
+  cluster:{borderWidth:2,alignItems:"center",justifyContent:"center"},
+  clusterCount:{fontWeight:"900",fontSize:13}
 });
