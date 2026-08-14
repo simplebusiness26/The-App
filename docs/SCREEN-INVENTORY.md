@@ -1,16 +1,68 @@
 # Screen inventory
 
-What is actually in `app/` as of commit `36535e9`. Every entry below was read
-from the route file or its shared component. Where a screen's behaviour is
-decided elsewhere — `utils/drawer.js`, `utils/navigation.js`,
-`hooks/useAdminGate.js`, `hooks/useManagerGate.js`, `components/PlaceLayout.js`
-— that file was read too and is named.
+What is actually in `app/`. This describes the code. It does not describe the
+brief, and where the two disagree the code is what is written down.
 
-This describes the code. It does not describe the brief, and where the two
-disagree the code is what is written down.
+**76 routes** across **77 route files** (`app/` holds 78 `.js` files;
+`_layout.js` is not a route, and `app/map.js` + `app/map.web.js` are one route).
 
-**77 routes** across **78 route files** (`app/` holds 79 `.js` files; `_layout.js`
-is not a route, and `app/map.js` + `app/map.web.js` are one route).
+## ⚠️ How much of this was re-read, and when
+
+Most of this document was written by reading every route file at commit
+`36535e9`. It has **not** been re-read wholesale since. What HAS been re-read
+and rewritten is listed in **§0 What changed since `36535e9`** below, and those
+sections are marked.
+
+Saying which parts are current is the only thing that makes the rest usable. A
+document that claims to describe the code and quietly stopped is worse than one
+that says where it stopped — and this one had drifted far enough to still
+describe a header that no longer exists.
+
+---
+
+## 0. What changed since `36535e9`
+
+Everything in this section was read from the code and is current.
+
+**Deleted**
+
+- `components/PlaceCards.js` — the swipeable "1 of 8 nearby" sheet. Replaced by
+  `components/PlacePanel.js`, one panel for the place that was tapped, with
+  Directions inside it.
+
+**New route files**
+
+- `app/legal/privacy.js`, `app/legal/terms.js` — both stores require them.
+  Text in `utils/legal.js`, drafted from the schema and marked as a draft.
+
+**New shared components**
+
+- `components/MapControls.js` — the map's search and filters, behind two icon
+  chips. The map opens clean.
+- `components/PlacePanel.js` — hero image, name, type, review score, summary,
+  and `Directions` inline.
+- `components/DiscoverCard.js` / `components/DiscoverCarousel.js` — Discover's
+  sections are sideways now, not forty-two stacked boxes.
+- `components/AddLocation.js` — "This spot" (~100m) or "My area only" (~1km),
+  shared by Moment and Memory creation. Neither is on by default.
+- `components/SocialImage.js` — every picture from a private bucket. Signs the
+  URL; falls back to the stored value.
+- `components/LegalScreen.js` — the shape both legal screens share.
+
+**Screens whose behaviour changed materially**
+
+- `app/settings.js` — gained account deletion (typed `DELETE`), push
+  notification switches (all off), and links to the two legal screens.
+- `app/camera.js` — press for a photo, **hold to record** up to 15 seconds with
+  sound. QR scanning is on throughout and off only while recording.
+- `app/discover.js` — a search bar over businesses, stays and clubs; a "See on
+  the map" button; carousels instead of lists.
+- `app/moments/create.js`, `app/memories/create.js` — both take a video from the
+  camera, and both offer the shared location control. A Memory had no location
+  handling at all before.
+- The map (`components/LivingMapScreen.js` and the two renderers) — see §1.
+
+---
 
 ---
 
@@ -37,18 +89,31 @@ the custom header except `index`, which sets `headerShown:false`.
 The `TabBar` sits **below** the `Stack`, not around it, so it survives every
 push rather than only appearing on five tab roots.
 
-### `components/Header.js`
+### `components/Header.js` — re-read, current
 
-Rendered on every screen except `/`. Three elements, left to right:
+**Not a bar, and not inside the navigator.** It used to be a 60px card-coloured
+strip with a 2px border, supplied to the `Stack` as `header:()=> <Header/>`,
+which reserved its height on every screen. It is now one absolutely positioned
+layer rendered over the stack in `app/_layout.js`.
 
-- **Back** (`←`, `accessibilityLabel="Go back"`). On web uses
+Three floating controls, each in its own bordered chip on card so it stays
+readable over a map tile or a photograph:
+
+- **Back** (`←`, "Go back") — **only on a child page**. Never on the five tab
+  roots or `/`; see `isRootScreen()` in `utils/navigation.js`. On web uses
   `window.history.back()` when `history.length>1`, else `router.replace("/")`.
-  On native uses `router.canGoBack()`, else `router.replace("/")`. No-op at `/`.
-- **Title**: the literal string **`Guestbook`**. Not "Xplorer", and not derived
-  from the route.
-- **Bell** (`🔔`, "Open notifications") → `/notifications`, with a red count
+  On native uses `router.canGoBack()`, else `router.replace("/")`.
+- **Bell** (`🔔`, "Open notifications") → `/notifications`, with an ink count
   badge when `unreadCount>0`, capped at `99+`.
-- **Hamburger** (`☰`, "Open quick access") → opens the drawer.
+- **Hamburger** (`☰`, "Open quick access") → opens the drawer. On every screen.
+
+There is **no title and no Log in button**. The product name was the literal
+string `Guestbook`; it is gone. Log in and Create account live together in
+`components/FloatingLogin.js`, at the bottom where a thumb reaches.
+
+Space is reserved only on screens the header does not float over —
+`headerFloatsOver()` in `utils/navigation.js` lists `/map` and `/camera`. Both
+of those clear the chips themselves through `useHeaderClearance()`.
 
 ### `components/TabBar.js` + `utils/navigation.js`
 
@@ -169,53 +234,76 @@ conditional destination. This is the only screen with `headerShown:false`.
 
 ---
 
-#### `/map` — `app/map.js` (native) / `app/map.web.js` (web)
+#### `/map` — `app/map.js` (native) / `app/map.web.js` (web) — re-read, current
 
-**Reached by** Map tab, drawer → Map, `/` → Explore Map, `/guest/[id]`.
+**Reached by** Map tab, drawer → Map, `/` → Explore Map, and `/map?lat=&lng=`
+from a Discover card's "See on the map".
 
-Two files serve one route via Metro's platform extension. **`app/map.web.js`
-wins on web** and is 12 lines: it renders `PlacesList` with a
-`🗺️ Guestbook Map` header and nothing else — no `react-native-maps` import at
-all.
+Two files serve one route via Metro's platform extension, and **both are now
+eight lines that render `<LivingMapScreen/>`**. Everything below is that screen
+and the two renderers it resolves to.
 
-`app/map.js` reads `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` *inside the component*. If
-the key is absent it returns the same `PlacesList` fallback; only with a key set
-does it render `NativeMap`.
+There is **no Google Maps key anywhere**. MapLibre and OpenFreeMap need none,
+which is the whole reason for the stack; `react-native-maps` is gone and a gate
+fails on any file that imports it.
 
-**`NativeMap` elements**
-1. Absolutely-positioned top panel:
-   - Search `TextInput` — "Search businesses, stays or clubs..."
-   - Horizontal filter row: **All · Businesses · Properties · Activity Clubs**
-   - Horizontal live row: **Happening** toggle, then **Now · Tonight · Weekend**
-     (disabled while Happening is off)
-2. `MapView` with `initialRegion` at 50.8225, −0.1372 (never a controlled
-   `region`, so the map keeps the position the user left it at)
+**On screen**
 
-**Map layers**, drawn in this order:
-- business `Marker`s → `PlaceMarker` from `toCard(BUSINESS,…)`
-- property `Marker`s
-- activity-club `Marker`s (`status in ('open','full')` only)
-- **live activity `Marker`s last**, so a live thing draws on top of its place
+1. `components/MapControls.js` — two chips under the floating header. A
+   magnifier opens the search field; a sliders icon opens the filters. **Both
+   closed to start with, both toggle shut, only one open at a time.** A filter
+   left on shows as a badge so the map never quietly hides two thirds of itself.
+2. Inside the filter panel, three headings rather than one row of fifteen chips:
+   - **What** — All · Businesses · Properties · Activity Clubs · **Events**
+   - **When** — Happening, then Now · Tonight · Weekend
+   - **Layers** — Posts · Busy · Memories
+3. The map, full bleed. The header floats over it.
 
-Static pins are filtered by `hasCoordinates` (`utils/coordinates.js`), which
-rejects `null`/`undefined`/`""` but keeps `0`. Live pins come from
-`markerForActivity`.
+**Map layers**, in draw order:
 
-**Actions** — tapping a static pin sets `openKey` and opens the `PlaceCards`
-modal; tapping a live pin does `router.push(item.deepLink)`.
+- **Heat** — a real MapLibre `heatmap` layer, not circles. Built from
+  `get_moment_heat()`: **public Moments only**, weighted by attention on a log
+  curve, coloured through `HEAT_RAMP`, and faded out as you zoom in.
+- **Route** — a line layer, when Directions has one.
+- **Clusters** — pins that would overlap become one circle with a count
+  (`utils/mapClusters.js`). Tapping one flies the camera in. The live layer is
+  deliberately not clustered.
+- **Places**, **live activity**, then **Moment/Memory pins**.
+- **Bubbles last**, above every pin.
 
-**States** — no loading spinner and no error UI. Query errors are
-`console.log`ged. A failed live read empties `activities` only; the static pins
-are a separate query and stay.
+**What the zoom decides** (`utils/mapZoom.js`) — one bubble at county zoom, two
+at town, three in a street, and the rotation slows from 4.2s to 9s as you go
+out. Clustering is on below street level. A bubble may only attach to a pin
+drawn **on its own**, which is what stops one hanging over a heap of pins.
 
-**Gating** — none. `get_live_discovery` is not called at all when signed out, so
-a signed-out visitor sees static pins only.
+**Memories mode** — the whole map becomes a history. Only Memories are
+openable; places stay drawn at 25% and are not tappable; no clusters and no
+bubbles. The slider runs from the oldest Memory to the **newest**, with
+headroom at both ends.
+
+**Actions** — tapping a pin opens `components/PlacePanel.js` (hero image, name,
+type, review score, summary, Directions inline). Tapping a live pin does
+`router.push(item.deepLink)`. Tapping open map while Busy is on reveals the
+Moments in that patch. Press and hold drops a Link-up point.
+
+**States** — a renderer that cannot run reports through `onUnavailable` and the
+screen shows `PlacesList` with a sentence saying why.
+
+**Gating** — none for the static pins. `get_live_discovery` and
+`get_moment_heat` are not called at all when signed out.
 
 ---
 
-#### `components/PlacesList.js` — the list that *is* the map today
+#### `components/PlacesList.js` — the surface when the map cannot run
 
-Used by `map.web.js` and by `map.js` whenever no Maps key is set.
+**No longer "the list that is the map today".** The map runs on every platform
+now. This renders when a renderer reports it cannot start — no WebGL, a dead
+tile host, a style that will not load — and it is still the better surface for
+a screen reader.
+
+The **List button has gone from the map's filter row**: browsing places is
+Discover's job. Tapping a row here opens the same `components/PlacePanel.js`
+the map opens, so the two surfaces cannot grow two ideas of what a place is.
 
 **Elements**
 1. `header` prop (the `🗺️ Guestbook Map` title)
