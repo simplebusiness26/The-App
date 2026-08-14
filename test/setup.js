@@ -96,7 +96,10 @@ jest.mock("expo-router",()=>{
     useLocalSearchParams:()=>({}),
     useSearchParams:()=>({}),
     useSegments:()=>[],
-    usePathname:()=>"/",
+    // A jest.fn, so a test can put the header on a tab root and on a child page
+    // -- which is the whole of the back-arrow rule. Defaults to "/", which is
+    // what it always returned.
+    usePathname:jest.fn(()=>"/"),
     // Route bodies run their loader through useFocusEffect. Treating it as
     // useEffect means the loader actually runs during the test, so a crash in
     // it is caught rather than skipped.

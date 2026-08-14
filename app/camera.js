@@ -11,6 +11,7 @@ import {
 import {CameraView,useCameraPermissions} from "expo-camera";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {extractQrCode} from "../utils/qr";
+import {useHeaderClearance} from "../components/Header";
 import {INK} from "../utils/tokens";
 
 // The camera. One viewfinder, three outcomes.
@@ -41,6 +42,9 @@ import {INK} from "../utils/tokens";
 // takes the picture and hands the file to whichever of them you chose.
 
 export default function Camera(){
+  // The header floats over the viewfinder now rather than sitting above it, so
+  // the hint clears the floating chips instead of starting at the top edge.
+  const clearHeader=useHeaderClearance();
   const params=useLocalSearchParams();
   const [permission,requestPermission]=useCameraPermissions();
   const cameraRef=useRef(null);
@@ -200,7 +204,7 @@ export default function Camera(){
         onBarcodeScanned={handledCode ? undefined : onBarcode}
       />
 
-      <View pointerEvents="none" style={styles.hintWrap}>
+      <View pointerEvents="none" style={[styles.hintWrap,{top:clearHeader+8}]}>
         <Text style={styles.hint}>Point at a Xplorer QR code to open it, or take a photo</Text>
       </View>
 
@@ -253,7 +257,7 @@ const styles=StyleSheet.create({
   camera:{flex:1},
   preview:{flex:1},
 
-  hintWrap:{position:"absolute",top:16,left:16,right:16,alignItems:"center"},
+  hintWrap:{position:"absolute",left:16,right:16,alignItems:"center"},
   hint:{
     color:INK.card,
     fontSize:12,

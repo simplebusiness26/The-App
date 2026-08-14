@@ -139,6 +139,45 @@ export function isTabBarHidden(pathname){
   return FULL_SCREEN_ROUTES.includes(normalise(pathname));
 }
 
+// ---------------------------------------------------------------------------
+// The header
+// ---------------------------------------------------------------------------
+
+// IS THIS A PLACE YOU CAN LEAVE, OR A PLACE YOU LIVE?
+//
+// The owner: "there shouldn't be a back button on the news feed, messages, map,
+// leaderboard or profile -- only on child pages. Keep the hamburger everywhere.
+// Let's get smart."
+//
+// They are right, and it is not only clutter. A back arrow on a tab root points
+// at whatever you happened to be looking at before, which is not "back" in any
+// sense somebody means it -- the tab bar is how you move between these five,
+// and an arrow that competes with it teaches people the wrong model.
+//
+// The rule lives here, next to TABS, because it IS the tab list. `/` is in it
+// too: the splash has nowhere behind it.
+export function isRootScreen(pathname){
+  const path=normalise(pathname);
+  if(path==="/") return true;
+  return TABS.some((tab)=>tab.route===path);
+}
+
+// Screens the header floats over instead of sitting above.
+//
+// The map is the whole point of this: it is a full-bleed surface, and 60px of
+// solid bar across the top of it was the owner's "it drops the whole page down"
+// -- the search box started below a bar rather than on the map. The camera is
+// a viewfinder for the same reason.
+//
+// Everywhere else the content starts below the header. It is a transparent
+// header over the page's own top padding rather than a card-coloured bar with a
+// border, so nothing reads as bolted on, and nothing can be covered either.
+export const HEADER_FLOATS_OVER=["/map","/camera"];
+
+export function headerFloatsOver(pathname){
+  return HEADER_FLOATS_OVER.includes(normalise(pathname));
+}
+
 // The active tab for a path, or null when a person is somewhere off the tab
 // set. Detail screens keep their tab lit: opening a place from the map is still
 // being in the map, and a bar with nothing lit reads as broken.

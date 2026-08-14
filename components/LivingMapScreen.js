@@ -24,6 +24,7 @@ import {
 import {markerForMemory} from "../utils/markers";
 import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
+import {useHeaderClearance} from "./Header";
 import {INK} from "../utils/tokens";
 
 // The map screen, once and for both platforms.
@@ -42,6 +43,11 @@ import {INK} from "../utils/tokens";
 
 export default function LivingMapScreen(){
   const map=useLivingMap();
+  // The header floats OVER the map now rather than sitting above it -- that bar
+  // across the top was the owner's "it drops the whole page down", and on this
+  // screen it meant the search box started below the map instead of on it. The
+  // controls clear the floating chips instead of clearing a bar.
+  const clearHeader=useHeaderClearance();
   const [openKey,setOpenKey]=useState(null);
   // Only ever set when the map itself cannot run. The List used to be a filter
   // button as well; browsing is Discover's job and the owner asked for it back
@@ -277,7 +283,7 @@ export default function LivingMapScreen(){
 
   return(
     <View style={styles.container}>
-      <View style={styles.top}>
+      <View style={[styles.top,{top:clearHeader}]}>
         <TextInput
           style={styles.search}
           placeholder="Search businesses, stays or clubs..."
@@ -568,7 +574,7 @@ const styles=StyleSheet.create({
   revealRow:{gap:8,paddingTop:10,paddingRight:4},
   revealCard:{width:150,minHeight:56,justifyContent:"center",backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:11,padding:10},
   revealCardTitle:{color:INK.ink,fontWeight:"800",fontSize:12,lineHeight:17},
-  top:{position:"absolute",top:18,width:"100%",zIndex:10,padding:10},
+  top:{position:"absolute",width:"100%",zIndex:10,padding:10},
   search:{
     backgroundColor:INK.card,padding:15,borderRadius:10,
     borderWidth:2,borderColor:INK.ink,color:INK.ink

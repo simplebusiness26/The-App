@@ -2,7 +2,9 @@ import React from "react";
 import {View,StyleSheet} from "react-native";
 import {Stack} from "expo-router";
 import {SafeAreaProvider} from "react-native-safe-area-context";
-import Header from "../components/Header";
+import {usePathname} from "expo-router";
+import Header,{useHeaderClearance} from "../components/Header";
+import {headerFloatsOver} from "../utils/navigation";
 import TabBar from "../components/TabBar";
 import QuickAccessDrawer from "../components/QuickAccessDrawer";
 import {FeedbackProvider} from "../context/FeedbackContext";
@@ -19,6 +21,35 @@ export const unstable_settings={initialRouteName:"index"};
 // survives every push instead of only the five tab roots, and so no route file
 // had to move to gain one. SafeAreaProvider is here because the bar reads the
 // bottom inset; nothing else in the app had needed it.
+// The header floats over the stack rather than sitting inside the navigator.
+//
+// Inside it, `header:()=> <Header/>` reserved its height on EVERY screen, which
+// is the owner's "it drops the whole page down" -- and on the map it put a
+// card-coloured bar with a border across the top, so the search box started
+// below the map instead of on it.
+//
+// Out here it is one absolutely positioned layer. Space is reserved only on the
+// screens it does not float over, so nothing on a page is ever covered, and the
+// map and the camera get the full screen they are supposed to have.
+function Shell({children}){
+  const pathname=usePathname();
+  const clearHeader=useHeaderClearance();
+  const floats=headerFloatsOver(pathname);
+
+  return(
+    <>
+      <View style={[styles.stack,!floats && {paddingTop:clearHeader}]}>
+        {children}
+      </View>
+      {/* box-none, so the gaps between the three controls belong to whatever is
+          underneath -- the map pans through them. */}
+      <View style={styles.header} pointerEvents="box-none">
+        <Header/>
+      </View>
+    </>
+  );
+}
+
 export default function Layout(){
   return(
     <SafeAreaProvider>
@@ -34,8 +65,21 @@ export default function Layout(){
         <NotificationProvider>
           <DrawerProvider>
             <View style={styles.shell}>
-            <View style={styles.stack}>
-        <Stack screenOptions={{headerShown:true,header:()=> <Header />}}>
+            <Shell>
+        {/*
+          THE HEADER IS NOT A STACK BAR ANY MORE.
+
+          `header:()=> <Header/>` put it INSIDE the navigator, which reserves
+          its height on every screen -- the owner's "it drops the whole page
+          down". It also meant a 60px card-coloured bar with a border across
+          the top of the map, so the search box started below the map rather
+          than on it.
+
+          It is rendered once below, over the stack, and reserves space only on
+          screens it does not float over. See components/Header.js and
+          headerFloatsOver() in utils/navigation.js.
+        */}
+        <Stack screenOptions={{headerShown:false}}>
           <Stack.Screen name="index" options={{headerShown:false}}/>
           <Stack.Screen name="settings"/>
           <Stack.Screen name="map"/>
@@ -121,7 +165,7 @@ export default function Layout(){
           <Stack.Screen name="admin/moderation"/>
           <Stack.Screen name="admin/public-places"/>
         </Stack>
-            </View>
+            </Shell>
 
               <TabBar/>
               <QuickAccessDrawer/>
@@ -162,5 +206,8 @@ const styles=StyleSheet.create({
   // black line above the navigation. The footer no longer relies on this, but
   // an unpainted root is how that class of bug happens in the first place.
   shell:{flex:1,backgroundColor:INK.paper},
-  stack:{flex:1}
+  stack:{flex:1},
+  // Above the stack, below the tab bar, the drawer and the splash -- all of
+  // which are later children of the shell and must stay on top of it.
+  header:{position:"absolute",top:0,left:0,right:0,zIndex:40}
 });
