@@ -57,12 +57,90 @@ const ROUTES=[
   "/events","/activity-clubs","/manager/dashboard","/manager/requests",
   "/admin/dashboard","/admin/listings","/admin/claims","/admin/activities",
   "/admin/moderation","/admin/explorers","/admin/areas","/admin/audit",
-  "/auth/login","/auth/signup","/auth/forgot-password"
+  "/auth/login","/auth/signup","/auth/forgot-password","/auth/update-password",
+  "/legal/privacy","/legal/terms",
+
+  // THIRTY-FOUR ROUTES THAT HAD NEVER BEEN LOADED IN A BROWSER.
+  //
+  // This list was hand-maintained and had drifted to covering 41 of the 76
+  // route files in app/. Nearly half the app -- every create form, every edit
+  // form, both manager dashboards, the camera, the message boards, the QR
+  // screens -- passed this gate by not being in it.
+  //
+  // Found by making the gate check itself (below) rather than by anybody
+  // noticing.
+  "/camera","/messages",`/messages/${ID}`,
+  "/business/add","/business/dashboard","/business/review-action",
+  `/business/edit/${ID}`,`/business/review/${ID}`,
+  "/property/add","/property/dashboard","/property/reviews","/property/review-action",
+  `/property/edit/${ID}`,`/property/review/${ID}`,
+  "/activity-clubs/add",`/activity-clubs/edit/${ID}`,
+  `/activity-clubs/message-board/${ID}`,`/activity-clubs/review/${ID}`,
+  "/events/add",`/events/edit/${ID}`,`/events/review/${ID}`,
+  `/linkups/${ID}`,`/linkups/board/${ID}`,`/linkups/edit/${ID}`,
+  `/places/review/${ID}`,
+  `/manager/membership-status/${ID}`,`/manager/qr/business/${ID}`,
+  "/admin/public-places","/profile/edit",`/connections/${ID}`,
+  `/qr/${ID}`,`/social-comments/${ID}`,"/safety/blocked"
 ];
+
+// THIS LIST IS HAND-MAINTAINED, AND THAT IS A HOLE.
+//
+// A route added to app/ and not added here is simply never loaded in a browser
+// -- it passes by not being checked. The two legal screens were added and this
+// was not, and the commit that added them claimed 43 routes while the gate ran
+// 41. Caught by reading the gate's own output instead of the commit message.
+//
+// The check below closes it: every route file on disk has to appear here.
+// A dynamic route is listed with a sample id, so the match is on its shape.
 
 // Hosts whose answers must be real. Anything the map fetches -- style, sprites,
 // fonts, vector tiles -- is relayed rather than stubbed.
 const MAP_HOST=/^https:\/\/[^/]*(openfreemap|openmaptiles|maplibre|basemaps|protomaps)\./;
+
+// Every route file in app/, as the path a person would visit.
+function routesOnDisk(){
+  const appDir=path.join(__dirname,"..","app");
+  const found=[];
+
+  (function walk(dir,prefix){
+    for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
+      if(entry.isDirectory()){walk(path.join(dir,entry.name),`${prefix}/${entry.name}`);continue;}
+      if(!entry.name.endsWith(".js")) continue;
+      if(entry.name==="_layout.js") continue;
+
+      const base=entry.name.replace(/\.js$/,"");
+      const route=base==="index" ? (prefix || "/") : `${prefix}/${base}`;
+      found.push(route.replace(/\.web$/,""));
+    }
+  })(appDir,"");
+
+  return [...new Set(found)];
+}
+
+// A route is covered when something in the list would land on it.
+//
+// A file route's [param] segments match any single segment, so
+// /manager/qr/[type]/[id] is covered by /manager/qr/business/<uuid> -- the
+// literal in the list is the sample value, which is the point of a sample.
+function isCovered(route,listed){
+  const pattern=new RegExp(
+    "^"+route
+      .split("/")
+      .map((segment)=>/^\[.+\]$/.test(segment) ? "[^/]+" : segment.replace(/[.*+?^${}()|\\]/g,"\\$&"))
+      .join("/")+"$"
+  );
+  return listed.some((candidate)=>pattern.test(candidate));
+}
+
+const uncovered=routesOnDisk().filter((route)=>!isCovered(route,ROUTES));
+if(uncovered.length){
+  console.error("These routes exist in app/ and are never loaded in a browser:\n");
+  for(const route of uncovered) console.error(`  ${route}`);
+  console.error("\nAdd them to ROUTES in scripts/verify-browser.cjs. A route that is");
+  console.error("not in the list passes this gate by not being checked.");
+  process.exit(1);
+}
 
 const ONLY=(process.env.ONLY_ROUTES || "")
   .split(",").map((route)=>route.trim()).filter(Boolean);
