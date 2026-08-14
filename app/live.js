@@ -4,8 +4,23 @@ import * as Location from "expo-location";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {formatDateTime,liveItemIcon} from "../utils/linkups";
+import {formatDateTime} from "../utils/linkups";
+import {activityState,ACTIVITY_STATES} from "../utils/liveActivity";
+import {markerForActivity} from "../utils/markers";
+import PlaceMarker from "../components/PlaceMarker";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
+
+// Design round r001-a, directive 9: grouped by state rather than one flat
+// list, so LIVE NOW reads apart from what is still to come. Every row's state
+// comes from utils/liveActivity's own activityState() -- the same function the
+// map and PlacesList use -- and its indicator is the marker utils/markers
+// derives for it, never a colour chosen here.
+const GROUPS=[
+  {key:ACTIVITY_STATES.LIVE,title:"Live now"},
+  {key:ACTIVITY_STATES.SOON,title:"Starting soon"},
+  {key:ACTIVITY_STATES.SCHEDULED,title:"Upcoming"}
+];
 
 const TYPES=[
   {key:"all",label:"All"},{key:"linkup",label:"Link-ups"},{key:"checkin",label:"People"},{key:"event",label:"Events"},{key:"activity",label:"Activities"},{key:"place",label:"Places"}
@@ -62,6 +77,19 @@ export default function LiveDiscovery(){
 
   const filtered=useMemo(()=>type==="all"?items:items.filter(item=>item.item_type===type),[items,type]);
 
+  // Grouped by state -- LIVE NOW apart from what is still to come -- using the
+  // same activityState() the map and PlacesList use, not a filter invented
+  // here.
+  const grouped=useMemo(()=>{
+    const buckets={};
+    for(const group of GROUPS) buckets[group.key]=[];
+    for(const item of filtered){
+      const state=activityState(item);
+      (buckets[state] || buckets[ACTIVITY_STATES.SCHEDULED]).push(item);
+    }
+    return buckets;
+  },[filtered]);
+
   function applyArea(){
     const clean=areaDraft.trim();
     setAreaFilter(clean);
@@ -103,12 +131,12 @@ export default function LiveDiscovery(){
 
   function refresh(){setRefreshing(true);load(false);}
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>} keyboardShouldPersistTaps="handled">
       <View style={styles.hero}>
-        <Text style={styles.eyebrow}>HAPPENING NEARBY</Text><Text style={styles.title}>Live Nearby</Text>
+        <Text style={TYPE.sectionLabel}>Happening Nearby</Text><Text style={TYPE.display}>Live Nearby</Text>
         <Text style={styles.subtitle}>Link-ups, public check-ins, events, active clubs and popular places in one view.</Text>
         <View style={styles.heroActions}><Pressable style={styles.primaryButton} onPress={()=>router.push("/linkups/create")}><Text style={styles.primaryText}>Create Link-up</Text></Pressable><Pressable style={styles.checkinButton} onPress={()=>router.push("/checkins/create")}><Text style={styles.checkinText}>Check in</Text></Pressable></View>
       </View>
@@ -118,7 +146,7 @@ export default function LiveDiscovery(){
       {currentCheckin&&<View style={styles.currentCard}><View style={styles.currentText}><Text style={styles.currentLabel}>YOU ARE CHECKED IN</Text><Text style={styles.currentTitle}>{currentCheckin.place_name}</Text><Text style={styles.currentMeta}>{currentCheckin.activity} · expires {formatDateTime(currentCheckin.expires_at)}</Text></View><Pressable disabled={working} onPress={endCheckin}><Text style={styles.endText}>End</Text></Pressable></View>}
 
       <View style={styles.filtersCard}>
-        <Text style={styles.filterLabel}>Area</Text><View style={styles.areaRow}><TextInput value={areaDraft} onChangeText={setAreaDraft} onSubmitEditing={applyArea} placeholder="Town or area" placeholderTextColor={INK.inkSoft} style={styles.areaInput}/><Pressable style={styles.applyButton} onPress={applyArea}><Text style={styles.applyText}>Apply</Text></Pressable></View>
+        <Text style={TYPE.sectionLabel}>Area</Text><View style={styles.areaRow}><TextInput value={areaDraft} onChangeText={setAreaDraft} onSubmitEditing={applyArea} placeholder="Town or area" placeholderTextColor={INK.inkSoft} style={styles.areaInput}/><Pressable style={styles.applyButton} onPress={applyArea}><Text style={styles.applyText}>Apply</Text></Pressable></View>
         <Pressable style={styles.locationButton} disabled={locating} onPress={useLocation}>{locating?<ActivityIndicator color={INK.ink}/>:<Text style={styles.locationText}>{latitude!=null?"✓ Using approximate location":"Use approximate location"}</Text>}</Pressable>
         <Text style={styles.filterLabel}>Distance</Text><View style={styles.chips}>{[5,15,25,50].map(value=><Pressable key={value} style={[styles.chip,radius===value&&styles.chipActive]} onPress={()=>setRadius(value)}><Text style={[styles.chipText,radius===value&&styles.chipTextActive]}>{value} km</Text></Pressable>)}</View>
         <Text style={styles.filterLabel}>Time window</Text><View style={styles.chips}>{[6,24,72,168].map(value=><Pressable key={value} style={[styles.chip,windowHours===value&&styles.chipActive]} onPress={()=>setWindowHours(value)}><Text style={[styles.chipText,windowHours===value&&styles.chipTextActive]}>{value<24?`${value}h`:value===24?"Today":value===72?"3 days":"7 days"}</Text></Pressable>)}</View>
@@ -126,19 +154,101 @@ export default function LiveDiscovery(){
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeTabs}>{TYPES.map(item=><Pressable key={item.key} style={[styles.typeTab,type===item.key&&styles.typeTabActive]} onPress={()=>setType(item.key)}><Text style={[styles.typeText,type===item.key&&styles.typeTextActive]}>{item.label}</Text></Pressable>)}</ScrollView>
 
-      {filtered.length===0&&<View style={styles.emptyCard}><Text style={styles.emptyIcon}>📡</Text><Text style={styles.emptyTitle}>Nothing live in this view</Text><Text style={styles.emptyText}>Widen the area or time filters, or create the first Link-up.</Text></View>}
+      {filtered.length===0&&<Text style={styles.emptyText}>Nothing live in this view. Widen the area or time filters, or create the first Link-up.</Text>}
 
-      {filtered.map(item=><View key={`${item.item_type}-${item.item_id}`} style={styles.card}>
-        <View style={styles.cardTop}><View style={styles.iconWrap}><Text style={styles.icon}>{liveItemIcon(item.item_type)}</Text></View><View style={styles.cardHead}><Text style={styles.itemType}>{item.item_type.replace("_"," ")}</Text><Text style={styles.cardTitle}>{item.title}</Text></View>{item.distance_km!=null&&<Text style={styles.distance}>{item.distance_km} km</Text>}</View>
-        <Text style={styles.subtitleText}>{item.subtitle}</Text>
-        {!!item.area&&<Text style={styles.areaText}>📍 {item.area}</Text>}
-        {!!item.starts_at&&<Text style={styles.timeText}>{formatDateTime(item.starts_at)}</Text>}
-        <View style={styles.cardActions}><Pressable style={styles.openButton} onPress={()=>router.push(item.deep_link)}><Text style={styles.openText}>{item.action_label}</Text></Pressable>{item.item_type==="checkin"&&<Pressable onPress={()=>reportCheckin(item)}><Text style={styles.reportText}>Report</Text></Pressable>}</View>
-      </View>)}
+      {GROUPS.map(group=>{
+        const rows=grouped[group.key] || [];
+        if(!rows.length) return null;
+        return(
+          <View key={group.key} style={styles.section}>
+            <View style={styles.sectionHead}>
+              <Text style={TYPE.sectionLabel}>{group.title}</Text>
+              <Text style={styles.count}>{rows.length}</Text>
+            </View>
+            {rows.map(item=>(
+              <Pressable
+                key={`${item.item_type}-${item.item_id}`}
+                style={styles.row}
+                accessibilityRole="button"
+                accessibilityLabel={item.title}
+                onPress={()=>item.deep_link && router.push(item.deep_link)}
+              >
+                <PlaceMarker marker={markerForActivity({kind:item.item_type,state:group.key})} size={28}/>
+                <View style={styles.rowText}>
+                  <Text style={TYPE.rowTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={TYPE.meta} numberOfLines={1}>
+                    {item.item_type.replace("_"," ")}
+                    {!!item.area && ` · ${item.area}`}
+                    {!!item.starts_at && ` · ${formatDateTime(item.starts_at)}`}
+                  </Text>
+                </View>
+                <View style={styles.rowEnd}>
+                  <Text style={styles.distance}>{item.distance_km!=null ? `${item.distance_km} km` : "—"}</Text>
+                  {item.item_type==="checkin" && (
+                    <Pressable hitSlop={8} onPress={(event)=>{event?.stopPropagation?.();reportCheckin(item);}}>
+                      <Text style={styles.reportText}>Report</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        );
+      })}
     </ScrollView>
   );
 }
 
+// No state ink here either: blue/green are reserved for a place's state and
+// the manager's review pair, so the hero, chips and check-in banner are ink
+// and card rather than filled colour (design round r001-a).
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},hero:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:18,padding:17},eyebrow:{color:INK.card,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.card,fontSize:34,fontWeight:"900",marginTop:4},subtitle:{color:INK.card,lineHeight:21,marginTop:7},heroActions:{flexDirection:"row",gap:9,marginTop:15},primaryButton:{flex:1,backgroundColor:INK.blue,borderRadius:12,padding:13,alignItems:"center"},primaryText:{color:INK.card,fontWeight:"900"},checkinButton:{flex:1,backgroundColor:INK.green,borderRadius:12,padding:13,alignItems:"center"},checkinText:{color:INK.card,fontWeight:"900"},errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12,marginTop:13},errorText:{color:INK.card},currentCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:13,marginTop:13},currentText:{flex:1},currentLabel:{color:INK.card,fontSize:9,fontWeight:"900"},currentTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginTop:3},currentMeta:{color:INK.card,fontSize:11,marginTop:3},endText:{color:INK.card,fontWeight:"900",padding:8},filtersCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:13,marginTop:13},filterLabel:{color:INK.ink,fontWeight:"900",fontSize:12,marginTop:9,marginBottom:7},areaRow:{flexDirection:"row",gap:7},areaInput:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:10,color:INK.ink,paddingHorizontal:11,paddingVertical:10},applyButton:{backgroundColor:INK.blue,borderRadius:10,paddingHorizontal:14,justifyContent:"center"},applyText:{color:INK.card,fontWeight:"900"},locationButton:{borderColor:INK.blue,borderWidth:1,backgroundColor:INK.blue,borderRadius:10,padding:11,alignItems:"center",marginTop:9},locationText:{color:INK.card,fontWeight:"900",fontSize:11},chips:{flexDirection:"row",gap:6},chip:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:9,paddingVertical:9,alignItems:"center"},chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},chipText:{color:INK.inkSoft,fontWeight:"900",fontSize:10},chipTextActive:{color:INK.card},typeTabs:{gap:7,paddingVertical:14},typeTab:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:8},typeTabActive:{backgroundColor:INK.blue,borderColor:INK.blue},typeText:{color:INK.inkSoft,fontWeight:"900",fontSize:11},typeTextActive:{color:INK.card},card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:14,marginBottom:11},cardTop:{flexDirection:"row",alignItems:"center"},iconWrap:{width:43,height:43,borderRadius:22,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},icon:{fontSize:20},cardHead:{flex:1,marginLeft:10},itemType:{color:INK.blue,fontSize:8,fontWeight:"900",textTransform:"uppercase",letterSpacing:.7},cardTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginTop:2},distance:{color:INK.blue,fontWeight:"900",fontSize:11},subtitleText:{color:INK.inkSoft,lineHeight:19,marginTop:9},areaText:{color:INK.inkSoft,fontSize:12,marginTop:7},timeText:{color:INK.ink,fontSize:11,fontWeight:"800",marginTop:6},cardActions:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:12},openButton:{backgroundColor:INK.blue,borderRadius:10,paddingHorizontal:13,paddingVertical:10},openText:{color:INK.card,fontWeight:"900",fontSize:11},reportText:{color:INK.ink,fontWeight:"900",fontSize:10,padding:8},emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:28,alignItems:"center"},emptyIcon:{fontSize:38},emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:8},emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:19,marginTop:5}
+  screen:{flex:1,backgroundColor:INK.paper},
+  content:{padding:18,paddingBottom:70},
+  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  hero:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:17},
+  subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,fontSize:13},
+  heroActions:{flexDirection:"row",gap:9,marginTop:15},
+  primaryButton:{flex:1,backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:6,padding:13,alignItems:"center"},
+  primaryText:{color:INK.card,fontWeight:"900"},
+  checkinButton:{flex:1,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:6,padding:13,alignItems:"center"},
+  checkinText:{color:INK.ink,fontWeight:"900"},
+  errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:12,marginTop:13},
+  errorText:{color:INK.ink,fontWeight:"700"},
+  currentCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:13,marginTop:13},
+  currentText:{flex:1},
+  currentLabel:{...TYPE.sectionLabel},
+  currentTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginTop:3},
+  currentMeta:{...TYPE.meta,marginTop:3},
+  endText:{color:INK.ink,fontWeight:"900",padding:8,textDecorationLine:"underline"},
+  filtersCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:13,marginTop:13},
+  filterLabel:{...TYPE.sectionLabel,marginTop:9,marginBottom:7},
+  areaRow:{flexDirection:"row",gap:7},
+  areaInput:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,color:INK.ink,paddingHorizontal:11,paddingVertical:10},
+  applyButton:{backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:4,paddingHorizontal:14,justifyContent:"center"},
+  applyText:{color:INK.card,fontWeight:"900"},
+  locationButton:{borderColor:INK.ink,borderWidth:2,backgroundColor:INK.card,borderRadius:4,padding:11,alignItems:"center",marginTop:9},
+  locationText:{color:INK.ink,fontWeight:"900",fontSize:11},
+  chips:{flexDirection:"row",gap:6},
+  chip:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,paddingVertical:9,alignItems:"center"},
+  chipActive:{backgroundColor:INK.ink},
+  chipText:{color:INK.inkSoft,fontWeight:"900",fontSize:10},
+  chipTextActive:{color:INK.card},
+  typeTabs:{gap:7,paddingVertical:14},
+  typeTab:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,paddingHorizontal:12,paddingVertical:8},
+  typeTabActive:{backgroundColor:INK.ink},
+  typeText:{color:INK.inkSoft,fontWeight:"900",fontSize:11},
+  typeTextActive:{color:INK.card},
+  emptyText:{...TYPE.meta,paddingVertical:16},
+  section:{marginTop:20},
+  sectionHead:{
+    flexDirection:"row",alignItems:"flex-end",justifyContent:"space-between",
+    paddingBottom:6,borderBottomWidth:2,borderBottomColor:INK.ink
+  },
+  count:{...TYPE.numeral,fontSize:16},
+  row:{flexDirection:"row",alignItems:"center",minHeight:52,paddingVertical:8,gap:10,borderBottomWidth:1,borderBottomColor:INK.hair},
+  rowText:{flex:1},
+  rowEnd:{alignItems:"flex-end",gap:3},
+  distance:{...TYPE.numeral,fontSize:13},
+  reportText:{color:INK.ink,fontWeight:"900",fontSize:10,textDecorationLine:"underline"}
 });

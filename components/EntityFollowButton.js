@@ -139,7 +139,7 @@ export default function EntityFollowButton({targetType,targetId,targetName,noun,
       {(loading || working)
         ? <ActivityIndicator size="small" color={INK.ink}/>
         : (
-          <Text style={styles.text} numberOfLines={1}>
+          <Text style={[styles.text,following && styles.followingText]} numberOfLines={1}>
             {!user
               ? "Log in to follow"
               : following
@@ -152,6 +152,11 @@ export default function EntityFollowButton({targetType,targetId,targetName,noun,
   );
 }
 
+// Squared, 2px-bordered, gazetteer round (r001-a): the same two-state
+// contract as components/FollowButton.js -- ink fill to invite the follow,
+// card-with-border once it is done -- rather than the third, unnamed grey
+// fill (INK.hair) this used to switch to, which was neither of the two
+// treatments the round settled on.
 const styles=StyleSheet.create({
   button:{
     minWidth:118,
@@ -159,15 +164,16 @@ const styles=StyleSheet.create({
     minHeight:44,
     paddingHorizontal:18,
     paddingVertical:11,
-    borderRadius:12,
+    borderRadius:6,
     borderWidth:2,
     borderColor:INK.ink,
-    backgroundColor:INK.card,
+    backgroundColor:INK.ink,
     alignItems:"center",
     justifyContent:"center"
   },
-  compact:{minWidth:96,minHeight:38,paddingHorizontal:13,paddingVertical:8,borderRadius:10},
-  following:{backgroundColor:INK.hair},
+  compact:{minWidth:96,minHeight:38,paddingHorizontal:13,paddingVertical:8,borderRadius:6},
+  following:{backgroundColor:INK.card},
   disabled:{opacity:0.65},
-  text:{color:INK.ink,fontWeight:"800",fontSize:14}
+  text:{color:INK.card,fontWeight:"800",fontSize:14},
+  followingText:{color:INK.ink}
 });

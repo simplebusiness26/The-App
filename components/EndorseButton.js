@@ -102,7 +102,7 @@ export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,
       onPress={toggle}
     >
       {working
-        ? <ActivityIndicator size="small" color={endorsed ? INK.green : INK.inkSoft}/>
+        ? <ActivityIndicator size="small" color={endorsed ? INK.ink : INK.inkSoft}/>
         : <Text style={[styles.icon,endorsed && styles.endorsedIcon]}>👍</Text>
       }
       <Text style={[styles.text,endorsed && styles.endorsedText]}>{count} Useful</Text>
@@ -110,9 +110,13 @@ export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,
   );
 }
 
+// Squared, 2px-bordered, gazetteer round (r001-a): the toggled state is ink
+// fill with card text -- the same white-on-ink pairing every other raised
+// control in this design uses -- rather than green, which is reserved for the
+// manager's review-response pair and appears nowhere else.
 const styles=StyleSheet.create({
-  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
-  endorsedButton:{backgroundColor:INK.green,borderColor:INK.green},
+  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:6,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink},
+  endorsedButton:{backgroundColor:INK.ink,borderColor:INK.ink},
   icon:{fontSize:15,lineHeight:18},
   endorsedIcon:{},
   text:{color:INK.ink,fontSize:12,fontWeight:"900"},

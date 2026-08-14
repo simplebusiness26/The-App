@@ -217,10 +217,10 @@ export default function PropertyDetails(){
 const styles=StyleSheet.create({
   messageManagerRow:{marginBottom:10,alignItems:"flex-start"},
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
-  editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
+  editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:6,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
   editText:{color:INK.ink,fontWeight:"800"},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginBottom:10},
+  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:6,marginBottom:10},
   primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card,marginBottom:10},
+  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:6,backgroundColor:INK.card,marginBottom:10},
   secondaryText:{color:INK.ink,fontWeight:"800"}
 });

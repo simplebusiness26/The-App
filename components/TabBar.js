@@ -362,10 +362,21 @@ const styles=StyleSheet.create({
   },
   // 44px is the tap-target floor even where the visible target is smaller.
   tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:6},
-  marker:{height:3,width:26,borderRadius:2,backgroundColor:"transparent",marginBottom:5},
+  // Full-cell-width, not a centred pill: the active tab reads as an
+  // underlined column heading, the way a gazetteer index marks the section
+  // you are in rather than decorating a button.
+  marker:{height:3,width:"100%",borderRadius:0,backgroundColor:"transparent",marginBottom:5},
   markerActive:{backgroundColor:INK.ink},
-  label:{fontSize:10,marginTop:3,color:INK.inkSoft,textAlign:"center",paddingHorizontal:2},
-  labelActive:{color:INK.ink,fontWeight:"700"},
+  label:{
+    fontSize:9,
+    marginTop:3,
+    color:INK.inkSoft,
+    textAlign:"center",
+    paddingHorizontal:2,
+    textTransform:"uppercase",
+    letterSpacing:1
+  },
+  labelActive:{color:INK.ink,fontWeight:"800"},
   // Its own column, centred over the middle tab slot. left/right:0 here is what
   // made every other tab untappable from the map -- this box is drawn last, so
   // it takes the touch before anything under it gets a look.
@@ -388,7 +399,10 @@ const styles=StyleSheet.create({
     alignSelf:"center",
     width:RAISED_SIZE,
     height:RAISED_SIZE,
-    borderRadius:RAISED_SIZE/2,
+    // Square, not a circle -- the raised centre becomes an ink plate, matching
+    // every other primary control in the gazetteer rather than standing apart
+    // as the one round shape on the bar.
+    borderRadius:10,
     backgroundColor:INK.ink,
     borderWidth:2,
     borderColor:INK.ink,

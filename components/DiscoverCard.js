@@ -1,157 +1,130 @@
 import React from "react";
-import {View,Text,Image,Pressable,StyleSheet} from "react-native";
+import {View,Text,Pressable,StyleSheet} from "react-native";
 import {router} from "expo-router";
 import PlaceMarker from "./PlaceMarker";
+import SocialImage from "./SocialImage";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 
-// One card in a Discover carousel.
+// One ledger row in a Discover section.
 //
 // WHAT THIS REPLACES
 //
-// A vertical stack of bordered text boxes, six per section, seven sections. The
-// owner: the lists "are too long", and what they asked for instead is a picture
-// with the words ON it --
+// An image-first carousel card: a photo, a half-height text overlay, a score
+// badge and a map button, 240x190, six or seven of them scrolling sideways per
+// section. The gazetteer round (design r001-a) replaces that with the same
+// information as a one-line index entry -- a small bordered thumbnail, the
+// name and type in text, and the distance in the right margin -- so the
+// screen reads as an index of what is nearby rather than a wall of pictures.
 //
-//   "thumbnail/hero image, and a transparent overlay halfway across with the
-//    title, the type of business, and why it's showing you -- 'You saved this',
-//    'starts in 47 minutes', '50 m from you in Hastings' -- plus the review
-//    score, plus a little map logo to see it on the map. Clicking the box opens
-//    the business profile."
-//
-// So: image, half-height overlay, score, map button, and the whole box is the
-// link to the place.
-//
-// THE REASON IS NOT OPTIONAL AND NEVER WAS
+// THE REASON IS STILL NOT OPTIONAL
 //
 // utils/discover.js drops any item it cannot compute a reason for, and
 // scripts/verify-discover.cjs fails the build if a recommendation renders
-// without one. Putting it inside the overlay does not soften that -- a card
-// with a blank line there is an item that should never have reached the screen.
+// without one. It still renders here, as its own line -- a row with a blank
+// line where the reason goes is an item that should never have reached the
+// screen.
 //
-// NO STOCK PHOTOGRAPH. A manager who has uploaded nothing gets a plain block
-// carrying the same glyph its map pin uses. A generic image of somewhere else
-// would be the app telling a small lie about a real place, every time.
+// NO STOCK PHOTOGRAPH. A manager who has uploaded nothing gets the same glyph
+// its map pin uses, in the thumbnail's place. A generic image of somewhere
+// else would be the app telling a small lie about a real place, every time.
 
 export default function DiscoverCard({item,onSeeOnMap}){
   if(!item) return null;
 
   const score=item.rating;
   const hasPlace=Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
+  const distanceKm=Number(item.distance_km);
+  const hasDistance=Number.isFinite(distanceKm);
 
   return(
     <Pressable
-      style={styles.card}
+      style={styles.row}
       accessibilityRole="button"
       accessibilityLabel={`${item.title}. ${item.reason}.`}
       onPress={()=>item.route && router.push(item.route)}
     >
-      {item.image
-        ? <Image source={{uri:item.image}} style={styles.image} accessibilityIgnoresInvertColors/>
-        : (
-          <View style={[styles.image,styles.imageEmpty]}>
-            {!!item.marker && <PlaceMarker marker={item.marker} size={44}/>}
-          </View>
-        )}
-
-      {/*
-        HALFWAY ACROSS, as asked. It is a solid card panel rather than a real
-        transparency: text over a photograph is unreadable at some point on
-        every photograph, and scripts/verify-contrast.cjs is right to refuse a
-        pair it cannot measure. The picture keeps the top half to itself.
-      */}
-      <View style={styles.overlay}>
-        <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-        {!!item.subtitle && <Text style={styles.type} numberOfLines={1}>{item.subtitle}</Text>}
-        <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text>
+      <View style={styles.thumb}>
+        {item.image
+          ? <SocialImage uri={item.image} style={styles.thumbImage} accessibilityIgnoresInvertColors/>
+          : (!!item.marker && <PlaceMarker marker={item.marker} size={26}/>)
+        }
       </View>
 
-      {/* The score, over the picture, where a score goes on every app that has
-          one. Absent rather than zero when nobody has reviewed it. */}
-      {!!score?.count && (
-        <View style={styles.score} accessibilityLabel={`Rated ${score.average} out of 5 from ${score.count} reviews`}>
-          <Text style={styles.scoreText}>★ {score.average}</Text>
-        </View>
-      )}
+      <View style={styles.textCol}>
+        <Text style={TYPE.rowTitle} numberOfLines={1}>{item.title}</Text>
+        {!!item.subtitle && <Text style={TYPE.meta} numberOfLines={1}>{item.subtitle}</Text>}
+        {/* The reason, which is never optional on this screen. */}
+        <Text style={styles.reason} numberOfLines={1}>{item.reason}</Text>
+      </View>
 
-      {/* "A little map logo to see it on the map." Only when there is a place
-          to see -- a Link-up with no coordinates has nothing to show. */}
-      {hasPlace && (
-        <Pressable
-          style={styles.mapButton}
-          accessibilityRole="button"
-          accessibilityLabel={`See ${item.title} on the map`}
-          hitSlop={8}
-          onPress={()=>onSeeOnMap?.(item)}
-        >
-          <Text style={styles.mapIcon}>◎</Text>
-        </Pressable>
-      )}
+      <View style={styles.endCol}>
+        <Text style={styles.distance} numberOfLines={1}>
+          {hasDistance ? `${distanceKm} km` : "—"}
+        </Text>
+        {!!score?.count && (
+          <Text
+            style={styles.score}
+            accessibilityLabel={`Rated ${score.average} out of 5 from ${score.count} reviews`}
+          >
+            ★ {score.average}
+          </Text>
+        )}
+        {/* "A little map logo to see it on the map." Only when there is a
+            place to see -- a Link-up with no coordinates has nothing to
+            show. Stops the row's own press from also firing. */}
+        {hasPlace && (
+          <Pressable
+            style={styles.mapButton}
+            accessibilityRole="button"
+            accessibilityLabel={`See ${item.title} on the map`}
+            hitSlop={8}
+            onPress={(event)=>{event?.stopPropagation?.();onSeeOnMap?.(item);}}
+          >
+            <Text style={styles.mapIcon}>◎</Text>
+          </Pressable>
+        )}
+      </View>
     </Pressable>
   );
 }
 
-export const CARD_WIDTH=240;
-const CARD_HEIGHT=190;
-
 const styles=StyleSheet.create({
-  card:{
-    width:CARD_WIDTH,
-    height:CARD_HEIGHT,
-    borderRadius:14,
+  row:{
+    flexDirection:"row",
+    alignItems:"center",
+    minHeight:52,
+    paddingVertical:8,
+    gap:10,
+    borderBottomWidth:1,
+    borderBottomColor:INK.hair
+  },
+  thumb:{
+    width:40,
+    height:40,
     borderWidth:2,
     borderColor:INK.ink,
     backgroundColor:INK.card,
-    overflow:"hidden",
-    // Hard offset shadow, never a blur -- the same rule the pins and the raised
-    // tab button follow.
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:0
+    alignItems:"center",
+    justifyContent:"center",
+    overflow:"hidden"
   },
-  image:{width:"100%",height:CARD_HEIGHT/2,backgroundColor:INK.hair},
-  imageEmpty:{alignItems:"center",justifyContent:"center"},
-  overlay:{
-    position:"absolute",
-    left:0,
-    right:0,
-    bottom:0,
-    height:CARD_HEIGHT/2,
-    padding:10,
-    justifyContent:"flex-start",
-    backgroundColor:INK.card,
-    borderTopWidth:2,
-    borderTopColor:INK.ink
-  },
-  title:{color:INK.ink,fontWeight:"900",fontSize:15},
-  type:{color:INK.inkSoft,fontWeight:"700",fontSize:11,marginTop:2},
+  thumbImage:{width:"100%",height:"100%"},
+  textCol:{flex:1},
   // The reason. Never optional -- see the note above.
-  reason:{color:INK.ink,fontWeight:"800",fontSize:11,lineHeight:15,marginTop:6},
-  score:{
-    position:"absolute",
-    top:8,
-    left:8,
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
-    paddingHorizontal:8,
-    paddingVertical:3
-  },
-  scoreText:{color:INK.ink,fontWeight:"900",fontSize:11},
+  reason:{...TYPE.meta,color:INK.ink,fontWeight:"800",marginTop:1},
+  endCol:{alignItems:"flex-end",gap:3},
+  distance:{...TYPE.numeral,fontSize:14},
+  score:{...TYPE.meta,color:INK.ink},
   mapButton:{
-    position:"absolute",
-    top:8,
-    right:8,
-    width:32,
-    height:32,
-    borderRadius:16,
+    width:24,
+    height:24,
+    borderRadius:4,
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.card,
     borderWidth:2,
     borderColor:INK.ink
   },
-  mapIcon:{color:INK.ink,fontSize:16,fontWeight:"900",lineHeight:19}
+  mapIcon:{color:INK.ink,fontSize:12,fontWeight:"900",lineHeight:14}
 });

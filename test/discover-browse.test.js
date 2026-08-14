@@ -254,13 +254,18 @@ test("no score at all rather than a zero nobody earned",async()=>{
   await act(async()=>{tree.unmount();});
 });
 
-test("the sections are carousels, and the map keeps no list of its own",()=>{
+test("the sections are a vertical index, and the map keeps no list of its own",()=>{
   const fs=require("fs");
   const path=require("path");
   const root=path.resolve(__dirname,"..");
 
+  // Design round r001-a ("The Gazetteer"), directive 5: every horizontal
+  // carousel is replaced by a stacked vertical index -- this assertion now
+  // tracks that markup instead of the carousel it replaced.
   const discover=fs.readFileSync(path.join(root,"app","discover.js"),"utf8");
-  expect(discover).toMatch(/<DiscoverCarousel/);
+  expect(discover).toMatch(/<DiscoverSection/);
+  expect(discover).not.toMatch(/<DiscoverCarousel/);
+  expect(discover).not.toMatch(/ScrollView\s+horizontal/);
 
   // The List button is off the map's filter row for good.
   const map=fs.readFileSync(path.join(root,"components","LivingMapScreen.js"),"utf8");

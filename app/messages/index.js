@@ -11,6 +11,7 @@ import {
   unreadFor
 } from "../../utils/messageViews";
 import {INK} from "../../utils/tokens";
+import {TYPE} from "../../styles/typography";
 
 // The inbox, and three other ways of looking at it.
 //
@@ -39,6 +40,15 @@ import {INK} from "../../utils/tokens";
 // the caller is already authorised to read, re-deriving the same conditions the
 // boards' own read policies use. Opening one still goes through that board's
 // policy; this cannot grant access to anything.
+//
+// GAZETTEER PASS (design round r001-a, directive 10): the four views are still
+// exactly what utils/messageViews.js classifies -- that logic is untouched.
+// What changed is presentation: the view switcher is now a ruled row of
+// uppercase text tabs with a full-width ink underline on the active one, the
+// same convention components/TabBar.js uses for its active tab, in place of
+// four rounded pills. The rows below it are one-line ledger entries with a
+// hairline between them instead of bordered, shadowed cards, and the last
+// message time is right-aligned in tabular numerals.
 
 function when(value){
   const then=new Date(value).getTime();
@@ -109,13 +119,10 @@ export default function Messages(){
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Messages</Text>
+      <Text style={TYPE.sectionLabel}>Inbox</Text>
+      <Text style={TYPE.display}>Messages</Text>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabs}
-      >
+      <View style={styles.tabs}>
         {MESSAGE_VIEWS.map((tab)=>{
           const active=tab.key===view;
           const count=tab.key==="boards" ? 0 : unread[tab.key];
@@ -123,28 +130,31 @@ export default function Messages(){
           return(
             <Pressable
               key={tab.key}
-              style={[styles.tab,active && styles.tabActive]}
+              style={styles.tab}
               accessibilityRole="tab"
               accessibilityState={{selected:active}}
               accessibilityLabel={count ? `${tab.label}, ${count} unread` : tab.label}
               onPress={()=>setView(tab.key)}
             >
-              <Text style={[styles.tabText,active && styles.tabTextActive]}>{tab.label}</Text>
+              <Text style={[styles.tabText,active && styles.tabTextActive]} numberOfLines={2}>
+                {tab.label}
+              </Text>
               {count>0 && (
-                <View style={[styles.tabCount,active && styles.tabCountActive]}>
-                  <Text style={[styles.tabCountText,active && styles.tabCountTextActive]}>{count}</Text>
+                <View style={styles.tabCount}>
+                  <Text style={styles.tabCountText}>{count}</Text>
                 </View>
               )}
+              <View style={[styles.marker,active && styles.markerActive]}/>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
-      {!showingBoards && !!error && <View style={styles.card}><Text style={styles.muted}>{error}</Text></View>}
-      {showingBoards && !!boardError && <View style={styles.card}><Text style={styles.muted}>{boardError}</Text></View>}
+      {!showingBoards && !!error && <Text style={styles.emptyText}>{error}</Text>}
+      {showingBoards && !!boardError && <Text style={styles.emptyText}>{boardError}</Text>}
 
       {!showingBoards && !error && !visible.length && (
-        <View style={styles.card}>
+        <View style={styles.notice}>
           <Text style={styles.emptyTitle}>
             {view==="friends" ? "No friend messages yet"
               : view==="managers" ? "No messages about a place yet"
@@ -168,7 +178,7 @@ export default function Messages(){
       )}
 
       {showingBoards && !boardError && !boards.length && (
-        <View style={styles.card}>
+        <View style={styles.notice}>
           <Text style={styles.emptyTitle}>No message boards yet</Text>
           <Text style={styles.muted}>
             Join a Link-up or an Activity Club and its board appears here. A board belongs to
@@ -182,6 +192,13 @@ export default function Messages(){
           >
             <Text style={styles.buttonText}>Browse Link-ups</Text>
           </Pressable>
+        </View>
+      )}
+
+      {showingBoards && !!boards.length && (
+        <View style={styles.sectionHead}>
+          <Text style={TYPE.sectionLabel}>Message Boards</Text>
+          <Text style={styles.count}>{boards.length}</Text>
         </View>
       )}
 
@@ -210,6 +227,13 @@ export default function Messages(){
           </View>
         </Pressable>
       ))}
+
+      {!showingBoards && !!visible.length && (
+        <View style={styles.sectionHead}>
+          <Text style={TYPE.sectionLabel}>{MESSAGE_VIEWS.find(tab=>tab.key===view)?.label}</Text>
+          <Text style={styles.count}>{visible.length}</Text>
+        </View>
+      )}
 
       {!showingBoards && visible.map((row)=>(
         <Pressable
@@ -245,37 +269,75 @@ export default function Messages(){
   );
 }
 
-const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12};
-
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:110},
+  content:{padding:20,paddingBottom:110},
   centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  title:{color:INK.ink,fontSize:30,fontWeight:"900",marginBottom:14},
-  tabs:{flexDirection:"row",gap:8,paddingBottom:14,paddingRight:16},
-  tab:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:14,paddingVertical:9,minHeight:44,backgroundColor:INK.paper},
-  tabActive:{backgroundColor:INK.ink},
-  tabText:{color:INK.ink,fontWeight:"800",fontSize:13},
-  tabTextActive:{color:INK.card},
-  tabCount:{minWidth:20,height:20,borderRadius:10,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
-  tabCountActive:{backgroundColor:INK.card},
+
+  // The view switcher. Full-width ruled columns with an ink underline on the
+  // active one -- components/TabBar.js's marker/markerActive convention, not
+  // a pill.
+  tabs:{flexDirection:"row",marginTop:20,borderBottomWidth:2,borderBottomColor:INK.hair},
+  tab:{flex:1,alignItems:"center",gap:4,paddingTop:10,paddingBottom:8},
+  tabText:{...TYPE.sectionLabel,color:INK.inkSoft,textAlign:"center"},
+  tabTextActive:{color:INK.ink},
+  tabCount:{minWidth:18,height:18,borderRadius:4,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:4},
   tabCountText:{color:INK.card,fontSize:10,fontWeight:"900"},
-  tabCountTextActive:{color:INK.ink},
-  card:{...card,padding:18},
-  emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:6},
-  muted:{color:INK.inkSoft,fontSize:14,lineHeight:20},
-  button:{marginTop:14,alignSelf:"flex-start",borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:16,paddingVertical:8,backgroundColor:INK.paper},
-  buttonText:{color:INK.ink,fontWeight:"800"},
-  row:{...card,flexDirection:"row",alignItems:"center",gap:11,padding:11,marginBottom:10},
-  avatar:{width:46,height:46,borderRadius:23,backgroundColor:INK.hair},
+  marker:{height:3,width:"100%",backgroundColor:"transparent",marginTop:2},
+  markerActive:{backgroundColor:INK.ink},
+
+  notice:{
+    backgroundColor:INK.card,
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:4,
+    padding:18,
+    marginTop:18
+  },
+  emptyTitle:{...TYPE.rowTitle,marginBottom:6},
+  muted:{...TYPE.body,color:INK.inkSoft},
+  emptyText:{...TYPE.meta,paddingVertical:12},
+  button:{
+    marginTop:14,
+    alignSelf:"flex-start",
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:6,
+    paddingHorizontal:16,
+    paddingVertical:9,
+    backgroundColor:INK.paper
+  },
+  buttonText:{color:INK.ink,fontWeight:"800",fontSize:13},
+
+  sectionHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    marginTop:18,
+    paddingBottom:6,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  count:{...TYPE.numeral,fontSize:16},
+
+  row:{
+    flexDirection:"row",
+    alignItems:"center",
+    gap:10,
+    minHeight:58,
+    paddingVertical:10,
+    borderBottomWidth:1,
+    borderBottomColor:INK.hair
+  },
+  avatar:{width:36,height:36,borderRadius:4,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink},
   avatarBlank:{alignItems:"center",justifyContent:"center"},
-  initial:{color:INK.ink,fontWeight:"900",fontSize:18},
+  initial:{color:INK.ink,fontWeight:"900",fontSize:14},
   rowText:{flex:1},
-  name:{color:INK.ink,fontWeight:"800",fontSize:15},
-  about:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:1},
-  preview:{color:INK.inkSoft,fontSize:13,marginTop:2},
-  rowEnd:{alignItems:"flex-end",gap:5},
-  time:{color:INK.inkSoft,fontSize:11},
-  unread:{minWidth:22,height:22,borderRadius:11,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:6},
+  name:{...TYPE.rowTitle},
+  about:{...TYPE.meta,marginTop:1},
+  preview:{...TYPE.body,color:INK.inkSoft,marginTop:2},
+  rowEnd:{alignItems:"flex-end",gap:5,maxWidth:90},
+  time:{...TYPE.numeral,fontSize:12,textAlign:"right"},
+  unread:{minWidth:20,height:20,borderRadius:4,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
   unreadText:{color:INK.card,fontSize:11,fontWeight:"900"}
 });

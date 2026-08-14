@@ -14,6 +14,7 @@ import EventFormFields from "../../../components/EventFormFields";
 import {createDefaultEventForm,eventToForm,validateEventForm} from "../../../utils/events";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {INK} from "../../../utils/tokens";
+import {TYPE} from "../../../styles/typography";
 
 export default function EditEvent(){
   const {id}=useLocalSearchParams();
@@ -155,37 +156,55 @@ export default function EditEvent(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Edit Event</Text>
-      <Text style={styles.subtitle}>Update the public listing, schedule and event status.</Text>
+    <View style={styles.screen}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Edit Event</Text>
+        <Text style={styles.subtitle}>Update the public listing, schedule and event status.</Text>
 
-      <EventFormFields
-        form={form}
-        setForm={setForm}
-        statusOptions={["published","draft","cancelled"]}
-      />
+        <EventFormFields
+          form={form}
+          setForm={setForm}
+          statusOptions={["published","draft","cancelled"]}
+        />
 
-      <Pressable style={[styles.saveButton,(saving || deleting) && styles.disabled]} onPress={saveEvent} disabled={saving || deleting}>
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </Pressable>
+        {/* Destructive action: above the sticky bar, never inside it, and never
+            filled in the review-response red -- that pair belongs to
+            components/ReviewActions.js alone. */}
+        <Pressable style={[styles.deleteButton,(saving || deleting) && styles.disabled]} onPress={confirmDelete} disabled={saving || deleting}>
+          <Text style={styles.deleteText}>{deleting ? "Deleting..." : "Delete Event"}</Text>
+        </Pressable>
+      </ScrollView>
 
-      <Pressable style={[styles.deleteButton,(saving || deleting) && styles.disabled]} onPress={confirmDelete} disabled={saving || deleting}>
-        <Text style={styles.deleteText}>{deleting ? "Deleting..." : "Delete Event"}</Text>
-      </Pressable>
-    </ScrollView>
+      <View style={styles.stickyBar}>
+        <Pressable style={[styles.button,(saving || deleting) && styles.disabled]} onPress={saveEvent} disabled={saving || deleting}>
+          {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:50},
-  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},
-  error:{fontSize:17,textAlign:"center",lineHeight:24},
-  title:{fontSize:30,fontWeight:"bold"},
+  screen:{flex:1,backgroundColor:INK.paper},
+  container:{flex:1},
+  content:{padding:20,paddingBottom:110},
+  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.paper},
+  error:{fontSize:17,textAlign:"center",lineHeight:24,color:INK.ink},
+  title:{...TYPE.display},
   subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},
-  saveButton:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},
-  deleteButton:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.red,padding:15,borderRadius:12,alignItems:"center",marginTop:12},
+  stickyBar:{
+    position:"absolute",
+    left:0,
+    right:0,
+    bottom:0,
+    backgroundColor:INK.card,
+    borderTopWidth:2,
+    borderTopColor:INK.ink,
+    padding:16
+  },
+  button:{backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,padding:14,borderRadius:6,alignItems:"center",minHeight:48,justifyContent:"center"},
+  deleteButton:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,padding:14,borderRadius:6,alignItems:"center",marginTop:12,minHeight:48,justifyContent:"center"},
   disabled:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"bold"},
-  deleteText:{color:INK.red,fontWeight:"bold"}
+  buttonText:{color:INK.card,fontWeight:"900",fontSize:15},
+  deleteText:{color:INK.ink,fontWeight:"900",fontSize:15}
 });

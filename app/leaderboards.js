@@ -11,6 +11,7 @@ import {
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 
 function Avatar({row}){
   if(row.profile_photo){
@@ -95,8 +96,8 @@ export default function Leaderboards(){
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>EXPLORER SCORE RANKINGS</Text>
-      <Text style={styles.title}>Leaderboard</Text>
+      <Text style={TYPE.sectionLabel}>Explorer Score Rankings</Text>
+      <Text style={TYPE.display}>Leaderboard</Text>
       {/*
         Decision 1, settled: this ranks on explorer_score_events, the scoring
         ledger. It used to add up review points only, so a board called Explorer
@@ -122,7 +123,7 @@ export default function Leaderboards(){
       </View>
 
       {scope==="local" && profile?.show_area && !!profile?.area?.trim() && (
-        <View style={styles.areaPill}><Text style={styles.areaText}>📍 {profile.area.trim()}</Text></View>
+        <View style={styles.areaPill}><Text style={styles.areaText}>{profile.area.trim()}</Text></View>
       )}
 
       {/*
@@ -179,7 +180,7 @@ export default function Leaderboards(){
           <Pressable style={styles.primaryButton} onPress={()=>router.push("/profile/edit")}><Text style={styles.primaryText}>Edit Profile</Text></Pressable>
         </View>
       ) : loading ? (
-        <View style={styles.loadingBox}><ActivityIndicator size="large" color={INK.blue}/></View>
+        <View style={styles.loadingBox}><ActivityIndicator size="large" color={INK.ink}/></View>
       ) : error ? (
         <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>
       ) : rows.length===0 ? (
@@ -191,13 +192,20 @@ export default function Leaderboards(){
         <View style={styles.list}>
           {rows.map(row=>{
             const own=row.user_id===profile?.id;
+            const plated=row.rank<=3;
             return(
               <Pressable key={row.user_id} style={[styles.row,own && styles.ownRow]} onPress={()=>router.push(`/profile/${row.user_id}`)}>
-                <View style={[styles.rankCircle,row.rank<=3 && styles.topRank]}><Text style={[styles.rank,row.rank<=3 && styles.topRankText]}>#{row.rank}</Text></View>
+                {/* Ranks 1-3 sit on an ink plate: card-coloured numeral on ink,
+                    the same white-on-ink legibility pairing every raised
+                    control in this design uses. No state ink, this is not a
+                    place. */}
+                <View style={[styles.rankBox,plated && styles.rankPlate]}>
+                  <Text style={[styles.rank,plated && styles.rankPlateText]}>{row.rank}</Text>
+                </View>
                 <Avatar row={row}/>
                 <View style={styles.person}>
-                  <Text style={styles.name} numberOfLines={1}>{row.full_name}{own ? " · You" : ""}</Text>
-                  <Text style={styles.meta} numberOfLines={1}>{row.area || "Area hidden"}</Text>
+                  <Text style={TYPE.rowTitle} numberOfLines={1}>{row.full_name}{own ? " · You" : ""}</Text>
+                  <Text style={TYPE.meta} numberOfLines={1}>{row.area || "Area hidden"}</Text>
                 </View>
                 <View style={styles.pointsBox}>
                   <Text style={styles.points}>{row.points}</Text>
@@ -215,8 +223,8 @@ export default function Leaderboards(){
         nothing: a scoring rule people read and act on has to be the rule that
         runs.
       */}
-      <View style={styles.rulesCard}>
-        <Text style={styles.rulesTitle}>How your Explorer Score is earned</Text>
+      <View style={styles.section}>
+        <View style={styles.sectionHead}><Text style={TYPE.sectionLabel}>How your Explorer Score is earned</Text></View>
         <Text style={styles.rule}>Write a review: 5 points</Text>
         <Text style={styles.rule}>Review with the QR scanned on site: 15 points</Text>
         <Text style={styles.rule}>Check in somewhere new: 10 points</Text>
@@ -227,50 +235,53 @@ export default function Leaderboards(){
   );
 }
 
+// No state inks here: blue/pink/yellow mean a place's state and red/green are
+// the manager's review-response pair alone (design round r001-a). Emphasis
+// comes from the ink plate and the numeral scale instead of colour.
 const styles=StyleSheet.create({
-  rankCard:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:16,padding:18,marginBottom:14,alignItems:"center"},
-  rankEyebrow:{color:INK.card,fontSize:10,fontWeight:"900",letterSpacing:0.7},
-  rankValue:{color:INK.card,fontSize:38,fontWeight:"900",marginTop:6},
-  rankMeta:{color:INK.card,fontSize:13,textAlign:"center",marginTop:6,lineHeight:19},
+  rankCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:18,marginBottom:14,alignItems:"center"},
+  rankEyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1.2},
+  rankValue:{...TYPE.numeral,fontSize:38,marginTop:6},
+  rankMeta:{color:INK.ink,fontSize:13,textAlign:"center",marginTop:6,lineHeight:19},
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:60},
-  eyebrow:{color:INK.blue,fontSize:11,fontWeight:"900",letterSpacing:0.8},
-  title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:5},
   subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:7,marginBottom:17},
-  tabs:{flexDirection:"row",backgroundColor:INK.card,borderRadius:13,padding:4,marginBottom:9},
-  tab:{flex:1,padding:11,borderRadius:10,alignItems:"center"},
-  tabActive:{backgroundColor:INK.blue},
-  tabText:{color:INK.card,fontWeight:"900"},
+  tabs:{flexDirection:"row",gap:8,marginBottom:9},
+  tab:{flex:1,padding:11,borderRadius:4,alignItems:"center",borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card},
+  tabActive:{backgroundColor:INK.ink},
+  tabText:{color:INK.ink,fontWeight:"800",fontSize:12},
   tabTextActive:{color:INK.card},
-  areaPill:{alignSelf:"flex-start",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:7,marginTop:4,marginBottom:12},
-  areaText:{color:INK.card,fontWeight:"800",fontSize:12},
+  areaPill:{alignSelf:"flex-start",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,paddingHorizontal:12,paddingVertical:7,marginTop:4,marginBottom:12},
+  areaText:{...TYPE.meta,color:INK.ink},
   loadingBox:{padding:50,alignItems:"center"},
-  noticeCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:16,padding:20,marginTop:8},
+  noticeCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:20,marginTop:8},
   noticeTitle:{color:INK.ink,fontSize:19,fontWeight:"900"},
   noticeText:{color:INK.inkSoft,lineHeight:21,marginTop:7},
-  primaryButton:{backgroundColor:INK.blue,borderRadius:11,padding:14,marginTop:15},
+  primaryButton:{backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:4,padding:14,marginTop:15},
   primaryText:{color:INK.card,fontWeight:"900",textAlign:"center"},
-  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:13,padding:15},
-  errorText:{color:INK.card,fontWeight:"700"},
-  list:{gap:9},
-  row:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:12,flexDirection:"row",alignItems:"center"},
-  ownRow:{borderColor:INK.blue,borderWidth:2},
-  rankCircle:{width:42,height:42,borderRadius:21,backgroundColor:INK.card,alignItems:"center",justifyContent:"center",marginRight:10},
-  topRank:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1},
-  rank:{color:INK.ink,fontWeight:"900",fontSize:12},
-  topRankText:{color:INK.card},
-  avatar:{width:48,height:48,borderRadius:24,backgroundColor:INK.card},
-  avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontSize:20,fontWeight:"900"},
-  person:{flex:1,marginLeft:10},
-  name:{color:INK.ink,fontWeight:"900",fontSize:16},
-  meta:{color:INK.inkSoft,fontSize:11,marginTop:3},
-  detail:{color:INK.inkSoft,fontSize:10,marginTop:3},
-  pointsBox:{alignItems:"center",marginLeft:8,minWidth:48},
-  points:{color:INK.blue,fontSize:21,fontWeight:"900"},
-  pointsLabel:{color:INK.inkSoft,fontSize:9,fontWeight:"900",letterSpacing:0.6},
-  rulesCard:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:15,padding:17,marginTop:20},
-  rulesTitle:{color:INK.card,fontSize:18,fontWeight:"900",marginBottom:8},
-  rule:{color:INK.card,lineHeight:21},
-  ruleNote:{color:INK.card,fontSize:11,lineHeight:17,marginTop:9}
+  errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:15},
+  errorText:{color:INK.ink,fontWeight:"800"},
+  list:{},
+  row:{
+    flexDirection:"row",alignItems:"center",minHeight:56,paddingVertical:10,gap:10,
+    borderBottomWidth:1,borderBottomColor:INK.hair
+  },
+  ownRow:{borderBottomColor:INK.ink,borderBottomWidth:2},
+  // The rank column: fixed width so every numeral, one digit or two, lines up
+  // under the next.
+  rankBox:{width:40,alignItems:"center",justifyContent:"center"},
+  rankPlate:{backgroundColor:INK.ink,borderRadius:4,paddingVertical:4},
+  rank:{...TYPE.numeral,fontSize:22},
+  rankPlateText:{color:INK.card},
+  avatar:{width:36,height:36,borderRadius:4,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink},
+  avatarFallback:{width:36,height:36,borderRadius:4,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
+  avatarLetter:{color:INK.ink,fontSize:14,fontWeight:"900"},
+  person:{flex:1},
+  pointsBox:{alignItems:"flex-end",minWidth:48},
+  points:{...TYPE.numeral,fontSize:18},
+  pointsLabel:{...TYPE.meta,letterSpacing:0.6},
+  section:{marginTop:24},
+  sectionHead:{paddingBottom:6,marginBottom:11,borderBottomWidth:2,borderBottomColor:INK.ink},
+  rule:{color:INK.ink,lineHeight:21,fontSize:13},
+  ruleNote:{color:INK.inkSoft,fontSize:11,lineHeight:17,marginTop:9}
 });

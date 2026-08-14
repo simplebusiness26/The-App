@@ -18,6 +18,7 @@ import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,uploadSocialAss
 import AudienceCeiling from "../../components/AudienceCeiling";
 import AddLocation from "../../components/AddLocation";
 import {INK} from "../../utils/tokens";
+import {TYPE} from "../../styles/typography";
 
 // Packet 8d: keeping something on purpose.
 //
@@ -263,7 +264,8 @@ export default function CreateMemory(){
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={styles.screen}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Keep a Memory</Text>
       <Text style={styles.subtitle}>
         Somewhere you were, kept because you chose to. A check-in disappears; this does not.
@@ -451,7 +453,10 @@ export default function CreateMemory(){
           accessibilityLabel="Show this Memory on my profile"
         />
       </View>
+    </ScrollView>
 
+    {/* Sticky bottom action bar: design round r001-a, directive 12. */}
+    <View style={styles.stickyBar}>
       <Pressable
         style={[styles.primary,saving && styles.disabled]}
         disabled={saving}
@@ -461,7 +466,8 @@ export default function CreateMemory(){
       >
         {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.primaryText}>Save Memory</Text>}
       </Pressable>
-    </ScrollView>
+    </View>
+    </View>
   );
 }
 
@@ -469,15 +475,19 @@ const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRad
 
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:60},
+  container:{flex:1},
+  content:{padding:16,paddingBottom:110},
   centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
   title:{color:INK.ink,fontSize:28,fontWeight:"800",letterSpacing:-0.6},
   subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6},
   errorCard:{...card,padding:14,marginTop:14},
   errorText:{color:INK.ink,fontWeight:"700"},
-  label:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1,marginTop:22},
-  optional:{color:INK.inkSoft,fontWeight:"600"},
-  input:{...card,minHeight:46,paddingHorizontal:12,paddingVertical:10,color:INK.ink,marginTop:7},
+  // The field caption, in the round's uppercase sectionLabel voice. Text
+  // content stays exactly what it was ("TITLE", "WHO CAN SEE IT WHILE IT IS
+  // LIVE", ...) -- scripts/verify-memories.cjs checks those strings verbatim.
+  label:{...TYPE.sectionLabel,marginTop:22},
+  optional:{color:INK.inkSoft,fontWeight:"600",textTransform:"none",letterSpacing:0},
+  input:{...card,borderRadius:6,minHeight:46,paddingHorizontal:12,paddingVertical:10,color:INK.ink,marginTop:7},
   textarea:{minHeight:96},
   preview:{width:"100%",height:200,borderRadius:12,borderWidth:2,borderColor:INK.ink,marginTop:8},
   wrap:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:8},
@@ -498,9 +508,19 @@ const styles=StyleSheet.create({
   switchText:{flex:1},
   loader:{marginVertical:14},
   muted:{color:INK.inkSoft,padding:8},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginTop:24},
+  stickyBar:{
+    position:"absolute",
+    left:0,
+    right:0,
+    bottom:0,
+    backgroundColor:INK.card,
+    borderTopWidth:2,
+    borderTopColor:INK.ink,
+    padding:16
+  },
+  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:6},
   primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{...card,minHeight:48,justifyContent:"center",alignItems:"center",marginTop:8},
+  secondary:{...card,borderRadius:6,minHeight:48,justifyContent:"center",alignItems:"center",marginTop:8},
   secondaryText:{color:INK.ink,fontWeight:"800"},
   disabled:{opacity:0.6}
 });

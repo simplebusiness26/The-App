@@ -14,6 +14,7 @@ import {supabase} from "../services/supabase";
 import {useDrawer} from "../context/DrawerContext";
 import {visibleSections} from "../utils/drawer";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 import {managesAnyListing} from "../utils/permissions";
 
 // Packet 4: the Quick Access drawer. Replaces the /menu page.
@@ -110,7 +111,7 @@ export default function QuickAccessDrawer(){
 
         <View style={[styles.panel,{paddingBottom:insets.bottom+16,paddingTop:insets.top+14}]}>
           <View style={styles.head}>
-            <Text style={styles.title}>Quick access</Text>
+            <Text style={TYPE.display}>Quick access</Text>
             <Pressable
               style={styles.close}
               accessibilityRole="button"
@@ -126,7 +127,10 @@ export default function QuickAccessDrawer(){
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
             {sections.map((section)=>(
               <View key={section.key} style={styles.section}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <View style={styles.sectionHead}>
+                  <Text style={TYPE.sectionLabel}>{section.title}</Text>
+                  <Text style={styles.count}>{section.rows.length}</Text>
+                </View>
 
                 {section.rows.map((row)=>(
                   <Pressable
@@ -136,8 +140,8 @@ export default function QuickAccessDrawer(){
                     accessibilityLabel={row.label}
                     onPress={()=>row.action==="logout" ? logout() : go(row.route)}
                   >
-                    <Text style={styles.rowLabel}>{row.label}</Text>
-                    {!!row.detail && <Text style={styles.rowDetail}>{row.detail}</Text>}
+                    <Text style={TYPE.rowTitle}>{row.label}</Text>
+                    {!!row.detail && <Text style={TYPE.meta}>{row.detail}</Text>}
                   </Pressable>
                 ))}
               </View>
@@ -149,27 +153,28 @@ export default function QuickAccessDrawer(){
   );
 }
 
+// A printed index, not a floating sheet: squared panel, 2px rules, a right-
+// aligned count per section (design round r001-a, directive 13).
 const styles=StyleSheet.create({
   backdrop:{flex:1,flexDirection:"row",backgroundColor:"rgba(22,24,28,0.4)"},
   dismissArea:{flex:1},
   panel:{
     width:"86%",
     maxWidth:380,
-    backgroundColor:INK.paper,
+    backgroundColor:INK.card,
     borderLeftWidth:2,
     borderLeftColor:INK.ink,
     paddingHorizontal:16
   },
   head:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:10},
-  title:{fontSize:24,fontWeight:"800",letterSpacing:-0.4,color:INK.ink},
   // 44px tap target even though the mark is smaller.
   close:{width:44,height:44,alignItems:"center",justifyContent:"center"},
   closeMark:{fontSize:30,color:INK.ink,lineHeight:34},
   notice:{
-    backgroundColor:INK.card,
+    backgroundColor:INK.paper,
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:12,
+    borderRadius:4,
     padding:12,
     marginBottom:12,
     fontSize:13,
@@ -179,21 +184,21 @@ const styles=StyleSheet.create({
   scroll:{flex:1},
   scrollContent:{paddingBottom:20},
   section:{marginBottom:18},
-  sectionTitle:{
-    fontSize:12,
-    fontWeight:"800",
-    color:INK.inkSoft,
-    marginBottom:8,
-    textTransform:"uppercase",
-    letterSpacing:1
+  sectionHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    paddingBottom:6,
+    marginBottom:4,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
   },
+  count:{...TYPE.numeral,fontSize:14},
   row:{
     minHeight:48,
     justifyContent:"center",
     borderBottomWidth:1,
     borderBottomColor:INK.hair,
     paddingVertical:11
-  },
-  rowLabel:{fontSize:16,fontWeight:"600",color:INK.ink},
-  rowDetail:{fontSize:12,lineHeight:17,color:INK.inkSoft,marginTop:3}
+  }
 });

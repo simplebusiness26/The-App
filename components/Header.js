@@ -6,12 +6,39 @@ import {
   StyleSheet,
   Platform
 } from "react-native";
+import Svg,{Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {SafeAreaInsetsContext} from "react-native-safe-area-context";
 import {useNotifications} from "../context/NotificationContext";
 import {useDrawer} from "../context/DrawerContext";
 import {isRootScreen} from "../utils/navigation";
 import {INK} from "../utils/tokens";
+
+// A stroked bell on the same 16x16 canvas convention as TabBar's ICONS set --
+// the emoji it replaces rendered as a different weight and colour on every
+// platform, which is exactly what the glyph system elsewhere in the shell
+// exists to avoid.
+function BellIcon(){
+  return(
+    <Svg width={16} height={16} viewBox="0 0 16 16">
+      <Path
+        d="M8 2.4c-2 0-3.4 1.6-3.4 3.8v1.7c0 .7-.3 1.4-.8 1.9l-.5.6h9.4l-.5-.6c-.5-.5-.8-1.2-.8-1.9V6.2c0-2.2-1.4-3.8-3.4-3.8z"
+        fill="none"
+        stroke={INK.ink}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M6.5 12.6a1.5 1.5 0 0 0 3 0"
+        fill="none"
+        stroke={INK.ink}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
 
 // The header, rebuilt.
 //
@@ -130,7 +157,7 @@ export default function Header(){
           hitSlop={8}
           onPress={()=>router.push("/notifications")}
         >
-          <Text style={styles.bell}>🔔</Text>
+          <BellIcon/>
           {unreadCount>0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount>99 ? "99+" : unreadCount}</Text>
@@ -181,13 +208,20 @@ const styles=StyleSheet.create({
   chip:{
     width:40,
     height:40,
-    borderRadius:20,
+    borderRadius:8,
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.card,
     borderWidth:2,
     borderColor:INK.ink,
-    position:"relative"
+    position:"relative",
+    // The same hard offset shadow the raised tab button carries -- one print
+    // register for every raised control in the shell.
+    shadowColor:INK.ink,
+    shadowOffset:{width:3,height:3},
+    shadowOpacity:1,
+    shadowRadius:0,
+    elevation:0
   },
   icon:{
     fontSize:22,
@@ -195,7 +229,6 @@ const styles=StyleSheet.create({
     color:INK.ink,
     lineHeight:26
   },
-  bell:{fontSize:18},
   // Ink on card, bordered like every other raised shape. Not one of the three
   // inks: a count of unread notifications is not a state a place is in.
   badge:{

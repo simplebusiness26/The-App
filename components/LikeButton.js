@@ -87,15 +87,18 @@ export default function LikeButton({targetType,targetId,viewerId=null,initialCou
       disabled={working}
       onPress={toggle}
     >
-      {working ? <ActivityIndicator size="small" color={liked?INK.pink:INK.inkSoft}/> : <Text style={[styles.icon,liked && styles.likedIcon]}>{liked ? "♥" : "♡"}</Text>}
+      {working ? <ActivityIndicator size="small" color={liked?INK.ink:INK.inkSoft}/> : <Text style={[styles.icon,liked && styles.likedIcon]}>{liked ? "♥" : "♡"}</Text>}
       <Text style={[styles.text,liked && styles.likedText]}>{count}</Text>
     </Pressable>
   );
 }
 
+// Squared, 2px-bordered, gazetteer round (r001-a): liked is ink fill with card
+// text, not pink -- pink is a place-state ink and arrives only through the
+// marker system, never as decoration on a control.
 const styles=StyleSheet.create({
-  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
-  likedButton:{backgroundColor:INK.red,borderColor:INK.red},
+  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:6,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink},
+  likedButton:{backgroundColor:INK.ink,borderColor:INK.ink},
   icon:{color:INK.ink,fontSize:20,lineHeight:20},
   likedIcon:{color:INK.card},
   text:{color:INK.ink,fontSize:12,fontWeight:"900"},

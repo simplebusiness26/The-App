@@ -167,19 +167,24 @@ export default function FollowButton({profileId,onChanged,compact=false}){
   );
 }
 
+// Squared, 2px-bordered, gazetteer round (r001-a): ink fill rather than blue --
+// blue is a place-state ink and arrives only through the marker system, never
+// as decoration on a control.
 const styles=StyleSheet.create({
   button:{
     minWidth:118,
     minHeight:44,
     paddingHorizontal:20,
     paddingVertical:12,
-    borderRadius:13,
-    backgroundColor:INK.blue,
+    borderRadius:6,
+    backgroundColor:INK.ink,
+    borderWidth:2,
+    borderColor:INK.ink,
     alignItems:"center",
     justifyContent:"center"
   },
-  compact:{minWidth:92,minHeight:38,paddingHorizontal:14,paddingVertical:9,borderRadius:11},
-  following:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1},
+  compact:{minWidth:92,minHeight:38,paddingHorizontal:14,paddingVertical:9,borderRadius:6},
+  following:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2},
   disabled:{opacity:0.65},
   text:{color:INK.card,fontWeight:"900",fontSize:14},
   followingText:{color:INK.ink}

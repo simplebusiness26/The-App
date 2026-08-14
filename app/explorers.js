@@ -4,6 +4,13 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FollowButton from "../components/FollowButton";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
+
+// GAZETTEER PASS (design round r001-a, directive 10): the Explorer directory,
+// re-set as an index -- a section header carrying the count over a 2px rule,
+// then one-line ledger rows with a hairline between them, in place of padded
+// bordered cards. Same query, same search, same route -- only how it is
+// drawn changed.
 
 function Avatar({profile}){
   if(profile.profile_photo){
@@ -67,11 +74,9 @@ export default function Explorers(){
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.heading}>
-        <Text style={styles.eyebrow}>EXPLORER COMMUNITY</Text>
-        <Text style={styles.title}>Find Explorers</Text>
-        <Text style={styles.subtitle}>Follow people whose reviews and Moments you want to see in your feed.</Text>
-      </View>
+      <Text style={TYPE.sectionLabel}>Explorer Community</Text>
+      <Text style={TYPE.display}>Find Explorers</Text>
+      <Text style={styles.lead}>Follow people whose reviews and Moments you want to see in your feed.</Text>
 
       <TextInput
         value={query}
@@ -81,28 +86,38 @@ export default function Explorers(){
         style={styles.search}
         maxLength={80}
         autoCapitalize="none"
+        accessibilityLabel="Search Explorers by name or area"
       />
 
-      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>} 
-      {!loading && !!error && <View style={styles.empty}><Text style={styles.emptyTitle}>Could not load Explorers</Text><Text style={styles.emptyText}>{error}</Text></View>}
-      {!loading && !error && filtered.length===0 && <View style={styles.empty}><Text style={styles.emptyTitle}>No Explorers found</Text><Text style={styles.emptyText}>Try a different name or area.</Text></View>}
+      {loading && <ActivityIndicator size="large" color={INK.ink} style={styles.loader}/>}
 
-      {!loading && !error && filtered.map(profile=>(
-        <View key={profile.id} style={styles.card}>
-          <Pressable style={styles.profileLink} onPress={()=>router.push(`/profile/${profile.id}`)}>
-            <Avatar profile={profile}/>
-            <View style={styles.profileText}>
-              <Text style={styles.name}>{profile.full_name || "Explorer"}</Text>
-              {!!profile.show_area && !!profile.area?.trim() && <Text style={styles.area}>📍 {profile.area.trim()}</Text>}
-              {!!profile.bio && <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>}
+      {!loading && !!error && <Text style={styles.emptyText}>{error}</Text>}
+
+      {!loading && !error && (
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Text style={TYPE.sectionLabel}>Explorers</Text>
+            <Text style={styles.count}>{filtered.length}</Text>
+          </View>
+
+          {filtered.length===0 ? (
+            <Text style={styles.emptyText}>No Explorers found. Try a different name or area.</Text>
+          ) : filtered.map(profile=>(
+            <View key={profile.id} style={styles.row}>
+              <Pressable style={styles.profileLink} onPress={()=>router.push(`/profile/${profile.id}`)}>
+                <Avatar profile={profile}/>
+                <View style={styles.textCol}>
+                  <Text style={TYPE.rowTitle} numberOfLines={1}>{profile.full_name || "Explorer"}</Text>
+                  <Text style={TYPE.meta} numberOfLines={1}>
+                    {profile.show_area && profile.area?.trim() ? profile.area.trim() : ""}
+                  </Text>
+                  {!!profile.bio && <Text style={styles.bio} numberOfLines={1}>{profile.bio}</Text>}
+                </View>
+              </Pressable>
+              <FollowButton profileId={profile.id} compact/>
             </View>
-          </Pressable>
-          <FollowButton profileId={profile.id} compact/>
+          ))}
         </View>
-      ))}
-
-      {!loading && !error && profiles.length>0 && (
-        <Text style={styles.resultCount}>{filtered.length} Explorer{filtered.length===1 ? "" : "s"}</Text>
       )}
     </ScrollView>
   );
@@ -110,24 +125,44 @@ export default function Explorers(){
 
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:60},
-  heading:{marginBottom:18},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
-  title:{color:INK.ink,fontSize:31,fontWeight:"900",marginTop:5},
-  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,maxWidth:520},
-  search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:14,color:INK.ink,fontSize:16,paddingHorizontal:15,paddingVertical:14,marginBottom:16},
+  content:{padding:20,paddingBottom:60},
+  lead:{fontSize:14,lineHeight:21,color:INK.inkSoft,marginTop:6,maxWidth:520},
+  search:{
+    backgroundColor:INK.card,
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:4,
+    paddingHorizontal:14,
+    paddingVertical:13,
+    marginTop:16,
+    color:INK.ink,
+    fontSize:15
+  },
   loader:{marginTop:45},
-  card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12},
-  profileLink:{flex:1,flexDirection:"row",alignItems:"center"},
-  avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.card},
-  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontSize:21,fontWeight:"900"},
-  profileText:{flex:1,marginLeft:12,paddingRight:8},
-  name:{color:INK.ink,fontSize:17,fontWeight:"900"},
-  area:{color:INK.inkSoft,fontSize:12,marginTop:3},
-  bio:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
-  empty:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:24,alignItems:"center",marginTop:15},
-  emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900"},
-  emptyText:{color:INK.inkSoft,textAlign:"center",marginTop:6},
-  resultCount:{color:INK.inkSoft,textAlign:"center",fontSize:12,marginTop:12}
+  section:{marginTop:20},
+  sectionHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    paddingBottom:6,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  count:{...TYPE.numeral,fontSize:16},
+  emptyText:{...TYPE.meta,paddingVertical:12},
+  row:{
+    flexDirection:"row",
+    alignItems:"center",
+    minHeight:56,
+    paddingVertical:9,
+    gap:10,
+    borderBottomWidth:1,
+    borderBottomColor:INK.hair
+  },
+  profileLink:{flex:1,flexDirection:"row",alignItems:"center",gap:10},
+  avatar:{width:40,height:40,borderRadius:4,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink},
+  avatarFallback:{width:40,height:40,borderRadius:4,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
+  avatarLetter:{color:INK.ink,fontSize:15,fontWeight:"900"},
+  textCol:{flex:1},
+  bio:{...TYPE.meta,color:INK.inkSoft,marginTop:1}
 });

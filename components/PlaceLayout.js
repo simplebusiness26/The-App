@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import {router} from "expo-router";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 import ReviewActions from "./ReviewActions";
 
 // Packet 5a: the shared place page.
@@ -86,64 +87,113 @@ export default function PlaceLayout({
     );
   }
 
+  // The meta strip: type and a short rating summary, side by side on one
+  // ruled line. `stats` (a club's members/spaces/score) replaces the simple
+  // average -- those get their own oversized numerals below rather than a
+  // string that would not fit here.
+  const metaParts=[];
+  if(typeLabel) metaParts.push({key:"type",text:typeLabel});
+  if(!stats && rating){
+    metaParts.push({
+      key:"rating",
+      text:rating.count>0
+        ? `★ ${rating.average} · ${rating.count} ${rating.count===1 ? "review" : "reviews"}`
+        : "No reviews yet"
+    });
+  }
+
+  const infoItems=info.filter((item)=>item && item.value);
+  const statList=stats || (rating ? [
+    {value:rating.average || "—",label:"Average rating"},
+    {value:rating.count,label:rating.count===1 ? "Review" : "Reviews"}
+  ] : null);
+
   return(
     <>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {showPhotos && (photos.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
-            {photos.map((photo,index)=>(
-              <Pressable key={`${photo}-${index}`} onPress={()=>setSelectedPhoto(photo)}>
-                <Image source={{uri:photo}} style={styles.heroPhoto}/>
-              </Pressable>
+        {/* THE MASTHEAD. Name leads, oversized, the way a gazetteer entry
+            opens with the headword rather than a picture. */}
+        <View style={styles.nameRow}>
+          <Text style={TYPE.display} numberOfLines={3}>{name}</Text>
+          {ownerAction}
+        </View>
+
+        {(!!metaParts.length || !!verifiedLabel) && (
+          <View style={styles.metaStrip}>
+            {metaParts.map((part,index)=>(
+              <React.Fragment key={part.key}>
+                {index>0 && <Text style={styles.metaDot}> · </Text>}
+                <Text style={styles.metaPart} numberOfLines={1}>{part.text}</Text>
+              </React.Fragment>
             ))}
-          </ScrollView>
+            {!!verifiedLabel && <Text style={styles.verified}>{verifiedLabel}</Text>}
+          </View>
+        )}
+
+        {showPhotos && (photos.length ? (
+          <>
+            <Pressable onPress={()=>setSelectedPhoto(photos[0])}>
+              <Image source={{uri:photos[0]}} style={styles.heroPhoto}/>
+            </Pressable>
+            {/* The rest of the photos, if there are any -- a wrapped grid
+                rather than a sideways scroll. Every photo stays reachable,
+                nothing about them scrolls off to the side. */}
+            {photos.length>1 && (
+              <View style={styles.photoGrid}>
+                {photos.slice(1).map((photo,index)=>(
+                  <Pressable key={`${photo}-${index}`} onPress={()=>setSelectedPhoto(photo)}>
+                    <Image source={{uri:photo}} style={styles.photoThumb}/>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </>
         ) : (
           <View style={styles.photoFallback}>
             <Text style={styles.muted}>{photosEmptyLabel}</Text>
           </View>
         ))}
 
-        <View style={styles.card}>
-          <View style={styles.titleRow}>
-            <View style={styles.titleText}>
-              <Text style={styles.title}>{name}</Text>
-              {!!typeLabel && <Text style={styles.type}>{typeLabel}</Text>}
-              {!!verifiedLabel && <Text style={styles.verified}>{verifiedLabel}</Text>}
-            </View>
-            {ownerAction}
+        {!!statList && (
+          <View style={styles.statsRow}>
+            {statList.map((stat)=>(
+              <View key={stat.label} style={styles.statCard}>
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
+        )}
 
-          {!!description && <Text style={styles.description}>{description}</Text>}
+        {rating?.favourite}
 
-          {info.filter((item)=>item && item.value).map((item)=>(
-            <View key={item.label} style={styles.infoCard}>
-              <Text style={styles.infoLabel}>{item.label}</Text>
-              <Text style={styles.infoText}>{item.value}</Text>
+        {!!description && (
+          <View style={styles.section}>
+            <View style={styles.sectionHead}><Text style={styles.sectionTitle}>About</Text></View>
+            <Text style={styles.description}>{description}</Text>
+          </View>
+        )}
+
+        {!!infoItems.length && (
+          <View style={styles.section}>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Details</Text>
+              <Text style={styles.reviewCount}>{infoItems.length}</Text>
             </View>
-          ))}
-
-          {!!(stats || rating) && (
-            <View style={styles.statsRow}>
-              {(stats || [
-                {value:rating.average || "—",label:"Average rating"},
-                {value:rating.count,label:rating.count===1 ? "Review" : "Reviews"}
-              ]).map((stat)=>(
-                <View key={stat.label} style={styles.statCard}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {rating?.favourite}
-        </View>
+            {infoItems.map((item)=>(
+              <View key={item.label} style={styles.infoCard}>
+                <Text style={styles.infoLabel}>{item.label}</Text>
+                <Text style={styles.infoText}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {beforeActions}
 
         {!!actions && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Actions</Text>
+            <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Actions</Text></View>
             {actions}
           </View>
         )}
@@ -179,7 +229,10 @@ export default function PlaceLayout({
 
         {!!similar.length && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{similarLabel}</Text>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>{similarLabel}</Text>
+              <Text style={styles.reviewCount}>{similar.length}</Text>
+            </View>
             {similar.map((item)=>(
               <Pressable
                 key={item.id}
@@ -345,32 +398,58 @@ const styles=StyleSheet.create({
   centreText:{color:INK.inkSoft,marginTop:10},
   errorText:{color:INK.ink,fontSize:17,textAlign:"center",lineHeight:24},
 
-  photoRow:{paddingRight:4,marginBottom:15},
-  heroPhoto:{width:285,height:195,borderRadius:12,marginRight:11,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card},
-  photoFallback:{...card,height:130,alignItems:"center",justifyContent:"center",marginBottom:15},
+  // Full-width, not a card in a sideways strip -- the masthead's hero, with a
+  // wrapped grid underneath it for anything beyond the first photo rather
+  // than a horizontal scroll (design round r001-a bans reintroducing one).
+  heroPhoto:{width:"100%",height:220,borderRadius:0,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,marginTop:14},
+  photoGrid:{flexDirection:"row",flexWrap:"wrap",gap:8,marginTop:8},
+  photoThumb:{width:72,height:72,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card},
+  photoFallback:{...card,height:130,alignItems:"center",justifyContent:"center",marginTop:14},
 
-  card:{...card,padding:18},
-  titleRow:{flexDirection:"row",alignItems:"flex-start"},
+  nameRow:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:10},
   titleText:{flex:1},
-  title:{color:INK.ink,fontSize:28,fontWeight:"800",letterSpacing:-0.6},
-  type:{color:INK.inkSoft,fontSize:13,fontWeight:"800",marginTop:6,textTransform:"uppercase",letterSpacing:1},
-  verified:{alignSelf:"flex-start",color:INK.ink,borderWidth:2,borderColor:INK.ink,paddingHorizontal:8,paddingVertical:3,borderRadius:99,overflow:"hidden",fontSize:10,fontWeight:"800",marginTop:9},
-  description:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:14},
+  metaStrip:{
+    flexDirection:"row",
+    flexWrap:"wrap",
+    alignItems:"center",
+    marginTop:8,
+    paddingVertical:8,
+    borderTopWidth:1,borderTopColor:INK.hair,
+    borderBottomWidth:1,borderBottomColor:INK.hair
+  },
+  metaPart:{...TYPE.meta},
+  metaDot:{...TYPE.meta},
+  verified:{alignSelf:"flex-start",color:INK.ink,borderWidth:2,borderColor:INK.ink,paddingHorizontal:8,paddingVertical:3,borderRadius:4,overflow:"hidden",fontSize:10,fontWeight:"800",marginLeft:8},
+  description:{...TYPE.body,marginTop:8},
 
   infoCard:{borderTopWidth:1,borderTopColor:INK.hair,paddingTop:11,marginTop:12},
-  infoLabel:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1},
+  infoLabel:{...TYPE.sectionLabel},
   infoText:{color:INK.ink,fontSize:14,lineHeight:20,marginTop:5},
 
   statsRow:{flexDirection:"row",gap:9,marginTop:14},
-  statCard:{flex:1,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:13,alignItems:"center"},
-  statValue:{color:INK.ink,fontSize:22,fontWeight:"800"},
+  statCard:{flex:1,borderWidth:2,borderColor:INK.ink,borderRadius:4,padding:13,alignItems:"center"},
+  statValue:{...TYPE.numeral},
   statLabel:{color:INK.inkSoft,fontSize:11,fontWeight:"700",marginTop:3},
 
   section:{marginTop:24},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginBottom:11,letterSpacing:-0.3},
+  // The rule a section opens on -- a full-width row so it spans the heading
+  // and, where there is one, the count beside it.
+  sectionHead:{
+    flexDirection:"row",
+    justifyContent:"space-between",
+    alignItems:"flex-end",
+    paddingBottom:6,
+    marginBottom:11,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  sectionTitle:{...TYPE.sectionLabel},
 
-  reviewHeading:{flexDirection:"row",justifyContent:"space-between",alignItems:"center"},
-  reviewCount:{color:INK.inkSoft,fontWeight:"800",marginBottom:11},
+  reviewHeading:{
+    flexDirection:"row",justifyContent:"space-between",alignItems:"flex-end",
+    paddingBottom:6,marginBottom:11,borderBottomWidth:2,borderBottomColor:INK.ink
+  },
+  reviewCount:{...TYPE.numeral,fontSize:16},
   emptyCard:{...card,padding:18,alignItems:"center"},
   emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:5},
   muted:{color:INK.inkSoft,textAlign:"center",lineHeight:20},

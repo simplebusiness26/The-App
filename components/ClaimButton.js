@@ -308,15 +308,17 @@ const styles=StyleSheet.create({
 
 button:{
 backgroundColor:INK.card,
+borderWidth:2,
+borderColor:INK.ink,
 padding:15,
-borderRadius:10,
+borderRadius:6,
 marginTop:20
 },
 
 text:{
 color:INK.ink,
 textAlign:"center",
-fontWeight:"bold"
+fontWeight:"800"
 }
 
 });

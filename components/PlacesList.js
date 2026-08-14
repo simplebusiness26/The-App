@@ -7,8 +7,11 @@ import {CARD_KINDS,toCard} from "../utils/placeCards";
 import {classificationLabel} from "../utils/taxonomy";
 import {markerForActivity} from "../utils/markers";
 import {ACTIVITY_STATE_SENTENCE,TIME_WINDOWS} from "../utils/liveActivity";
-import {useLivingMap} from "../hooks/useLivingMap";
+import {useLivingMap,DEFAULT_CENTRE} from "../hooks/useLivingMap";
+import {nearestFirst} from "../utils/geo";
+import {calculateDistance} from "../utils/location";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 
 // The list view of the Living Map.
 //
@@ -20,6 +23,23 @@ import {INK} from "../utils/tokens";
 // will not load, it is the better surface for a screen reader, and browsing
 // what is near you without a map is a real way to use this app. What it is no
 // longer is a substitute for being unable to draw one.
+//
+// GAZETTEER PASS (design round r001-a, directive 6): one-line ledger rows
+// instead of padded cards, ordered nearest-first via utils/geo.js's
+// distanceRank, with the real figure alongside it from utils/location.js's
+// haversine -- the pure "X km away" arithmetic that already existed here with
+// nothing presenting it. DEFAULT_CENTRE is the same fixed reference point the
+// map itself opens on, so this asks for no location permission and reads no
+// device position; a row with no coordinates still sorts last and shows a
+// dash rather than a distance nobody has.
+
+function distanceLabel(row){
+  const lat=Number(row?.latitude);
+  const lng=Number(row?.longitude);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return "—";
+  const km=calculateDistance(DEFAULT_CENTRE.latitude,DEFAULT_CENTRE.longitude,lat,lng);
+  return `${km.toFixed(1)} km`;
+}
 
 // Each window gets its own sentence. "Nothing here yet" is banned, and a single
 // generic line would be the same mood in three costumes.
@@ -27,6 +47,19 @@ function emptyActivityInstruction(timeWindow){
   if(timeWindow==="tonight") return "Nothing is on tonight yet. Start a Link-up and it will show here.";
   if(timeWindow==="weekend") return "The weekend is open. Create an Event or a Link-up to put something on it.";
   return "Nothing is happening this minute. Check in somewhere or start a Link-up to change that.";
+}
+
+function Row({marker,name,meta,distance,accessibilityLabel,onPress}){
+  return(
+    <Pressable style={styles.row} accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress}>
+      <PlaceMarker marker={marker} size={26}/>
+      <View style={styles.rowText}>
+        <Text style={TYPE.rowTitle} numberOfLines={1}>{name}</Text>
+        {!!meta && <Text style={TYPE.meta} numberOfLines={1}>{meta}</Text>}
+      </View>
+      <Text style={styles.distance} numberOfLines={1}>{distance}</Text>
+    </Pressable>
+  );
 }
 
 export default function PlacesList({header}){
@@ -48,9 +81,11 @@ export default function PlacesList({header}){
 
   // The hook returns one filtered list with a `kind` on each row. The sections
   // below want them split, and splitting a list is not a second read model.
-  const filteredBusinesses=map.places.filter((row)=>row.kind===CARD_KINDS.BUSINESS);
-  const filteredProperties=map.places.filter((row)=>row.kind===CARD_KINDS.PROPERTY);
-  const filteredClubs=map.places.filter((row)=>row.kind===CARD_KINDS.CLUB);
+  // Nearest first, from the same fixed reference the map opens on -- a row
+  // with no coordinates sorts last rather than vanishing.
+  const filteredBusinesses=nearestFirst(DEFAULT_CENTRE,map.places.filter((row)=>row.kind===CARD_KINDS.BUSINESS));
+  const filteredProperties=nearestFirst(DEFAULT_CENTRE,map.places.filter((row)=>row.kind===CARD_KINDS.PROPERTY));
+  const filteredClubs=nearestFirst(DEFAULT_CENTRE,map.places.filter((row)=>row.kind===CARD_KINDS.CLUB));
 
   const visibleActivity=map.activity;
 
@@ -80,7 +115,10 @@ export default function PlacesList({header}){
         second question had no answer anywhere on the map. A section below the
         business list would technically answer it and would never be seen.
       */}
-      <Text style={styles.section}>Happening</Text>
+      <View style={styles.sectionHead}>
+        <Text style={TYPE.sectionLabel}>Happening</Text>
+        <Text style={styles.count}>{visibleActivity.length}</Text>
+      </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categories}>
         {TIME_WINDOWS.map(({key,label})=>(
@@ -98,70 +136,73 @@ export default function PlacesList({header}){
 
       {visibleActivity.length
         ? visibleActivity.map(item=>(
-          <Pressable
+          <Row
             key={item.key}
-            style={styles.card}
-            accessibilityRole="button"
+            marker={markerForActivity(item)}
+            name={item.title}
+            meta={`${ACTIVITY_STATE_SENTENCE[item.state]} ${item.subtitle || ""}`.trim()}
+            distance={distanceLabel(item)}
             accessibilityLabel={`${item.title}. ${ACTIVITY_STATE_SENTENCE[item.state]}`}
             onPress={()=>item.deepLink && router.push(item.deepLink)}
-          >
-            <View style={styles.cardRow}>
-              <PlaceMarker marker={markerForActivity(item)} size={30}/>
-              <View style={styles.cardText}>
-                <Text style={styles.name}>{item.title}</Text>
-                <Text>{ACTIVITY_STATE_SENTENCE[item.state]}</Text>
-                <Text style={styles.address}>{item.subtitle}</Text>
-              </View>
-            </View>
-          </Pressable>
+          />
         ))
         : (
           // An empty state is an instruction, not a mood (design-system.md).
-          <View style={styles.card}>
-            <Text>{emptyActivityInstruction(timeWindow)}</Text>
-          </View>
+          <Text style={styles.emptyText}>{emptyActivityInstruction(timeWindow)}</Text>
         )}
 
       {(typeFilter==="all" || typeFilter==="business") && <>
-        <Text style={styles.section}>Businesses</Text>
-        {filteredBusinesses.map(place=><Pressable key={place.id} style={styles.card} accessibilityRole="button" accessibilityLabel={place.name} onPress={()=>setOpenKey(`${CARD_KINDS.BUSINESS}-${place.id}`)}>
-          <View style={styles.cardRow}>
-            <PlaceMarker marker={toCard(CARD_KINDS.BUSINESS,place).marker} size={30}/>
-            <View style={styles.cardText}>
-              <Text style={styles.name}>{place.name}</Text>
-              <Text>{classificationLabel(place)}</Text>
-              <Text style={styles.address}>{place.address}</Text>
-            </View>
-          </View>
-        </Pressable>)}
+        <View style={styles.sectionHead}>
+          <Text style={TYPE.sectionLabel}>Businesses</Text>
+          <Text style={styles.count}>{filteredBusinesses.length}</Text>
+        </View>
+        {filteredBusinesses.map(place=>(
+          <Row
+            key={place.id}
+            marker={toCard(CARD_KINDS.BUSINESS,place).marker}
+            name={place.name}
+            meta={`${classificationLabel(place)}${place.address ? ` · ${place.address}` : ""}`}
+            distance={distanceLabel(place)}
+            accessibilityLabel={place.name}
+            onPress={()=>setOpenKey(`${CARD_KINDS.BUSINESS}-${place.id}`)}
+          />
+        ))}
       </>}
 
       {(typeFilter==="all" || typeFilter==="property") && <>
-        <Text style={styles.section}>Properties</Text>
-        {filteredProperties.map(property=><Pressable key={property.id} style={styles.card} accessibilityRole="button" accessibilityLabel={property.name} onPress={()=>setOpenKey(`${CARD_KINDS.PROPERTY}-${property.id}`)}>
-          <View style={styles.cardRow}>
-            <PlaceMarker marker={toCard(CARD_KINDS.PROPERTY,property).marker} size={30}/>
-            <View style={styles.cardText}>
-              <Text style={styles.name}>{property.name}</Text>
-              <Text>{property.host}</Text>
-              <Text style={styles.address}>{property.address}</Text>
-            </View>
-          </View>
-        </Pressable>)}
+        <View style={styles.sectionHead}>
+          <Text style={TYPE.sectionLabel}>Properties</Text>
+          <Text style={styles.count}>{filteredProperties.length}</Text>
+        </View>
+        {filteredProperties.map(property=>(
+          <Row
+            key={property.id}
+            marker={toCard(CARD_KINDS.PROPERTY,property).marker}
+            name={property.name}
+            meta={`${property.host || ""}${property.address ? ` · ${property.address}` : ""}`}
+            distance={distanceLabel(property)}
+            accessibilityLabel={property.name}
+            onPress={()=>setOpenKey(`${CARD_KINDS.PROPERTY}-${property.id}`)}
+          />
+        ))}
       </>}
 
       {(typeFilter==="all" || typeFilter==="activity") && <>
-        <Text style={styles.section}>Activity Clubs</Text>
-        {filteredClubs.map(club=><Pressable key={club.id} style={styles.card} accessibilityRole="button" accessibilityLabel={club.name} onPress={()=>setOpenKey(`${CARD_KINDS.CLUB}-${club.id}`)}>
-          <View style={styles.cardRow}>
-            <PlaceMarker marker={toCard(CARD_KINDS.CLUB,club).marker} size={30}/>
-            <View style={styles.cardText}>
-              <Text style={styles.name}>{club.name}</Text>
-              <Text>{club.category} · {club.status}</Text>
-              <Text style={styles.address}>{club.address || club.location}</Text>
-            </View>
-          </View>
-        </Pressable>)}
+        <View style={styles.sectionHead}>
+          <Text style={TYPE.sectionLabel}>Activity Clubs</Text>
+          <Text style={styles.count}>{filteredClubs.length}</Text>
+        </View>
+        {filteredClubs.map(club=>(
+          <Row
+            key={club.id}
+            marker={toCard(CARD_KINDS.CLUB,club).marker}
+            name={club.name}
+            meta={`${club.category} · ${club.status}`}
+            distance={distanceLabel(club)}
+            accessibilityLabel={club.name}
+            onPress={()=>setOpenKey(`${CARD_KINDS.CLUB}-${club.id}`)}
+          />
+        ))}
       </>}
 
       {/* The same panel the map opens, so the two surfaces cannot grow two
@@ -172,5 +213,50 @@ export default function PlacesList({header}){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},content:{padding:20,paddingBottom:50},search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:10,padding:15,marginTop:20},categories:{marginTop:15,maxHeight:48},category:{borderWidth:1,borderColor:INK.hair,borderRadius:20,paddingHorizontal:13,paddingVertical:10,marginRight:8,backgroundColor:INK.card},selectedCategory:{backgroundColor:INK.ink,borderColor:INK.ink},categoryText:{color:INK.ink,fontWeight:"600"},selectedCategoryText:{color:INK.card,fontWeight:"bold"},section:{fontSize:22,fontWeight:"bold",marginTop:25},card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:10,padding:15,marginTop:10},cardRow:{flexDirection:"row",alignItems:"center",gap:12},cardText:{flex:1},name:{fontSize:18,fontWeight:"bold"},address:{color:INK.inkSoft,marginTop:5}
+  container:{flex:1,backgroundColor:INK.paper},
+  content:{padding:20,paddingBottom:50},
+  search:{
+    backgroundColor:INK.card,
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:4,
+    padding:13,
+    marginTop:20,
+    color:INK.ink
+  },
+  categories:{marginTop:12,maxHeight:44},
+  category:{
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:4,
+    paddingHorizontal:12,
+    paddingVertical:9,
+    marginRight:8,
+    backgroundColor:INK.card
+  },
+  selectedCategory:{backgroundColor:INK.ink,borderColor:INK.ink},
+  categoryText:{color:INK.ink,fontWeight:"700",fontSize:12},
+  selectedCategoryText:{color:INK.card,fontWeight:"800",fontSize:12},
+  sectionHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    marginTop:22,
+    paddingBottom:6,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  count:{...TYPE.numeral,fontSize:16},
+  emptyText:{...TYPE.meta,paddingVertical:12},
+  row:{
+    flexDirection:"row",
+    alignItems:"center",
+    minHeight:52,
+    paddingVertical:8,
+    gap:10,
+    borderBottomWidth:1,
+    borderBottomColor:INK.hair
+  },
+  rowText:{flex:1},
+  distance:{...TYPE.numeral,fontSize:13}
 });

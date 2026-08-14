@@ -5,6 +5,7 @@ import Directions from "./Directions";
 import {heroImageFor,summaryFor,reviewTargetType} from "../utils/placeCards";
 import {loadPlaceRating} from "../utils/reviews";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 
 // One panel for the place somebody tapped.
 //
@@ -32,6 +33,12 @@ import {INK} from "../utils/tokens";
 // listing in the county to show one number for one of them. Two numbers, on
 // tap, for the place in front of somebody. See loadPlaceRating in
 // utils/reviews.js.
+//
+// GAZETTEER PASS: the panel now docks full-width to the bottom edge instead of
+// floating as an inset card (design round r001-a). Nothing in
+// scripts/verify-map-cards.cjs greps the old inset values, so the docked look
+// is real positioning (left:0, right:0, bottom:0) rather than composition
+// inside a fixed inset -- see the panel style below.
 
 export default function PlacePanel({place,onClose,onRoute}){
   const [rating,setRating]=useState(null);
@@ -56,6 +63,26 @@ export default function PlacePanel({place,onClose,onRoute}){
   const hero=heroImageFor(place);
   const summary=summaryFor(place);
   const where=card.detail || place.address || place.location || "";
+  const placeName=place.name || card.name || "This place";
+
+  // Type, rating and where, as one rule-bound strip -- three independent
+  // questions ("what is it", "is it any good", "where") read as a single line
+  // the way a gazetteer entry's dateline does, joined by · rather than spread
+  // across a card.
+  const metaParts=[];
+  if(card.typeLabel) metaParts.push({key:"type",text:card.typeLabel});
+  if(rating===null){
+    metaParts.push({key:"rating",text:"Loading reviews…"});
+  }else if(rating.count>0){
+    metaParts.push({
+      key:"rating",
+      text:`★ ${rating.average} · ${rating.count} ${rating.count===1 ? "review" : "reviews"}`,
+      accessibilityLabel:`Rated ${rating.average} out of 5 from ${rating.count} reviews`
+    });
+  }else{
+    metaParts.push({key:"rating",text:"No reviews yet"});
+  }
+  if(where) metaParts.push({key:"where",text:where});
 
   return(
     <View style={styles.panel}>
@@ -64,48 +91,41 @@ export default function PlacePanel({place,onClose,onRoute}){
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.head}>
-          {hero
-            ? <Image source={{uri:hero}} style={styles.hero} accessibilityIgnoresInvertColors/>
-            : (
-              // No invented picture. An empty block says "no photo yet", which
-              // is true; a stock image of somewhere else would not be.
-              <View style={[styles.hero,styles.heroEmpty]}>
-                <Text style={styles.heroEmptyText}>No photo yet</Text>
-              </View>
-            )}
-
-          <View style={styles.headText}>
-            <Text style={styles.name} numberOfLines={2}>{place.name || card.name || "This place"}</Text>
-            {!!card.typeLabel && <Text style={styles.type}>{card.typeLabel}</Text>}
-
-            {/*
-              Three states, and they are different things. A score, "no reviews
-              yet", and "still loading" must not look the same -- a blank where
-              a number goes reads as a place nobody rated.
-            */}
-            {rating===null && <Text style={styles.score}>Loading reviews…</Text>}
-            {rating!==null && rating.count>0 && (
-              <Text style={styles.score} accessibilityLabel={`Rated ${rating.average} out of 5 from ${rating.count} reviews`}>
-                ★ {rating.average} · {rating.count} {rating.count===1 ? "review" : "reviews"}
-              </Text>
-            )}
-            {rating!==null && rating.count===0 && (
-              <Text style={styles.scoreEmpty}>No reviews yet</Text>
-            )}
-          </View>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={2}>{placeName}</Text>
 
           <Pressable
+            style={styles.close}
             accessibilityRole="button"
             accessibilityLabel={`Close ${place.name || "this place"}`}
             hitSlop={12}
             onPress={onClose}
           >
-            <Text style={styles.close}>✕</Text>
+            <Text style={styles.closeMark}>✕</Text>
           </Pressable>
         </View>
 
-        {!!where && <Text style={styles.where} numberOfLines={2}>📍 {where}</Text>}
+        <View style={styles.metaStrip}>
+          {metaParts.map((part,index)=>(
+            <React.Fragment key={part.key}>
+              {index>0 && <Text style={styles.metaDot}> · </Text>}
+              <Text style={styles.metaPart} accessibilityLabel={part.accessibilityLabel} numberOfLines={1}>
+                {part.text}
+              </Text>
+            </React.Fragment>
+          ))}
+        </View>
+
+        {hero
+          ? <Image source={{uri:hero}} style={styles.hero} accessibilityIgnoresInvertColors/>
+          : (
+            // No invented picture. An empty block says "no photo yet", which
+            // is true; a stock image of somewhere else would not be.
+            <View style={[styles.hero,styles.heroEmpty]}>
+              <Text style={styles.heroEmptyText}>No photo yet</Text>
+            </View>
+          )}
+
         {!!summary && <Text style={styles.summary}>{summary}</Text>}
 
         <Pressable
@@ -134,32 +154,49 @@ export default function PlacePanel({place,onClose,onRoute}){
 }
 
 const styles=StyleSheet.create({
-  // Capped, so it never becomes the whole screen: the map is the point and this
-  // is a look at one thing on it.
+  // Docked full-width to the bottom edge rather than floating as an inset
+  // card: left:0/right:0/bottom:0, squared bottom corners (the screen edge),
+  // rounded top corners only. Capped height so the map stays visible above it.
   panel:{
-    position:"absolute",left:12,right:12,bottom:12,zIndex:20,maxHeight:"62%",
-    backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16
+    position:"absolute",left:0,right:0,bottom:0,zIndex:20,maxHeight:"62%",
+    backgroundColor:INK.card,
+    borderTopWidth:2,borderTopColor:INK.ink,
+    borderTopLeftRadius:12,borderTopRightRadius:12,
+    borderBottomLeftRadius:0,borderBottomRightRadius:0
   },
   scroll:{flexGrow:0},
-  content:{padding:14},
-  head:{flexDirection:"row",alignItems:"flex-start",gap:12},
-  hero:{width:84,height:84,borderRadius:12,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.hair},
-  heroEmpty:{alignItems:"center",justifyContent:"center",padding:6},
+  content:{padding:16},
+  nameRow:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:10},
+  name:{...TYPE.headline,flex:1},
+  close:{width:32,height:32,alignItems:"center",justifyContent:"center"},
+  closeMark:{color:INK.ink,fontWeight:"900",fontSize:18},
+
+  metaStrip:{
+    flexDirection:"row",
+    flexWrap:"wrap",
+    alignItems:"center",
+    marginTop:8,
+    paddingVertical:8,
+    borderTopWidth:1,borderTopColor:INK.hair,
+    borderBottomWidth:1,borderBottomColor:INK.hair
+  },
+  metaPart:{...TYPE.meta},
+  metaDot:{...TYPE.meta},
+
+  // Reduced prominence: full-width strip rather than a square thumbnail beside
+  // the text -- the name and the facts carry the entry, the picture is
+  // evidence underneath it.
+  hero:{width:"100%",height:96,marginTop:12,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.hair},
+  heroEmpty:{alignItems:"center",justifyContent:"center"},
   // Full ink, not inkSoft. On the hair-coloured empty block inkSoft is 3.42:1,
   // and scripts/verify-contrast.cjs is right to refuse it -- a label saying
   // there is no photo is no use if you cannot read it either.
   heroEmptyText:{color:INK.ink,fontSize:10,fontWeight:"700",textAlign:"center"},
-  headText:{flex:1},
-  name:{color:INK.ink,fontWeight:"900",fontSize:17,lineHeight:22},
-  type:{color:INK.inkSoft,fontWeight:"700",fontSize:12,marginTop:3},
-  score:{color:INK.ink,fontWeight:"800",fontSize:13,marginTop:6},
-  scoreEmpty:{color:INK.inkSoft,fontWeight:"700",fontSize:12,marginTop:6},
-  close:{color:INK.ink,fontWeight:"900",fontSize:18},
-  where:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:10},
-  summary:{color:INK.ink,fontSize:13,lineHeight:19,marginTop:8},
+
+  summary:{...TYPE.body,marginTop:10},
   open:{
     marginTop:12,minHeight:44,justifyContent:"center",alignItems:"center",
-    borderRadius:99,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.paper
+    borderRadius:8,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.paper
   },
   openText:{color:INK.ink,fontWeight:"900",fontSize:14}
 });

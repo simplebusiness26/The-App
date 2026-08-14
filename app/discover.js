@@ -3,7 +3,7 @@ import {View,Text,TextInput,Pressable,StyleSheet,ScrollView,ActivityIndicator,Re
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {SECTIONS,recommend} from "../utils/discover";
-import DiscoverCarousel from "../components/DiscoverCarousel";
+import DiscoverSection from "../components/DiscoverSection";
 import DiscoverCard from "../components/DiscoverCard";
 import {loadPlaceRatings} from "../utils/reviews";
 import {reviewTargetType,CARD_KINDS} from "../utils/placeCards";
@@ -14,6 +14,7 @@ import {
   typeLabelForBusiness
 } from "../utils/markers";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 
 // Packet 7: the Discover screen. Replaces the placeholder Packet 3 left here.
 //
@@ -39,9 +40,12 @@ import {INK} from "../utils/tokens";
 //   SEE ON THE MAP, on every card and at the top, because the whole point of
 //   sending browsing here is that you can get back.
 //
-//   CAROUSELS instead of stacked boxes. Seven sections of six boxes is
+//   CAROUSELS instead of stacked boxes, later replaced again -- see the note
+//   in components/DiscoverSection.js. Seven sections of six boxes is
 //   forty-two boxes; the owner's word was "too long", and nobody ever reached
-//   the bottom section.
+//   the bottom section. The gazetteer round answers the same complaint with
+//   density instead of a sideways scroll: a one-line row costs far less
+//   height than a card did.
 
 export default function Discover(){
   const [area,setArea]=useState("");
@@ -325,7 +329,7 @@ export default function Discover(){
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load();}}/>}
     >
-      <Text style={styles.title}>Discover</Text>
+      <Text style={TYPE.display}>Discover</Text>
       {!!area && <Text style={styles.lead}>What is on around {area}.</Text>}
       {!!notice && <Text style={styles.notice}>{notice}</Text>}
 
@@ -357,30 +361,28 @@ export default function Discover(){
       {query.trim().length>=2 ? (
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Results</Text>
+            <Text style={TYPE.sectionLabel}>Results</Text>
             {!searching && <Text style={styles.count}>{results.length}</Text>}
           </View>
 
           {searching && <ActivityIndicator color={INK.ink} style={styles.searchSpinner}/>}
 
           {!searching && results.length===0 && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>
-                Nothing matches that yet. Try part of a name, or the town it is in.
-              </Text>
-            </View>
+            <Text style={styles.emptyText}>
+              Nothing matches that yet. Try part of a name, or the town it is in.
+            </Text>
           )}
 
           {/* Down the page, not sideways. A carousel is for browsing past things
               you did not ask for; these are all answers to the same question. */}
-          <View style={styles.results}>
+          <View>
             {results.map((item)=>(
               <DiscoverCard key={item.id} item={item} onSeeOnMap={seeOnMap}/>
             ))}
           </View>
         </View>
       ) : SECTIONS.map((section)=>(
-        <DiscoverCarousel
+        <DiscoverSection
           key={section.key}
           title={section.title}
           items={(items[section.key] || []).slice(0,10)}
@@ -418,7 +420,7 @@ const styles=StyleSheet.create({
     backgroundColor:INK.card,
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:12,
+    borderRadius:4,
     paddingHorizontal:14,
     paddingVertical:13,
     marginTop:16,
@@ -438,31 +440,34 @@ const styles=StyleSheet.create({
   },
   toMapText:{color:INK.ink,fontWeight:"900",fontSize:13},
   searchSpinner:{marginTop:14},
-  results:{gap:12,alignItems:"flex-start"},
-  title:{fontSize:30,fontWeight:"800",letterSpacing:-0.5,color:INK.ink},
   lead:{fontSize:14,lineHeight:21,color:INK.inkSoft,marginTop:6},
   notice:{
     backgroundColor:INK.card,
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:12,
+    borderRadius:4,
     padding:12,
     marginTop:14,
     fontSize:13,
     lineHeight:19,
     color:INK.ink
   },
-  section:{marginTop:24},
-  sectionHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:10},
-  sectionTitle:{fontSize:20,fontWeight:"800",color:INK.ink,letterSpacing:-0.3},
-  count:{fontSize:12,fontWeight:"800",color:INK.inkSoft},
-  empty:{borderTopWidth:2,borderTopColor:INK.hair,paddingTop:12},
-  emptyText:{fontSize:13,lineHeight:19,color:INK.inkSoft},
+  section:{marginTop:20},
+  sectionHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    paddingBottom:6,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  count:{...TYPE.numeral,fontSize:16},
+  emptyText:{...TYPE.meta,paddingVertical:12},
   card:{
     backgroundColor:INK.card,
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:12,
+    borderRadius:4,
     padding:14,
     marginBottom:10,
     shadowColor:INK.ink,
@@ -471,7 +476,7 @@ const styles=StyleSheet.create({
     shadowRadius:0,
     elevation:0
   },
-  cardTitle:{fontSize:16,fontWeight:"800",color:INK.ink},
-  cardSubtitle:{fontSize:13,color:INK.ink,marginTop:3},
+  cardTitle:{...TYPE.rowTitle},
+  cardSubtitle:{...TYPE.body,marginTop:3},
   reason:{fontSize:11,fontWeight:"800",color:INK.inkSoft,marginTop:8,textTransform:"uppercase",letterSpacing:0.8}
 });

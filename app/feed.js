@@ -4,6 +4,7 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FeedCard,{listingRoute} from "../components/FeedCard";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 
 // The feed, paginated and virtualised.
 //
@@ -180,8 +181,8 @@ export default function Feed(){
     <>
       <View style={styles.headingRow}>
         <View style={styles.headingText}>
-          <Text style={styles.eyebrow}>YOUR EXPLORER COMMUNITY</Text>
-          <Text style={styles.title}>Feed</Text>
+          <Text style={TYPE.sectionLabel}>Your Explorer Community</Text>
+          <Text style={TYPE.display}>Feed</Text>
           <Text style={styles.subtitle}>Reviews, favourites and Moments from the Explorers you follow.</Text>
         </View>
       </View>
@@ -196,11 +197,10 @@ export default function Feed(){
         </Pressable>
       </View>
 
-      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>}
+      {loading && <ActivityIndicator size="large" color={INK.ink} style={styles.loader}/>}
 
       {!loading && !!error && (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>⚠️</Text>
           <Text style={styles.emptyTitle}>Feed unavailable</Text>
           <Text style={styles.emptyText}>{error}</Text>
         </View>
@@ -208,7 +208,6 @@ export default function Feed(){
 
       {!loading && !error && items.length===0 && (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>🧭</Text>
           <Text style={styles.emptyTitle}>Build your Explorer feed</Text>
           <Text style={styles.emptyText}>Follow Explorers to see their reviews, Moments, Memories and favourite places here.</Text>
           <Pressable style={styles.emptyButton} onPress={()=>router.push("/explorers")}><Text style={styles.emptyButtonText}>Find Explorers</Text></Pressable>
@@ -219,7 +218,7 @@ export default function Feed(){
 
   const footer=(
     <View style={styles.footer}>
-      {loadingMore && <ActivityIndicator color={INK.blue}/>}
+      {loadingMore && <ActivityIndicator color={INK.ink}/>}
 
       {!!pageError && (
         <View style={styles.pageErrorCard}>
@@ -250,7 +249,7 @@ export default function Feed(){
       renderItem={renderItem}
       ListHeaderComponent={header}
       ListFooterComponent={footer}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={INK.blue}/>}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={INK.ink}/>}
       onEndReached={loadMore}
       // Half a screen from the bottom. Far enough that the next page is usually
       // there before it is needed, near enough that it is not fetching pages
@@ -269,25 +268,22 @@ const styles=StyleSheet.create({
   content:{padding:18,paddingBottom:70},
   headingRow:{marginBottom:16},
   headingText:{flex:1},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
-  title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},
   subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:6,maxWidth:540},
   quickActions:{flexDirection:"row",gap:10,marginBottom:17},
-  createButton:{flex:1,backgroundColor:INK.blue,borderRadius:13,paddingVertical:13,alignItems:"center"},
+  createButton:{flex:1,backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:6,paddingVertical:13,alignItems:"center"},
   createText:{color:INK.card,fontWeight:"900"},
-  findButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:13,paddingVertical:13,alignItems:"center"},
+  findButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:6,paddingVertical:13,alignItems:"center"},
   findText:{color:INK.ink,fontWeight:"900"},
   loader:{marginTop:45},
   footer:{paddingTop:4,paddingBottom:8,alignItems:"center"},
   endText:{color:INK.inkSoft,fontSize:12,paddingVertical:14},
-  pageErrorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:14,alignItems:"center",alignSelf:"stretch"},
+  pageErrorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:14,alignItems:"center",alignSelf:"stretch"},
   pageErrorText:{color:INK.ink,fontSize:13,lineHeight:19,textAlign:"center"},
-  retryButton:{marginTop:11,backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:99,paddingHorizontal:18,paddingVertical:10,minHeight:44,justifyContent:"center"},
+  retryButton:{marginTop:11,backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:6,paddingHorizontal:18,paddingVertical:10,minHeight:44,justifyContent:"center"},
   retryText:{color:INK.ink,fontWeight:"900",fontSize:13},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:27,alignItems:"center",marginTop:18},
-  emptyIcon:{fontSize:36},
-  emptyTitle:{color:INK.ink,fontSize:20,fontWeight:"900",textAlign:"center",marginTop:9},
+  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:4,padding:27,alignItems:"center",marginTop:18},
+  emptyTitle:{color:INK.ink,fontSize:20,fontWeight:"900",textAlign:"center"},
   emptyText:{color:INK.inkSoft,lineHeight:21,textAlign:"center",marginTop:7},
-  emptyButton:{backgroundColor:INK.blue,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:16},
+  emptyButton:{backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:6,paddingHorizontal:18,paddingVertical:11,marginTop:16},
   emptyButtonText:{color:INK.card,fontWeight:"900"}
 });

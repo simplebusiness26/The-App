@@ -6,6 +6,7 @@ import {loadPlaceReviews} from "../../utils/reviews";
 import {useFeedback} from "../../context/FeedbackContext";
 import {CLUB_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
+import {TYPE} from "../../styles/typography";
 import PlaceLayout from "../../components/PlaceLayout";
 import MessageButton from "../../components/MessageButton";
 import FavouriteButton from "../../components/FavouriteButton";
@@ -336,26 +337,35 @@ export default function ActivityClubProfile(){
             </Pressable>
           )}
 
-          <Text style={styles.sectionTitle}>Upcoming sessions</Text>
+          <View style={styles.listHead}>
+            <Text style={TYPE.sectionLabel}>Upcoming sessions</Text>
+            <Text style={styles.listCount}>{sessions.length}</Text>
+          </View>
           {sessions.length===0 && (
             <Text style={styles.empty}>No sessions are scheduled yet. The manager adds them from the dashboard.</Text>
           )}
           {sessions.map((session)=>(
-            <View key={session.id} style={styles.box}>
-              <Text style={styles.boxTitle}>{session.title}</Text>
-              <Text style={styles.boxText}>{formatDate(session.starts_at)}</Text>
-              <Text style={styles.boxMeta}>Session capacity: {session.capacity}</Text>
+            <View key={session.id} style={styles.listRow}>
+              <View style={styles.listRowText}>
+                <Text style={TYPE.rowTitle}>{session.title}</Text>
+                <Text style={TYPE.meta}>{formatDate(session.starts_at)} · Capacity {session.capacity}</Text>
+              </View>
             </View>
           ))}
 
-          <Text style={styles.sectionTitle}>Club announcements</Text>
+          <View style={styles.listHead}>
+            <Text style={TYPE.sectionLabel}>Club announcements</Text>
+            <Text style={styles.listCount}>{announcements.length}</Text>
+          </View>
           {announcements.length===0 && (
             <Text style={styles.empty}>Nothing announced yet. Anything the manager posts publicly appears here.</Text>
           )}
           {announcements.map((item)=>(
-            <View key={item.id} style={styles.box}>
-              <Text style={styles.boxTitle}>{item.title}</Text>
-              <Text style={styles.boxText}>{item.message}</Text>
+            <View key={item.id} style={styles.listRow}>
+              <View style={styles.listRowText}>
+                <Text style={TYPE.rowTitle}>{item.title}</Text>
+                <Text style={styles.announcementText}>{item.message}</Text>
+              </View>
             </View>
           ))}
         </View>
@@ -373,12 +383,11 @@ export default function ActivityClubProfile(){
 const styles=StyleSheet.create({
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
   stack:{marginTop:24,gap:11},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginTop:13,letterSpacing:-0.3},
-  empty:{color:INK.inkSoft,lineHeight:20},
+  empty:{...TYPE.meta,paddingVertical:8},
   box:{
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:12,
+    borderRadius:8,
     padding:14,
     backgroundColor:INK.card,
     shadowColor:INK.ink,
@@ -391,7 +400,7 @@ const styles=StyleSheet.create({
     alignSelf:"flex-start",
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:99,
+    borderRadius:4,
     overflow:"hidden",
     paddingHorizontal:9,
     paddingVertical:3,
@@ -408,7 +417,7 @@ const styles=StyleSheet.create({
   noteInput:{
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:10,
+    borderRadius:6,
     padding:12,
     marginTop:12,
     minHeight:80,
@@ -416,8 +425,31 @@ const styles=StyleSheet.create({
     color:INK.ink,
     backgroundColor:INK.paper
   },
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginTop:12},
+  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:6,marginTop:12},
   primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card},
-  secondaryText:{color:INK.ink,fontWeight:"800"}
+  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:6,backgroundColor:INK.card},
+  secondaryText:{color:INK.ink,fontWeight:"800"},
+  // Sessions and announcements: one-line ledger rows on a hairline, like
+  // components/PlacesList.js's Row -- not another bordered card competing
+  // with the membership-state ones above.
+  listHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    marginTop:13,
+    paddingBottom:6,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  listCount:{...TYPE.numeral,fontSize:16},
+  listRow:{
+    flexDirection:"row",
+    alignItems:"center",
+    minHeight:44,
+    paddingVertical:8,
+    borderBottomWidth:1,
+    borderBottomColor:INK.hair
+  },
+  listRowText:{flex:1},
+  announcementText:{...TYPE.body,marginTop:2}
 });

@@ -6,6 +6,7 @@ import {loadPlaceReviews} from "../../utils/reviews";
 import {formatEventPrice,formatEventRange,normalizeExternalUrl} from "../../utils/events";
 import {EVENT_TYPE_LABEL} from "../../utils/markers";
 import {INK} from "../../utils/tokens";
+import {TYPE} from "../../styles/typography";
 import PlaceLayout from "../../components/PlaceLayout";
 import MessageButton from "../../components/MessageButton";
 import FavouriteButton from "../../components/FavouriteButton";
@@ -184,8 +185,8 @@ export default function EventDetails(){
         </>
       ) : null}
       beforeReviews={isManager && event ? (
-        <View style={styles.managerBox}>
-          <Text style={styles.managerTitle}>Manager controls</Text>
+        <View style={styles.managerSection}>
+          <View style={styles.managerHead}><Text style={TYPE.sectionLabel}>Manager controls</Text></View>
           <Text style={styles.managerText}>Edit this listing or print its QR code from your dashboard.</Text>
           <View style={styles.buttonRow}>
             <Pressable
@@ -222,16 +223,18 @@ export default function EventDetails(){
 const styles=StyleSheet.create({
   messageManagerRow:{marginBottom:10,alignItems:"flex-start"},
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginBottom:10},
+  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:6,marginBottom:10},
   primaryText:{color:INK.card,fontWeight:"800"},
-  primaryInline:{flex:1,minHeight:48,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:10},
-  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card,marginBottom:10},
-  secondaryInline:{flex:1,minHeight:48,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:10,backgroundColor:INK.card},
+  primaryInline:{flex:1,minHeight:48,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:6},
+  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:6,backgroundColor:INK.card,marginBottom:10},
+  secondaryInline:{flex:1,minHeight:48,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:6,backgroundColor:INK.card},
   secondaryText:{color:INK.ink,fontWeight:"800"},
   locked:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.hair},
   lockedText:{color:INK.ink,fontWeight:"800"},
-  managerBox:{marginTop:24,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:16,backgroundColor:INK.card},
-  managerTitle:{fontSize:18,fontWeight:"800",color:INK.ink},
-  managerText:{color:INK.inkSoft,lineHeight:20,marginTop:5},
+  // A rule-bound sub-section, like PlaceLayout's own Actions block, rather than
+  // a second bordered card competing with the ones the layout already draws.
+  managerSection:{marginTop:24},
+  managerHead:{paddingBottom:6,marginBottom:11,borderBottomWidth:2,borderBottomColor:INK.ink},
+  managerText:{...TYPE.body,color:INK.inkSoft},
   buttonRow:{flexDirection:"row",gap:10,marginTop:14}
 });

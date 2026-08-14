@@ -15,6 +15,7 @@ import LocationPicker from "../../../components/LocationPicker";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
 import {INK} from "../../../utils/tokens";
+import {TYPE} from "../../../styles/typography";
 
 export default function EditActivityClub(){
   const {id}=useLocalSearchParams();
@@ -152,55 +153,106 @@ export default function EditActivityClub(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Edit Activity Club</Text>
-      <Text style={styles.subtitle}>Update the public listing, location and membership capacity.</Text>
+    <View style={styles.screen}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Edit Activity Club</Text>
+        <Text style={styles.subtitle}>Update the public listing, location and membership capacity.</Text>
 
-      <TextInput style={styles.input} placeholder="Club name *" value={name} onChangeText={setName}/>
-      <TextInput style={styles.input} placeholder="Category *" value={category} onChangeText={setCategory}/>
-      <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Club name</Text>
+          <TextInput style={styles.input} placeholder="Club name" placeholderTextColor={INK.inkSoft} value={name} onChangeText={setName}/>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Category</Text>
+          <TextInput style={styles.input} placeholder="Category" placeholderTextColor={INK.inkSoft} value={category} onChangeText={setCategory}/>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Description</Text>
+          <TextInput style={[styles.input,styles.multiline]} placeholder="Description" placeholderTextColor={INK.inkSoft} value={description} onChangeText={setDescription} multiline/>
+        </View>
 
-      <LocationPicker initialAddress={address} initialLocation={location} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+        <LocationPicker initialAddress={address} initialLocation={location} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
 
-      <TextInput style={styles.input} placeholder="Price per session" value={price} onChangeText={setPrice} keyboardType="decimal-pad"/>
-      <TextInput style={styles.input} placeholder="Maximum approved members" value={memberLimit} onChangeText={setMemberLimit} keyboardType="number-pad"/>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Price per session</Text>
+          <TextInput style={styles.input} placeholder="Price per session" placeholderTextColor={INK.inkSoft} value={price} onChangeText={setPrice} keyboardType="decimal-pad"/>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Maximum approved members</Text>
+          <TextInput style={styles.input} placeholder="Maximum approved members" placeholderTextColor={INK.inkSoft} value={memberLimit} onChangeText={setMemberLimit} keyboardType="number-pad"/>
+        </View>
 
-      {/*
-        SPACES OPEN, ON THE MAP.
-        A claim about a club only its Manager can know is true, so only its
-        Manager can make it. Off is the default and off removes the BUBBLE, not
-        the pin -- the club stays on the map, searchable and joinable, it just
-        does not shout. See utils/liveBubbles.js.
-      */}
-      <Text style={styles.label}>Show &quot;Spaces open&quot; on the map</Text>
-      <Pressable
-        accessibilityRole="switch"
-        accessibilityState={{checked:spacesAvailable}}
-        accessibilityLabel="Show spaces open on the map"
-        style={[styles.statusButton,spacesAvailable && styles.selectedStatus,{marginBottom:20,alignSelf:"flex-start"}]}
-        onPress={()=>setSpacesAvailable((current)=>!current)}
-      >
-        <Text style={[styles.statusText,spacesAvailable && styles.selectedStatusText]}>
-          {spacesAvailable ? "On — a small bubble can appear over this club" : "Off"}
-        </Text>
-      </Pressable>
-
-      <Text style={styles.label}>Listing status</Text>
-      <View style={styles.statusRow}>
-        {["open","full","closed","draft"].map(option=>(
-          <Pressable key={option} style={[styles.statusButton,status===option && styles.selectedStatus]} onPress={()=>setStatus(option)}>
-            <Text style={[styles.statusText,status===option && styles.selectedStatusText]}>{option}</Text>
+        {/*
+          SPACES OPEN, ON THE MAP.
+          A claim about a club only its Manager can know is true, so only its
+          Manager can make it. Off is the default and off removes the BUBBLE, not
+          the pin -- the club stays on the map, searchable and joinable, it just
+          does not shout. See utils/liveBubbles.js.
+        */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Show &quot;Spaces open&quot; on the map</Text>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{checked:spacesAvailable}}
+            accessibilityLabel="Show spaces open on the map"
+            style={[styles.statusButton,spacesAvailable && styles.selectedStatus,{alignSelf:"flex-start"}]}
+            onPress={()=>setSpacesAvailable((current)=>!current)}
+          >
+            <Text style={[styles.statusText,spacesAvailable && styles.selectedStatusText]}>
+              {spacesAvailable ? "On — a small bubble can appear over this club" : "Off"}
+            </Text>
           </Pressable>
-        ))}
-      </View>
+        </View>
 
-      <Pressable style={styles.button} onPress={saveClub} disabled={saving}>
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </Pressable>
-    </ScrollView>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Listing status</Text>
+          <View style={styles.statusRow}>
+            {["open","full","closed","draft"].map(option=>(
+              <Pressable key={option} style={[styles.statusButton,status===option && styles.selectedStatus]} onPress={()=>setStatus(option)}>
+                <Text style={[styles.statusText,status===option && styles.selectedStatusText]}>{option}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Sticky bottom action bar: design round r001-a, directive 12. */}
+      <View style={styles.stickyBar}>
+        <Pressable style={styles.button} onPress={saveClub} disabled={saving}>
+          {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},error:{fontSize:17,textAlign:"center"},title:{fontSize:30,fontWeight:"bold"},subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},label:{fontWeight:"bold",fontSize:16,marginBottom:10},statusRow:{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:20},statusButton:{paddingHorizontal:14,paddingVertical:10,borderRadius:20,borderWidth:1,borderColor:INK.hair,backgroundColor:INK.card},selectedStatus:{borderColor:INK.blue,borderWidth:2},statusText:{textTransform:"capitalize",fontWeight:"600"},selectedStatusText:{color:INK.ink},button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:INK.card,fontWeight:"bold"}
+  screen:{flex:1,backgroundColor:INK.paper},
+  container:{flex:1},
+  content:{padding:20,paddingBottom:110},
+  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.paper},
+  error:{fontSize:17,textAlign:"center",color:INK.ink},
+  title:{...TYPE.display},
+  subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},
+  field:{marginBottom:16},
+  fieldLabel:{...TYPE.sectionLabel,marginBottom:7},
+  input:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:6,padding:13,color:INK.ink,fontSize:14,minHeight:44},
+  multiline:{minHeight:110,textAlignVertical:"top"},
+  statusRow:{flexDirection:"row",flexWrap:"wrap",gap:8},
+  statusButton:{paddingHorizontal:14,paddingVertical:10,borderRadius:20,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,minHeight:44,justifyContent:"center"},
+  selectedStatus:{backgroundColor:INK.ink},
+  statusText:{textTransform:"capitalize",fontWeight:"700",color:INK.ink},
+  selectedStatusText:{color:INK.card},
+  stickyBar:{
+    position:"absolute",
+    left:0,
+    right:0,
+    bottom:0,
+    backgroundColor:INK.card,
+    borderTopWidth:2,
+    borderTopColor:INK.ink,
+    padding:16
+  },
+  button:{backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,padding:14,borderRadius:6,alignItems:"center",minHeight:48,justifyContent:"center"},
+  buttonText:{color:INK.card,fontWeight:"900",fontSize:15}
 });

@@ -6,6 +6,7 @@ import LikeButton from "./LikeButton";
 import EndorseButton from "./EndorseButton";
 import {reasonsFor} from "../utils/trending";
 import {INK} from "../utils/tokens";
+import {TYPE} from "../styles/typography";
 
 // One feed row, lifted out of app/feed.js so it can be memoised.
 //
@@ -65,7 +66,7 @@ function FeedCard({item,viewerId,onOpen,onComments}){
       <Pressable style={styles.actorRow} onPress={()=>router.push(`/profile/${item.actor_id}`)}>
         <Avatar item={item}/>
         <View style={styles.actorText}>
-          <Text style={styles.actorName}>{item.actor_name || "Explorer"}</Text>
+          <Text style={TYPE.rowTitle}>{item.actor_name || "Explorer"}</Text>
           {/*
             Four kinds now. "kept a Memory" rather than "shared" -- a
             Memory is something somebody keeps, and the word is what
@@ -103,8 +104,7 @@ function FeedCard({item,viewerId,onOpen,onComments}){
 
         {!!item.target_name && (
           <View style={styles.targetPill}>
-            <Text style={styles.targetIcon}>📍</Text>
-            <Text style={styles.targetText} numberOfLines={1}>{item.target_name}</Text>
+            <Text style={styles.targetText} numberOfLines={1}>at {item.target_name}</Text>
           </View>
         )}
 
@@ -131,7 +131,7 @@ function FeedCard({item,viewerId,onOpen,onComments}){
         {!item.media_url && !!item.target_image_url && <SocialImage uri={item.target_image_url} style={styles.media} resizeMode="cover"/>}
       </Pressable>
 
-      {!!item.verified_qr && <Text style={styles.verified}>✓ Verified on-site review</Text>}
+      {!!item.verified_qr && <Text style={styles.verified}>✓ VERIFIED ON-SITE REVIEW</Text>}
 
       {(isMoment || isMemory || isReview) && (
         <View style={styles.actionRow}>
@@ -176,35 +176,36 @@ export default React.memo(FeedCard,(before,after)=>(
   before.viewerId===after.viewerId
 ));
 
+// One dated ledger item per post, ruled apart rather than boxed (design round
+// r001-a, directive 9). No state ink here: blue/green mean a place's state or
+// the manager's review-response pair, never a feed decoration.
 const styles=StyleSheet.create({
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:8},
-  reason:{color:INK.card,backgroundColor:INK.blue,borderRadius:20,paddingHorizontal:9,paddingVertical:4,fontSize:11,fontWeight:"800",overflow:"hidden"},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:15,marginBottom:13},
+  reason:{color:INK.ink,borderWidth:1,borderColor:INK.hair,borderRadius:4,paddingHorizontal:8,paddingVertical:3,fontSize:11,fontWeight:"700"},
+  card:{borderBottomWidth:2,borderBottomColor:INK.ink,paddingVertical:16},
   actorRow:{flexDirection:"row",alignItems:"center"},
-  avatar:{width:45,height:45,borderRadius:23,backgroundColor:INK.card},
-  avatarFallback:{width:45,height:45,borderRadius:23,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontWeight:"900",fontSize:18},
+  avatar:{width:36,height:36,borderRadius:4,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink},
+  avatarFallback:{width:36,height:36,borderRadius:4,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
+  avatarLetter:{color:INK.ink,fontWeight:"900",fontSize:14},
   actorText:{flex:1,marginLeft:11},
-  actorName:{color:INK.ink,fontSize:15,fontWeight:"900"},
-  meta:{color:INK.inkSoft,fontSize:11,marginTop:3},
-  caption:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:14},
+  meta:{...TYPE.meta,marginTop:3,textTransform:"uppercase",letterSpacing:0.6},
+  caption:{...TYPE.body,marginTop:12},
   rating:{color:INK.ink,fontSize:17,letterSpacing:1,marginTop:12},
-  emptyStars:{color:INK.ink},
-  targetPill:{alignSelf:"flex-start",maxWidth:"100%",flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:7,marginTop:12},
-  targetIcon:{fontSize:12,marginRight:5},
-  targetText:{color:INK.card,fontWeight:"800",fontSize:12,flexShrink:1},
-  media:{width:"100%",height:280,borderRadius:13,backgroundColor:INK.card,marginTop:13},
-  videoWrap:{height:280,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,marginTop:13,alignItems:"center",justifyContent:"center"},
+  emptyStars:{color:INK.hair},
+  targetPill:{alignSelf:"flex-start",maxWidth:"100%",borderWidth:2,borderColor:INK.ink,borderRadius:4,backgroundColor:INK.card,paddingHorizontal:10,paddingVertical:6,marginTop:12},
+  targetText:{...TYPE.meta,color:INK.ink,flexShrink:1},
+  media:{width:"100%",height:280,borderRadius:0,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,marginTop:13},
+  videoWrap:{height:280,borderRadius:0,borderWidth:2,borderColor:INK.ink,overflow:"hidden",backgroundColor:INK.paper,marginTop:13,alignItems:"center",justifyContent:"center"},
   videoPoster:{width:"100%",height:"100%"},
   videoFallback:{position:"absolute",inset:0,backgroundColor:INK.paper},
   playCircle:{position:"absolute",width:58,height:58,borderRadius:29,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
   playIcon:{color:INK.ink,fontSize:23,marginLeft:3},
   duration:{position:"absolute",right:9,bottom:9,color:INK.ink,backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
-  verified:{alignSelf:"flex-start",color:INK.card,backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
+  verified:{alignSelf:"flex-start",color:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:4,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
   actionRow:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14},
-  commentButton:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
+  commentButton:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:6,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink},
   commentIcon:{fontSize:14},
   commentText:{color:INK.ink,fontWeight:"900",fontSize:12},
   placeButton:{marginLeft:"auto",paddingHorizontal:10,paddingVertical:9},
-  placeText:{color:INK.blue,fontSize:12,fontWeight:"900"}
+  placeText:{color:INK.ink,fontSize:12,fontWeight:"900",textDecorationLine:"underline"}
 });

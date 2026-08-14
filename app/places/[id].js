@@ -8,6 +8,7 @@ import PlaceLayout from "../../components/PlaceLayout";
 import EntityFollowButton from "../../components/EntityFollowButton";
 import {publicPlaceTypeLabel} from "../../utils/places";
 import {INK} from "../../utils/tokens";
+import {TYPE} from "../../styles/typography";
 
 // Packet 8e: the page a park has instead of a spelling.
 //
@@ -162,7 +163,10 @@ export default function PublicPlacePage(){
       ) : null}
       afterReviews={place ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Moments here</Text>
+          <View style={styles.sectionHead}>
+            <Text style={TYPE.sectionLabel}>Moments here</Text>
+            <Text style={styles.sectionCount}>{moments.length}</Text>
+          </View>
 
           {!moments.length ? (
             <View style={styles.emptyCard}>
@@ -204,17 +208,25 @@ export default function PublicPlacePage(){
   );
 }
 
+// The same hard-offset ink plate PlaceLayout's own cards use -- this file used
+// to draw a flat bordered box with none of that shadow, which is exactly the
+// pre-Gazetteer look everything else here has already left behind.
 const card={
   backgroundColor:INK.card,
   borderWidth:2,
   borderColor:INK.ink,
-  borderRadius:12
+  borderRadius:8,
+  shadowColor:INK.ink,
+  shadowOffset:{width:3,height:3},
+  shadowOpacity:1,
+  shadowRadius:0,
+  elevation:0
 };
 
 const styles=StyleSheet.create({
   followRow:{flexDirection:"row",gap:10,marginTop:16,flexWrap:"wrap"},
   actionStack:{gap:10},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12},
+  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:6},
   primaryText:{color:INK.card,fontWeight:"800"},
   secondary:{
     minHeight:52,
@@ -223,17 +235,26 @@ const styles=StyleSheet.create({
     backgroundColor:INK.card,
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:12
+    borderRadius:6
   },
   secondaryText:{color:INK.ink,fontWeight:"800"},
   section:{marginTop:24},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginBottom:11,letterSpacing:-0.3},
+  sectionHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    paddingBottom:6,
+    marginBottom:11,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  sectionCount:{...TYPE.numeral,fontSize:16},
   emptyCard:{...card,padding:18,alignItems:"center"},
   emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:5},
   muted:{color:INK.ink,textAlign:"center",lineHeight:20},
   momentGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},
   moment:{...card,width:150,padding:8},
-  momentImage:{width:"100%",height:110,borderRadius:8,backgroundColor:INK.hair},
+  momentImage:{width:"100%",height:110,borderRadius:6,backgroundColor:INK.hair},
   momentFallback:{alignItems:"center",justifyContent:"center"},
   momentCaption:{color:INK.ink,fontSize:12,lineHeight:17,marginTop:7}
 });

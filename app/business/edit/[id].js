@@ -17,6 +17,7 @@ import {UNCLASSIFIED} from "../../../utils/taxonomy";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
 import {INK} from "../../../utils/tokens";
+import {TYPE} from "../../../styles/typography";
 
 export default function EditBusiness(){
   const {id}=useLocalSearchParams();
@@ -146,38 +147,89 @@ export default function EditBusiness(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Edit Business</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Business name"/>
-      <ClassificationPicker
-        category={category}
-        businessType={businessType}
-        claimed={business?.claimed===true}
-        disabled={saving}
-        onChange={({category:nextCategory,businessType:nextType})=>{
-          setCategory(nextCategory);
-          setBusinessType(nextType);
-        }}
-      />
-      <TextInput style={[styles.input,styles.multiline]} value={description} onChangeText={setDescription} placeholder="Description" multiline/>
+    <View style={styles.screen}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Edit Business</Text>
 
-      <LocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Business name</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Business name" placeholderTextColor={INK.inkSoft}/>
+        </View>
 
-      <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone"/>
-      <TextInput style={styles.input} value={website} onChangeText={setWebsite} placeholder="Website"/>
-      <TextInput style={styles.input} value={image} onChangeText={setImage} placeholder="Main image URL"/>
-      <TextInput style={styles.input} value={openingHours} onChangeText={setOpeningHours} placeholder="Opening hours"/>
+        <ClassificationPicker
+          category={category}
+          businessType={businessType}
+          claimed={business?.claimed===true}
+          disabled={saving}
+          onChange={({category:nextCategory,businessType:nextType})=>{
+            setCategory(nextCategory);
+            setBusinessType(nextType);
+          }}
+        />
 
-      <Pressable style={styles.button} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </Pressable>
-      <Pressable style={styles.deleteButton} onPress={deleteBusiness}>
-        <Text style={styles.buttonText}>Delete Business</Text>
-      </Pressable>
-    </ScrollView>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Description</Text>
+          <TextInput style={[styles.input,styles.multiline]} value={description} onChangeText={setDescription} placeholder="Description" placeholderTextColor={INK.inkSoft} multiline/>
+        </View>
+
+        <LocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Phone</Text>
+          <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone" placeholderTextColor={INK.inkSoft}/>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Website</Text>
+          <TextInput style={styles.input} value={website} onChangeText={setWebsite} placeholder="Website" placeholderTextColor={INK.inkSoft}/>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Main image URL</Text>
+          <TextInput style={styles.input} value={image} onChangeText={setImage} placeholder="Main image URL" placeholderTextColor={INK.inkSoft}/>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Opening hours</Text>
+          <TextInput style={styles.input} value={openingHours} onChangeText={setOpeningHours} placeholder="Opening hours" placeholderTextColor={INK.inkSoft}/>
+        </View>
+
+        {/* Destructive action: above the sticky bar, never inside it, and never
+            filled in the review-response red -- that pair belongs to
+            components/ReviewActions.js alone. */}
+        <Pressable style={styles.deleteButton} onPress={deleteBusiness}>
+          <Text style={styles.deleteButtonText}>Delete Business</Text>
+        </Pressable>
+      </ScrollView>
+
+      <View style={styles.stickyBar}>
+        <Pressable style={styles.button} onPress={save} disabled={saving}>
+          {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},loading:{flex:1,justifyContent:"center",alignItems:"center"},title:{fontSize:30,fontWeight:"bold",marginBottom:20},input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},multiline:{minHeight:100,textAlignVertical:"top"},button:{backgroundColor:INK.ink,padding:15,borderRadius:10,marginTop:10},deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:15},buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}
+  screen:{flex:1,backgroundColor:INK.paper},
+  container:{flex:1},
+  content:{padding:20,paddingBottom:110},
+  loading:{flex:1,justifyContent:"center",alignItems:"center",backgroundColor:INK.paper},
+  title:{...TYPE.display,marginBottom:20},
+  field:{marginBottom:16},
+  fieldLabel:{...TYPE.sectionLabel,marginBottom:7},
+  input:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,padding:13,borderRadius:6,color:INK.ink,fontSize:14,minHeight:44},
+  multiline:{minHeight:100,textAlignVertical:"top"},
+  stickyBar:{
+    position:"absolute",
+    left:0,
+    right:0,
+    bottom:0,
+    backgroundColor:INK.card,
+    borderTopWidth:2,
+    borderTopColor:INK.ink,
+    padding:16
+  },
+  button:{backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,padding:14,borderRadius:6,alignItems:"center",minHeight:48,justifyContent:"center"},
+  buttonText:{color:INK.card,fontWeight:"900",fontSize:15},
+  deleteButton:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,padding:14,borderRadius:6,alignItems:"center",marginTop:8,minHeight:48,justifyContent:"center"},
+  deleteButtonText:{color:INK.ink,fontWeight:"900",fontSize:15}
 });

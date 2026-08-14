@@ -11,6 +11,7 @@ import AudienceCeiling from "../../components/AudienceCeiling";
 import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY} from "../../utils/places";
 import AddLocation from "../../components/AddLocation";
 import {INK} from "../../utils/tokens";
+import {TYPE} from "../../styles/typography";
 
 // Packet 8e added three things to this screen, each with a boundary in the
 // database rather than only here:
@@ -358,227 +359,256 @@ export default function CreateMoment(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>SHARE YOUR DAY</Text>
-      <Text style={styles.title}>New Moment</Text>
-      <Text style={styles.subtitle}>Post a photo or short video. You choose who can see it before you publish.</Text>
+    <View style={styles.screen}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Text style={styles.eyebrow}>SHARE YOUR DAY</Text>
+        <Text style={styles.title}>New Moment</Text>
+        <Text style={styles.subtitle}>Post a photo or short video. You choose who can see it before you publish.</Text>
 
-      {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
+        {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
 
-      <View style={styles.mediaCard}>
-        {asset && mediaType ? (
-          <View>
-            <MomentMediaPreview asset={asset} mediaType={mediaType} onPreviewError={setError}/>
-            <Pressable style={styles.removeMediaButton} onPress={clearAsset}>
-              <Text style={styles.removeMediaText}>Remove selected media</Text>
-            </Pressable>
+        <View style={styles.mediaCard}>
+          {asset && mediaType ? (
+            <View>
+              <MomentMediaPreview asset={asset} mediaType={mediaType} onPreviewError={setError}/>
+              <Pressable style={styles.removeMediaButton} onPress={clearAsset}>
+                <Text style={styles.removeMediaText}>Remove selected media</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.mediaEmpty}>
+              <Text style={styles.mediaEmptyIcon}>✨</Text>
+              <Text style={styles.mediaEmptyTitle}>Choose your Moment</Text>
+              <Text style={styles.mediaEmptyText}>Take or choose one photo, or record/select one video up to 30 seconds.</Text>
+            </View>
+          )}
+
+          <View style={styles.mediaButtons}>
+            {/*
+              These said "Photo / camera" and "Video / camera" and both opened the
+              photo library. launchCameraAsync appears nowhere in this app --
+              app/scan.js is the only expo-camera consumer and it reads QR codes.
+              A button that names a thing it does not do is worse than a button
+              that names less, so they say what they open. Real capture is its own
+              packet; when it lands, these become two buttons rather than a label
+              change.
+            */}
+            <Pressable style={styles.mediaButton} onPress={pickImage}><Text style={styles.mediaButtonText}>Choose a photo</Text></Pressable>
+            <Pressable style={styles.mediaButton} onPress={pickVideo}><Text style={styles.mediaButtonText}>Choose a video</Text></Pressable>
           </View>
-        ) : (
-          <View style={styles.mediaEmpty}>
-            <Text style={styles.mediaEmptyIcon}>✨</Text>
-            <Text style={styles.mediaEmptyTitle}>Choose your Moment</Text>
-            <Text style={styles.mediaEmptyText}>Take or choose one photo, or record/select one video up to 30 seconds.</Text>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Caption</Text>
+          <TextInput
+            value={caption}
+            onChangeText={setCaption}
+            placeholder="What made this worth sharing?"
+            placeholderTextColor={INK.inkSoft}
+            style={styles.captionInput}
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+          />
+          <Text style={styles.counter}>{caption.length}/500</Text>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Attach a place <Text style={styles.optional}>(optional)</Text></Text>
+          <View style={styles.typeRow}>
+            <Pressable style={[styles.typeButton,!placeType && styles.typeButtonActive]} onPress={()=>choosePlaceType(null)}><Text style={[styles.typeText,!placeType && styles.typeTextActive]}>None</Text></Pressable>
+            {Object.entries(PLACE_TYPES).map(([key,config])=>(
+              <Pressable key={key} style={[styles.typeButton,placeType===key && styles.typeButtonActive]} onPress={()=>choosePlaceType(key)}>
+                <Text style={[styles.typeText,placeType===key && styles.typeTextActive]}>{config.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {!!placeType && (
+            <View style={styles.placesCard}>
+              <TextInput value={placeQuery} onChangeText={setPlaceQuery} placeholder="Search places" placeholderTextColor={INK.inkSoft} style={styles.placeSearch}/>
+              {loadingPlaces && <ActivityIndicator color={INK.ink} style={{marginVertical:18}}/>}
+              {!loadingPlaces && filteredPlaces.slice(0,20).map(place=>{
+                const selected=selectedPlace?.id===place.id;
+                return(
+                  <Pressable key={place.id} style={[styles.placeRow,selected && styles.placeRowSelected]} onPress={()=>setSelectedPlace(place)}>
+                    {place.displayImage ? <Image source={{uri:place.displayImage}} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
+                    <Text style={[styles.placeName,selected && styles.placeNameSelected]} numberOfLines={2}>{place.name}</Text>
+                    <Text style={[styles.placeCheck,selected && styles.placeNameSelected]}>{selected ? "✓" : ""}</Text>
+                  </Pressable>
+                );
+              })}
+              {!loadingPlaces && filteredPlaces.length===0 && <Text style={styles.noPlaces}>No matching places found.</Text>}
+            </View>
+          )}
+        </View>
+
+        {canPostOfficially && (
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Post as</Text>
+            <View style={styles.audienceRow}>
+              <Pressable
+                style={[styles.audience,!postOfficially && styles.audienceActive]}
+                accessibilityRole="button"
+                accessibilityLabel="Post as yourself"
+                onPress={()=>setPostOfficially(false)}
+              >
+                <Text style={styles.audienceTitle}>Yourself</Text>
+                <Text style={styles.audienceHint}>An Explorer Moment at this place</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.audience,postOfficially && styles.audienceActive]}
+                accessibilityRole="button"
+                accessibilityLabel={`Post officially as ${selectedPlace.name}`}
+                onPress={()=>setPostOfficially(true)}
+              >
+                <Text style={styles.audienceTitle}>{selectedPlace.name}</Text>
+                <Text style={styles.audienceHint}>An official update, seen by its followers</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
-        <View style={styles.mediaButtons}>
-          {/*
-            These said "Photo / camera" and "Video / camera" and both opened the
-            photo library. launchCameraAsync appears nowhere in this app --
-            app/scan.js is the only expo-camera consumer and it reads QR codes.
-            A button that names a thing it does not do is worse than a button
-            that names less, so they say what they open. Real capture is its own
-            packet; when it lands, these become two buttons rather than a label
-            change.
-          */}
-          <Pressable style={styles.mediaButton} onPress={pickImage}><Text style={styles.mediaButtonText}>Choose a photo</Text></Pressable>
-          <Pressable style={styles.mediaButton} onPress={pickVideo}><Text style={styles.mediaButtonText}>Choose a video</Text></Pressable>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Who can see this</Text>
+          {postOfficially ? (
+            <Text style={styles.audienceNote}>
+              Official Moments are public. Everyone who follows {selectedPlace.name} will see it.
+            </Text>
+          ) : (
+            <View style={styles.audienceRow}>
+              {MOMENT_VISIBILITY.map((option)=>(
+                <Pressable
+                  key={option.key}
+                  style={[styles.audience,visibility===option.key && styles.audienceActive]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${option.label}: ${option.hint}`}
+                  onPress={()=>setVisibility(option.key)}
+                >
+                  <Text style={styles.audienceTitle}>{option.label}</Text>
+                  <Text style={styles.audienceHint}>{option.hint}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
+
+        {/*
+          And then the truth. profiles.visibility is a ceiling and starts at
+          Nobody, so a brand new Explorer's first Moment is seen by no one -- the
+          setting working exactly as intended, and completely silent about it.
+          This says so before the post, not after somebody asks why their friend
+          cannot see it.
+        */}
+        <AudienceCeiling audience={postOfficially ? "everyone" : visibility}/>
+
+        {/*
+          A Moment is live for a day and then it goes. This is the one way to keep
+          it, and the Memory it becomes inherits this Moment's audience -- keeping
+          something must never widen it.
+        */}
+        <Pressable
+          style={[styles.keep,keepAsMemory && styles.keepOn]}
+          accessibilityRole="switch"
+          accessibilityState={{checked:keepAsMemory}}
+          accessibilityLabel="Keep this as a Memory after it expires"
+          onPress={()=>setKeepAsMemory((on)=>!on)}
+        >
+          <Text style={styles.keepTitle}>{keepAsMemory ? "✓ Keep this as a Memory" : "Keep this as a Memory"}</Text>
+          <Text style={styles.keepHint}>
+            {keepAsMemory
+              ? "When it stops being live it becomes a Memory, shared with exactly the same people."
+              : "Off — this disappears in 24 hours and is not kept."}
+          </Text>
+        </Pressable>
+
+        {!selectedPlace && (
+          <>
+            <AddLocation value={coordinates} onChange={setCoordinates} thing="Moment"/>
+          </>
+        )}
+      </ScrollView>
+
+      {/* Sticky bottom action bar: design round r001-a, directive 12. */}
+      <View style={styles.stickyBar}>
+        <Pressable style={[styles.publishButton,publishing && styles.disabled]} disabled={publishing} onPress={publish}>
+          {publishing ? <ActivityIndicator color={INK.card}/> : <Text style={styles.publishText}>Publish Moment</Text>}
+        </Pressable>
       </View>
-
-      <Text style={styles.label}>Caption</Text>
-      <TextInput
-        value={caption}
-        onChangeText={setCaption}
-        placeholder="What made this worth sharing?"
-        placeholderTextColor={INK.inkSoft}
-        style={styles.captionInput}
-        multiline
-        maxLength={500}
-        textAlignVertical="top"
-      />
-      <Text style={styles.counter}>{caption.length}/500</Text>
-
-      <Text style={styles.label}>Attach a place <Text style={styles.optional}>(optional)</Text></Text>
-      <View style={styles.typeRow}>
-        <Pressable style={[styles.typeButton,!placeType && styles.typeButtonActive]} onPress={()=>choosePlaceType(null)}><Text style={[styles.typeText,!placeType && styles.typeTextActive]}>None</Text></Pressable>
-        {Object.entries(PLACE_TYPES).map(([key,config])=>(
-          <Pressable key={key} style={[styles.typeButton,placeType===key && styles.typeButtonActive]} onPress={()=>choosePlaceType(key)}>
-            <Text style={[styles.typeText,placeType===key && styles.typeTextActive]}>{config.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {!!placeType && (
-        <View style={styles.placesCard}>
-          <TextInput value={placeQuery} onChangeText={setPlaceQuery} placeholder="Search places" placeholderTextColor={INK.inkSoft} style={styles.placeSearch}/>
-          {loadingPlaces && <ActivityIndicator color={INK.blue} style={{marginVertical:18}}/>}
-          {!loadingPlaces && filteredPlaces.slice(0,20).map(place=>(
-            <Pressable key={place.id} style={[styles.placeRow,selectedPlace?.id===place.id && styles.placeRowSelected]} onPress={()=>setSelectedPlace(place)}>
-              {place.displayImage ? <Image source={{uri:place.displayImage}} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
-              <Text style={styles.placeName} numberOfLines={2}>{place.name}</Text>
-              <Text style={styles.placeCheck}>{selectedPlace?.id===place.id ? "✓" : ""}</Text>
-            </Pressable>
-          ))}
-          {!loadingPlaces && filteredPlaces.length===0 && <Text style={styles.noPlaces}>No matching places found.</Text>}
-        </View>
-      )}
-
-      {canPostOfficially && (
-        <>
-          <Text style={styles.label}>Post as</Text>
-          <View style={styles.audienceRow}>
-            <Pressable
-              style={[styles.audience,!postOfficially && styles.audienceActive]}
-              accessibilityRole="button"
-              accessibilityLabel="Post as yourself"
-              onPress={()=>setPostOfficially(false)}
-            >
-              <Text style={styles.audienceTitle}>Yourself</Text>
-              <Text style={styles.audienceHint}>An Explorer Moment at this place</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.audience,postOfficially && styles.audienceActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`Post officially as ${selectedPlace.name}`}
-              onPress={()=>setPostOfficially(true)}
-            >
-              <Text style={styles.audienceTitle}>{selectedPlace.name}</Text>
-              <Text style={styles.audienceHint}>An official update, seen by its followers</Text>
-            </Pressable>
-          </View>
-        </>
-      )}
-
-      <Text style={styles.label}>Who can see this</Text>
-      {postOfficially ? (
-        <Text style={styles.audienceNote}>
-          Official Moments are public. Everyone who follows {selectedPlace.name} will see it.
-        </Text>
-      ) : (
-        <View style={styles.audienceRow}>
-          {MOMENT_VISIBILITY.map((option)=>(
-            <Pressable
-              key={option.key}
-              style={[styles.audience,visibility===option.key && styles.audienceActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`${option.label}: ${option.hint}`}
-              onPress={()=>setVisibility(option.key)}
-            >
-              <Text style={styles.audienceTitle}>{option.label}</Text>
-              <Text style={styles.audienceHint}>{option.hint}</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
-
-      {/*
-        And then the truth. profiles.visibility is a ceiling and starts at
-        Nobody, so a brand new Explorer's first Moment is seen by no one -- the
-        setting working exactly as intended, and completely silent about it.
-        This says so before the post, not after somebody asks why their friend
-        cannot see it.
-      */}
-      <AudienceCeiling audience={postOfficially ? "everyone" : visibility}/>
-
-      {/*
-        A Moment is live for a day and then it goes. This is the one way to keep
-        it, and the Memory it becomes inherits this Moment's audience -- keeping
-        something must never widen it.
-      */}
-      <Pressable
-        style={[styles.keep,keepAsMemory && styles.keepOn]}
-        accessibilityRole="switch"
-        accessibilityState={{checked:keepAsMemory}}
-        accessibilityLabel="Keep this as a Memory after it expires"
-        onPress={()=>setKeepAsMemory((on)=>!on)}
-      >
-        <Text style={styles.keepTitle}>{keepAsMemory ? "✓ Keep this as a Memory" : "Keep this as a Memory"}</Text>
-        <Text style={styles.keepHint}>
-          {keepAsMemory
-            ? "When it stops being live it becomes a Memory, shared with exactly the same people."
-            : "Off — this disappears in 24 hours and is not kept."}
-        </Text>
-      </Pressable>
-
-      {!selectedPlace && (
-        <>
-          <AddLocation value={coordinates} onChange={setCoordinates} thing="Moment"/>
-        </>
-      )}
-
-      <Pressable style={[styles.publishButton,publishing && styles.disabled]} disabled={publishing} onPress={publish}>
-        {publishing ? <ActivityIndicator color={INK.ink}/> : <Text style={styles.publishText}>Publish Moment</Text>}
-      </Pressable>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles=StyleSheet.create({
   keep:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,marginTop:12,backgroundColor:INK.card},
-  keepOn:{borderColor:INK.green,borderWidth:2},
+  // "A state does not have to be a fill" (docs/design-system.md): the on state
+  // marks itself with a heavier ink border, not with green -- green/red are the
+  // manager review-response pair alone (components/ReviewActions.js).
+  keepOn:{borderWidth:3},
   keepTitle:{color:INK.ink,fontWeight:"900",fontSize:14},
   keepHint:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
   screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:70},
+  container:{flex:1},
+  content:{padding:18,paddingBottom:110},
   center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
+  eyebrow:{...TYPE.sectionLabel},
   title:{color:INK.ink,fontSize:31,fontWeight:"900",marginTop:4},
   subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,marginBottom:17},
-  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:13,padding:13,marginBottom:14},
-  errorText:{color:INK.card,lineHeight:19},
-  mediaCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:12},
-  mediaEmpty:{height:220,borderRadius:13,backgroundColor:INK.card,alignItems:"center",justifyContent:"center",padding:22},
+  errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:8,padding:13,marginBottom:14},
+  errorText:{color:INK.ink,fontWeight:"700",lineHeight:19},
+  mediaCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:8,padding:12},
+  mediaEmpty:{height:220,borderRadius:6,backgroundColor:INK.card,alignItems:"center",justifyContent:"center",padding:22},
   mediaEmptyIcon:{fontSize:36},
   mediaEmptyTitle:{color:INK.ink,fontSize:19,fontWeight:"900",marginTop:9},
   mediaEmptyText:{color:INK.inkSoft,textAlign:"center",marginTop:6,lineHeight:19},
   removeMediaButton:{alignSelf:"center",paddingHorizontal:12,paddingVertical:9,marginTop:5},
   removeMediaText:{color:INK.ink,fontSize:12,fontWeight:"900"},
   mediaButtons:{flexDirection:"row",gap:10,marginTop:11},
-  mediaButton:{flex:1,backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:11,paddingVertical:12,alignItems:"center"},
+  mediaButton:{flex:1,backgroundColor:INK.ink,borderColor:INK.ink,borderWidth:2,borderRadius:6,paddingVertical:12,alignItems:"center",minHeight:44,justifyContent:"center"},
   mediaButtonText:{color:INK.card,fontWeight:"900"},
+  field:{marginTop:20},
   audienceRow:{flexDirection:"row",gap:9},
-  audience:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},
-  audienceActive:{borderColor:INK.blue,borderWidth:2},
+  audience:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:8,padding:13},
+  // "State is not a fill": the selected option keeps its card and its ink text,
+  // and marks itself with a heavier border instead.
+  audienceActive:{borderWidth:3},
   audienceTitle:{color:INK.ink,fontWeight:"900"},
   audienceHint:{color:INK.inkSoft,fontSize:10,lineHeight:15,marginTop:3},
   audienceNote:{color:INK.inkSoft,fontSize:12,lineHeight:18},
-  locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center"},
-  locationText:{color:INK.card,fontWeight:"900"},
-  locationHint:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},
-  label:{color:INK.ink,fontSize:15,fontWeight:"900",marginTop:20,marginBottom:8},
-  optional:{color:INK.inkSoft,fontWeight:"700"},
-  captionInput:{minHeight:120,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,color:INK.ink,fontSize:15,lineHeight:22,padding:14},
+  fieldLabel:{...TYPE.sectionLabel,marginBottom:8},
+  optional:{color:INK.inkSoft,fontWeight:"700",textTransform:"none",letterSpacing:0},
+  captionInput:{minHeight:120,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:6,color:INK.ink,fontSize:15,lineHeight:22,padding:14},
   counter:{color:INK.inkSoft,fontSize:11,textAlign:"right",marginTop:5},
   typeRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
-  typeButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:8},
-  typeButtonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  typeText:{color:INK.inkSoft,fontSize:12,fontWeight:"900"},
+  typeButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:20,paddingHorizontal:12,paddingVertical:8,minHeight:36,justifyContent:"center"},
+  typeButtonActive:{backgroundColor:INK.ink},
+  typeText:{color:INK.ink,fontSize:12,fontWeight:"900"},
   typeTextActive:{color:INK.card},
-  placesCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:11,marginTop:11},
-  placeSearch:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:11,color:INK.ink,paddingHorizontal:12,paddingVertical:11,marginBottom:8},
-  placeRow:{flexDirection:"row",alignItems:"center",borderRadius:11,padding:8,marginTop:5},
-  placeRowSelected:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1},
-  placeImage:{width:46,height:46,borderRadius:9,backgroundColor:INK.card},
-  placeFallback:{width:46,height:46,borderRadius:9,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
-  placeName:{color:INK.card,fontWeight:"800",flex:1,marginLeft:10},
-  placeCheck:{color:INK.card,fontSize:18,fontWeight:"900",width:24,textAlign:"center"},
+  placesCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:8,padding:11,marginTop:11},
+  placeSearch:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:6,color:INK.ink,paddingHorizontal:12,paddingVertical:11,marginBottom:8,minHeight:44},
+  placeRow:{flexDirection:"row",alignItems:"center",borderRadius:6,padding:8,marginTop:5,backgroundColor:INK.card},
+  placeRowSelected:{backgroundColor:INK.ink,borderColor:INK.ink,borderWidth:2},
+  placeImage:{width:46,height:46,borderRadius:6,backgroundColor:INK.card},
+  placeFallback:{width:46,height:46,borderRadius:6,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
+  placeName:{color:INK.ink,fontWeight:"800",flex:1,marginLeft:10},
+  placeNameSelected:{color:INK.card},
+  placeCheck:{color:INK.ink,fontSize:18,fontWeight:"900",width:24,textAlign:"center"},
   noPlaces:{color:INK.inkSoft,textAlign:"center",paddingVertical:18},
-  publishButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},
+  stickyBar:{
+    position:"absolute",
+    left:0,
+    right:0,
+    bottom:0,
+    backgroundColor:INK.card,
+    borderTopWidth:2,
+    borderTopColor:INK.ink,
+    padding:16
+  },
+  publishButton:{backgroundColor:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:6,paddingVertical:16,alignItems:"center",minHeight:48,justifyContent:"center"},
   publishText:{color:INK.card,fontSize:16,fontWeight:"900"},
   disabled:{opacity:0.65}
 });

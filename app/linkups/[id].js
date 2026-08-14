@@ -7,6 +7,7 @@ import {effectiveLinkupStatus,formatDateTime,statusLabel} from "../../utils/link
 import {LINKUP_TYPE_LABEL} from "../../utils/markers";
 import {audienceShortLabel} from "../../utils/audience";
 import {INK} from "../../utils/tokens";
+import {TYPE} from "../../styles/typography";
 import PlaceLayout from "../../components/PlaceLayout";
 
 // Packet 5c. The last of the five, and the only one that is a privacy gate.
@@ -260,7 +261,10 @@ export default function LinkupDetail(){
       ) : null}
       beforeReviews={linkup ? (
         <View style={styles.stack}>
-          <Text style={styles.sectionTitle}>Attendees</Text>
+          <View style={styles.listHead}>
+            <Text style={TYPE.sectionLabel}>Attendees</Text>
+            <Text style={styles.listCount}>{attendees.length}</Text>
+          </View>
           {attendees.map((item)=>(
             <View key={item.user_id} style={styles.attendeeRow}>
               <Pressable
@@ -349,33 +353,41 @@ export default function LinkupDetail(){
 
 const styles=StyleSheet.create({
   stack:{marginTop:16,gap:11},
-  sectionTitle:{color:INK.ink,fontSize:19,fontWeight:"800",letterSpacing:-0.2},
+  listHead:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    justifyContent:"space-between",
+    paddingBottom:6,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  listCount:{...TYPE.numeral,fontSize:16},
   creatorCard:{
     flexDirection:"row",
     alignItems:"center",
     borderWidth:2,
     borderColor:INK.ink,
-    borderRadius:12,
+    borderRadius:8,
     padding:12,
     backgroundColor:INK.card
   },
   avatar:{width:48,height:48,borderRadius:24,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
   avatarText:{color:INK.ink,fontSize:19,fontWeight:"800"},
   creatorText:{flex:1,marginLeft:11},
-  creatorLabel:{color:INK.inkSoft,fontSize:9,fontWeight:"800",letterSpacing:1},
+  creatorLabel:{...TYPE.sectionLabel},
   creatorName:{color:INK.ink,fontWeight:"800",marginTop:3},
   creatorArea:{color:INK.inkSoft,fontSize:11,marginTop:2},
   arrow:{color:INK.ink,fontSize:26},
-  privateCard:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,backgroundColor:INK.card},
-  privateLabel:{color:INK.inkSoft,fontSize:9,fontWeight:"800",letterSpacing:1},
+  privateCard:{borderWidth:2,borderColor:INK.ink,borderRadius:8,padding:14,backgroundColor:INK.card},
+  privateLabel:{...TYPE.sectionLabel},
   privateText:{color:INK.ink,lineHeight:20,marginTop:6},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,paddingHorizontal:16,marginBottom:10},
+  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:6,paddingHorizontal:16,marginBottom:10},
   primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card,marginBottom:10},
+  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:6,backgroundColor:INK.card,marginBottom:10},
   secondaryText:{color:INK.ink,fontWeight:"800"},
   quiet:{minHeight:48,justifyContent:"center",alignItems:"center",marginBottom:10},
   quietText:{color:INK.inkSoft,fontWeight:"800"},
-  box:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,backgroundColor:INK.card},
+  box:{borderWidth:2,borderColor:INK.ink,borderRadius:8,padding:14,backgroundColor:INK.card},
   boxTitle:{color:INK.ink,fontWeight:"800",fontSize:16},
   boxText:{color:INK.ink,lineHeight:20,marginTop:5},
   confirmRow:{flexDirection:"row",alignItems:"center",justifyContent:"flex-end",gap:16,marginTop:13},
@@ -392,13 +404,18 @@ const styles=StyleSheet.create({
   smallAvatarText:{color:INK.ink,fontWeight:"800"},
   attendeeText:{marginLeft:9},
   attendeeName:{color:INK.ink,fontWeight:"800"},
-  attendeeRole:{color:INK.inkSoft,fontSize:10,marginTop:2},
+  attendeeRole:{...TYPE.meta,marginTop:2},
   removeText:{color:INK.ink,fontWeight:"800",fontSize:11,padding:8,textDecorationLine:"underline"},
   safetyRow:{flexDirection:"row",justifyContent:"space-between",paddingVertical:14},
   safetyLink:{color:INK.ink,fontWeight:"800",fontSize:13,textDecorationLine:"underline"},
   reasonWrap:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10,marginBottom:12},
-  reason:{borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:10,paddingVertical:7},
+  // Squared, bordered chips like PlacesList's category filter -- not the
+  // rounded pills this used to be, and not the card-on-card invisible text
+  // those pills carried (both states used to read INK.card on an INK.card
+  // box, which is unreadable; unselected now reads ink-on-card like every
+  // other unselected chip in the app).
+  reason:{borderWidth:2,borderColor:INK.ink,borderRadius:4,paddingHorizontal:10,paddingVertical:7,backgroundColor:INK.card},
   reasonActive:{backgroundColor:INK.ink},
-  reasonText:{color:INK.card,fontSize:10,fontWeight:"800",textTransform:"capitalize"},
+  reasonText:{color:INK.ink,fontSize:10,fontWeight:"800",textTransform:"capitalize"},
   reasonTextActive:{color:INK.card,fontSize:10,fontWeight:"800",textTransform:"capitalize"}
 });
