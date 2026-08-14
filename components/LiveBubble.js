@@ -133,7 +133,11 @@ const styles=StyleSheet.create({
     elevation:0
   },
   imageBubble:{padding:3,borderRadius:16},
-  image:{width:92,height:92,borderRadius:13},
+  // 64, not 92. The picture bubbles were 92 across against a text bubble
+  // that is a small pill, and there are more reviews with photos than of
+  // anything else -- so the map read as a slideshow. The owner: they are
+  // "too prominent". Still a photograph, no longer the whole map.
+  image:{width:64,height:64,borderRadius:11},
   text:{fontWeight:"900",fontSize:12},
   tail:{
     alignSelf:"center",

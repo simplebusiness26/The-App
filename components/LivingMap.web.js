@@ -168,7 +168,9 @@ function bubbleElement(bubble,onPress){
     const image=document.createElement("img");
     image.src=bubble.imageUrl;
     image.alt="";
-    image.style.cssText=`width:92px;height:92px;border-radius:13px;object-fit:cover;display:block;background:${chrome.blank};`;
+    // 64, not 92 -- see the note in components/LiveBubble.js. The two files
+    // draw the same bubble and must not drift.
+    image.style.cssText=`width:64px;height:64px;border-radius:11px;object-fit:cover;display:block;background:${chrome.blank};`;
     body.appendChild(image);
   }else{
     body.style.cssText=
