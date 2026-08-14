@@ -12,7 +12,6 @@ import {useNotifications} from "../context/NotificationContext";
 import {useDrawer} from "../context/DrawerContext";
 import {isRootScreen} from "../utils/navigation";
 import {INK} from "../utils/tokens";
-import {signedIn} from "../utils/permissions";
 
 // The header, rebuilt.
 //
@@ -35,6 +34,14 @@ import {signedIn} from "../utils/permissions";
 //             -- see isRootScreen() in utils/navigation.js for why.
 //   Bell      always, with its unread count.
 //   Hamburger always. The owner asked for it in as many words.
+//
+// AND NOT A LOG IN BUTTON. There was one here as well as the pair in
+// components/FloatingLogin.js, so a signed-out visitor saw "Log in" twice at
+// once -- the owner's "look at the logins and the buttons in the way".
+//
+// The pair won because it carries CREATE ACCOUNT too, and this could not: a
+// header has room for one word, and of the two, signing up is the one a first
+// visitor needs. It also sits where a thumb reaches.
 //
 // On the map and the camera it floats OVER the screen (headerFloatsOver()); on
 // a page it sits above the content, but as three chips rather than a bar, so
@@ -60,19 +67,6 @@ export default function Header(){
   const {unreadCount}=useNotifications();
   const {openDrawer}=useDrawer();
   const insets=React.useContext(SafeAreaInsetsContext);
-
-  // The one always-visible way in for somebody without an account. It sits in
-  // the space the product name used to occupy, and disappears the moment there
-  // is a session -- a Log In button on a logged-in screen is noise.
-  const [showLogIn,setShowLogIn]=React.useState(false);
-
-  React.useEffect(()=>{
-    let active=true;
-    signedIn().then(({user})=>{
-      if(active) setShowLogIn(!user);
-    });
-    return()=>{active=false;};
-  },[pathname]);
 
   // A tab root is somewhere you live, not somewhere you leave. The tab bar
   // moves you between the five; an arrow pointing at whatever you happened to
@@ -120,21 +114,13 @@ export default function Header(){
       </View>
 
       {/*
-        No product name. The screen beneath says what it is, and a name repeated
-        on all 77 screens is a wordmark, not navigation.
+        Empty on purpose. No product name -- the screen beneath says what it is,
+        and a name repeated on all 77 screens is a wordmark, not navigation --
+        and no Log in, which lives with Create account in
+        components/FloatingLogin.js. This keeps the two side areas apart so the
+        back arrow stays where a thumb expects it.
       */}
-      <View style={styles.middle} pointerEvents="box-none">
-        {showLogIn && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Log in"
-            style={styles.logIn}
-            onPress={()=>router.push("/auth/login")}
-          >
-            <Text style={styles.logInText}>Log in</Text>
-          </Pressable>
-        )}
-      </View>
+      <View style={styles.middle} pointerEvents="none"/>
 
       <View style={[styles.side,styles.right]} pointerEvents="box-none">
         <Pressable
@@ -202,21 +188,6 @@ const styles=StyleSheet.create({
     borderWidth:2,
     borderColor:INK.ink,
     position:"relative"
-  },
-  logIn:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
-    paddingHorizontal:14,
-    paddingVertical:8,
-    minHeight:40,
-    justifyContent:"center",
-    backgroundColor:INK.card
-  },
-  logInText:{
-    color:INK.ink,
-    fontWeight:"700",
-    fontSize:13
   },
   icon:{
     fontSize:22,

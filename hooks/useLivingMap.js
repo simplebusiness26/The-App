@@ -41,12 +41,39 @@ import {
 // security and get_live_discovery. This hook cannot widen anything, and a bug
 // in it cannot leak.
 
+// EVENTS ARE A TYPE NOW, alongside the other three.
+//
+// The owner: "put events in with businesses properties and activities."
+//
+// They were the odd one out because they do not live in `places` -- an event
+// has a start and an end, so it comes through get_live_discovery with its live
+// state rather than sitting on the map for ever like a pub does. That is right
+// and it stays. What changes is that the type filter reaches BOTH layers, so
+// "show me events" is a question the map can answer whichever half the answer
+// is in.
 export const TYPE_FILTERS=[
   {key:"all",label:"All"},
   {key:"business",label:"Businesses"},
   {key:"property",label:"Properties"},
-  {key:"activity",label:"Activity Clubs"}
+  {key:"activity",label:"Activity Clubs"},
+  {key:"event",label:"Events"}
 ];
+
+// Which live things belong to which type. A Link-up, a check-in and a club
+// session are not events and must not vanish when somebody asks for events --
+// they show under All, and a club session shows under Activity Clubs, because
+// that is the thing it is happening at.
+const LIVE_KIND_TYPE={
+  event:"event",
+  club_session:"activity",
+  linkup:null,
+  checkin:null
+};
+
+export function liveMatchesType(kind,typeFilter){
+  if(typeFilter==="all") return true;
+  return LIVE_KIND_TYPE[kind]===typeFilter;
+}
 
 // Brighton. Where the map opens before it knows anything about you.
 export const DEFAULT_CENTRE={latitude:50.8225,longitude:-0.1372};
@@ -289,9 +316,14 @@ export function useLivingMap(){
   const liveActivity=useMemo(()=>{
     if(!showLive) return [];
     return activitiesInWindow(activities,timeWindow)
+      // The type filter reaches the live layer too, now that Events are one of
+      // the types. Without this, choosing Events would hide every static pin
+      // and leave the events themselves showing alongside Link-ups and
+      // check-ins -- the filter doing half its job.
+      .filter((item)=>liveMatchesType(item.kind,typeFilter))
       .filter((item)=>matches(search,{name:item.title,category:item.subtitle,location:item.area}))
       .map((item)=>({...item,marker:markerForActivity(item)}));
-  },[activities,showLive,timeWindow,search]);
+  },[activities,showLive,timeWindow,typeFilter,search]);
 
   // ---------------------------------------------------------------------------
   // Moments and Memories on the map

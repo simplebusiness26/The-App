@@ -10,6 +10,7 @@ import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {candidatesFrom} from "../utils/bubbleCandidates";
 import {clusterPins,visibleKeys} from "../utils/mapClusters";
 import {bubbleIntervalFor} from "../utils/mapZoom";
+import MapControls,{PANELS} from "./MapControls";
 import PlacePanel from "./PlacePanel";
 import TimeSlider from "./TimeSlider";
 import {
@@ -40,6 +41,22 @@ import {INK} from "../utils/tokens";
 // Tapping a marker opens Xplorer's own card. MapLibre and react-native-maps
 // both offer a popup of their own and neither is used: the mapping system
 // renders geography, Xplorer renders the Xplorer experience.
+
+// MEMORIES MODE: A MEMORIES MAP, WITH THE PLACES BEHIND IT.
+//
+// The owner asked for Memories only -- "I don't want you to see businesses,
+// just the public memories, your friends' memories and your own memories, in
+// the location they were captured" -- and then, offered the choice, asked for
+// the places to stay drawn faintly for orientation. Both were said; this is the
+// second one, and it is one constant away from being the first.
+//
+// Faint, and not tappable. A Memories map where tapping opens a pub is a map of
+// pubs with Memories on it, which is the thing they were objecting to.
+export const MEMORY_MODE_PLACE_OPACITY=0.25;
+
+// No clusters and no bubbles over a history. A "Spaces open" bubble on a map of
+// last April is the live map leaking into the one that replaced it.
+const MEMORIES_MODE_MAP={clusters:[],bubbles:[]};
 
 export default function LivingMapScreen(){
   const map=useLivingMap();
@@ -104,6 +121,9 @@ export default function LivingMapScreen(){
   // it. See utils/memoryTimeline.js.
   const [historical,setHistorical]=useState(false);
   const [at,setAt]=useState(null);
+  // Which of the two control panels is open, if either. Both closed to start
+  // with: the map is the point and the controls are not.
+  const [panel,setPanel]=useState(PANELS.NONE);
 
   const candidates=useMemo(()=>candidatesFrom({
     places:map.places,
@@ -294,115 +314,54 @@ export default function LivingMapScreen(){
 
   return(
     <View style={styles.container}>
-      <View style={[styles.top,{top:clearHeader}]}>
-        <TextInput
-          style={styles.search}
-          placeholder="Search businesses, stays or clubs..."
-          placeholderTextColor={INK.inkSoft}
-          value={map.search}
-          onChangeText={map.setSearch}
-          accessibilityLabel="Search the map"
+      {/*
+        THE MAP IS CLEAN UNTIL SOMEBODY ASKS.
+
+        This used to be a search box and two rows of chips, drawn permanently
+        across the top -- covering a third of the screen in the owner's
+        screenshots, and one of them covering a photo bubble. Their words: "put
+        the search behind an icon button and same for the filters, have them so
+        they can be hidden after as well."
+
+        components/MapControls.js is two chips that toggle. It decides nothing:
+        every value and setter below comes from hooks/useLivingMap.js exactly as
+        it did before.
+      */}
+      <View style={[styles.top,{top:clearHeader}]} pointerEvents="box-none">
+        <MapControls
+          open={panel}
+          onOpen={setPanel}
+          search={map.search}
+          onSearch={map.setSearch}
+          typeFilters={TYPE_FILTERS}
+          typeFilter={map.typeFilter}
+          onTypeFilter={map.setTypeFilter}
+          timeWindows={TIME_WINDOWS}
+          timeWindow={map.timeWindow}
+          onTimeWindow={map.setTimeWindow}
+          showLive={map.showLive}
+          onShowLive={map.setShowLive}
+          showPosts={map.showPosts}
+          onShowPosts={map.setShowPosts}
+          showHeat={map.showHeat}
+          onShowHeat={map.setShowHeat}
+          historical={historical}
+          onHistorical={(next)=>{
+            setHistorical(next);
+            setAt(null);
+            setRevealed(null);
+            // The live layers are a different question and would only get in
+            // the way of this one.
+            if(next){map.setShowLive(false);map.setShowPosts(false);map.setShowHeat(false);}
+            else{map.setShowPosts(true);}
+          }}
         />
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
-          {TYPE_FILTERS.map(({key,label})=>(
-            <Pressable
-              key={key}
-              style={[styles.filterButton,map.typeFilter===key && styles.selectedFilter]}
-              accessibilityRole="button"
-              accessibilityLabel={`Show ${label}`}
-              onPress={()=>map.setTypeFilter(key)}
-            >
-              <Text style={map.typeFilter===key ? styles.selectedFilterText : styles.filterText}>{label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* A separate row on purpose: one asks what kind of place, the other
-            asks when, and collapsing them would make "Tonight" look like a kind
-            of listing. */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
-          <Pressable
-            style={[styles.filterButton,map.showLive && styles.selectedFilter]}
-            accessibilityRole="button"
-            accessibilityLabel={map.showLive ? "Hide what is happening" : "Show what is happening"}
-            onPress={()=>map.setShowLive(!map.showLive)}
-          >
-            <Text style={map.showLive ? styles.selectedFilterText : styles.filterText}>Happening</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.filterButton,map.showPosts && styles.selectedFilter]}
-            accessibilityRole="button"
-            accessibilityLabel={map.showPosts ? "Hide Moments and Memories" : "Show Moments and Memories"}
-            onPress={()=>map.setShowPosts(!map.showPosts)}
-          >
-            <Text style={map.showPosts ? styles.selectedFilterText : styles.filterText}>Posts</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.filterButton,map.showHeat && styles.selectedFilter]}
-            accessibilityRole="button"
-            accessibilityLabel={map.showHeat ? "Hide busy areas" : "Show busy areas"}
-            onPress={()=>map.setShowHeat(!map.showHeat)}
-          >
-            <Text style={map.showHeat ? styles.selectedFilterText : styles.filterText}>Busy</Text>
-          </Pressable>
-
-          {/*
-            MEMORIES ONLY -- and the map becomes a history rather than a filter
-            of the live one. Everything else goes off, because "what happened
-            here" and "what is happening now" are two maps, not two layers.
-          */}
-          <Pressable
-            style={[styles.filterButton,historical && styles.selectedFilter]}
-            accessibilityRole="button"
-            accessibilityState={{selected:historical}}
-            accessibilityLabel={historical ? "Leave the Memories timeline" : "Show Memories on a timeline"}
-            onPress={()=>{
-              const next=!historical;
-              setHistorical(next);
-              setAt(null);
-              setRevealed(null);
-              // The live layers are a different question and would only get in
-              // the way of this one.
-              if(next){map.setShowLive(false);map.setShowPosts(false);map.setShowHeat(false);}
-              else{map.setShowPosts(true);}
-            }}
-          >
-            <Text style={historical ? styles.selectedFilterText : styles.filterText}>Memories</Text>
-          </Pressable>
-
-          {/*
-            THE LIST BUTTON HAS GONE FROM HERE.
-
-            Browsing a list of places is Discover's job -- the owner asked for
-            it back there, with the search bar and a way to return to the map.
-            A second browse surface on the map's own filter row was the map
-            competing with the page built for it.
-
-            components/PlacesList.js is untouched and still renders below when
-            the map cannot load. That is a failure branch, not a filter.
-          */}
-
-          {TIME_WINDOWS.map(({key,label})=>(
-            <Pressable
-              key={key}
-              style={[styles.filterButton,map.showLive && map.timeWindow===key && styles.selectedFilter]}
-              accessibilityRole="button"
-              accessibilityLabel={`Show what is happening ${label.toLowerCase()}`}
-              disabled={!map.showLive}
-              onPress={()=>map.setTimeWindow(key)}
-            >
-              <Text style={map.showLive && map.timeWindow===key ? styles.selectedFilterText : styles.filterText}>{label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
       </View>
 
       <LivingMap
+        {...(historical ? MEMORIES_MODE_MAP : {clusters,bubbles})}
         places={clustered.singles}
-        clusters={clusters}
+        placeOpacity={historical ? MEMORY_MODE_PLACE_OPACITY : 1}
         focus={focus}
         activity={map.activity}
         pins={
@@ -423,12 +382,11 @@ export default function LivingMapScreen(){
         }
         heat={map.heat}
         route={route}
-        bubbles={bubbles}
         onSelectBubble={handleSelectBubble}
         onOpenHeat={handleOpenHeat}
         onSelectCluster={handleSelectCluster}
         onViewportChange={handleViewportChange}
-        onSelectPlace={handleSelectPlace}
+        onSelectPlace={historical ? undefined : handleSelectPlace}
         onSelectActivity={handleSelectActivity}
         onDropPin={handleDropPin}
         onUnavailable={handleUnavailable}

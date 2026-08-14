@@ -65,6 +65,32 @@ async function renderMap(){
   return tree;
 }
 
+
+// THE CONTROLS ARE BEHIND AN ICON NOW.
+//
+// The owner: "put the search behind an icon button and same for the filters,
+// have them so they can be hidden after as well." So a test that wants a filter
+// has to open the panel first, exactly as a person does.
+async function openFilters(tree){
+  const button=tree.root.findAll(
+    (node)=>node.props?.accessibilityLabel==="Filter the map"
+      && typeof node.props?.onPress==="function",
+    {deep:true}
+  )[0];
+  await act(async()=>{button.props.onPress();});
+  await act(async()=>{});
+}
+
+async function openSearch(tree){
+  const button=tree.root.findAll(
+    (node)=>node.props?.accessibilityLabel==="Search the map"
+      && typeof node.props?.onPress==="function",
+    {deep:true}
+  )[0];
+  await act(async()=>{button.props.onPress();});
+  await act(async()=>{});
+}
+
 afterEach(()=>{restoreRouterParams();});
 
 describe("everything that is not drawing is shared",()=>{
@@ -221,6 +247,7 @@ describe("the controls survived the move",()=>{
     fixture();
     const tree=await renderMap();
 
+    await openFilters(tree);
     const labels=labelsOf(tree.toJSON()).join(" | ");
     console.log("MAP CONTROLS >>>",labels);
 
@@ -239,6 +266,7 @@ describe("the controls survived the move",()=>{
   it("narrows the map when a type filter is chosen",async()=>{
     fixture();
     const tree=await renderMap();
+    await openFilters(tree);
 
     const onlyProperties=tree.root.findAll(
       (node)=>node.props?.accessibilityLabel==="Show Properties"

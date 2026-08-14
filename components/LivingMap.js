@@ -44,6 +44,7 @@ export default function LivingMap(props){
 // logo off, and two visual languages a month later. This map is the app's map.
 function MapLibreMap({
   places=[],
+  placeOpacity=1,
   activity=[],
   clusters=[],
   focus=null,
@@ -305,8 +306,14 @@ function MapLibreMap({
           onPress={()=>onSelectPlace?.(place)}
         >
           {/* The same component the old map drew, from the same descriptor.
-              Web builds the identical pin out of DOM. One visual language. */}
-          <PlaceMarker marker={place.card?.marker}/>
+              Web builds the identical pin out of DOM. One visual language.
+
+              placeOpacity is 1 everywhere except the Memories map, where the
+              places are drawn faintly for orientation and are not tappable --
+              see MEMORY_MODE_PLACE_OPACITY in components/LivingMapScreen.js. */}
+          <View style={{opacity:placeOpacity}}>
+            <PlaceMarker marker={place.card?.marker}/>
+          </View>
         </Marker>
       ))}
 
@@ -343,13 +350,28 @@ function MapLibreMap({
         bubble nobody reads. WHICH bubbles these are was decided in
         utils/liveBubbles.js -- no marker here chooses to show one, which is
         the whole point of having a controller.
+
+        anchor {x:0.5, y:1} -- THE BOTTOM OF THE BUBBLE ON THE COORDINATE.
+
+        It was y:1.35, which anchors a point 35% of the bubble's own height
+        BELOW its bottom edge -- so the bubble was pushed roughly thirty pixels
+        up, its tail pointing at empty air above the pin. That is the owner's
+        "these floating reviews, they're not floating above their business,
+        they're just popping up randomly": they were floating above the right
+        place, and far enough above it to look like nowhere.
+
+        Only the phone had it. components/LivingMap.web.js uses
+        anchor:"bottom", which is this, correctly, and always was.
+
+        components/LiveBubble.js lifts itself by half a pin so the tail tip
+        lands on the pin's top edge rather than through its middle.
       */}
       {bubbles.map((bubble)=>(
         <Marker
           key={`bubble-${bubble.key}`}
           id={`bubble-${bubble.key}`}
           lngLat={[Number(bubble.longitude),Number(bubble.latitude)]}
-          anchor={{x:0.5,y:1.35}}
+          anchor={{x:0.5,y:1}}
         >
           <LiveBubble bubble={bubble} onPress={onSelectBubble}/>
         </Marker>

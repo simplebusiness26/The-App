@@ -6,13 +6,16 @@ import {INK} from "../utils/tokens";
 
 // Log in, on the map, for somebody who is not logged in.
 //
-// WHY IT IS NOT JUST THE ONE IN THE HEADER
+// WHY IT IS THE ONLY ONE
 //
-// There is a Log in button in components/Header.js and it works. The header's
-// future is undecided, though, and the app now OPENS on the map -- so if the
-// header ever goes, a signed-out visitor would land on a map with no way to get
-// an account without hunting for one. This does not depend on the header
-// existing.
+// components/Header.js used to carry a Log in button as well, so a signed-out
+// visitor saw "Log in" twice at once -- the owner's "look at the logins and the
+// buttons in the way".
+//
+// This pair is the one that stayed, for two reasons. It carries CREATE ACCOUNT
+// as well, which a header has no room for and which is the one a first visitor
+// actually needs; and it sits where a thumb reaches rather than in the far
+// corner of a phone.
 //
 // It disappears the moment somebody is signed in, and it re-checks on every
 // focus, so logging in and coming back does not leave a stale button sitting

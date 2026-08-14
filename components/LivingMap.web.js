@@ -235,6 +235,7 @@ function clusterElement(cluster,onPress){
 
 export default function LivingMap({
   places=[],
+  placeOpacity=1,
   activity=[],
   clusters=[],
   focus=null,
@@ -488,6 +489,13 @@ export default function LivingMap({
 
     for(const place of places){
       const element=pinElement(place.card?.marker,()=>onSelectPlace?.(place));
+      // 1 everywhere except the Memories map, where the places are drawn
+      // faintly for orientation -- see MEMORY_MODE_PLACE_OPACITY in
+      // components/LivingMapScreen.js.
+      if(placeOpacity!==1){
+        element.style.opacity=String(placeOpacity);
+        element.style.pointerEvents="none";
+      }
       drawn.current.push(
         new maplibregl.Marker({element})
           .setLngLat([Number(place.longitude),Number(place.latitude)])
@@ -527,7 +535,7 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,activity,clusters,pins,bubbles,drawRoute,drawHeat,onSelectPlace,onSelectActivity,onSelectBubble,onSelectCluster]);
+  },[places,placeOpacity,activity,clusters,pins,bubbles,drawRoute,drawHeat,onSelectPlace,onSelectActivity,onSelectBubble,onSelectCluster]);
 
   useEffect(()=>{
     if(!map.current) return;

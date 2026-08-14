@@ -20,6 +20,9 @@ import {View,Text,Image,Pressable,Animated,Easing,StyleSheet,AccessibilityInfo} 
 
 const FADE_MS=260;
 
+// Half of the 34px pin in components/PlaceMarker.js.
+const PIN_RADIUS=17;
+
 export default function LiveBubble({bubble,onPress}){
   const fade=useRef(new Animated.Value(0)).current;
   const celebrate=useRef(new Animated.Value(0)).current;
@@ -74,7 +77,7 @@ export default function LiveBubble({bubble,onPress}){
   const chrome=bubble.chrome || {};
 
   return(
-    <Animated.View style={{opacity:fade}} pointerEvents="box-none">
+    <Animated.View style={[styles.stack,{opacity:fade}]} pointerEvents="box-none">
       {bubble.celebrate && (
         <View style={styles.confettiLayer} pointerEvents="none">
           {(bubble.confetti || []).map((piece,index)=>(
@@ -119,6 +122,11 @@ export default function LiveBubble({bubble,onPress}){
 }
 
 const styles=StyleSheet.create({
+  // Lifted by half a pin. The marker's anchor puts the BOTTOM of this view on
+  // the coordinate, and a pin is 34px drawn centred on the same coordinate --
+  // so without this the tail tip lands in the middle of the pin instead of on
+  // top of it. See the anchor note in components/LivingMap.js.
+  stack:{marginBottom:PIN_RADIUS},
   bubble:{
     borderWidth:2,
     borderRadius:14,

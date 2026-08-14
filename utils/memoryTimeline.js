@@ -80,20 +80,33 @@ export function memoriesAt(memories,at){
 // The slider's own range
 // ---------------------------------------------------------------------------
 
-// From the oldest Memory to now. A slider whose range is a fixed number of days
-// would run off the end of somebody's history in either direction: an Explorer
-// with one Memory from last year needs the handle to reach it.
+// From the oldest Memory to the NEWEST MEMORY. Not to now.
+//
+// THE BUG THIS FIXES, AND IT IS THE WHOLE REASON MEMORIES MODE LOOKED EMPTY
+//
+// This used to be Math.max(...times, now), so the right-hand end of the slider
+// was today whatever the data said -- and the handle starts at the right-hand
+// end. The window is ten days wide. An Explorer whose newest Memory is two
+// months old therefore opened the Memories map on a ten-day window sitting on
+// today, containing nothing, with the slider already as far right as it goes.
+//
+// The owner's words, looking at exactly that: "I also don't see the memories."
+// They were there. The slider was pointing two months past the last one.
+//
+// Now the handle opens on the newest thing there is to see, which is what
+// "start at the end of the story" should have meant all along.
 export function timelineRange(memories,now=Date.now()){
   const times=(memories || []).map(timeOf).filter((value)=>value!==null);
 
   if(!times.length) return {from:now,to:now,empty:true};
 
   const oldest=Math.min(...times);
-  const newest=Math.max(...times,now);
+  const newest=Math.max(...times);
 
-  // Half a window of headroom at the old end, so the oldest Memory can reach
-  // full strength rather than sitting permanently half-faded at the very edge.
-  return {from:oldest-WINDOW_HALF_MS,to:newest,empty:false};
+  // Half a window of headroom at BOTH ends, so the oldest and the newest
+  // Memory can each reach full strength rather than sitting permanently
+  // half-faded at the very edge of the slider.
+  return {from:oldest-WINDOW_HALF_MS,to:newest+WINDOW_HALF_MS,empty:false};
 }
 
 // Where on the slider a given moment sits, 0 to 1.

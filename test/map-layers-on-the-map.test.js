@@ -79,6 +79,21 @@ function press(tree,label){
   )[0];
 }
 
+// THE CONTROLS ARE BEHIND AN ICON NOW.
+//
+// The owner: "put the search behind an icon button and same for the filters,
+// have them so they can be hidden after as well." So a test that wants a filter
+// has to open the panel first, exactly as a person does.
+async function openFilters(tree){
+  const button=tree.root.findAll(
+    (node)=>node.props?.accessibilityLabel==="Filter the map"
+      && typeof node.props?.onPress==="function",
+    {deep:true}
+  )[0];
+  await act(async()=>{button.props.onPress();});
+  await act(async()=>{});
+}
+
 afterEach(()=>{restoreRouterParams();jest.clearAllMocks();});
 
 describe("Moments and Memories are on the map",()=>{
@@ -128,6 +143,7 @@ describe("Moments and Memories are on the map",()=>{
     fixture();
     const tree=await renderMap();
 
+    await openFilters(tree);
     await act(async()=>{press(tree,"Hide Moments and Memories").props.onPress();});
 
     const ids=pins(tree).map((node)=>node.props.id);
@@ -196,6 +212,7 @@ describe("busy areas",()=>{
     fixture({heat:HOT});
     const tree=await renderMap();
 
+    await openFilters(tree);
     expect(labelsOf(tree.toJSON()).join(" ")).toContain("Show busy areas");
     expect(heatLayer(tree).features).toHaveLength(0);
 
@@ -206,6 +223,7 @@ describe("busy areas",()=>{
     fixture({heat:HOT});
     const tree=await renderMap();
 
+    await openFilters(tree);
     await act(async()=>{press(tree,"Show busy areas").props.onPress();});
 
     const layer=heatLayer(tree);
@@ -229,6 +247,7 @@ describe("busy areas",()=>{
     fixture({heat:HOT});
     const tree=await renderMap();
 
+    await openFilters(tree);
     await act(async()=>{press(tree,"Show busy areas").props.onPress();});
 
     expect(supabase.rpc).toHaveBeenCalledWith("get_moment_heat");
@@ -240,6 +259,7 @@ describe("busy areas",()=>{
     fixture({heat:HOT});
     const tree=await renderMap();
 
+    await openFilters(tree);
     await act(async()=>{press(tree,"Show busy areas").props.onPress();});
 
     // A position and a weight. The function returns no id, no author and no

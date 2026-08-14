@@ -114,6 +114,39 @@ test("the range reaches the oldest Memory, whenever that was",()=>{
   expect(timeline.memoryProminence(memories[0],range.from+timeline.WINDOW_HALF_MS)).toBe(1);
 });
 
+// THE ONE THAT MADE THE MEMORIES MAP LOOK EMPTY.
+//
+// The range used to end at Math.max(...times, now) -- today, whatever the data
+// said -- and the handle starts at the right-hand end. The window is ten days
+// wide. So an Explorer whose newest Memory is two months old opened the
+// Memories map on a ten-day window sitting on today, containing nothing, with
+// the slider already as far right as it goes.
+//
+// The owner, looking at exactly that: "I also don't see the memories." They
+// were there. The slider was pointing two months past the last one.
+test("the slider opens on the newest Memory, not on today",()=>{
+  const memories=[memory("spring",120),memory("summer",60)];
+  const range=timeline.timelineRange(memories,NOW);
+
+  // The right-hand end is the newest Memory (plus headroom), never today.
+  expect(range.to).toBeLessThan(NOW-30*DAY);
+
+  // And the thing the map opens on -- the far right of the slider -- actually
+  // has Memories under it. This is the assertion that fails on the old code.
+  const opensAt=timeline.timeAtPosition(1,range);
+  expect(timeline.memoriesAt(memories,opensAt).length).toBeGreaterThan(0);
+});
+
+test("the newest Memory reaches full strength, like the oldest does",()=>{
+  // Headroom at both ends. Without it the newest sits permanently half-faded at
+  // the very edge of a slider that opens on it, which looks like a bug.
+  const memories=[memory("old",400),memory("new",60)];
+  const range=timeline.timelineRange(memories,NOW);
+
+  expect(timeline.memoryProminence(memories[1],range.to-timeline.WINDOW_HALF_MS)).toBe(1);
+  expect(timeline.memoryProminence(memories[0],range.from+timeline.WINDOW_HALF_MS)).toBe(1);
+});
+
 test("no Memories is an empty range rather than a broken one",()=>{
   const range=timeline.timelineRange([],NOW);
   expect(range.empty).toBe(true);

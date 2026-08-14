@@ -67,9 +67,16 @@ check(/\btoActivities\s*\(/.test(brain),`${BRAIN}: does not normalise live rows 
 check(/\bactivitiesInWindow\s*\(/.test(brain),`${BRAIN}: does not apply the time window`);
 check(/\bmarkerForActivity\s*\(/.test(brain),`${BRAIN}: does not derive activity pins from ${MARKERS}`);
 
+// The filters moved behind an icon (components/MapControls.js) because the
+// owner asked for the map to be clean: "put the search behind an icon button
+// and same for the filters". So the screen HANDS the windows over rather than
+// drawing them, and the check follows them to where they went.
+const CONTROLS="components/MapControls.js";
+const controls=code(read(CONTROLS));
+
 check(
-  /\bTIME_WINDOWS\s*\.\s*map\s*\(/.test(screen),
-  `${SCREEN}: does not render the Now / Tonight / Weekend filters`
+  /timeWindows=\{TIME_WINDOWS\}/.test(screen) && /timeWindows\s*\.\s*map\s*\(/.test(controls),
+  `${SCREEN}/${CONTROLS}: does not render the Now / Tonight / Weekend filters`
 );
 
 // ---------------------------------------------------------------------------
@@ -283,6 +290,24 @@ for(const file of [BRAIN,SCREEN,PROVIDER,"components/LivingMap.web.js"]){
     `${file}: the primary map wants an API key — MapLibre and OpenFreeMap need none`
   );
 }
+
+// The controls decide nothing. Every value and setter is passed in, so this
+// file cannot grow a second opinion about what a filter means.
+check(
+  !/supabase|useLivingMap/.test(controls),
+  `${CONTROLS}: reads the database or the map hook. It is a surface for controls, not a second brain.`
+);
+
+// Both panels closed to start with, and both able to close again -- the owner
+// asked for "so they can be hidden after as well".
+check(
+  /PANELS\.NONE/.test(code(read(SCREEN))),
+  `${SCREEN}: the map must open with no panel showing`
+);
+check(
+  /open===panel \? PANELS\.NONE : panel/.test(controls),
+  `${CONTROLS}: an icon must toggle its panel shut as well as open`
+);
 
 // ---------------------------------------------------------------------------
 // The heat layer, and the one rule in it that is a privacy rule
