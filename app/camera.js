@@ -1,4 +1,4 @@
-import React,{useCallback,useRef,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   ActivityIndicator,
   Platform
 } from "react-native";
-import {CameraView,useCameraPermissions} from "expo-camera";
+import {CameraView,useCameraPermissions,useMicrophonePermissions} from "expo-camera";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {extractQrCode} from "../utils/qr";
+import {mediaKindFromUri} from "../utils/socialMedia";
+import {createShutter,MAX_RECORDING_SECONDS,SHUTTER_RECORDING} from "../utils/shutter";
 import {useHeaderClearance} from "../components/Header";
 import {INK} from "../utils/tokens";
 
@@ -34,6 +36,20 @@ import {INK} from "../utils/tokens";
 // recognises a code if one is in front of it, and takes a photo if you press
 // the button.
 //
+// PRESS FOR A PHOTO, HOLD TO RECORD
+//
+// The owner: "what is the deal with the video camera because I don't see this
+// anywhere? I want ONE camera: press = photo, hold = record video, and the same
+// camera scans QR codes." There was no video capture anywhere in the app.
+//
+// One button, and exactly one of the two things happens per press -- a hold
+// that also took a photo would leave a stray picture behind every recording.
+// The timing rule is utils/shutter.js, where it can be tested without a
+// viewfinder, a permission prompt or a device.
+//
+// Recording stops itself at fifteen seconds. Nobody ends up with four minutes
+// of their pocket, and it is the length agreed with the owner.
+//
 // WHY THE PHOTO IS HANDED OVER RATHER THAN UPLOADED HERE
 //
 // A Moment and a Memory each have a screen that already knows how to upload,
@@ -47,12 +63,25 @@ export default function Camera(){
   const clearHeader=useHeaderClearance();
   const params=useLocalSearchParams();
   const [permission,requestPermission]=useCameraPermissions();
+  // Sound, as agreed with the owner: a silent video of a gig or a busy pub
+  // loses most of the point. It is asked for when somebody first holds the
+  // button, not on arrival -- a microphone prompt for a screen you opened to
+  // take a photograph is the kind of thing that gets an app deleted.
+  const [microphone,requestMicrophone]=useMicrophonePermissions();
   const cameraRef=useRef(null);
 
   const [facing,setFacing]=useState("back");
   const [photo,setPhoto]=useState(null);
   const [taking,setTaking]=useState(false);
   const [error,setError]=useState("");
+  // "picture" or "video". CameraView has to be reconfigured before it will
+  // record, and that is a re-render -- so holding the button asks for video
+  // mode and the effect below starts the recording once the mode has actually
+  // taken. Calling recordAsync in the same tick as the mode change is how this
+  // fails on a real Android device.
+  const [mode,setMode]=useState("picture");
+  const [wantsToRecord,setWantsToRecord]=useState(false);
+  const [recording,setRecording]=useState(false);
   // Once a code has been read, stop reading. Without this the same code fires
   // the handler on every frame and pushes the same screen dozens of times.
   const [handledCode,setHandledCode]=useState(false);
@@ -64,6 +93,9 @@ export default function Camera(){
     setHandledCode(false);
     setPhoto(null);
     setError("");
+    setMode("picture");
+    setWantsToRecord(false);
+    setRecording(false);
   },[]));
 
   function onBarcode({data}){
@@ -91,6 +123,97 @@ export default function Camera(){
     }
 
     setTaking(false);
+  }
+
+  // Press for a photo, hold to record. utils/shutter.js owns the timing so it
+  // can be tested; this only says what each outcome does. The handlers are
+  // called through a ref rather than captured, so the recogniser is built once
+  // and still calls the current version of each.
+  const shutter=useRef(null);
+  const actions=useRef({});
+  actions.current={takePhoto,startRecording,stopRecording};
+
+  if(!shutter.current){
+    shutter.current=createShutter({
+      onPhoto:()=>actions.current.takePhoto(),
+      onRecord:()=>actions.current.startRecording(),
+      onStop:()=>actions.current.stopRecording()
+    });
+  }
+
+  // A timer that fires after this screen has gone starts a recording nothing
+  // will ever stop.
+  useEffect(()=>()=>{shutter.current?.cancel();},[]);
+
+  // ---------------------------------------------------------------------------
+  // Recording
+  // ---------------------------------------------------------------------------
+
+  // The mode has to be applied to CameraView before recordAsync will work, and
+  // applying it is a re-render. So holding the button sets the intention and
+  // this starts the recording once the camera is actually in video mode.
+  //
+  // THE RE-ENTRY GUARD IS A REF, NOT THE `recording` STATE, AND THAT MATTERS.
+  //
+  // With `recording` in the dependency list, setRecording(true) re-ran this
+  // effect, whose cleanup then cancelled the recording it had just started --
+  // so the clip resolved into a callback that had already decided to ignore it
+  // and nothing ever reached the tray. A ref changes without re-running
+  // anything, which is exactly what a guard should do.
+  const recordingRef=useRef(false);
+
+  useEffect(()=>{
+    if(!wantsToRecord || mode!=="video" || recordingRef.current || !cameraRef.current) return;
+
+    let alive=true;
+    recordingRef.current=true;
+    setRecording(true);
+    setError("");
+
+    cameraRef.current
+      .recordAsync({maxDuration:MAX_RECORDING_SECONDS})
+      .then((taken)=>{
+        // recordAsync resolves when stopRecording is called OR when maxDuration
+        // is reached -- the same promise for both, which is why the button does
+        // not decide what happens next.
+        if(alive && taken?.uri) setPhoto(taken);
+      })
+      .catch((recordError)=>{
+        if(alive) setError(recordError?.message || "The video could not be recorded.");
+      })
+      .finally(()=>{
+        recordingRef.current=false;
+        if(!alive) return;
+        setRecording(false);
+        setWantsToRecord(false);
+        setMode("picture");
+        shutter.current.finished();
+      });
+
+    // Only on unmount. This effect's own state changes must not tear down a
+    // recording that is still running.
+    return()=>{alive=false;};
+  },[wantsToRecord,mode]);
+
+  async function startRecording(){
+    if(taking || photo) return;
+
+    // Asked here, not on arrival: a microphone prompt for a screen you opened
+    // to take a photograph is the kind of thing that gets an app deleted. A
+    // refusal is not fatal -- expo-camera records without sound, and saying so
+    // beats a recording that silently has none.
+    if(microphone && !microphone.granted){
+      const answer=await requestMicrophone();
+      if(!answer?.granted) setError("Recording without sound — microphone access was not given.");
+    }
+
+    setWantsToRecord(true);
+    setMode("video");
+  }
+
+  function stopRecording(){
+    if(!recordingRef.current) return;
+    cameraRef.current?.stopRecording?.();
   }
 
   // The two screens both read `photo` and start with it already chosen.
@@ -151,9 +274,20 @@ export default function Camera(){
   // After the shutter: what is this picture for?
   // ---------------------------------------------------------------------------
   if(photo){
+    // A recording has no still to show and this screen has no player: the two
+    // creation screens do. Saying what is being carried beats an Image that
+    // silently renders nothing, which is what a video URI in an <Image> does.
+    const isVideo=mediaKindFromUri(photo.uri)==="video";
+
     return(
       <View style={styles.screen}>
-        <Image source={{uri:photo.uri}} style={styles.preview} resizeMode="cover"/>
+        {isVideo
+          ? (
+            <View style={[styles.preview,styles.videoPreview]}>
+              <Text style={styles.videoPreviewText}>Video recorded</Text>
+            </View>
+          )
+          : <Image source={{uri:photo.uri}} style={styles.preview} resizeMode="cover"/>}
 
         <View style={styles.tray}>
           <Text style={styles.trayTitle}>What is this?</Text>
@@ -181,10 +315,10 @@ export default function Camera(){
           <Pressable
             style={styles.retake}
             accessibilityRole="button"
-            accessibilityLabel="Take it again"
+            accessibilityLabel={isVideo ? "Record it again" : "Take it again"}
             onPress={()=>setPhoto(null)}
           >
-            <Text style={styles.retakeText}>Take it again</Text>
+            <Text style={styles.retakeText}>{isVideo ? "Record it again" : "Take it again"}</Text>
           </Pressable>
         </View>
       </View>
@@ -200,12 +334,21 @@ export default function Camera(){
         ref={cameraRef}
         style={styles.camera}
         facing={facing}
+        mode={mode}
+        // ALWAYS ON, in both modes. A QR code is unambiguous and nobody points
+        // a phone at one by accident, so making it a mode would mean guessing
+        // wrong half the time. It is switched off only once a code has been
+        // read, or the same code fires the handler on every frame.
         barcodeScannerSettings={{barcodeTypes:["qr"]}}
-        onBarcodeScanned={handledCode ? undefined : onBarcode}
+        onBarcodeScanned={handledCode || recording ? undefined : onBarcode}
       />
 
       <View pointerEvents="none" style={[styles.hintWrap,{top:clearHeader+8}]}>
-        <Text style={styles.hint}>Point at a Xplorer QR code to open it, or take a photo</Text>
+        <Text style={styles.hint}>
+          {recording
+            ? `Recording — up to ${MAX_RECORDING_SECONDS} seconds. Let go to stop.`
+            : "Point at a Xplorer QR code to open it. Press for a photo, hold to record."}
+        </Text>
       </View>
 
       {!!error && (
@@ -224,14 +367,21 @@ export default function Camera(){
           <Text style={styles.sideText}>Type a code</Text>
         </Pressable>
 
+        {/*
+          ONE BUTTON. onPressIn/onPressOut rather than onPress and onLongPress:
+          React Native fires onPress on release AS WELL as onLongPress on some
+          platforms, so a hold would leave a stray photograph behind every
+          recording. utils/shutter.js decides which of the two happened.
+        */}
         <Pressable
-          style={[styles.shutter,taking && styles.shutterBusy]}
+          style={[styles.shutter,taking && styles.shutterBusy,recording && styles.shutterRecording]}
           accessibilityRole="button"
-          accessibilityLabel="Take a photo"
+          accessibilityLabel="Press for a photo, hold to record a video"
           disabled={taking}
-          onPress={takePhoto}
+          onPressIn={()=>shutter.current.pressIn()}
+          onPressOut={()=>shutter.current.pressOut()}
         >
-          <View style={styles.shutterInner}/>
+          <View style={[styles.shutterInner,recording && styles.shutterInnerRecording]}/>
         </Pressable>
 
         <Pressable
@@ -306,7 +456,16 @@ const styles=StyleSheet.create({
     justifyContent:"center"
   },
   shutterBusy:{opacity:0.5},
+  // Recording: the ring fills red and the inner circle becomes a square, which
+  // is the stop shape everybody already reads without a legend. INK.red is the
+  // manager's dispute colour elsewhere and never appears on the map -- this is
+  // a viewfinder, not the map, and "recording" is the one other place a red
+  // that means "this is live and being kept" is worth more than consistency.
+  shutterRecording:{borderColor:INK.red},
   shutterInner:{width:56,height:56,borderRadius:28,backgroundColor:INK.card},
+  shutterInnerRecording:{width:30,height:30,borderRadius:6,backgroundColor:INK.red},
+  videoPreview:{alignItems:"center",justifyContent:"center"},
+  videoPreviewText:{color:INK.card,fontWeight:"900",fontSize:16},
 
   tray:{
     position:"absolute",

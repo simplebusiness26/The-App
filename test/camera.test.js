@@ -44,7 +44,7 @@ describe("the viewfinder",()=>{
     const labels=labelsOf(tree.toJSON());
     console.log("CAMERA CONTROLS >>>",labels.join(" | "));
 
-    expect(labels).toContain("Take a photo");
+    expect(labels).toContain("Press for a photo, hold to record a video");
     expect(labels).toContain("Type a QR code by hand");
 
     await act(async()=>{tree.unmount();});
@@ -98,11 +98,20 @@ describe("what a photo becomes",()=>{
     await act(async()=>{});
 
     const shutter=tree.root.findAll(
-      (node)=>node.props?.accessibilityLabel==="Take a photo" && typeof node.props?.onPress==="function",
+      // onPressIn/onPressOut, not onPress: React Native fires onPress on release
+      // as well as onLongPress on some platforms, so a hold would leave a stray
+      // photograph behind every recording. utils/shutter.js decides which
+      // happened.
+      (node)=>node.props?.accessibilityLabel==="Press for a photo, hold to record a video"
+        && typeof node.props?.onPressIn==="function",
       {deep:true}
     )[0];
 
-    await act(async()=>{await shutter.props.onPress();});
+    // A quick press: down and straight back up, well inside HOLD_MS. That is a
+    // photograph, and it must not also start a recording.
+    await act(async()=>{shutter.props.onPressIn();});
+    await act(async()=>{shutter.props.onPressOut();});
+    await act(async()=>{});
 
     const text=textOf(tree.toJSON());
     console.log("AFTER THE SHUTTER >>>",text);
@@ -135,10 +144,13 @@ describe("what a photo becomes",()=>{
     await act(async()=>{});
 
     const shutter=tree.root.findAll(
-      (n)=>n.props?.accessibilityLabel==="Take a photo" && typeof n.props?.onPress==="function",
+      (n)=>n.props?.accessibilityLabel==="Press for a photo, hold to record a video"
+        && typeof n.props?.onPressIn==="function",
       {deep:true}
     )[0];
-    await act(async()=>{await shutter.props.onPress();});
+    await act(async()=>{shutter.props.onPressIn();});
+    await act(async()=>{shutter.props.onPressOut();});
+    await act(async()=>{});
 
     const memory=tree.root.findAll(
       (n)=>n.props?.accessibilityLabel==="Keep this as a Memory" && typeof n.props?.onPress==="function",
@@ -164,7 +176,7 @@ describe("what a photo becomes",()=>{
 
     const labels=labelsOf(tree.toJSON());
     expect(labels).toContain("Allow camera access");
-    expect(labels).not.toContain("Take a photo");
+    expect(labels).not.toContain("Press for a photo, hold to record a video");
     // And there is still a way to use a code without giving camera access.
     expect(labels).toContain("Enter a QR code by hand instead");
 

@@ -47,12 +47,40 @@ export function prepareSocialAsset(asset){
 //
 // ownsPreviewUri is false: nothing here created an object URL, so nothing here
 // should revoke one.
+// THE CAMERA RECORDS VIDEO NOW, so this has to be able to tell one kind of file
+// from another. The owner: "press = photo, hold = record video", one camera.
+//
+// It reads the extension rather than being told, because the URI is whatever
+// expo-camera handed back and a caller passing the wrong kind would upload a
+// video with an image mime type -- which Supabase Storage accepts and every
+// player then refuses.
+export const CAMERA_IMAGE_TYPES=["jpg","jpeg","png","heic","webp"];
+export const CAMERA_VIDEO_TYPES=["mp4","mov","m4v","qt"];
+
+export function mediaKindFromUri(uri){
+  const extension=String(uri || "").split("?")[0].split(".").pop()?.toLowerCase();
+  return CAMERA_VIDEO_TYPES.includes(extension) ? "video" : "image";
+}
+
 export function assetFromCameraUri(uri){
   const clean=(uri || "").trim();
   if(!clean) return null;
 
   const extension=clean.split("?")[0].split(".").pop()?.toLowerCase();
-  const known=["jpg","jpeg","png","heic","webp"].includes(extension) ? extension : "jpg";
+
+  if(CAMERA_VIDEO_TYPES.includes(extension)){
+    return {
+      uri:clean,
+      previewUri:clean,
+      ownsPreviewUri:false,
+      fileName:`camera.${extension}`,
+      // quicktime, not "video/mov". The extension and the mime type are not the
+      // same word and guessing costs you a file nothing will play.
+      mimeType:extension==="mov" || extension==="qt" ? "video/quicktime" : `video/${extension}`
+    };
+  }
+
+  const known=CAMERA_IMAGE_TYPES.includes(extension) ? extension : "jpg";
 
   return {
     uri:clean,

@@ -6,7 +6,7 @@ import * as Location from "expo-location";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import MomentMediaPreview from "../../components/MomentMediaPreview";
-import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
+import {assetFromCameraUri,mediaKindFromUri,prepareSocialAsset,releaseSocialAsset,resolveVideoDuration,uploadSocialAsset} from "../../utils/socialMedia";
 import AudienceCeiling from "../../components/AudienceCeiling";
 import {DEFAULT_MOMENT_VISIBILITY,MOMENT_VISIBILITY} from "../../utils/places";
 import AddLocation from "../../components/AddLocation";
@@ -46,6 +46,8 @@ export default function CreateMoment(){
   const presetId=Array.isArray(params.target_id) ? params.target_id[0] : params.target_id;
   // A photo handed over by app/camera.js. The camera takes the picture; this
   // screen is still the only thing that uploads it or decides who sees it.
+  // A photo OR a video: the camera takes both now -- press for one, hold for
+  // the other -- and hands the file over the same way.
   const cameraPhoto=Array.isArray(params.photo) ? params.photo[0] : params.photo;
 
   const [user,setUser]=useState(null);
@@ -81,7 +83,9 @@ export default function CreateMoment(){
     const taken=assetFromCameraUri(cameraPhoto);
     if(!taken) return;
     setAsset(taken);
-    setMediaType("image");
+    // Read off the file, not assumed. Marking a recording as an image uploads
+    // it with an image mime type, which Storage accepts and no player will play.
+    setMediaType(mediaKindFromUri(cameraPhoto));
   },[cameraPhoto,asset]);
 
   // CAMERA ONLY.

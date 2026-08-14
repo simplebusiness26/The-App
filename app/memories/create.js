@@ -41,6 +41,8 @@ export default function CreateMemory(){
   const presetType=Array.isArray(params.target_type) ? params.target_type[0] : params.target_type;
   const presetId=Array.isArray(params.target_id) ? params.target_id[0] : params.target_id;
   // A photo handed over by app/camera.js. See the note in app/moments/create.js.
+  // A photo OR a video: the camera takes both now -- press for one, hold for
+  // the other -- and hands the file over the same way.
   const cameraPhoto=Array.isArray(params.photo) ? params.photo[0] : params.photo;
 
   const [user,setUser]=useState(null);

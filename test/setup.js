@@ -136,11 +136,20 @@ jest.mock("expo-camera",()=>{
   const React=require("react");
 
   let permission={granted:false,status:"undetermined"};
+  let microphone={granted:true,status:"granted"};
   let nextPicture={uri:"file:///tmp/shot.jpg",width:1000,height:1000};
+  let nextRecording={uri:"file:///tmp/clip.mp4"};
+
+  // The recording is resolved by stopRecording() or by maxDuration -- the same
+  // promise for both, which is what the real API does and what app/camera.js is
+  // written against.
+  let finishRecording=null;
 
   const CameraView=React.forwardRef(({children,...rest},ref)=>{
     React.useImperativeHandle(ref,()=>({
-      takePictureAsync:async()=>nextPicture
+      takePictureAsync:async()=>nextPicture,
+      recordAsync:()=>new Promise((resolve)=>{finishRecording=()=>resolve(nextRecording);}),
+      stopRecording:()=>{finishRecording?.();finishRecording=null;}
     }),[]);
     return React.createElement("CameraView",rest,children);
   });
@@ -148,11 +157,16 @@ jest.mock("expo-camera",()=>{
   return{
     CameraView,
     useCameraPermissions:()=>[permission,jest.fn()],
+    useMicrophonePermissions:()=>[microphone,jest.fn(async()=>microphone)],
     // Test controls. Reset them yourself -- module state survives between tests
     // in a file, which is deliberate: several of these tests want a granted
     // camera for the whole file.
     __setCameraPermission:(next)=>{permission=next;},
-    __setNextPicture:(next)=>{nextPicture=next;}
+    __setMicrophonePermission:(next)=>{microphone=next;},
+    __setNextPicture:(next)=>{nextPicture=next;},
+    __setNextRecording:(next)=>{nextRecording=next;},
+    // Ends a recording the way maxDuration would, with no stopRecording call.
+    __finishRecording:()=>{finishRecording?.();finishRecording=null;}
   };
 });
 
