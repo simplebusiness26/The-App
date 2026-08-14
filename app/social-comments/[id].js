@@ -1,5 +1,6 @@
 import React,{useCallback,useState} from "react";
 import {ActivityIndicator,Image,Linking,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import SocialImage from "../../components/SocialImage";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import EndorseButton from "../../components/EndorseButton";
@@ -147,7 +148,7 @@ export default function VideoReviewComments(){
       <View style={styles.card}>
         {!!video && <Pressable style={styles.videoWrap} onPress={()=>Linking.openURL(video.media_url)}>
           {video.thumbnail_url || review.target_image_url
-            ? <Image source={{uri:video.thumbnail_url || review.target_image_url}} style={styles.poster}/>
+            ? <SocialImage uri={video.thumbnail_url || review.target_image_url} style={styles.poster}/>
             : <View style={styles.videoFallback}/>
           }
           <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
@@ -162,7 +163,7 @@ export default function VideoReviewComments(){
 
         {!!route && (
           <Pressable style={styles.placeCard} onPress={()=>router.push(route)}>
-            {review.target_image_url ? <Image source={{uri:review.target_image_url}} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
+            {review.target_image_url ? <SocialImage uri={review.target_image_url} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
             <View style={styles.placeText}>
               <Text style={styles.placeEyebrow}>REVIEWED PLACE</Text>
               <Text style={styles.placeName}>{review.target_name}</Text>

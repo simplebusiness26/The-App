@@ -10,6 +10,7 @@ import {
   Animated
 } from "react-native";
 import {router} from "expo-router";
+import SocialImage from "./SocialImage";
 import {supabase} from "../services/supabase";
 import {entityRoute} from "../utils/places";
 import {INK} from "../utils/tokens";
@@ -190,8 +191,8 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=f
         ) : (
           <Animated.View style={[styles.stage,{opacity:fade}]}>
             {current.media_type==="image" || current.thumbnail_url ? (
-              <Image
-                source={{uri:current.media_url || current.thumbnail_url}}
+              <SocialImage
+                uri={current.media_url || current.thumbnail_url}
                 style={styles.media}
                 resizeMode="contain"
               />

@@ -1,5 +1,6 @@
 import React,{useCallback,useState} from "react";
 import {ActivityIndicator,Image,Linking,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import SocialImage from "../../components/SocialImage";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
@@ -185,11 +186,11 @@ export default function MomentDetail(){
 
       <View style={styles.card}>
         {moment.media_type==="image" ? (
-          <Image source={{uri:moment.media_url}} style={styles.media}/>
+          <SocialImage uri={moment.media_url} style={styles.media}/>
         ) : (
           <Pressable style={styles.videoWrap} onPress={()=>Linking.openURL(moment.media_url)}>
             {moment.thumbnail_url || moment.target_image_url
-              ? <Image source={{uri:moment.thumbnail_url || moment.target_image_url}} style={styles.media}/>
+              ? <SocialImage uri={moment.thumbnail_url || moment.target_image_url} style={styles.media}/>
               : <View style={styles.videoFallback}/>
             }
             <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
@@ -201,7 +202,7 @@ export default function MomentDetail(){
 
         {!!moment.target_name && (
           <Pressable style={styles.placeCard} disabled={!route} onPress={()=>route && router.push(route)}>
-            {moment.target_image_url ? <Image source={{uri:moment.target_image_url}} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
+            {moment.target_image_url ? <SocialImage uri={moment.target_image_url} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
             <View style={styles.placeText}>
               <Text style={styles.placeEyebrow}>ATTACHED PLACE</Text>
               <Text style={styles.placeName}>{moment.target_name}</Text>

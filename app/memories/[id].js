@@ -1,5 +1,6 @@
 import React,{useCallback,useState} from "react";
 import {ActivityIndicator,Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,View} from "react-native";
+import SocialImage from "../../components/SocialImage";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
@@ -230,7 +231,7 @@ export default function MemoryPage(){
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {!!memory.media_url && <Image source={{uri:memory.media_url}} style={styles.photo}/>}
+      {!!memory.media_url && <SocialImage uri={memory.media_url} style={styles.photo}/>}
 
       <View style={styles.card}>
         <Text style={styles.phase}>{phaseLabel(memory)}</Text>

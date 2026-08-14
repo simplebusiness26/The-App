@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image
 } from "react-native";
+import SocialImage from "./SocialImage";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import EndorseButton from "./EndorseButton";
@@ -480,7 +481,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
               accessibilityLabel={item.title || "Open this Memory"}
               onPress={()=>router.push(`/memories/${item.id}`)}
             >
-              {item.media_url ? <Image source={{uri:item.media_url}} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>🗺️</Text></View>}
+              {item.media_url ? <SocialImage uri={item.media_url} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>🗺️</Text></View>}
               <Text style={styles.favouriteName} numberOfLines={2}>{item.title || item.target_name || "A Memory"}</Text>
               <Text style={styles.favouriteType}>{item.is_live ? "live" : "archived"}</Text>
             </Pressable>
@@ -523,7 +524,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
             const review=reviews.find(row=>row.id===item.review_id);
             return(
               <Pressable key={item.id} style={styles.galleryCard} onPress={()=>review && router.push(listingRoute(review))}>
-                <Image source={{uri:item.media_url}} style={styles.galleryImage}/>
+                <SocialImage uri={item.media_url} style={styles.galleryImage}/>
                 <View style={styles.galleryOverlay}><Text style={styles.galleryText} numberOfLines={1}>{review?.target_name || "Review"}</Text></View>
               </Pressable>
             );
@@ -566,7 +567,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
 
             {!!photos.length && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewImageRow}>
-                {photos.map(photo=><Image key={photo.id} source={{uri:photo.media_url}} style={styles.reviewImage}/>)}
+                {photos.map(photo=><SocialImage key={photo.id} uri={photo.media_url} style={styles.reviewImage}/>)}
               </ScrollView>
             )}
 
@@ -594,7 +595,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         return(
           <Pressable key={item.id} style={styles.videoCard} onPress={()=>review && router.push(`/social-comments/${review.id}`)}>
             <View style={styles.videoPoster}>
-              {item.thumbnail_url || review?.target_image_url ? <Image source={{uri:item.thumbnail_url || review?.target_image_url}} style={styles.videoPosterImage}/> : <Text style={styles.largePlay}>▶</Text>}
+              {item.thumbnail_url || review?.target_image_url ? <SocialImage uri={item.thumbnail_url || review?.target_image_url} style={styles.videoPosterImage}/> : <Text style={styles.largePlay}>▶</Text>}
               <View style={styles.playOverlay}><Text style={styles.playOverlayText}>▶</Text></View>
             </View>
             <View style={styles.videoCardBody}>
@@ -613,7 +614,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
           {favourites.map(item=>(
             <Pressable key={item.id} style={styles.favouriteCard} onPress={()=>router.push(listingRoute(item))}>
-              {item.target_image_url ? <Image source={{uri:item.target_image_url}} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>📍</Text></View>}
+              {item.target_image_url ? <SocialImage uri={item.target_image_url} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>📍</Text></View>}
               <Text style={styles.favouriteName} numberOfLines={2}>{item.target_name}</Text>
               <Text style={styles.favouriteType}>{item.target_type.replace("_"," ")}</Text>
             </Pressable>

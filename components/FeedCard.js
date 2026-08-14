@@ -1,5 +1,6 @@
 import React from "react";
 import {Image,Linking,Pressable,StyleSheet,Text,View} from "react-native";
+import SocialImage from "./SocialImage";
 import {router} from "expo-router";
 import LikeButton from "./LikeButton";
 import EndorseButton from "./EndorseButton";
@@ -114,12 +115,12 @@ function FeedCard({item,viewerId,onOpen,onComments}){
           which matters more on a virtualised list than it did on a ScrollView:
           FlatList measures rows to decide what to keep mounted.
         */}
-        {!!item.media_url && item.media_type==="image" && <Image source={{uri:item.media_url}} style={styles.media} resizeMode="cover"/>}
+        {!!item.media_url && item.media_type==="image" && <SocialImage uri={item.media_url} style={styles.media} resizeMode="cover"/>}
 
         {!!item.media_url && item.media_type==="video" && (
           <Pressable style={styles.videoWrap} onPress={()=>Linking.openURL(item.media_url)}>
             {item.thumbnail_url || item.target_image_url
-              ? <Image source={{uri:item.thumbnail_url || item.target_image_url}} style={styles.videoPoster} resizeMode="cover"/>
+              ? <SocialImage uri={item.thumbnail_url || item.target_image_url} style={styles.videoPoster} resizeMode="cover"/>
               : <View style={styles.videoFallback}/>
             }
             <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
@@ -127,7 +128,7 @@ function FeedCard({item,viewerId,onOpen,onComments}){
           </Pressable>
         )}
 
-        {!item.media_url && !!item.target_image_url && <Image source={{uri:item.target_image_url}} style={styles.media} resizeMode="cover"/>}
+        {!item.media_url && !!item.target_image_url && <SocialImage uri={item.target_image_url} style={styles.media} resizeMode="cover"/>}
       </Pressable>
 
       {!!item.verified_qr && <Text style={styles.verified}>✓ Verified on-site review</Text>}

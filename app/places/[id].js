@@ -1,6 +1,7 @@
 import React,{useCallback,useState} from "react";
 import {Image,Pressable,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
+import SocialImage from "../../components/SocialImage";
 import {supabase} from "../../services/supabase";
 import {loadPlaceReviews,averageRating} from "../../utils/reviews";
 import PlaceLayout from "../../components/PlaceLayout";
@@ -179,8 +180,8 @@ export default function PublicPlacePage(){
                   onPress={()=>router.push(`/moments/${moment.id}`)}
                 >
                   {moment.media_type==="image" || moment.thumbnail_url ? (
-                    <Image
-                      source={{uri:moment.thumbnail_url || moment.media_url}}
+                    <SocialImage
+                      uri={moment.thumbnail_url || moment.media_url}
                       style={styles.momentImage}
                     />
                   ) : (
