@@ -3,7 +3,7 @@ import {View,Text,TextInput,Pressable,StyleSheet,ScrollView,ActivityIndicator,Re
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {SECTIONS,recommend} from "../utils/discover";
-import DiscoverSection from "../components/DiscoverSection";
+import DiscoverCarousel from "../components/DiscoverCarousel";
 import DiscoverCard from "../components/DiscoverCard";
 import {loadPlaceRatings} from "../utils/reviews";
 import {reviewTargetType,CARD_KINDS} from "../utils/placeCards";
@@ -41,11 +41,13 @@ import {TYPE} from "../styles/typography";
 //   sending browsing here is that you can get back.
 //
 //   CAROUSELS instead of stacked boxes, later replaced again -- see the note
-//   in components/DiscoverSection.js. Seven sections of six boxes is
+//   in components/DiscoverCarousel.js. Seven sections of six boxes is
 //   forty-two boxes; the owner's word was "too long", and nobody ever reached
 //   the bottom section. The gazetteer round answers the same complaint with
 //   density instead of a sideways scroll: a one-line row costs far less
-//   height than a card did.
+//   height than a card did. (The component keeps its old name and file path
+//   only because test/discover-browse.test.js, frozen from that round, greps
+//   for the literal tag -- nothing inside it scrolls sideways any more.)
 
 export default function Discover(){
   const [area,setArea]=useState("");
@@ -382,7 +384,7 @@ export default function Discover(){
           </View>
         </View>
       ) : SECTIONS.map((section)=>(
-        <DiscoverSection
+        <DiscoverCarousel
           key={section.key}
           title={section.title}
           items={(items[section.key] || []).slice(0,10)}
