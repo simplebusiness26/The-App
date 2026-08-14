@@ -6,6 +6,8 @@ import LiveBubble from "./LiveBubble";
 import {mapConfiguration} from "../utils/mapProvider";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 import {CLUSTER_ZOOM_STEP} from "../utils/mapZoom";
+import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
+import {heatmapPaint} from "../utils/markers";
 
 // The native renderer: MapLibre on Android and iOS.
 //
@@ -45,7 +47,7 @@ function MapLibreMap({
   activity=[],
   clusters=[],
   pins=[],
-  heat=[],
+  heat=null,
   route=null,
   bubbles=[],
   onOpenHeat,
@@ -113,6 +115,24 @@ function MapLibreMap({
         const point=event?.nativeEvent?.payload?.geometry?.coordinates;
         if(!point) return;
         onDropPin?.({longitude:point[0],latitude:point[1]});
+      }}
+      /*
+        TAP A WARM PATCH TO SEE WHAT IS IN IT.
+
+        It used to be a double tap on a heat circle, counted by
+        utils/doubleTap.js. Two things were wrong with that. There are no
+        circles any more -- heat is a layer and a layer has nothing to tap. And
+        it could never have worked anyway: `doubleTapZoom` defaults to true and
+        nothing turned it off, so MapLibre's own gesture beat a 320ms counter
+        every time and the owner only ever zoomed in.
+
+        A single tap, on the map. A tap on a Marker is handled by the Marker, a
+        drag is not a tap, and the long press above is untouched.
+      */
+      onPress={(event)=>{
+        const point=event?.nativeEvent?.payload?.geometry?.coordinates;
+        if(!point) return;
+        onOpenHeat?.({longitude:point[0],latitude:point[1]});
       }}
       /*
         NO BRANDING ON THE MAP, AND THE CREDIT MOVED RATHER THAN DROPPED
@@ -203,40 +223,29 @@ function MapLibreMap({
         </GeoJSONSource>
       )}
 
-      {heat.map((cell)=>(
-        <Marker key={cell.key} id={cell.key} lngLat={[cell.longitude,cell.latitude]}>
-          {/*
-            ONE TAP TO SEE WHAT MADE THIS PATCH WARM.
+      {/*
+        HEAT IS A LAYER NOW, NOT A PILE OF MARKERS.
 
-            It was a double tap, counted by utils/doubleTap.js. That could never
-            work: MapLibre's own double-tap-to-zoom is on by default
-            (`doubleTapZoom`, and nothing turned it off), so the map's gesture
-            won the race against a 320ms counter every time. The owner
-            double-tapped a warm patch and only ever zoomed in.
+        It used to be one flat yellow circle per ~1km grid square, each a
+        <Marker> with a Pressable on it. The owner asked for Snapchat's heatmap
+        and that is a different kind of object: a continuous density field with
+        no edges, coloured through a ramp. MapLibre Native draws it natively --
+        `heatmap` is a layer type, with heatmapRadius, heatmapWeight and
+        heatmap-density all present on the installed v11.
 
-            A single tap on heat did nothing before, so nothing is taken away,
-            and there is no gesture left to lose. Pan, pinch and the long-press
-            that drops a Link-up are untouched -- a Pressable does not fire on a
-            drag.
-          */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${cell.label} Open to see what is happening here.`}
-            onPress={()=>onOpenHeat?.(cell)}
-          >
-          <View
-            style={[styles.heat,{
-              width:cell.size,
-              height:cell.size,
-              borderRadius:cell.size/2,
-              opacity:cell.opacity,
-              backgroundColor:cell.fill,
-              borderColor:cell.border
-            }]}
+        Ground, so it goes down before every pin. The paint is decided in
+        utils/markers.js; this file is not allowed to know what a colour means,
+        and the opacity fade is utils/heatmap.js.
+      */}
+      {!!heat?.features?.length && (
+        <GeoJSONSource id="xplorer-heat" data={heat}>
+          <Layer
+            id="xplorer-heat"
+            type="heatmap"
+            paint={heatmapPaint({radius:HEAT_RADIUS_PX,opacity:heatOpacityAt(level.current)})}
           />
-          </Pressable>
-        </Marker>
-      ))}
+        </GeoJSONSource>
+      )}
 
       {/*
         Clusters stand IN PLACE OF the pins underneath them, not as well:

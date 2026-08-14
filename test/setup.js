@@ -171,7 +171,18 @@ jest.mock("@maplibre/maplibre-react-native",()=>{
     Camera:pass("MapLibreCamera"),
     Marker:pass("MapLibreMarker"),
     UserLocation:pass("MapLibreUserLocation"),
-    ShapeSource:pass("MapLibreShapeSource")
+    // v11 NAMES. `ShapeSource` was v10's and was the only source name in here,
+    // so <GeoJSONSource> and <Layer> resolved to undefined and React refused to
+    // render them -- silently, until something actually passed a route or a
+    // heat layer. The renderer had been written against v11 for weeks and no
+    // test ever drew one.
+    //
+    // scripts/verify-native-map-props.cjs checks the PROPS against the
+    // installed package. Nothing checked the mock's component names, which is
+    // the same class of hole one level down; test/native-map-mock.test.js does
+    // that now.
+    GeoJSONSource:pass("MapLibreGeoJSONSource"),
+    Layer:pass("MapLibreLayer")
   };
 });
 

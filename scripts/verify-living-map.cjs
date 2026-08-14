@@ -285,6 +285,63 @@ for(const file of [BRAIN,SCREEN,PROVIDER,"components/LivingMap.web.js"]){
 }
 
 // ---------------------------------------------------------------------------
+// The heat layer, and the one rule in it that is a privacy rule
+// ---------------------------------------------------------------------------
+//
+// The owner asked for Snapchat's heatmap: "if people post a public moment it
+// gets hot". The word that matters is PUBLIC.
+//
+// The heat used to be computed in hooks/useLivingMap.js from whatever the
+// VIEWER could see -- Moments, Memories and reviews, friends-only ones
+// included. Two consequences nobody intended: everybody's heatmap was a
+// different map, so a patch warm for you alone was a statement about one of
+// your friends; and it needed a floor of three posts from two Explorers to
+// paper over exactly that.
+//
+// get_moment_heat() (20260814000000) is the only source now, and it returns
+// public Moments only -- the post's audience AND the author's profile ceiling
+// both 'everyone'. If this file ever goes back to counting rows it read
+// itself, the leak comes back with it.
+
+const HEAT="utils/heatmap.js";
+const heatBrain=code(read(BRAIN));
+
+check(
+  /supabase\.rpc\("get_moment_heat"\)/.test(heatBrain),
+  `${BRAIN}: the heat must come from get_moment_heat() — it is the only thing that knows what "public" means`
+);
+check(
+  !/heatCells\(/.test(heatBrain),
+  `${BRAIN}: builds heat from rows it read itself. That puts friends-only posts back in a layer every Explorer can see.`
+);
+
+const heatmap=code(read(HEAT));
+
+// Ground, and it gets out of the way before it can point at a building.
+check(
+  /HEAT_FADE_END/.test(heatmap) && /heatOpacityAt/.test(heatmap),
+  `${HEAT}: the heat must fade out as the map zooms in`
+);
+for(const renderer of ["components/LivingMap.js","components/LivingMap.web.js"]){
+  check(
+    /heatOpacityAt\(/.test(code(read(renderer))),
+    `${renderer}: draws heat without the zoom fade — a density field at street level puts a hot spot on one building`
+  );
+  // A renderer draws; it does not decide what a colour means.
+  check(
+    /heatmapPaint\(/.test(code(read(renderer))),
+    `${renderer}: must take the heat paint from utils/markers.js rather than choosing colours`
+  );
+}
+
+// A point is a position and a weight. The function returns no id, no author and
+// no view count, and nothing in the app may add one back.
+check(
+  !/user_id|\bid\b\s*:/.test(heatmap.split("export function heatPoints")[1] || ""),
+  `${HEAT}: a heat point carries something other than its weight`
+);
+
+// ---------------------------------------------------------------------------
 
 if(failures.length){
   for(const failure of failures) console.error(`  ✗ ${failure}`);

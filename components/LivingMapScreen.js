@@ -4,7 +4,7 @@ import {router} from "expo-router";
 import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
 import FloatingLogin from "./FloatingLogin";
-import {linkupLocationFrom,itemsInCell} from "../utils/mapLayers";
+import {linkupLocationFrom,itemsInCell,heatKey} from "../utils/mapLayers";
 import {routeAppearance,bubbleAppearance,celebrationPieces,clusterAppearance} from "../utils/markers";
 import {useLivingMap,TYPE_FILTERS} from "../hooks/useLivingMap";
 import {candidatesFrom} from "../utils/bubbleCandidates";
@@ -210,23 +210,36 @@ export default function LivingMapScreen(){
     setOpenBubble(bubble || null);
   },[]);
 
-  // ONE TAP ON A WARM PATCH, NOT TWO.
+  // ONE TAP ON A WARM PATCH, AND IT IS A TAP ON THE MAP.
   //
-  // It was a double tap, counted by utils/doubleTap.js -- and MapLibre's own
+  // It used to be a double tap on a heat CIRCLE. Both halves of that are gone.
+  // There are no circles -- heat is a density layer now and a layer has nothing
+  // to tap -- and the double tap could never have won anyway: MapLibre's own
   // double-tap-to-zoom is on by default on both platforms, so the map's gesture
-  // won that race every time and the owner only ever zoomed in.
-  const handleOpenHeat=useCallback((cell)=>{
-    // Only what is in this patch. The tap was on a place, not on the screen, so
-    // returning the whole viewport would answer a different question. The exact
-    // grid square first; if it is empty, the ring around it, because the circle
-    // somebody can see does not line up with the square the heat was built from
-    // and a tap near its edge lands next door.
+  // beat utils/doubleTap.js's 320ms counter every time and the owner only ever
+  // zoomed in.
+  //
+  // A tap on open map is now "what is happening here". It still answers about a
+  // PLACE rather than about the screen: the grid square under the finger first,
+  // and the ring of eight around it if that one is empty, because the wash you
+  // can see does not line up with a kilometre grid. The panel says which it got.
+  const handleOpenHeat=useCallback((at)=>{
+    if(!map.showHeat) return;
+
+    const cell={key:heatKey(at?.latitude,at?.longitude)};
+    if(!cell.key) return;
+
     const moments=map.posts.filter((post)=>post.kind==="moment");
     const here=itemsInCell(moments,cell);
     const nearby=here.length ? [] : itemsInCell(moments,cell,{neighbours:true});
 
-    setRevealed({cell,moments:here.length ? here : nearby,widened:!here.length && nearby.length>0});
-  },[map.posts]);
+    // Nothing warm under the finger and nothing near it: this was somebody
+    // panning, not asking a question. Opening an empty panel over the map every
+    // time they touch it would be worse than not answering.
+    if(!here.length && !nearby.length) return;
+
+    setRevealed({cell,moments:here.length ? here : nearby,widened:!here.length});
+  },[map.posts,map.showHeat]);
 
   // The list is a VIEW of the same Living Map, not a fallback for not having
   // one. It is kept because it works when the map will not load, because it is

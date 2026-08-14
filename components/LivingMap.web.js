@@ -3,9 +3,10 @@ import {View,Text,StyleSheet} from "react-native";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {mapConfiguration} from "../utils/mapProvider";
-import {glyphPrimitives} from "../utils/markers";
+import {glyphPrimitives,heatmapPaint} from "../utils/markers";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 import {CLUSTER_ZOOM_STEP} from "../utils/mapZoom";
+import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
 import {INK} from "../utils/tokens";
 
 // The web renderer. MapLibre GL JS, drawing what useLivingMap worked out.
@@ -202,27 +203,16 @@ function bubbleElement(bubble,onPress){
   return wrap;
 }
 
-function heatElement(cell,onOpen){
-  const element=document.createElement("button");
-  element.type="button";
-  element.style.cssText=
-    `width:${cell.size}px;height:${cell.size}px;border-radius:50%;padding:0;`+
-    `background:${cell.fill};border:1px solid ${cell.border};opacity:${cell.opacity};`+
-    "cursor:pointer;";
-  element.setAttribute("aria-label",`${cell.label} Open to see what is happening here.`);
-
-  // ONE TAP, NOT TWO. It was a double-click event, matched to the native map's
-  // tap counter -- and on the phone MapLibre's double-tap-to-zoom won that race
-  // every time, so the owner double-tapped a warm patch and only ever zoomed
-  // in. A single tap on heat did nothing before this, so nothing is taken away,
-  // and there is no gesture left to lose. Panning is unaffected: a click is not
-  // a drag.
-  element.addEventListener("click",(event)=>{
-    event.stopPropagation();
-    onOpen?.(cell);
-  });
-  return element;
-}
+// HEAT IS A LAYER NOW, NOT A MARKER.
+//
+// heatElement() used to build one flat yellow circle per ~1km grid square. The
+// owner asked for Snapchat's heatmap and that is a different kind of object: a
+// continuous density field with no edges, coloured through a ramp. MapLibre GL
+// JS draws that natively as a `heatmap` layer, so there is nothing to build --
+// the paint comes from utils/markers.js and the points from utils/heatmap.js.
+//
+// It also cannot be tapped, because there is no element to tap. Opening what is
+// under a warm patch is a click on the MAP now, handled in the setup effect.
 
 // A cluster: one circle with a count in it, standing for the pins underneath.
 // utils/markers.js decided what it looks like -- see the note there about why it
@@ -248,7 +238,7 @@ export default function LivingMap({
   activity=[],
   clusters=[],
   pins=[],
-  heat=[],
+  heat=null,
   route=null,
   bubbles=[],
   onOpenHeat,
@@ -278,7 +268,7 @@ export default function LivingMap({
   // throwing away the position and zoom somebody had just set. "The map is
   // janky" had more than one cause.
   const handlers=useRef({});
-  handlers.current={onDropPin,onUnavailable,onViewportChange};
+  handlers.current={onDropPin,onUnavailable,onViewportChange,onOpenHeat};
 
   useEffect(()=>{
     if(map.current || !host.current) return;
@@ -330,6 +320,24 @@ export default function LivingMap({
     };
     map.current.on("load",report);
     map.current.on("moveend",report);
+
+    // TAP A WARM PATCH TO SEE WHAT IS IN IT.
+    //
+    // It used to be a double click on a heat circle. There are no circles any
+    // more -- heat is a layer, and a layer has nothing to click. It also used to
+    // lose: MapLibre's own double-tap-to-zoom is on by default on both
+    // platforms, so on the phone the map's gesture beat the reveal every time
+    // and the owner only ever zoomed in.
+    //
+    // One click, anywhere on the map. A marker click stops propagation, so this
+    // only ever fires on open ground, and a drag is not a click, so panning is
+    // untouched.
+    map.current.on("click",(event)=>{
+      handlers.current.onOpenHeat?.({
+        latitude:event.lngLat.lat,
+        longitude:event.lngLat.lng
+      });
+    });
 
     // A map that will not load must not be a blank rectangle. MapLibre reports
     // a missing style, a dead tile host and a browser with no WebGL through the
@@ -401,22 +409,45 @@ export default function LivingMap({
     }
   },[route]);
 
+  // The heat layer. Source and layer created once and then fed new points --
+  // adding and removing a layer on every render makes the wash flicker, the
+  // same reason the route is done this way.
+  const drawHeat=useCallback(()=>{
+    const instance=map.current;
+    if(!instance || !instance.isStyleLoaded?.()) return;
+
+    const data=heat || {type:"FeatureCollection",features:[]};
+
+    if(instance.getSource("xplorer-heat")){
+      instance.getSource("xplorer-heat").setData(data);
+    }else{
+      instance.addSource("xplorer-heat",{type:"geojson",data});
+      // BEFORE every other layer this file adds, and before the markers, which
+      // are DOM and always on top anyway. Heat is ground.
+      instance.addLayer({
+        id:"xplorer-heat",
+        type:"heatmap",
+        source:"xplorer-heat",
+        paint:heatmapPaint({radius:HEAT_RADIUS_PX})
+      });
+    }
+
+    // FADES OUT AS YOU ZOOM IN. A density field at street level puts a hot spot
+    // over one building; heat answers "where is it busy" and the Moment pins
+    // underneath answer "what is happening here". See utils/heatmap.js.
+    if(instance.getLayer("xplorer-heat")){
+      instance.setPaintProperty("xplorer-heat","heatmap-opacity",heatOpacityAt(instance.getZoom()));
+    }
+  },[heat]);
+
   const draw=useCallback(()=>{
     if(!map.current) return;
 
     drawRoute();
+    drawHeat();
 
     for(const marker of drawn.current) marker.remove();
     drawn.current=[];
-
-    // First, so it sits under every pin.
-    for(const cell of heat){
-      drawn.current.push(
-        new maplibregl.Marker({element:heatElement(cell,onOpenHeat)})
-          .setLngLat([Number(cell.longitude),Number(cell.latitude)])
-          .addTo(map.current)
-      );
-    }
 
     // Clusters stand in for the places underneath them, so they are drawn
     // INSTEAD of those pins, not as well -- `places` is already only what
@@ -482,7 +513,7 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,activity,clusters,pins,heat,bubbles,drawRoute,onSelectPlace,onSelectActivity,onSelectBubble,onOpenHeat,onSelectCluster]);
+  },[places,activity,clusters,pins,bubbles,drawRoute,drawHeat,onSelectPlace,onSelectActivity,onSelectBubble,onSelectCluster]);
 
   useEffect(()=>{
     if(!map.current) return;
@@ -496,7 +527,7 @@ export default function LivingMap({
       {/* Read by scripts/verify-browser.cjs: a map that failed silently looks
           exactly like one that worked. */}
       <Text style={styles.marker} nativeID="living-map-state">
-        {`LIVING MAP ${places.length} places ${activity.length} live ${pins.length} pins ${clusters.length} clusters ${bubbles.length} bubbles`}
+        {`LIVING MAP ${places.length} places ${activity.length} live ${pins.length} pins ${clusters.length} clusters ${bubbles.length} bubbles ${heat?.features?.length || 0} heat`}
       </Text>
     </View>
   );

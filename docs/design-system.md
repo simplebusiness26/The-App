@@ -26,6 +26,11 @@ colour, the design is wrong.
 | `ink-yellow` | `#FFC61A` | State: an offer is running |
 | `ink-green` | `#1E7A4C` | A manager has answered a review |
 | `ink-red` | `#C2321F` | A manager disputes a review |
+| `heat-1` | `#1D3F8F` | Heat ramp: barely anything |
+| `heat-2` | `#17A2B8` | Heat ramp: some |
+| `heat-3` | `#3FBF5F` | Heat ramp: busy |
+| `heat-4` | `#F5B324` | Heat ramp: very busy |
+| `heat-5` | `#E8571F` | Heat ramp: the hottest thing on screen |
 
 **The three-ink rule.** Blue, pink and yellow are the only saturated
 colours on the map. They mean something. Never use them decoratively —
@@ -40,7 +45,29 @@ way without a legend. They never appear on the map, never on a pin, and
 never anywhere else in the app. This is a deliberate exception to the
 sentence above and it is the only one.
 
-**No gradients.** Flat ink only. The one exception is a photo placeholder.
+**The heat ramp is the second exception, and it is recorded here rather
+than discovered later.** The owner asked for a heatmap "exactly like
+Snapchat's" — a continuous wash that runs cool to hot as more public
+Moments are posted in an area. A ramp is the whole point of it: five
+flat inks would say "busy / busier / busiest" in steps nobody could
+read, and one ink at five opacities cannot carry the difference between
+quiet and packed at a glance. So `heat-1` to `heat-5` exist, they are
+used in exactly one place — the heat layer on the map — and they are
+never a pin, never a border, never text, and never a background.
+
+They are also not one of the three inks and must never be swapped for
+one. Blue, pink and yellow say what state a **place** is in. The ramp
+says how many **people** are posting. Those are different questions, and
+sharing a colour between them would make the map answer the wrong one.
+
+**Heat is ground, and stays under everything.** It is capped at 55%
+opacity and it fades out as you zoom in, so pins keep their contrast and
+nobody's street ever glows. The land, water and park colours stay
+desaturated for the same reason they always did.
+
+**No gradients.** Flat ink only. Two exceptions: a photo placeholder,
+and the heat ramp above — which is a data gradient, not a decorative
+one.
 
 ## Type
 

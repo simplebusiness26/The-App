@@ -46,7 +46,7 @@ function memory(overrides={}){
   };
 }
 
-function fixture({user={id:"me"},moments=[moment()],memories=[memory()]}={}){
+function fixture({user={id:"me"},moments=[moment()],memories=[memory()],heat=[]}={}){
   installFixture({
     user,
     tables:{
@@ -56,7 +56,7 @@ function fixture({user={id:"me"},moments=[moment()],memories=[memory()]}={}){
       explorer_moments:moments,
       explorer_memories:memories
     },
-    rpc:{get_live_discovery:[]}
+    rpc:{get_live_discovery:[],get_moment_heat:heat}
   });
 }
 
@@ -159,59 +159,110 @@ describe("Moments and Memories are on the map",()=>{
 });
 
 describe("busy areas",()=>{
-  // Three posts from three different Explorers in one cell: the floor
-  // utils/mapLayers.js sets before a cell is drawn at all.
-  const crowd=[
-    moment({id:"a",user_id:"one"}),
-    moment({id:"b",user_id:"two"}),
-    moment({id:"c",user_id:"three"})
+  // WHAT CHANGED, AND WHY THESE TESTS LOOK DIFFERENT
+  //
+  // The heat used to be computed in hooks/useLivingMap.js from whatever the
+  // VIEWER could see -- Moments, Memories and reviews, friends-only ones
+  // included -- and drawn as one flat yellow circle per ~1km grid square, each
+  // labelled "A busy area. 3 posts from 3 Explorers." It needed a floor of
+  // three posts from two different Explorers, because otherwise a patch that
+  // was warm for you alone was a statement about one of your friends.
+  //
+  // The owner asked for Snapchat's: "if people post a public moment it gets
+  // hot". So it is one RPC now -- get_moment_heat(), public Moments only, the
+  // post's audience AND the author's profile ceiling both 'everyone' -- drawn
+  // as a real density layer.
+  //
+  // The floor went with it, and that is not a loosening. Public-only removes
+  // the leak the floor was patching: every point is already on the map as a
+  // Moment pin that any signed-in Explorer can open, and the heatmap is now
+  // identical for everybody rather than a different map per person.
+
+  const HOT=[
+    {latitude:50.8226,longitude:-0.1373,attention:12},
+    {latitude:50.8227,longitude:-0.1374,attention:0},
+    {latitude:50.8229,longitude:-0.1371,attention:40}
   ];
 
+  function heatLayer(tree){
+    const renderer=tree.root.findAll(
+      (node)=>node.props?.heat!==undefined && typeof node.props?.onViewportChange==="function",
+      {deep:true}
+    )[0];
+    return renderer?.props?.heat || null;
+  }
+
   it("is off until it is asked for",async()=>{
-    fixture({moments:crowd,memories:[]});
+    fixture({heat:HOT});
     const tree=await renderMap();
 
     expect(labelsOf(tree.toJSON()).join(" ")).toContain("Show busy areas");
-    expect(pins(tree).map((n)=>n.props.id).some((id)=>String(id).startsWith("50."))).toBe(false);
+    expect(heatLayer(tree).features).toHaveLength(0);
+
+    await act(async()=>{tree.unmount();});
   });
 
-  it("draws a cell several Explorers built, and says how many in words",async()=>{
-    fixture({moments:crowd,memories:[]});
+  it("draws a point for every public Moment, weighted by attention",async()=>{
+    fixture({heat:HOT});
     const tree=await renderMap();
 
     await act(async()=>{press(tree,"Show busy areas").props.onPress();});
 
-    const labels=labelsOf(tree.toJSON()).join(" | ");
-    expect(labels).toContain("A busy area. 3 posts from 3 Explorers.");
+    const layer=heatLayer(tree);
+    expect(layer.type).toBe("FeatureCollection");
+    expect(layer.features).toHaveLength(3);
+
+    const weights=layer.features.map((feature)=>feature.properties.weight);
+    // A Moment counts for existing, and attention adds on a curve -- so the one
+    // with 40 is hotter than the one with 12, and not three times hotter.
+    expect(weights[1]).toBeLessThan(weights[0]);
+    expect(weights[0]).toBeLessThan(weights[2]);
+    expect(weights[2]).toBeLessThan(weights[1]*4);
+
+    await act(async()=>{tree.unmount();});
   });
 
-  it("will not draw a cell one person built",async()=>{
-    // A count that only moves when one person posts is that person's movements
-    // with a number written on them.
-    fixture({
-      moments:[
-        moment({id:"a",user_id:"one"}),
-        moment({id:"b",user_id:"one"}),
-        moment({id:"c",user_id:"one"})
-      ],
-      memories:[]
-    });
+  it("asks the database, and never builds heat out of what this viewer can see",async()=>{
+    // THE PRIVACY ONE. If this file ever went back to reading explorer_moments
+    // and counting them, friends-only posts would be back in the layer and
+    // everybody's heatmap would be a different map again.
+    fixture({heat:HOT});
     const tree=await renderMap();
 
     await act(async()=>{press(tree,"Show busy areas").props.onPress();});
 
-    expect(labelsOf(tree.toJSON()).join(" ")).not.toContain("A busy area");
+    expect(supabase.rpc).toHaveBeenCalledWith("get_moment_heat");
+
+    await act(async()=>{tree.unmount();});
   });
 
-  it("never carries who posted",async()=>{
-    fixture({moments:crowd,memories:[]});
+  it("never carries who posted, or anything that could find them",async()=>{
+    fixture({heat:HOT});
     const tree=await renderMap();
 
     await act(async()=>{press(tree,"Show busy areas").props.onPress();});
+
+    // A position and a weight. The function returns no id, no author and no
+    // view count, and nothing here may add one.
+    for(const feature of heatLayer(tree).features){
+      expect(Object.keys(feature.properties)).toEqual(["weight"]);
+      expect(feature.geometry.coordinates).toHaveLength(2);
+    }
 
     const drawn=JSON.stringify(tree.toJSON());
-    for(const poster of ["one","two","three"]){
+    for(const poster of ["one","two","three","someone"]){
       expect(drawn).not.toContain(`"${poster}"`);
+    }
+
+    await act(async()=>{tree.unmount();});
+  });
+
+  it("a signed-out visitor is never asked for it",async()=>{
+    fixture({user:null,heat:HOT});
+    await renderMap();
+
+    for(const call of supabase.rpc.mock.calls){
+      expect(call[0]).not.toBe("get_moment_heat");
     }
   });
 });

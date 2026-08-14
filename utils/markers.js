@@ -16,7 +16,7 @@
 // override appears anywhere.
 
 import {classificationLabel,glyphForClassification,UNCLASSIFIED} from "./taxonomy";
-import {INK} from "./tokens";
+import {INK,HEAT_RAMP} from "./tokens";
 import {ACTIVITY_STATE_SENTENCE} from "./liveActivity";
 
 // The three inks, and what each one means. These are the design system's, not
@@ -441,14 +441,37 @@ export function clusterAppearance(count){
   };
 }
 
-export function heatAppearance(cell){
+// HOW THE HEAT IS PAINTED.
+//
+// This replaces heatAppearance(), which described one flat yellow circle per
+// ~1km grid square. The owner asked for Snapchat's heatmap and that is a
+// different kind of object: a continuous density field, coloured through a
+// ramp, with no edges. Both MapLibre GL JS and MapLibre Native draw that as a
+// `heatmap` layer, so what is decided here is the PAINT and nothing else --
+// neither renderer is allowed to know what a colour means.
+//
+// The ramp is HEAT_RAMP in utils/tokens.js, and it is a recorded exception to
+// the three-ink rule rather than drift. See the note there and in
+// docs/design-system.md.
+//
+// heatmap-density is a MapLibre expression: 0 where nothing is happening, 1 at
+// the busiest point on screen. The first stop MUST be transparent or the whole
+// map is tinted -- Snapchat's is a wash over the busy parts, not a filter over
+// the world.
+export function heatmapPaint({opacity=0.55,radius=34,intensity=1}={}){
+  const colour=["interpolate",["linear"],["heatmap-density"],0,"rgba(0,0,0,0)"];
+  for(const stop of HEAT_RAMP) colour.push(stop.at,stop.colour);
+
   return{
-    fill:INK.yellow,
-    border:INK.ink,
-    // 44px to 96px across, so a busier cell reads as busier without one of them
-    // swallowing the map.
-    size:Math.min(96,44+(cell?.weight || 0)*6),
-    opacity:Math.min(0.45,0.15+(cell?.weight || 0)*0.03),
-    label:`A busy area. ${cell?.contributions || 0} posts from ${cell?.posterCount || 0} Explorers.`
+    "heatmap-color":colour,
+    // Each Moment's own contribution, from utils/heatmap.js. A public Moment
+    // counts for existing; attention adds on a curve.
+    "heatmap-weight":["get","weight"],
+    "heatmap-intensity":intensity,
+    // In pixels, so a blob is the same size on screen at every zoom -- which is
+    // what makes zooming out gather the map into hotspots rather than shrink
+    // them into specks.
+    "heatmap-radius":radius,
+    "heatmap-opacity":opacity
   };
 }

@@ -2,9 +2,10 @@ import {useCallback,useEffect,useMemo,useState} from "react";
 import {supabase} from "../services/supabase";
 import {classificationLabel} from "../utils/taxonomy";
 import {hasCoordinates} from "../utils/coordinates";
-import {heatAppearance,markerForActivity,markerForMemory,markerForMoment} from "../utils/markers";
+import {markerForActivity,markerForMemory,markerForMoment} from "../utils/markers";
 import {CARD_KINDS,toCard} from "../utils/placeCards";
-import {heatCells,isOnMapAt,memoryPinOpacity} from "../utils/mapLayers";
+import {isOnMapAt,memoryPinOpacity} from "../utils/mapLayers";
+import {heatPoints} from "../utils/heatmap";
 import {
   DEFAULT_TIME_WINDOW,
   activitiesInWindow,
@@ -67,6 +68,7 @@ export function useLivingMap(){
   const [moments,setMoments]=useState([]);
   const [memories,setMemories]=useState([]);
   const [reviewShots,setReviewShots]=useState([]);
+  const [heatRows,setHeatRows]=useState([]);
 
   const [search,setSearch]=useState("");
   const [typeFilter,setTypeFilter]=useState("all");
@@ -205,11 +207,35 @@ export function useLivingMap(){
     setReviewShots(data || []);
   },[]);
 
+  // WHERE PUBLIC MOMENTS ARE BEING POSTED.
+  //
+  // One RPC, and it is the only source. The heat used to be computed in this
+  // file from whatever the viewer could already see -- Moments, Memories and
+  // reviews, friends-only ones included -- which meant everybody's heatmap was
+  // a different map, and a patch that was warm for you alone was a statement
+  // about one of your friends.
+  //
+  // get_moment_heat() (20260814000000) returns public Moments only: the post's
+  // audience AND the author's profile ceiling both 'everyone'. Same heatmap for
+  // everybody, and every point in it is already on the map as a pin anybody can
+  // open. It returns a position and one number -- no id, no author, no view
+  // count -- so a bug in this file cannot widen anything.
+  const loadHeat=useCallback(async()=>{
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user){setHeatRows([]);return;}
+
+    const {data,error:heatError}=await supabase.rpc("get_moment_heat");
+
+    // A failed heat read must not empty the map. It is a layer, not a gate.
+    if(heatError){console.log(heatError);setHeatRows([]);return;}
+    setHeatRows(data || []);
+  },[]);
+
   const reload=useCallback(async()=>{
     setLoading(true);
-    await Promise.all([loadPlaces(),loadActivity(),loadPosts(),loadReviewShots()]);
+    await Promise.all([loadPlaces(),loadActivity(),loadPosts(),loadReviewShots(),loadHeat()]);
     setLoading(false);
-  },[loadPlaces,loadActivity,loadPosts,loadReviewShots]);
+  },[loadPlaces,loadActivity,loadPosts,loadReviewShots,loadHeat]);
 
   useEffect(()=>{reload();},[reload]);
 
@@ -319,23 +345,13 @@ export function useLivingMap(){
     return drawn;
   },[moments,memories,showPosts]);
 
-  // Where the app is being used, as ground rather than as pins.
-  //
-  // It is built from what this person can already see and nothing more, so it
-  // cannot become a side channel: a cell needs three contributions from at
-  // least two different Explorers before it exists at all, and it carries a
-  // count, never who. The two-poster floor is the point -- a count that only
-  // moves when one person posts is that person's movements with a number on it.
-  const heat=useMemo(()=>{
-    if(!showHeat) return [];
-
-    return heatCells(posts.map((post)=>({
-      latitude:post.latitude,
-      longitude:post.longitude,
-      user_id:post.user_id,
-      kind:post.kind
-    }))).map((cell)=>({...cell,...heatAppearance(cell)}));
-  },[posts,showHeat]);
+  // The heat layer's points, ready for whichever renderer is in front of
+  // somebody. utils/heatmap.js turns attention into a weight; neither this file
+  // nor a renderer decides what a colour means.
+  const heat=useMemo(
+    ()=>(showHeat ? heatPoints(heatRows) : heatPoints([])),
+    [heatRows,showHeat]
+  );
 
   return{
     loading,
