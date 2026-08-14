@@ -20,6 +20,15 @@ import {
   ATTRIBUTION_COPYRIGHT,
   ATTRIBUTION_URL
 } from "../utils/mapProvider";
+import {PUSH_CATEGORIES} from "../utils/pushCategories";
+import {
+  enablePushOnThisDevice,
+  forgetThisDevice,
+  loadPushPreferences,
+  noPushes,
+  pushIsSupported,
+  savePushPreferences
+} from "../utils/push";
 import {INK} from "../utils/tokens";
 
 const CAPABILITIES=[
@@ -67,6 +76,7 @@ export default function Settings(){
   const [sendingReset,setSendingReset]=useState(false);
   const [deleteConfirm,setDeleteConfirm]=useState("");
   const [deleting,setDeleting]=useState(false);
+  const [pushes,setPushes]=useState(noPushes);
   // The word, exactly, and not while a delete is already running.
   const canDelete=deleteConfirm.trim().toUpperCase()==="DELETE" && !deleting;
 
@@ -163,6 +173,10 @@ export default function Settings(){
       activity_clubs:clubCount.count || 0,
       events:eventCount.count || 0
     });
+
+    // A missing row means every category is off, which is what the database
+    // defaults say and what loadPushPreferences returns.
+    setPushes(await loadPushPreferences(user.id));
 
     setLoading(false);
   },[]);
@@ -301,8 +315,46 @@ export default function Settings(){
   }
 
   async function logout(){
+    // Take this device off the list first. Otherwise somebody's old phone --
+    // or a shared one -- keeps buzzing with somebody else's messages after they
+    // have signed out of it.
+    await forgetThisDevice(user?.id);
     await supabase.auth.signOut();
     router.replace("/");
+  }
+
+  // The master switch is where the permission is asked for, because it is the
+  // first moment somebody has said they want any of this.
+  async function togglePushMaster(next){
+    if(!next){
+      const updated={...pushes,enabled:false};
+      setPushes(updated);
+      await savePushPreferences(user?.id,updated);
+      return;
+    }
+
+    const {granted,error}=await enablePushOnThisDevice(user?.id);
+
+    if(!granted){
+      // A refusal is an answer, not a failure to retry. The switch goes back so
+      // the screen tells the truth about what will happen.
+      setPushes((current)=>({...current,enabled:false}));
+      if(error) showFeedback(error,"error","Not turned on");
+      else showFeedback("Your phone did not allow notifications. You can change that in your phone's settings.","error","Not turned on");
+      return;
+    }
+
+    const updated={...pushes,enabled:true};
+    setPushes(updated);
+    const saved=await savePushPreferences(user?.id,updated);
+    if(saved.error) showFeedback(saved.error,"error","Not saved");
+  }
+
+  async function togglePushCategory(key,next){
+    const updated={...pushes,[key]:next};
+    setPushes(updated);
+    const saved=await savePushPreferences(user?.id,updated);
+    if(saved.error) showFeedback(saved.error,"error","Not saved");
   }
 
   // DELETE, typed. Not a second "are you sure": somebody tapping through two
@@ -673,6 +725,56 @@ export default function Settings(){
         is not a policy. Both are marked as drafts on the screen itself -- see
         the note in utils/legal.js.
       */}
+      {/*
+        PUSH NOTIFICATIONS, EVERY ONE OFF UNTIL SOMEBODY TURNS IT ON.
+
+        The permission is asked for HERE, when a switch goes on -- never on
+        launch. A push prompt on first open, before anybody knows what the app
+        is, is how notifications get turned off for ever.
+
+        Categories mirror the notifications that already exist rather than
+        inventing a second vocabulary; utils/pushCategories.js is the list and
+        scripts/verify-push.cjs checks it against the database.
+      */}
+      <Text style={styles.sectionTitle}>Notifications on your phone</Text>
+      {!pushIsSupported() ? (
+        <Text style={styles.helpText}>
+          Push notifications only work on a phone. Everything still appears in
+          the app.
+        </Text>
+      ) : (
+        <>
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Send me push notifications</Text>
+              <Text style={styles.settingText}>
+                Off means off, whatever the switches below say.
+              </Text>
+            </View>
+            <Switch
+              value={!!pushes.enabled}
+              onValueChange={togglePushMaster}
+              accessibilityLabel="Send me push notifications"
+            />
+          </View>
+
+          {PUSH_CATEGORIES.map((category)=>(
+            <View key={category.key} style={styles.settingRow}>
+              <View style={styles.settingTextWrap}>
+                <Text style={styles.settingTitle}>{category.label}</Text>
+                <Text style={styles.settingText}>{category.help}</Text>
+              </View>
+              <Switch
+                value={!!pushes[category.key]}
+                disabled={!pushes.enabled}
+                onValueChange={(next)=>togglePushCategory(category.key,next)}
+                accessibilityLabel={category.label}
+              />
+            </View>
+          ))}
+        </>
+      )}
+
       <Text style={styles.sectionTitle}>Privacy and terms</Text>
       <Pressable
         style={styles.secondaryButton}
