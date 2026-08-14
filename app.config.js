@@ -1,13 +1,20 @@
 module.exports = () => ({
   expo: {
     name: "Xplorer",
-    // slug, android.package and ios.bundleIdentifier still say guestbook, and
-    // are deliberately left alone. The slug is what ties this source tree to
-    // its Expo project, and the two identifiers are the app's identity in the
-    // stores -- changing either is a migration with consequences outside this
-    // repository, not a rename. Nobody sees any of the three; `name` above is
-    // the string that appears under the icon.
-    slug: "guestbook",
+    // THE APP IS CALLED XPLORER EVERYWHERE NOW.
+    //
+    // These three said "guestbook" and were deliberately left alone, because
+    // changing a bundle identifier on a PUBLISHED app makes it a new app: new
+    // listing, no reviews, and existing users stop getting updates.
+    //
+    // Confirmed with the owner: never published to either store. So there is
+    // nothing to migrate and nothing to lose, and leaving a dead product name
+    // in the identity of every build was the worse option.
+    //
+    // The APK already on a phone becomes a SEPARATE app. It will not update --
+    // it has to be uninstalled and the new one installed. Nothing is lost: the
+    // data is in Supabase, not on the phone.
+    slug: "xplorer",
     version: "1.0.0",
     orientation: "portrait",
     userInterfaceStyle: "light",
@@ -19,10 +26,10 @@ module.exports = () => ({
       // No maps configuration. MapLibre needs no key, no account and no card,
       // so there is nothing to configure and nothing to leak. The Google Maps
       // block that used to sit here went with react-native-maps.
-      package: "com.guestbook.app"
+      package: "com.xplorer.app"
     },
     ios: {
-      bundleIdentifier: "com.guestbook.app"
+      bundleIdentifier: "com.xplorer.app"
     },
     plugins: [
       // MapLibre's native map. The plugin is what wires the SDK into the

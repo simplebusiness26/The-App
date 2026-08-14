@@ -65,6 +65,10 @@ export default function Settings(){
   const [error,setError]=useState("");
   const [savingPrivacy,setSavingPrivacy]=useState(false);
   const [sendingReset,setSendingReset]=useState(false);
+  const [deleteConfirm,setDeleteConfirm]=useState("");
+  const [deleting,setDeleting]=useState(false);
+  // The word, exactly, and not while a delete is already running.
+  const canDelete=deleteConfirm.trim().toUpperCase()==="DELETE" && !deleting;
 
   const [email,setEmail]=useState("");
   const [area,setArea]=useState("");
@@ -297,6 +301,29 @@ export default function Settings(){
   }
 
   async function logout(){
+    await supabase.auth.signOut();
+    router.replace("/");
+  }
+
+  // DELETE, typed. Not a second "are you sure": somebody tapping through two
+  // dialogues has not necessarily read either, and this is the one action in
+  // the app that cannot be undone.
+  async function deleteAccount(){
+    if(!canDelete) return;
+
+    setDeleting(true);
+    const {error}=await supabase.rpc("delete_my_account");
+    setDeleting(false);
+
+    if(error){
+      // The refusal is a real message with real numbers in it -- "hand over or
+      // close what you manage first" -- so it is shown rather than replaced
+      // with something generic.
+      showFeedback(error.message || "Your account could not be deleted.","error","Not deleted");
+      return;
+    }
+
+    // The row is gone; the session in memory is not.
     await supabase.auth.signOut();
     router.replace("/");
   }
@@ -582,9 +609,62 @@ export default function Settings(){
       </Pressable>
 
       <Text style={styles.sectionTitle}>Account</Text>
-      <Pressable style={styles.dangerButton} onPress={confirmLogout}>
+      <Pressable
+        style={styles.dangerButton}
+        accessibilityRole="button"
+        accessibilityLabel="Log out"
+        onPress={confirmLogout}
+      >
         <Text style={styles.primaryText}>Log out</Text>
       </Pressable>
+
+      {/*
+        DELETING YOUR ACCOUNT, FROM INSIDE THE APP.
+
+        Apple and Google both require this before you can publish, and there was
+        none. It is behind a typed confirmation rather than a second "are you
+        sure": this is the one action in the app that cannot be undone, and a
+        person tapping through two dialogues has not necessarily read either.
+
+        What it does and what it keeps is decided in the database, not here --
+        delete_my_account() (20260814020000). This screen only says so.
+      */}
+      <View style={styles.deleteCard}>
+        <Text style={styles.deleteTitle}>Delete my account</Text>
+        <Text style={styles.deleteText}>
+          Everything you posted goes: your profile, your Moments, your Memories,
+          your reviews, your photographs and your messages. What other people
+          wrote stays — a review somebody left on a place is theirs, and a
+          Link-up other people came to still happened.
+        </Text>
+        <Text style={styles.deleteText}>
+          This cannot be undone. Type DELETE below to turn the button on.
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          value={deleteConfirm}
+          onChangeText={setDeleteConfirm}
+          placeholder="DELETE"
+          placeholderTextColor={INK.inkSoft}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          accessibilityLabel="Type DELETE to confirm"
+        />
+
+        <Pressable
+          style={[styles.dangerButton,!canDelete && styles.disabledButton]}
+          accessibilityRole="button"
+          accessibilityState={{disabled:!canDelete}}
+          accessibilityLabel="Delete my account for ever"
+          disabled={!canDelete}
+          onPress={deleteAccount}
+        >
+          <Text style={styles.primaryText}>
+            {deleting ? "Deleting..." : "Delete my account for ever"}
+          </Text>
+        </Pressable>
+      </View>
 
       {/*
         About and licences.
@@ -636,6 +716,10 @@ const styles=StyleSheet.create({
   input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:13},
   settingRow:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
   settingTextWrap:{flex:1,paddingRight:12},
+  deleteCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:16,marginTop:14},
+  deleteTitle:{color:INK.ink,fontWeight:"900",fontSize:17},
+  deleteText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:8,marginBottom:4},
+  disabledButton:{opacity:0.4},
   settingTitle:{color:INK.ink,fontWeight:"900",fontSize:16},
   settingText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
   linkCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
