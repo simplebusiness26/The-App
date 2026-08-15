@@ -112,10 +112,7 @@ export default function Conversation(){
   // keep them there. If they deliberately scrolled up, leave them alone.
   useEffect(()=>{
     if(keyboard<=0 || readingHistory.current) return;
-    const timer=setTimeout(()=>{
-      setShowLatest(false);
-      scroller.current?.scrollToEnd?.({animated:false});
-    },50);
+    const timer=setTimeout(()=>scroller.current?.scrollToEnd?.({animated:false}),50);
     return()=>clearTimeout(timer);
   },[keyboard]);
 
