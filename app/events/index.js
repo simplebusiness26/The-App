@@ -1,16 +1,9 @@
 import React,{useCallback,useState} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  ActivityIndicator
-} from "react-native";
+import {View,Text,TextInput,StyleSheet,ScrollView,Pressable,ActivityIndicator} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {formatEventDate,formatEventPrice} from "../../utils/events";
+import AlexJourneyHeader from "../../components/AlexJourneyHeader";
 import {INK} from "../../utils/tokens";
 
 export default function Events(){
@@ -19,9 +12,7 @@ export default function Events(){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
-  useFocusEffect(useCallback(()=>{
-    loadEvents();
-  },[]));
+  useFocusEffect(useCallback(()=>{loadEvents();},[]));
 
   async function loadEvents(){
     setLoading(true);
@@ -56,87 +47,100 @@ export default function Events(){
 
   return(
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>WHAT'S ON</Text>
-        <Text style={styles.title}>Upcoming Events</Text>
-        <Text style={styles.subtitle}>Find community days, family activities and local experiences.</Text>
-      </View>
-
-      <TextInput
-        style={styles.search}
-        placeholder="Search events or locations"
-        value={query}
-        onChangeText={setQuery}
+      <AlexJourneyHeader
+        phase="COMMIT"
+        title="Put something real on the calendar"
+        description="Events are dated choices. Time, place, capacity and cost come before promotional copy so you can decide quickly."
+        meta={`${events.length} upcoming`}
       />
 
-      {loading && <ActivityIndicator size="large" style={styles.loader}/>}
+      <View style={styles.searchShell}>
+        <Text style={styles.searchLabel}>FIND A DATED EXPERIENCE</Text>
+        <TextInput
+          style={styles.search}
+          placeholder="Event or location"
+          placeholderTextColor={INK.inkSoft}
+          value={query}
+          onChangeText={setQuery}
+        />
+      </View>
+
+      {loading && <ActivityIndicator size="large" color={INK.brandDeep} style={styles.loader}/>}
 
       {!!error && (
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>Events unavailable</Text>
           <Text style={styles.noticeText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={loadEvents}>
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
+          <Pressable style={styles.retryButton} onPress={loadEvents}><Text style={styles.retryText}>Try again</Text></Pressable>
         </View>
       )}
 
       {!loading && !error && filtered.length===0 && (
         <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>No upcoming events found</Text>
+          <Text style={styles.noticeTitle}>No upcoming events match</Text>
           <Text style={styles.noticeText}>Try another search or check back when new events are published.</Text>
         </View>
       )}
 
-      {filtered.map(event=>(
-        <Pressable
-          key={event.id}
-          style={styles.card}
-          onPress={()=>router.push(`/events/${event.id}`)}
-        >
-          <View style={styles.badgeRow}>
-            <Text style={styles.category}>{event.category}</Text>
-            <Text style={styles.price}>{formatEventPrice(event.price)}</Text>
-          </View>
+      <View style={styles.list}>
+        {filtered.map(event=>(
+          <Pressable key={event.id} style={({pressed})=>[styles.card,pressed && styles.cardPressed]} onPress={()=>router.push(`/events/${event.id}`)}>
+            <View style={styles.timeBand}>
+              <View style={styles.timeCopy}>
+                <Text style={styles.timeKicker}>WHEN</Text>
+                <Text style={styles.date}>{formatEventDate(event.starts_at)}</Text>
+              </View>
+              <View style={styles.pricePill}><Text style={styles.price}>{formatEventPrice(event.price)}</Text></View>
+            </View>
 
-          <Text style={styles.eventName}>{event.name}</Text>
-          <Text style={styles.date}>📅 {formatEventDate(event.starts_at)}</Text>
-          <Text style={styles.location}>📍 {event.location || event.address}</Text>
-          {!!event.description && <Text style={styles.description} numberOfLines={3}>{event.description}</Text>}
+            <View style={styles.categoryRow}>
+              <Text style={styles.category}>{event.category}</Text>
+              <Text style={styles.capacity}>{event.capacity ? `${event.capacity} places` : "Open capacity"}</Text>
+            </View>
 
-          <View style={styles.cardFooter}>
-            <Text style={styles.capacity}>{event.capacity ? `${event.capacity} places` : "Open capacity"}</Text>
-            <Text style={styles.viewText}>View event →</Text>
-          </View>
-        </Pressable>
-      ))}
+            <Text style={styles.eventName}>{event.name}</Text>
+            <Text style={styles.location}>📍 {event.location || event.address}</Text>
+            {!!event.description && <Text style={styles.description} numberOfLines={3}>{event.description}</Text>}
+
+            <View style={styles.cardFooter}>
+              <Text style={styles.decisionHint}>Open the event for the full commitment</Text>
+              <Text style={styles.viewText}>View →</Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
     </ScrollView>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:50},
-  hero:{backgroundColor:INK.blue,padding:22,borderRadius:18,marginBottom:18},
-  eyebrow:{color:INK.card,fontSize:12,fontWeight:"bold",letterSpacing:1},
-  title:{fontSize:32,fontWeight:"bold",color:INK.card,marginTop:7},
-  subtitle:{fontSize:16,color:INK.card,lineHeight:23,marginTop:8},
-  search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:12,padding:15,marginBottom:18},
+  container:{flex:1,backgroundColor:INK.paper},
+  content:{padding:16,paddingBottom:60},
+  searchShell:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:18,padding:12,marginBottom:16},
+  searchLabel:{color:INK.brandDeep,fontSize:9,fontWeight:"900",letterSpacing:1,marginBottom:7},
+  search:{backgroundColor:INK.paper,borderRadius:13,paddingHorizontal:14,paddingVertical:13,color:INK.ink,fontSize:15},
   loader:{marginTop:40},
-  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:1,borderColor:INK.hair},
-  noticeTitle:{fontSize:18,fontWeight:"bold",marginBottom:7},
-  noticeText:{color:INK.ink,lineHeight:21},
-  retryButton:{backgroundColor:INK.blue,padding:12,borderRadius:10,marginTop:14,alignSelf:"flex-start"},
-  retryText:{color:INK.card,fontWeight:"bold"},
-  card:{backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:1,borderColor:INK.ink,marginBottom:16},
-  badgeRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:10},
-  category:{backgroundColor:INK.card,color:INK.blue,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12,overflow:"hidden"},
-  price:{fontWeight:"bold",color:INK.green},
-  eventName:{fontSize:23,fontWeight:"bold",marginTop:14},
-  date:{fontWeight:"600",color:INK.blue,marginTop:8,lineHeight:20},
-  location:{color:INK.ink,marginTop:6},
-  description:{color:INK.ink,lineHeight:21,marginTop:12},
-  cardFooter:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:16},
-  capacity:{fontSize:13,color:INK.inkSoft,fontWeight:"600"},
-  viewText:{fontWeight:"bold",color:INK.blue}
+  notice:{backgroundColor:INK.card,padding:20,borderRadius:18,borderWidth:1,borderColor:INK.hair},
+  noticeTitle:{fontSize:18,fontWeight:"900",color:INK.ink,marginBottom:7},
+  noticeText:{color:INK.inkSoft,lineHeight:21},
+  retryButton:{backgroundColor:INK.navy,paddingHorizontal:15,paddingVertical:12,borderRadius:13,marginTop:14,alignSelf:"flex-start"},
+  retryText:{color:INK.onNavy,fontWeight:"900"},
+  list:{gap:12},
+  card:{backgroundColor:INK.card,padding:17,borderRadius:22,borderWidth:1,borderColor:INK.hair},
+  cardPressed:{backgroundColor:INK.sky},
+  timeBand:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,backgroundColor:INK.navy,borderRadius:17,padding:12},
+  timeCopy:{flex:1},
+  timeKicker:{color:INK.brand,fontSize:8,fontWeight:"900",letterSpacing:1},
+  date:{fontWeight:"900",color:INK.onNavy,marginTop:3,lineHeight:20},
+  pricePill:{backgroundColor:INK.brand,borderRadius:99,paddingHorizontal:11,paddingVertical:7},
+  price:{fontWeight:"900",color:INK.navy,fontSize:11},
+  categoryRow:{flexDirection:"row",justifyContent:"space-between",gap:10,marginTop:13},
+  category:{color:INK.lavender,fontWeight:"900",fontSize:11},
+  capacity:{fontSize:11,color:INK.inkSoft,fontWeight:"700"},
+  eventName:{fontSize:23,lineHeight:27,fontWeight:"900",color:INK.ink,marginTop:11},
+  location:{color:INK.inkSoft,marginTop:7},
+  description:{color:INK.inkSoft,lineHeight:20,marginTop:12},
+  cardFooter:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:15},
+  decisionHint:{fontSize:11,color:INK.inkSoft,flex:1},
+  viewText:{fontWeight:"900",color:INK.brandDeep}
 });
