@@ -15,8 +15,10 @@ export const INK={
   onNavy:"#FFFFFF",
   onNavySoft:"#C7D0E1",
   brand:"#39D6A5",
-  brandDeep:"#0F8F70",
-  lavender:"#7567F8",
+  // Darkened slightly so small green text clears WCAG AA on white/paper.
+  brandDeep:"#0B765D",
+  // Darkened slightly so small violet labels clear WCAG AA on white/paper.
+  lavender:"#6654E8",
   sky:"#DDE8FF",
   coral:"#FF6B5E",
 
