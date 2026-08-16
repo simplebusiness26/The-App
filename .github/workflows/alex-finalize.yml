@@ -1,0 +1,198 @@
+name: Alex Tournament B Finalize
+run-name: Alex final • ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - designlab/tournament-b-alex-schleifer
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alex-tournament-b-final
+  cancel-in-progress: true
+
+jobs:
+  validate-build-lock-source:
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[alex-finalized]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: true
+      EXPO_PUBLIC_SUPABASE_URL: https://yzpthslwsvesgndzdqai.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_vHyb7Rbz7aCh3WyyWZG7HQ_LQoK8wy5
+      EXPO_PUBLIC_DEMO_PASSWORD: ${{ secrets.EXPO_PUBLIC_DEMO_PASSWORD }}
+      EXPO_PUBLIC_DEMO_ADMIN_EMAIL: ${{ secrets.EXPO_PUBLIC_DEMO_ADMIN_EMAIL }}
+      EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+
+    steps:
+      - name: Check out Alex candidate
+        uses: actions/checkout@v4
+        with:
+          ref: designlab/tournament-b-alex-schleifer
+          fetch-depth: 0
+
+      - name: Apply remaining operational redesign
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -q 'AlexJourneyHeader' app/manager/dashboard.js && grep -q 'AlexJourneyHeader' app/admin/dashboard.js; then
+            echo 'Operational redesign already applied.'
+          else
+            node scripts/designlab-alex-ops.cjs
+          fi
+          rm -f scripts/designlab-alex-ops.cjs
+
+      - name: Assert Alex is structurally transformed
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'title="Run what you manage"' app/manager/dashboard.js
+          grep -q 'title="Operations at a glance"' app/admin/dashboard.js
+          grep -q 'label:"Explore"' utils/navigation.js
+          grep -q 'label:"Now"' utils/navigation.js
+          grep -q 'label:"Inbox"' utils/navigation.js
+          grep -q 'label:"You"' utils/navigation.js
+          grep -q 'brand:' utils/tokens.js
+          grep -q 'navy:' utils/tokens.js
+          test ! -f scripts/designlab-alex-ops.cjs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Mount every route and run Jest suite
+        run: npm run test:ci
+
+      - name: Run deterministic product gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-no-unguarded-seed.cjs
+          npm run verify:taxonomy
+          npm run verify:markers
+          npm run verify:place
+          npm run verify:cards
+          npm run verify:discover
+          npm run verify:reputation
+          npm run verify:places
+          npm run verify:memories
+          npm run verify:mymap
+          npm run verify:livingmap
+          npm run verify:trending
+          npm run verify:score
+          npm run verify:manager
+          npm run verify:listings
+          npm run verify:permissions
+          npm run verify:friends
+          npm run verify:audience
+          npm run verify:camera
+          npm run verify:contrast
+          npm run verify:nativemap
+          npm run verify:social
+          npm run verify:live
+          node scripts/verify-linkup-create-navigation.cjs
+          node scripts/verify-linkup-title-only.cjs
+          npm run verify:screens
+          npm run verify:audit
+
+      - name: Check Expo project
+        run: npx expo-doctor
+
+      - name: Build Expo web app
+        run: npx expo export --platform web --output-dir dist-alex-ci
+
+      - name: Verify every route renders in browser
+        env:
+          DIST_DIR: dist-alex-ci
+          REQUIRE_BROWSER: "1"
+        run: npm run verify:browser
+
+      - name: Require demo credentials for owner testing APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_PUBLIC_DEMO_PASSWORD:-}" || { echo 'EXPO_PUBLIC_DEMO_PASSWORD repository secret is missing.'; exit 1; }
+          test -n "${EXPO_PUBLIC_DEMO_ADMIN_EMAIL:-}" || { echo 'EXPO_PUBLIC_DEMO_ADMIN_EMAIL repository secret is missing.'; exit 1; }
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate clean Android project
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Prepare named Alex APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p apk-output
+          APK_PATH="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          test -n "$APK_PATH"
+          cp "$APK_PATH" apk-output/Xplorer-Alex-Schleifer-Tournament-B.apk
+          sha256sum apk-output/Xplorer-Alex-Schleifer-Tournament-B.apk | tee apk-output/SHA256.txt
+
+      - name: Commit validated final source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No source changes to commit.'
+          else
+            git commit -m '[alex-finalized] Apply operational surfaces after full validation'
+            git push origin HEAD:designlab/tournament-b-alex-schleifer
+          fi
+          git rev-parse HEAD | tee apk-output/SOURCE_COMMIT.txt
+
+      - name: Upload Alex APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xplorer-Alex-Schleifer-Tournament-B-APK
+          path: apk-output/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload Alex web validation build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xplorer-Alex-Schleifer-Web-Validation
+          path: dist-alex-ci
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Final summary
+        shell: bash
+        run: |
+          echo '### Alex Schleifer Tournament B candidate' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Full Jest suite: passed' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Deterministic Product Truth gates: passed' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Expo doctor/web export/browser route validation: passed' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Android release APK: built' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Final source commit: `'
+          git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
+          echo '`' >> "$GITHUB_STEP_SUMMARY"
