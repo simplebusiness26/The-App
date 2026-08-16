@@ -1,0 +1,85 @@
+name: Rebuild Katie APK with demo secrets
+
+on:
+  push:
+    branches:
+      - "designlab/tournament-b-katie-dill-rebuild-demo"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: katie-demo-rebuild-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Katie APK with demo logins
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: true
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_DEMO_PASSWORD: ${{ secrets.EXPO_PUBLIC_DEMO_PASSWORD }}
+      EXPO_PUBLIC_DEMO_ADMIN_EMAIL: ${{ secrets.EXPO_PUBLIC_DEMO_ADMIN_EMAIL }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirm tested Katie source is present
+        run: git merge-base --is-ancestor 9c37056d43780b453ae609559b248c7ef4f1e997 HEAD
+
+      - name: Refuse a build without demo secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$EXPO_PUBLIC_DEMO_PASSWORD"
+          test -n "$EXPO_PUBLIC_DEMO_ADMIN_EMAIL"
+          echo "Demo build inputs are present."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verify and stage APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_PATH="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          test -n "$APK_PATH"
+          test -s "$APK_PATH"
+          cp "$APK_PATH" Xplorer-Katie-Dill-demo-enabled.apk
+          ls -lh Xplorer-Katie-Dill-demo-enabled.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xplorer-Katie-Dill-demo-enabled-APK
+          path: Xplorer-Katie-Dill-demo-enabled.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
