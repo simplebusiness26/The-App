@@ -1,25 +1,26 @@
 import { useColorScheme } from "react-native";
+import { INK } from "../utils/tokens";
 
 const light = {
-  primary: "#2563EB",
-  background: "#FFFFFF",
-  card: "#F3F4F6",
-  text: "#111827",
-  subtext: "#6B7280",
-  border: "#E5E7EB",
-  danger: "#EF4444",
-  success: "#22C55E",
+  primary: INK.brandDeep,
+  background: INK.paper,
+  card: INK.card,
+  text: INK.ink,
+  subtext: INK.inkSoft,
+  border: INK.hair,
+  danger: INK.red,
+  success: INK.brandDeep,
 };
 
 const dark = {
-  primary: "#3B82F6",
-  background: "#111827",
-  card: "#1F2937",
-  text: "#F9FAFB",
-  subtext: "#9CA3AF",
-  border: "#374151",
-  danger: "#EF4444",
-  success: "#22C55E",
+  primary: INK.brand,
+  background: INK.navy,
+  card: INK.navySoft,
+  text: INK.onNavy,
+  subtext: INK.onNavySoft,
+  border: INK.navySoft,
+  danger: INK.coral,
+  success: INK.brand,
 };
 
 export function useColors() {
