@@ -1,0 +1,157 @@
+name: DesignLab Katie Dill APK
+
+on:
+  push:
+    branches:
+      - "designlab/tournament-b-katie-dill"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: designlab-katie-dill-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-build:
+    name: Verify whole app and build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out frozen candidate branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirm frozen Xplorer ancestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 78632b12eeb4e4123b1a767c8b815fe6617681f9 HEAD
+          echo "Candidate descends from frozen Tournament B Xplorer baseline."
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Apply Katie Dill whole-app redesign
+        run: node scripts/designlab-katie-dill.cjs
+
+      - name: Prove redesign stayed out of protected product surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          echo "Changed files:"
+          git diff --name-only HEAD
+          if git diff --name-only HEAD | grep -E '^(services/|supabase/|context/|hooks/useLivingMap|utils/(permissions|audience|markers|routing|mapLayers|navigation|drawer)\.js|app/.*(create|edit|review|dashboard|login|signup))' ; then
+            echo "::error::Katie candidate touched a protected product/permission/backend surface."
+            exit 1
+          fi
+
+      - name: Mount and test every route
+        run: npm run test:ci
+
+      - name: Verify source invariants outside package scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-no-unguarded-seed.cjs
+          node scripts/verify-linkup-create-navigation.cjs
+          node scripts/verify-linkup-title-only.cjs
+
+      - name: Run every deterministic Xplorer verifier except browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in \
+            verify:social verify:live verify:screens verify:taxonomy verify:markers \
+            verify:place verify:cards verify:discover verify:reputation verify:places \
+            verify:memories verify:mymap verify:livingmap verify:trending verify:score \
+            verify:manager verify:listings verify:permissions verify:friends verify:contrast \
+            verify:nativemap verify:audience verify:camera verify:audit
+          do
+            echo "---- npm run $script"
+            npm run "$script"
+          done
+
+      - name: Check Expo project
+        run: npx expo-doctor
+
+      - name: Build web bundle for route verification
+        env:
+          CI: true
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npx expo export --platform web --output-dir dist-katie-ci
+
+      - name: Verify all routes in a real browser
+        env:
+          DIST_DIR: dist-katie-ci
+          REQUIRE_BROWSER: "1"
+        run: npm run verify:browser
+
+      - name: Commit the tested Katie source to its isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "DesignLab CI"
+          git config user.email "ci@designlab.local"
+          git add components/Header.js components/MapControls.js components/DiscoverCard.js components/QuickAccessDrawer.js components/StartupSplash.js components/TabBar.js hooks/useColors.js designlab/katie-dill/DESIGN_CONSTITUTION.md
+          if git diff --cached --quiet; then
+            echo "Katie source already committed."
+          else
+            git commit -m "Apply Katie Dill whole-app challenger design"
+            git push origin HEAD:designlab/tournament-b-katie-dill
+          fi
+
+      - name: Generate Android project
+        env:
+          CI: true
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build standalone release APK
+        working-directory: android
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify APK exists and is non-empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s android/app/build/outputs/apk/release/app-release.apk
+          ls -lh android/app/build/outputs/apk/release/app-release.apk
+          cp android/app/build/outputs/apk/release/app-release.apk Xplorer-Katie-Dill.apk
+
+      - name: Upload Katie Dill APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xplorer-Katie-Dill-APK
+          path: Xplorer-Katie-Dill.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Katie design constitution
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xplorer-Katie-Dill-design-record
+          path: designlab/katie-dill/DESIGN_CONSTITUTION.md
+          if-no-files-found: error
+          retention-days: 30
