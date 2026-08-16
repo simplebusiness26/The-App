@@ -69,7 +69,23 @@ jobs:
         run: npm ci
 
       - name: Mount every route and run Jest suite
-        run: npm run test:ci
+        shell: bash
+        run: |
+          set +e
+          npm run test:ci 2>&1 | tee /tmp/alex-jest-output.txt
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '### Alex Jest regression'
+              echo '```text'
+              grep -E '^(FAIL|  ●|●|Test Suites:|Tests:|Snapshots:|Time:)' /tmp/alex-jest-output.txt | tail -n 120 || true
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            detail="$(grep -E '^(FAIL|  ●|●|Test Suites:|Tests:)' /tmp/alex-jest-output.txt | tail -n 24 | tr '\n' '|' | sed 's/%/%25/g; s/\r/%0D/g; s/|/%0A/g' | cut -c1-6000)"
+            echo "::error title=Alex Jest regression::$detail"
+          fi
+          exit "$status"
 
       - name: Run deterministic product gates
         shell: bash
@@ -193,6 +209,6 @@ jobs:
           echo '- Deterministic Product Truth gates: passed' >> "$GITHUB_STEP_SUMMARY"
           echo '- Expo doctor/web export/browser route validation: passed' >> "$GITHUB_STEP_SUMMARY"
           echo '- Android release APK: built' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Final source commit: `'
+          echo '- Final source commit: `' >> "$GITHUB_STEP_SUMMARY"
           git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
           echo '`' >> "$GITHUB_STEP_SUMMARY"
