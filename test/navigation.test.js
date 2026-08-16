@@ -175,12 +175,12 @@ describe("the Alex dock renders accessibly",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("turns the centre into Camera on Map while keeping Explore visible and swipeable",async()=>{
+  it("turns the centre into Camera on Map while keeping Explore visible",async()=>{
     const tree=await renderAt("/map");
     const labels=labelsOf(tree.toJSON());
     expect(labels.some((label)=>label.startsWith("Camera"))).toBe(true);
     expect(labels.some((label)=>label.startsWith("Explore"))).toBe(true);
-    expect(labels.some((label)=>/Drag up for Discover/.test(label))).toBe(true);
+    expect(centreSwipeUp("/map")?.route).toBe("/discover");
     await act(async()=>{tree.unmount();});
   });
 
