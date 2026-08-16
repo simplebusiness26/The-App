@@ -43,3 +43,5 @@ jobs:
           git add package-lock.json
           git commit -m '[clean-lock-sync] Rebuild npm lockfile from package.json'
           git push origin HEAD:designlab/tournament-b-alex-schleifer
+
+# One-shot Alex tournament maintenance workflow. Remove after the clean lock is committed.
