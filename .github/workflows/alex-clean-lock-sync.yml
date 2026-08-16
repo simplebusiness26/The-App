@@ -45,3 +45,4 @@ jobs:
           git push origin HEAD:designlab/tournament-b-alex-schleifer
 
 # One-shot Alex tournament maintenance workflow. Remove after the clean lock is committed.
+# Triggered after pinning react-test-renderer to React 19.2.3.
