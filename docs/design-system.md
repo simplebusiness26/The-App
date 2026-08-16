@@ -20,8 +20,8 @@ Every six-digit colour used by this design system is declared here and in `utils
 | `on-navy` | `#FFFFFF` | Strong text on Night |
 | `on-navy-soft` | `#C7D0E1` | Supporting text on Night |
 | `signal-mint` | `#39D6A5` | Primary action, focus and active navigation |
-| `signal-deep` | `#0F8F70` | Accessible signal emphasis |
-| `lavender` | `#7567F8` | Identity / reputation support |
+| `signal-deep` | `#0B765D` | Accessible small-text signal emphasis on Air/Surface |
+| `lavender` | `#6654E8` | Accessible identity / reputation support on Air/Surface |
 | `sky` | `#DDE8FF` | Quiet contextual highlight |
 | `coral` | `#FF6B5E` | Human/live emphasis away from map-state channels |
 | `water` | `#D9E7EA` | Water on the map |
@@ -99,7 +99,7 @@ Primary navigation expresses the whole-service loop:
 
 Feed and Leaderboard remain real, reachable product capabilities. They are contextual/reflection surfaces rather than the five destinations that define the product.
 
-Discover is visible. A critical product destination must not rely on an undiscoverable upward gesture.
+Discover is visible in the primary dock **and** the frozen Map-to-Discover upward shortcut remains available. The visible destination is the discoverable path; the gesture is retained as an existing convenience, not made the only route.
 
 ## Motion
 
@@ -120,6 +120,7 @@ Motion explains cause and continuity only: a drawer/sheet entering, context chan
 - Signal focus/active treatment must also have shape/weight/context.
 - Text on Night uses `on-navy` or `on-navy-soft` as appropriate.
 - Text on Signal uses Night/Ink where needed for contrast.
+- `signal-deep` and `lavender` are explicitly tuned to clear WCAG AA for small text on Air/Surface.
 - Every map state keeps a non-colour label for assistive technology.
 - Non-map routes remain available for map-dependent tasks.
 - `scripts/verify-contrast.cjs` remains a hard gate. Fix the pair, not the gate.
