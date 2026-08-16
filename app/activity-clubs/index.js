@@ -1,15 +1,8 @@
 import React,{useCallback,useState} from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  TextInput
-} from "react-native";
+import {View,Text,StyleSheet,ScrollView,Pressable,ActivityIndicator,TextInput} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
+import AlexJourneyHeader from "../../components/AlexJourneyHeader";
 import {INK} from "../../utils/tokens";
 
 function formatPrice(value){
@@ -24,11 +17,7 @@ export default function ActivityClubs(){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
-  useFocusEffect(
-    useCallback(()=>{
-      loadClubs();
-    },[])
-  );
+  useFocusEffect(useCallback(()=>{loadClubs();},[]));
 
   async function loadClubs(){
     setLoading(true);
@@ -58,13 +47,9 @@ export default function ActivityClubs(){
         .in("club_id",rows.map(item=>item.id));
 
       const nextStats={};
-      (statsRows || []).forEach(row=>{
-        nextStats[row.club_id]=row;
-      });
+      (statsRows || []).forEach(row=>{nextStats[row.club_id]=row;});
       setStats(nextStats);
-    }else{
-      setStats({});
-    }
+    }else setStats({});
 
     setLoading(false);
   }
@@ -79,83 +64,106 @@ export default function ActivityClubs(){
 
   return(
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Activity Clubs</Text>
-      <Text style={styles.subtitle}>
-        Discover local groups, read their reviews and apply to join.
-      </Text>
-
-      <TextInput
-        style={styles.search}
-        placeholder="Search activities or locations"
-        value={query}
-        onChangeText={setQuery}
+      <AlexJourneyHeader
+        phase="REPEAT"
+        title="Find something worth returning to"
+        description="Clubs are recurring commitments, not one-off listings. Compare place, community, reputation and cost before you apply."
+        meta={`${clubs.length} published`}
       />
 
-      {loading && <ActivityIndicator size="large" style={styles.loader}/>} 
+      <View style={styles.searchShell}>
+        <Text style={styles.searchLabel}>NARROW THE COMMITMENT</Text>
+        <TextInput
+          style={styles.search}
+          placeholder="Activity, club or location"
+          placeholderTextColor={INK.inkSoft}
+          value={query}
+          onChangeText={setQuery}
+        />
+      </View>
+
+      {loading && <ActivityIndicator size="large" color={INK.brandDeep} style={styles.loader}/>} 
 
       {!!error && (
         <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>Supabase setup required</Text>
+          <Text style={styles.noticeTitle}>Clubs unavailable</Text>
           <Text style={styles.noticeText}>{error}</Text>
         </View>
       )}
 
       {!loading && !error && filtered.length===0 && (
         <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>No clubs found</Text>
-          <Text style={styles.noticeText}>No published activity clubs match this search.</Text>
+          <Text style={styles.noticeTitle}>No clubs match this view</Text>
+          <Text style={styles.noticeText}>Try another activity or location.</Text>
         </View>
       )}
 
-      {filtered.map(club=>{
-        const clubStats=stats[club.id] || {};
-        return(
-          <Pressable
-            key={club.id}
-            style={styles.card}
-            onPress={()=>router.push(`/activity-clubs/${club.id}`)}
-          >
-            <View style={styles.badgeRow}>
-              <Text style={styles.category}>{club.category}</Text>
-              <Text style={styles.status}>{club.status==="full" ? "Full" : "Open"}</Text>
-            </View>
+      <View style={styles.list}>
+        {filtered.map(club=>{
+          const clubStats=stats[club.id] || {};
+          return(
+            <Pressable key={club.id} style={({pressed})=>[styles.card,pressed && styles.cardPressed]} onPress={()=>router.push(`/activity-clubs/${club.id}`)}>
+              <View style={styles.cardTop}>
+                <View style={styles.categoryBlock}>
+                  <Text style={styles.categoryKicker}>CLUB</Text>
+                  <Text style={styles.category}>{club.category}</Text>
+                </View>
+                <View style={[styles.status,club.status==="full" && styles.statusFull]}>
+                  <Text style={styles.statusText}>{club.status==="full" ? "Full" : "Open"}</Text>
+                </View>
+              </View>
 
-            <Text style={styles.clubName}>{club.name}</Text>
-            <Text style={styles.location}>📍 {club.location}</Text>
-            <Text style={styles.description} numberOfLines={3}>{club.description}</Text>
+              <Text style={styles.clubName}>{club.name}</Text>
+              <Text style={styles.location}>📍 {club.location}</Text>
 
-            <View style={styles.statsRow}>
-              <Text style={styles.stat}>👥 {clubStats.member_count || 0}</Text>
-              <Text style={styles.stat}>⭐ {clubStats.average_rating || 0} ({clubStats.review_count || 0})</Text>
-              <Text style={styles.stat}>{formatPrice(club.price)}</Text>
-            </View>
+              <View style={styles.evidence}>
+                <View style={styles.evidenceItem}><Text style={styles.evidenceValue}>{clubStats.member_count || 0}</Text><Text style={styles.evidenceLabel}>members</Text></View>
+                <View style={styles.evidenceItem}><Text style={styles.evidenceValue}>{clubStats.average_rating || 0}</Text><Text style={styles.evidenceLabel}>{clubStats.review_count || 0} reviews</Text></View>
+                <View style={styles.evidenceItem}><Text style={styles.evidenceValue}>{formatPrice(club.price)}</Text><Text style={styles.evidenceLabel}>price</Text></View>
+              </View>
 
-            <Text style={styles.viewText}>View club profile →</Text>
-          </Pressable>
-        );
-      })}
+              <Text style={styles.description} numberOfLines={3}>{club.description}</Text>
+
+              <View style={styles.cardBottom}>
+                <Text style={styles.decisionHint}>Open the club before applying</Text>
+                <Text style={styles.viewText}>View →</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
     </ScrollView>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:50},
-  title:{fontSize:32,fontWeight:"bold"},
-  subtitle:{fontSize:16,color:INK.ink,lineHeight:23,marginTop:8,marginBottom:18},
-  search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:12,padding:15,marginBottom:18},
+  container:{flex:1,backgroundColor:INK.paper},
+  content:{padding:16,paddingBottom:60},
+  searchShell:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:18,padding:12,marginBottom:16},
+  searchLabel:{color:INK.brandDeep,fontSize:9,fontWeight:"900",letterSpacing:1,marginBottom:7},
+  search:{backgroundColor:INK.paper,borderRadius:13,paddingHorizontal:14,paddingVertical:13,color:INK.ink,fontSize:15},
   loader:{marginTop:40},
-  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:1,borderColor:INK.hair},
-  noticeTitle:{fontSize:18,fontWeight:"bold",marginBottom:7},
-  noticeText:{color:INK.ink,lineHeight:21},
-  card:{backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:1,borderColor:INK.ink,marginBottom:16},
-  badgeRow:{flexDirection:"row",justifyContent:"space-between"},
-  category:{backgroundColor:INK.card,color:INK.blue,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
-  status:{backgroundColor:INK.card,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
-  clubName:{fontSize:23,fontWeight:"bold",marginTop:14},
-  location:{color:INK.ink,marginTop:6},
-  description:{color:INK.ink,lineHeight:21,marginTop:12},
-  statsRow:{flexDirection:"row",justifyContent:"space-between",marginTop:16},
-  stat:{fontWeight:"600",color:INK.ink,fontSize:13},
-  viewText:{fontWeight:"bold",color:INK.blue,marginTop:16}
+  notice:{backgroundColor:INK.card,padding:20,borderRadius:18,borderWidth:1,borderColor:INK.hair},
+  noticeTitle:{fontSize:18,fontWeight:"900",color:INK.ink,marginBottom:7},
+  noticeText:{color:INK.inkSoft,lineHeight:21},
+  list:{gap:12},
+  card:{backgroundColor:INK.card,padding:17,borderRadius:22,borderWidth:1,borderColor:INK.hair},
+  cardPressed:{backgroundColor:INK.sky},
+  cardTop:{flexDirection:"row",justifyContent:"space-between",alignItems:"flex-start",gap:12},
+  categoryBlock:{flex:1},
+  categoryKicker:{color:INK.lavender,fontSize:9,fontWeight:"900",letterSpacing:1},
+  category:{color:INK.inkSoft,fontSize:12,fontWeight:"800",marginTop:2},
+  status:{backgroundColor:INK.brand,borderRadius:99,paddingHorizontal:10,paddingVertical:6},
+  statusFull:{backgroundColor:INK.sky},
+  statusText:{color:INK.navy,fontSize:10,fontWeight:"900"},
+  clubName:{fontSize:23,lineHeight:27,fontWeight:"900",color:INK.ink,marginTop:13},
+  location:{color:INK.inkSoft,marginTop:6,fontSize:13},
+  evidence:{flexDirection:"row",marginTop:15,backgroundColor:INK.navy,borderRadius:17,padding:10,gap:7},
+  evidenceItem:{flex:1,minWidth:0},
+  evidenceValue:{color:INK.onNavy,fontSize:14,fontWeight:"900"},
+  evidenceLabel:{color:INK.onNavySoft,fontSize:9,fontWeight:"700",marginTop:2},
+  description:{color:INK.inkSoft,lineHeight:20,marginTop:13},
+  cardBottom:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:10,marginTop:15},
+  decisionHint:{color:INK.inkSoft,fontSize:11,flex:1},
+  viewText:{fontWeight:"900",color:INK.brandDeep,fontSize:13}
 });
