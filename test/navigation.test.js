@@ -81,9 +81,10 @@ describe("Alex primary navigation preserves product reachability",()=>{
     expect(centreButton("/map").label).toBe("Camera");
   });
 
-  it("makes Explore visible instead of hiding it behind an upward gesture",()=>{
+  it("makes Explore visible while preserving the existing upward Map shortcut",()=>{
     expect(TABS[0].route).toBe("/discover");
-    expect(centreSwipeUp("/map")).toBeNull();
+    expect(centreSwipeUp("/map")?.route).toBe("/discover");
+    expect(centreSwipeUp("/feed")).toBeNull();
   });
 });
 
@@ -174,12 +175,12 @@ describe("the Alex dock renders accessibly",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("turns the centre into Camera on Map without hiding Explore",async()=>{
+  it("turns the centre into Camera on Map while keeping Explore visible and swipeable",async()=>{
     const tree=await renderAt("/map");
     const labels=labelsOf(tree.toJSON());
     expect(labels.some((label)=>label.startsWith("Camera"))).toBe(true);
     expect(labels.some((label)=>label.startsWith("Explore"))).toBe(true);
-    expect(labels.some((label)=>/Drag up/.test(label))).toBe(false);
+    expect(labels.some((label)=>/Drag up for Discover/.test(label))).toBe(true);
     await act(async()=>{tree.unmount();});
   });
 
