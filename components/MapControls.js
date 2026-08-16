@@ -2,186 +2,107 @@ import React from "react";
 import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
 import {INK} from "../utils/tokens";
 
-// The map's controls, out of the way until somebody wants them.
-//
-// WHAT WAS THERE BEFORE
-//
-// A search box and TWO rows of chips, drawn permanently across the top of the
-// map. In the owner's screenshots they cover a third of the screen, and one of
-// them covers a photo bubble. Their words: "look at the logins and the buttons
-// in the way -- put the search behind an icon button and same for the filters,
-// have them so they can be hidden after as well."
-//
-// So the map opens clean. Two chips, matching the header's own chip
-// (components/Header.js), so the top of the screen reads as one set of controls
-// rather than a header plus a pile of map furniture.
-//
-//   Magnifier   opens the search field. Tap again and it goes.
-//   Sliders     opens the filters. Tap again and they go.
-//
-// Both closed to start with, both toggles, and only one open at a time -- two
-// panels stacked over a map is the thing this replaces.
-//
-// It decides nothing. Every filter value and setter comes from
-// hooks/useLivingMap.js exactly as before; this is the surface they are drawn
-// on and it could be swapped for another without the map noticing.
-
 export const PANELS={NONE:null,SEARCH:"search",FILTERS:"filters"};
 
+// Same values and setters from useLivingMap; new interaction language. Search
+// and Layers sit in one dark decision dock so the map reads as a spatial handoff
+// rather than a canvas covered in unrelated outlined chips.
 export default function MapControls({
-  open,
-  onOpen,
-  search,
-  onSearch,
-  typeFilters=[],
-  typeFilter,
-  onTypeFilter,
-  timeWindows=[],
-  timeWindow,
-  onTimeWindow,
-  showLive,
-  onShowLive,
-  showPosts,
-  onShowPosts,
-  showHeat,
-  onShowHeat,
-  historical,
-  onHistorical
+  open,onOpen,search,onSearch,typeFilters=[],typeFilter,onTypeFilter,
+  timeWindows=[],timeWindow,onTimeWindow,showLive,onShowLive,showPosts,onShowPosts,
+  showHeat,onShowHeat,historical,onHistorical
 }){
   const toggle=(panel)=>onOpen?.(open===panel ? PANELS.NONE : panel);
+  const narrowed=activeLabel({typeFilters,typeFilter,historical});
 
   return(
     <View style={styles.wrap} pointerEvents="box-none">
-      <View style={styles.chips} pointerEvents="box-none">
+      <View style={styles.command}>
+        <View style={styles.commandCopy} pointerEvents="none">
+          <Text style={styles.kicker}>MAP CONTEXT</Text>
+          <Text style={styles.commandTitle}>{narrowed || "Everything nearby"}</Text>
+        </View>
+
         <Pressable
-          style={[styles.chip,open===PANELS.SEARCH && styles.chipOpen]}
+          style={[styles.mode,open===PANELS.SEARCH && styles.modeOn]}
           accessibilityRole="button"
           accessibilityState={{selected:open===PANELS.SEARCH}}
           accessibilityLabel={open===PANELS.SEARCH ? "Hide the search box" : "Search the map"}
-          hitSlop={8}
           onPress={()=>toggle(PANELS.SEARCH)}
         >
-          <Text style={[styles.icon,open===PANELS.SEARCH && styles.iconOpen]}>⌕</Text>
+          <Text style={[styles.modeGlyph,open===PANELS.SEARCH && styles.modeGlyphOn]}>⌕</Text>
+          <Text style={[styles.modeLabel,open===PANELS.SEARCH && styles.modeLabelOn]}>Search</Text>
         </Pressable>
 
         <Pressable
-          style={[styles.chip,open===PANELS.FILTERS && styles.chipOpen]}
+          style={[styles.mode,open===PANELS.FILTERS && styles.modeOn]}
           accessibilityRole="button"
           accessibilityState={{selected:open===PANELS.FILTERS}}
           accessibilityLabel={open===PANELS.FILTERS ? "Hide the map filters" : "Filter the map"}
-          hitSlop={8}
           onPress={()=>toggle(PANELS.FILTERS)}
         >
-          <Text style={[styles.icon,open===PANELS.FILTERS && styles.iconOpen]}>≡</Text>
+          <Text style={[styles.modeGlyph,open===PANELS.FILTERS && styles.modeGlyphOn]}>≡</Text>
+          <Text style={[styles.modeLabel,open===PANELS.FILTERS && styles.modeLabelOn]}>Layers</Text>
         </Pressable>
-
-        {/* What is currently narrowed, so a filter left on is never invisible.
-            A map quietly hiding two thirds of itself is worse than a chip. */}
-        {open===PANELS.NONE && !!activeLabel({typeFilters,typeFilter,historical}) && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{activeLabel({typeFilters,typeFilter,historical})}</Text>
-          </View>
-        )}
       </View>
 
       {open===PANELS.SEARCH && (
         <View style={styles.panel}>
-          <TextInput
-            style={styles.search}
-            placeholder="Search businesses, stays or clubs..."
-            placeholderTextColor={INK.inkSoft}
-            value={search}
-            onChangeText={onSearch}
-            accessibilityLabel="Search the map"
-            autoFocus
-            returnKeyType="search"
-          />
-          {!!search && (
-            <Pressable
-              style={styles.clear}
-              accessibilityRole="button"
-              accessibilityLabel="Clear the search"
-              hitSlop={8}
-              onPress={()=>onSearch?.("")}
-            >
-              <Text style={styles.clearText}>✕</Text>
-            </Pressable>
-          )}
+          <Text style={styles.panelKicker}>FIND A PLACE</Text>
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.search}
+              placeholder="Business, stay or club"
+              placeholderTextColor={INK.inkSoft}
+              value={search}
+              onChangeText={onSearch}
+              accessibilityLabel="Search the map"
+              autoFocus
+              returnKeyType="search"
+            />
+            {!!search && (
+              <Pressable style={styles.clear} accessibilityRole="button" accessibilityLabel="Clear the search" onPress={()=>onSearch?.("")}>
+                <Text style={styles.clearText}>Clear</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       )}
 
       {open===PANELS.FILTERS && (
         <View style={styles.panel}>
-          {/*
-            TWO QUESTIONS, ASKED SEPARATELY.
+          <FilterGroup title="What">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+              {typeFilters.map(({key,label})=>(
+                <Chip key={key} label={label} on={typeFilter===key} onPress={()=>onTypeFilter?.(key)} describe={`Show ${label}`}/>
+              ))}
+            </ScrollView>
+          </FilterGroup>
 
-            It used to be one row of fifteen chips where "Activity Clubs" and
-            "Tonight" sat side by side as if they were the same kind of choice.
-            They are not: one is what sort of thing, the other is when.
-          */}
-          <Text style={styles.heading}>What</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {typeFilters.map(({key,label})=>(
-              <Chip
-                key={key}
-                label={label}
-                on={typeFilter===key}
-                onPress={()=>onTypeFilter?.(key)}
-                describe={`Show ${label}`}
-              />
-            ))}
-          </ScrollView>
+          <FilterGroup title="When">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+              <Chip label="Happening" on={showLive} onPress={()=>onShowLive?.(!showLive)} describe={showLive ? "Hide what is happening" : "Show what is happening"}/>
+              {timeWindows.map(({key,label})=>(
+                <Chip key={key} label={label} on={showLive && timeWindow===key} disabled={!showLive} onPress={()=>onTimeWindow?.(key)} describe={`Show what is happening ${label.toLowerCase()}`}/>
+              ))}
+            </ScrollView>
+          </FilterGroup>
 
-          <Text style={styles.heading}>When</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            <Chip
-              label="Happening"
-              on={showLive}
-              onPress={()=>onShowLive?.(!showLive)}
-              describe={showLive ? "Hide what is happening" : "Show what is happening"}
-            />
-            {timeWindows.map(({key,label})=>(
-              <Chip
-                key={key}
-                label={label}
-                on={showLive && timeWindow===key}
-                disabled={!showLive}
-                onPress={()=>onTimeWindow?.(key)}
-                describe={`Show what is happening ${label.toLowerCase()}`}
-              />
-            ))}
-          </ScrollView>
-
-          <Text style={styles.heading}>Layers</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            <Chip
-              label="Posts"
-              on={showPosts}
-              onPress={()=>onShowPosts?.(!showPosts)}
-              describe={showPosts ? "Hide Moments and Memories" : "Show Moments and Memories"}
-            />
-            <Chip
-              label="Busy"
-              on={showHeat}
-              onPress={()=>onShowHeat?.(!showHeat)}
-              describe={showHeat ? "Hide busy areas" : "Show busy areas"}
-            />
-            {/*
-              MEMORIES ONLY -- and the map becomes a history rather than a
-              filter of the live one. It is in Layers rather than in What
-              because it changes the whole map, not what is on it.
-            */}
-            <Chip
-              label="Memories"
-              on={historical}
-              onPress={()=>onHistorical?.(!historical)}
-              describe={historical ? "Leave the Memories timeline" : "Show Memories on a timeline"}
-            />
-          </ScrollView>
+          <FilterGroup title="Context layers">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+              <Chip label="Posts" on={showPosts} onPress={()=>onShowPosts?.(!showPosts)} describe={showPosts ? "Hide Moments and Memories" : "Show Moments and Memories"}/>
+              <Chip label="Busy" on={showHeat} onPress={()=>onShowHeat?.(!showHeat)} describe={showHeat ? "Hide busy areas" : "Show busy areas"}/>
+              <Chip label="Memories" on={historical} onPress={()=>onHistorical?.(!historical)} describe={historical ? "Leave the Memories timeline" : "Show Memories on a timeline"}/>
+            </ScrollView>
+          </FilterGroup>
         </View>
       )}
     </View>
   );
+}
+
+function FilterGroup({title,children}){
+  return <View style={styles.group}><Text style={styles.heading}>{title}</Text>{children}</View>;
 }
 
 function Chip({label,on,disabled,onPress,describe}){
@@ -199,68 +120,39 @@ function Chip({label,on,disabled,onPress,describe}){
   );
 }
 
-// One short phrase for what is narrowed, or nothing at all when the map is
-// showing everything.
 function activeLabel({typeFilters,typeFilter,historical}){
-  if(historical) return "Memories";
+  if(historical) return "Memory timeline";
   if(!typeFilter || typeFilter==="all") return "";
   return typeFilters.find((entry)=>entry.key===typeFilter)?.label || "";
 }
 
 const styles=StyleSheet.create({
   wrap:{position:"absolute",left:10,right:10,zIndex:10},
-  chips:{flexDirection:"row",alignItems:"center",gap:8},
-  chip:{
-    width:40,
-    height:40,
-    borderRadius:20,
-    alignItems:"center",
-    justifyContent:"center",
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink
+  command:{
+    minHeight:56,flexDirection:"row",alignItems:"center",gap:6,
+    backgroundColor:INK.navy,borderRadius:20,padding:6
   },
-  chipOpen:{backgroundColor:INK.ink},
-  icon:{color:INK.ink,fontSize:20,fontWeight:"900",lineHeight:24},
-  iconOpen:{color:INK.card},
-  badge:{
-    minHeight:28,
-    justifyContent:"center",
-    paddingHorizontal:11,
-    borderRadius:99,
-    backgroundColor:INK.ink
-  },
-  badgeText:{color:INK.card,fontWeight:"800",fontSize:12},
-  panel:{
-    marginTop:8,
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:14,
-    padding:10
-  },
-  search:{
-    minHeight:44,
-    paddingHorizontal:12,
-    paddingRight:38,
-    color:INK.ink,
-    fontSize:15
-  },
-  clear:{position:"absolute",right:16,top:18,width:28,height:28,alignItems:"center",justifyContent:"center"},
-  clearText:{color:INK.ink,fontWeight:"900",fontSize:15},
-  heading:{color:INK.inkSoft,fontWeight:"800",fontSize:11,letterSpacing:0.8,textTransform:"uppercase",marginTop:4,marginBottom:6},
-  row:{gap:7,paddingRight:4,paddingBottom:8},
-  filter:{
-    backgroundColor:INK.paper,
-    paddingHorizontal:13,
-    minHeight:38,
-    justifyContent:"center",
-    borderRadius:20,
-    borderWidth:2,
-    borderColor:INK.ink
-  },
-  filterOn:{backgroundColor:INK.ink,borderColor:INK.ink},
-  filterOff:{opacity:0.45},
-  filterText:{fontWeight:"700",color:INK.ink},
-  filterTextOn:{color:INK.card,fontWeight:"900"}
+  commandCopy:{flex:1,paddingHorizontal:9,minWidth:0},
+  kicker:{color:INK.brand,fontSize:8,fontWeight:"900",letterSpacing:1},
+  commandTitle:{color:INK.onNavy,fontSize:13,fontWeight:"900",marginTop:2},
+  mode:{minWidth:58,height:44,borderRadius:15,alignItems:"center",justifyContent:"center",backgroundColor:INK.navySoft},
+  modeOn:{backgroundColor:INK.brand},
+  modeGlyph:{color:INK.onNavy,fontSize:16,fontWeight:"900",lineHeight:17},
+  modeGlyphOn:{color:INK.navy},
+  modeLabel:{color:INK.onNavySoft,fontSize:8,fontWeight:"800",marginTop:1},
+  modeLabelOn:{color:INK.navy},
+  panel:{marginTop:7,backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:20,padding:12},
+  panelKicker:{color:INK.brandDeep,fontSize:9,fontWeight:"900",letterSpacing:1,marginBottom:7},
+  searchRow:{flexDirection:"row",alignItems:"center",gap:8},
+  search:{flex:1,minHeight:46,paddingHorizontal:13,color:INK.ink,fontSize:15,backgroundColor:INK.paper,borderRadius:14},
+  clear:{minHeight:44,justifyContent:"center",paddingHorizontal:12,borderRadius:13,backgroundColor:INK.navy},
+  clearText:{color:INK.onNavy,fontWeight:"800",fontSize:11},
+  group:{marginBottom:8},
+  heading:{color:INK.inkSoft,fontWeight:"900",fontSize:10,letterSpacing:.8,textTransform:"uppercase",marginBottom:7},
+  row:{gap:7,paddingRight:4,paddingBottom:4},
+  filter:{backgroundColor:INK.paper,paddingHorizontal:13,minHeight:38,justifyContent:"center",borderRadius:14,borderWidth:1,borderColor:INK.hair},
+  filterOn:{backgroundColor:INK.navy,borderColor:INK.navy},
+  filterOff:{opacity:.4},
+  filterText:{fontWeight:"800",color:INK.ink,fontSize:12},
+  filterTextOn:{color:INK.onNavy,fontWeight:"900",fontSize:12}
 });
