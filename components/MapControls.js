@@ -20,7 +20,7 @@ export default function MapControls({
       <View style={styles.command}>
         <View style={styles.commandCopy} pointerEvents="none">
           <Text style={styles.kicker}>MAP CONTEXT</Text>
-          <Text style={styles.commandTitle}>{narrowed || "Everything nearby"}</Text>
+          <Text style={styles.commandTitle}>{narrowed || "All map layers"}</Text>
         </View>
 
         <Pressable
@@ -128,10 +128,7 @@ function activeLabel({typeFilters,typeFilter,historical}){
 
 const styles=StyleSheet.create({
   wrap:{position:"absolute",left:10,right:10,zIndex:10},
-  command:{
-    minHeight:56,flexDirection:"row",alignItems:"center",gap:6,
-    backgroundColor:INK.navy,borderRadius:20,padding:6
-  },
+  command:{minHeight:56,flexDirection:"row",alignItems:"center",gap:6,backgroundColor:INK.navy,borderRadius:20,padding:6},
   commandCopy:{flex:1,paddingHorizontal:9,minWidth:0},
   kicker:{color:INK.brand,fontSize:8,fontWeight:"900",letterSpacing:1},
   commandTitle:{color:INK.onNavy,fontSize:13,fontWeight:"900",marginTop:2},
