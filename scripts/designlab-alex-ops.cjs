@@ -49,14 +49,14 @@ function replaceOnce(source,before,after,label){
     `      <AlexJourneyHeader\n        phase="CONTROL"\n        title="Operations at a glance"\n        description="Attention signals first, tools second. Counts come from the live database; this surface does not infer permissions the backend has not granted."\n        meta="Admin"\n      />\n\n`,
     "admin header"
   );
+  // Keep the metric cards light: they are information-dense operational data,
+  // and the light card/ink pair is both calmer and unambiguously readable.
+  // The retry action uses Alex's signal green with navy text, which remains
+  // readable both on the button itself and in the error-panel fallback model.
   source=source
     .replace('paddingHorizontal:20,\n    paddingTop:28', 'paddingHorizontal:16,\n    paddingTop:12')
-    .replace('backgroundColor:INK.ink,\n    marginTop:18', 'backgroundColor:INK.navy,\n    marginTop:18')
-    .replace('color:INK.ink,\n    fontSize:16,\n    fontWeight:"800"', 'color:INK.onNavy,\n    fontSize:16,\n    fontWeight:"900"')
-    .replace('borderRadius:18,\n    borderWidth:1,\n    backgroundColor:INK.card,\n    padding:17', 'borderRadius:18,\n    borderWidth:1,\n    backgroundColor:INK.navy,\n    padding:17')
-    .replace('claimMetric:{\n    backgroundColor:INK.water\n  }', 'claimMetric:{\n    backgroundColor:INK.navySoft,\n    borderColor:INK.brand\n  }')
-    .replace('color:INK.ink,\n    fontSize:34,\n    fontWeight:"900"', 'color:INK.onNavy,\n    fontSize:34,\n    fontWeight:"900"')
-    .replace('color:INK.inkSoft,\n    fontSize:14,\n    fontWeight:"700",\n    lineHeight:18', 'color:INK.onNavySoft,\n    fontSize:14,\n    fontWeight:"700",\n    lineHeight:18');
+    .replace('backgroundColor:INK.ink,\n    marginTop:18', 'backgroundColor:INK.brand,\n    marginTop:18')
+    .replace('color:INK.ink,\n    fontSize:16,\n    fontWeight:"800"', 'color:INK.navy,\n    fontSize:16,\n    fontWeight:"900"');
   fs.writeFileSync(path,source,"utf8");
 }
 
