@@ -51,25 +51,32 @@ describe("the Alex map dock keeps navigation usable",()=>{
     expect(darkRows.length).toBeGreaterThanOrEqual(1);
 
     const source=require("fs").readFileSync(require("path").join(__dirname,"..","components","TabBar.js"),"utf8");
-    expect(source).not.toContain("PanResponder");
     expect(source).not.toContain("raisedWrap");
     expect(source).toContain("styles.centreTab");
+    expect(source).toContain("PanResponder");
 
     await act(async()=>{tree.unmount();});
   });
 
-  it("makes Explore explicit and removes the hidden Discover gesture",()=>{
-    expect(centreSwipeUp("/map")).toBeNull();
+  it("makes Explore explicit while preserving the frozen Discover shortcut",()=>{
+    expect(centreSwipeUp("/map")?.route).toBe("/discover");
     expect(centreButton("/map").label).toBe("Camera");
   });
 
-  it("does not overlay a full-width invisible gesture box on the other tabs",async()=>{
+  it("attaches the upward gesture only to the centre Camera tab, not a full-width overlay",async()=>{
     const tree=await renderAt("/map");
-    const gestureBoxes=tree.root.findAll(
-      (node)=>node.props?.onMoveShouldSetResponderCapture || node.props?.onMoveShouldSetResponder,
+    const tabs=tree.root.findAll(
+      (node)=>node.props?.accessibilityRole==="tab" && typeof node.props?.onPress==="function",
       {deep:true}
     );
-    expect(gestureBoxes).toHaveLength(0);
+
+    const camera=tabs.find((node)=>String(node.props?.accessibilityLabel || "").startsWith("Camera"));
+    expect(camera).toBeTruthy();
+    expect(typeof camera.props?.onMoveShouldSetResponderCapture).toBe("function");
+
+    const otherTabs=tabs.filter((node)=>node!==camera);
+    expect(otherTabs.every((node)=>typeof node.props?.onMoveShouldSetResponderCapture!=="function")).toBe(true);
+
     await act(async()=>{tree.unmount();});
   });
 });
