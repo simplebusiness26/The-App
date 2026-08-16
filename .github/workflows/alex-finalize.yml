@@ -177,6 +177,16 @@ jobs:
           test -n "$APK_PATH"
           cp "$APK_PATH" apk-output/Xplorer-Alex-Schleifer-Tournament-B.apk
           sha256sum apk-output/Xplorer-Alex-Schleifer-Tournament-B.apk | tee apk-output/SHA256.txt
+          git rev-parse HEAD | tee apk-output/SOURCE_COMMIT.txt
+
+      - name: Upload Alex APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xplorer-Alex-Schleifer-Tournament-B-APK
+          path: apk-output/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
 
       - name: Commit validated final source
         shell: bash
@@ -191,16 +201,6 @@ jobs:
             git commit -m '[alex-finalized] Apply operational surfaces after full validation'
             git push origin HEAD:designlab/tournament-b-alex-schleifer
           fi
-          git rev-parse HEAD | tee apk-output/SOURCE_COMMIT.txt
-
-      - name: Upload Alex APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Xplorer-Alex-Schleifer-Tournament-B-APK
-          path: apk-output/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
 
       - name: Upload Alex web validation build
         uses: actions/upload-artifact@v4
@@ -217,7 +217,7 @@ jobs:
           echo '- Full Jest suite: passed' >> "$GITHUB_STEP_SUMMARY"
           echo '- Deterministic Product Truth gates: passed' >> "$GITHUB_STEP_SUMMARY"
           echo '- Expo doctor/web export/browser route validation: passed' >> "$GITHUB_STEP_SUMMARY"
-          echo '- Android release APK: built' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Android release APK: built and uploaded before source finalization' >> "$GITHUB_STEP_SUMMARY"
           echo '- Final source commit: `' >> "$GITHUB_STEP_SUMMARY"
           git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
           echo '`' >> "$GITHUB_STEP_SUMMARY"
