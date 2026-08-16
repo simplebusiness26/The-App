@@ -1,13 +1,5 @@
 import React,{useCallback,useEffect,useState} from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Modal,
-  AccessibilityInfo
-} from "react-native";
+import {View,Text,Pressable,StyleSheet,ScrollView,Modal,AccessibilityInfo} from "react-native";
 import {router} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {supabase} from "../services/supabase";
@@ -16,37 +8,26 @@ import {visibleSections} from "../utils/drawer";
 import {INK} from "../utils/tokens";
 import {managesAnyListing} from "../utils/permissions";
 
-// Packet 4: the Quick Access drawer. Replaces the /menu page.
-//
-// It fails open. If the profile read or the entitlement call fails, the drawer
-// shows what it can and says the rest may be wrong -- it never renders empty
-// and silent. That rule is not a preference: a build once selected a profiles
-// column that did not exist, every role flag stayed false, and ten links
-// vanished from the menu with no error shown. The menu is not a security
-// boundary, so showing a link the caller cannot use costs them one explanatory
-// screen, while showing none strands them with nothing to report.
-
+// Same tested navigation/entitlement data, completely different presentation:
+// this is Alex's product index for the capabilities that do not belong in the
+// five primary journey destinations.
 export default function QuickAccessDrawer(){
   const {open,closeDrawer}=useDrawer();
   const insets=useSafeAreaInsets();
-
   const [viewer,setViewer]=useState({signedIn:false,isManager:false,isAdmin:false});
   const [notice,setNotice]=useState("");
   const [reduceMotion,setReduceMotion]=useState(false);
 
   useEffect(()=>{
     let active=true;
-
     AccessibilityInfo.isReduceMotionEnabled?.().then((enabled)=>{
       if(active) setReduceMotion(!!enabled);
     }).catch(()=>{});
-
     return()=>{active=false;};
   },[]);
 
   const load=useCallback(async()=>{
     const {data:{user}}=await supabase.auth.getUser();
-
     if(!user){
       setViewer({signedIn:false,isManager:false,isAdmin:false});
       setNotice("");
@@ -62,18 +43,14 @@ export default function QuickAccessDrawer(){
     if(profileResult.error || !profileResult.data){
       messages.push(
         profileResult.error
-          ? "Your account details could not be loaded, so this menu may show more than you can open."
+          ? "Your account details could not be loaded, so this index may show more than you can open."
           : "No profile was found for this account. Some screens will ask you to finish setting it up."
       );
     }
     if(managesResult.error) messages.push(managesResult.error);
 
     setNotice(messages.join(" "));
-    setViewer({
-      signedIn:true,
-      isAdmin:!!profileResult.data?.is_admin,
-      isManager:managesResult.allowed
-    });
+    setViewer({signedIn:true,isAdmin:!!profileResult.data?.is_admin,isManager:managesResult.allowed});
   },[]);
 
   useEffect(()=>{if(open) load();},[open,load]);
@@ -95,28 +72,21 @@ export default function QuickAccessDrawer(){
     <Modal
       visible={open}
       transparent
-      // "Sheets slide. prefers-reduced-motion: reduce disables all of it."
       animationType={reduceMotion ? "none" : "slide"}
       onRequestClose={closeDrawer}
       accessibilityViewIsModal
     >
       <View style={styles.backdrop}>
-        <Pressable
-          style={styles.dismissArea}
-          accessibilityRole="button"
-          accessibilityLabel="Close quick access"
-          onPress={closeDrawer}
-        />
+        <Pressable style={styles.dismissArea} accessibilityRole="button" accessibilityLabel="Close quick access" onPress={closeDrawer}/>
 
         <View style={[styles.panel,{paddingBottom:insets.bottom+16,paddingTop:insets.top+14}]}>
           <View style={styles.head}>
-            <Text style={styles.title}>Quick access</Text>
-            <Pressable
-              style={styles.close}
-              accessibilityRole="button"
-              accessibilityLabel="Close quick access"
-              onPress={closeDrawer}
-            >
+            <View style={styles.headCopy}>
+              <Text style={styles.kicker}>PRODUCT INDEX</Text>
+              <Text style={styles.title}>Everything in Xplorer</Text>
+              <Text style={styles.subtitle}>Primary navigation stays focused. The rest of the real product lives here.</Text>
+            </View>
+            <Pressable style={styles.close} accessibilityRole="button" accessibilityLabel="Close quick access" onPress={closeDrawer}>
               <Text style={styles.closeMark}>×</Text>
             </Pressable>
           </View>
@@ -124,22 +94,30 @@ export default function QuickAccessDrawer(){
           {!!notice && <Text style={styles.notice}>{notice}</Text>}
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-            {sections.map((section)=>(
+            {sections.map((section,index)=>(
               <View key={section.key} style={styles.section}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <View style={styles.sectionHead}>
+                  <Text style={styles.sectionNumber}>{String(index+1).padStart(2,"0")}</Text>
+                  <Text style={styles.sectionTitle}>{section.title}</Text>
+                </View>
 
-                {section.rows.map((row)=>(
-                  <Pressable
-                    key={row.route || row.action}
-                    style={styles.row}
-                    accessibilityRole="button"
-                    accessibilityLabel={row.label}
-                    onPress={()=>row.action==="logout" ? logout() : go(row.route)}
-                  >
-                    <Text style={styles.rowLabel}>{row.label}</Text>
-                    {!!row.detail && <Text style={styles.rowDetail}>{row.detail}</Text>}
-                  </Pressable>
-                ))}
+                <View style={styles.sectionRows}>
+                  {section.rows.map((row)=>(
+                    <Pressable
+                      key={row.route || row.action}
+                      style={({pressed})=>[styles.row,pressed && styles.rowPressed]}
+                      accessibilityRole="button"
+                      accessibilityLabel={row.label}
+                      onPress={()=>row.action==="logout" ? logout() : go(row.route)}
+                    >
+                      <View style={styles.rowCopy}>
+                        <Text style={styles.rowLabel}>{row.label}</Text>
+                        {!!row.detail && <Text style={styles.rowDetail}>{row.detail}</Text>}
+                      </View>
+                      <Text style={styles.arrow}>›</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
             ))}
           </ScrollView>
@@ -150,50 +128,31 @@ export default function QuickAccessDrawer(){
 }
 
 const styles=StyleSheet.create({
-  backdrop:{flex:1,flexDirection:"row",backgroundColor:"rgba(22,24,28,0.4)"},
+  backdrop:{flex:1,flexDirection:"row",backgroundColor:"rgba(10,16,32,0.56)"},
   dismissArea:{flex:1},
   panel:{
-    width:"86%",
-    maxWidth:380,
-    backgroundColor:INK.paper,
-    borderLeftWidth:2,
-    borderLeftColor:INK.ink,
-    paddingHorizontal:16
+    width:"90%",maxWidth:420,backgroundColor:INK.navy,
+    paddingHorizontal:16,borderTopLeftRadius:28,borderBottomLeftRadius:28
   },
-  head:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:10},
-  title:{fontSize:24,fontWeight:"800",letterSpacing:-0.4,color:INK.ink},
-  // 44px tap target even though the mark is smaller.
-  close:{width:44,height:44,alignItems:"center",justifyContent:"center"},
-  closeMark:{fontSize:30,color:INK.ink,lineHeight:34},
-  notice:{
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    padding:12,
-    marginBottom:12,
-    fontSize:13,
-    lineHeight:19,
-    color:INK.ink
-  },
+  head:{flexDirection:"row",alignItems:"flex-start",gap:10,marginBottom:14},
+  headCopy:{flex:1},
+  kicker:{color:INK.brand,fontSize:10,fontWeight:"900",letterSpacing:1.2},
+  title:{color:INK.onNavy,fontSize:27,fontWeight:"900",letterSpacing:-0.7,marginTop:5},
+  subtitle:{color:INK.onNavySoft,fontSize:12,lineHeight:18,marginTop:5,maxWidth:310},
+  close:{width:44,height:44,borderRadius:15,alignItems:"center",justifyContent:"center",backgroundColor:INK.brand},
+  closeMark:{fontSize:27,color:INK.navy,lineHeight:31,fontWeight:"800"},
+  notice:{backgroundColor:INK.navySoft,borderRadius:15,padding:12,marginBottom:13,fontSize:12,lineHeight:18,color:INK.onNavy},
   scroll:{flex:1},
-  scrollContent:{paddingBottom:20},
-  section:{marginBottom:18},
-  sectionTitle:{
-    fontSize:12,
-    fontWeight:"800",
-    color:INK.inkSoft,
-    marginBottom:8,
-    textTransform:"uppercase",
-    letterSpacing:1
-  },
-  row:{
-    minHeight:48,
-    justifyContent:"center",
-    borderBottomWidth:1,
-    borderBottomColor:INK.hair,
-    paddingVertical:11
-  },
-  rowLabel:{fontSize:16,fontWeight:"600",color:INK.ink},
-  rowDetail:{fontSize:12,lineHeight:17,color:INK.inkSoft,marginTop:3}
+  scrollContent:{paddingBottom:24},
+  section:{marginBottom:19},
+  sectionHead:{flexDirection:"row",alignItems:"center",gap:8,marginBottom:8},
+  sectionNumber:{color:INK.brand,fontSize:10,fontWeight:"900"},
+  sectionTitle:{fontSize:11,fontWeight:"900",color:INK.onNavySoft,textTransform:"uppercase",letterSpacing:1},
+  sectionRows:{backgroundColor:INK.navySoft,borderRadius:18,overflow:"hidden"},
+  row:{minHeight:54,flexDirection:"row",alignItems:"center",paddingHorizontal:14,paddingVertical:11,borderBottomWidth:1,borderBottomColor:INK.navy},
+  rowPressed:{backgroundColor:INK.sky},
+  rowCopy:{flex:1},
+  rowLabel:{fontSize:15,fontWeight:"800",color:INK.onNavy},
+  rowDetail:{fontSize:11,lineHeight:16,color:INK.onNavySoft,marginTop:3},
+  arrow:{color:INK.brand,fontSize:24,fontWeight:"400",paddingLeft:10}
 });
