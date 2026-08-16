@@ -8,18 +8,10 @@ function replaceOnce(source,before,after,label){
   return source.replace(before,after);
 }
 
-// Manager: the existing operational content is valuable, but the frozen page
-// opens like a generic dashboard. Reframe it as the operating phase of the same
-// Explorer identity and make the action centre visually primary.
 {
   const path="app/manager/dashboard.js";
   let source=fs.readFileSync(path,"utf8");
-  source=replaceOnce(
-    source,
-    'import QRCodeGenerator from "../../components/QRCodeGenerator";\n',
-    'import QRCodeGenerator from "../../components/QRCodeGenerator";\nimport AlexJourneyHeader from "../../components/AlexJourneyHeader";\n',
-    "manager import"
-  );
+  source=replaceOnce(source,'import QRCodeGenerator from "../../components/QRCodeGenerator";\n','import QRCodeGenerator from "../../components/QRCodeGenerator";\nimport AlexJourneyHeader from "../../components/AlexJourneyHeader";\n',"manager import");
   source=replaceOnce(
     source,
     `      <Text style={styles.title}>Manager Dashboard</Text>\n      <Text style={styles.subtitle}>\n        Manage listings, approved members and printable QR codes from one place.\n      </Text>\n\n`,
@@ -35,7 +27,7 @@ function replaceOnce(source,before,after,label){
     .replace('actionTitle:{fontSize:19,fontWeight:"bold",marginTop:5}', 'actionTitle:{fontSize:20,fontWeight:"900",color:INK.onNavy,marginTop:5}')
     .replace('actionText:{fontSize:14,color:INK.inkSoft,lineHeight:20,marginTop:5}', 'actionText:{fontSize:13,color:INK.onNavySoft,lineHeight:19,marginTop:5}')
     .replace('actionCount:{minWidth:68,backgroundColor:INK.yellow,borderRadius:13,paddingVertical:9,paddingHorizontal:11,alignItems:"center"}', 'actionCount:{minWidth:68,backgroundColor:INK.brand,borderRadius:15,paddingVertical:9,paddingHorizontal:11,alignItems:"center"}')
-    .replace('actionCountClear:{backgroundColor:INK.card}', 'actionCountClear:{backgroundColor:INK.navySoft}')
+    .replace('actionCountClear:{backgroundColor:INK.card}', 'actionCountClear:{backgroundColor:INK.sky}')
     .replace('actionCountNumber:{fontSize:23,fontWeight:"bold"}', 'actionCountNumber:{fontSize:23,fontWeight:"900",color:INK.navy}')
     .replace('actionCountLabel:{fontSize:10,fontWeight:"bold",textTransform:"uppercase"}', 'actionCountLabel:{fontSize:9,fontWeight:"900",textTransform:"uppercase",color:INK.navy}')
     .replace('actionButton:{backgroundColor:INK.blue,padding:13,borderRadius:10,marginTop:14}', 'actionButton:{backgroundColor:INK.brand,padding:13,borderRadius:14,marginTop:14}')
@@ -47,18 +39,10 @@ function replaceOnce(source,before,after,label){
   fs.writeFileSync(path,source,"utf8");
 }
 
-// Admin: keep the exact gate, database counts and tool routes. Give the system
-// its own high-density operational phase instead of inheriting consumer page
-// hierarchy.
 {
   const path="app/admin/dashboard.js";
   let source=fs.readFileSync(path,"utf8");
-  source=replaceOnce(
-    source,
-    'import {useAdminGate} from "../../hooks/useAdminGate";\n',
-    'import {useAdminGate} from "../../hooks/useAdminGate";\nimport AlexJourneyHeader from "../../components/AlexJourneyHeader";\n',
-    "admin import"
-  );
+  source=replaceOnce(source,'import {useAdminGate} from "../../hooks/useAdminGate";\n','import {useAdminGate} from "../../hooks/useAdminGate";\nimport AlexJourneyHeader from "../../components/AlexJourneyHeader";\n',"admin import");
   source=replaceOnce(
     source,
     `      <Text style={styles.eyebrow}>ADMIN OVERVIEW</Text>\n      <Text style={styles.title}>What needs attention</Text>\n      <Text style={styles.intro}>\n        Live totals from the database, followed by the admin tools that are ready to use.\n      </Text>\n\n`,
@@ -70,10 +54,9 @@ function replaceOnce(source,before,after,label){
     .replace('backgroundColor:INK.ink,\n    marginTop:18', 'backgroundColor:INK.navy,\n    marginTop:18')
     .replace('color:INK.ink,\n    fontSize:16,\n    fontWeight:"800"', 'color:INK.onNavy,\n    fontSize:16,\n    fontWeight:"900"')
     .replace('borderRadius:18,\n    borderWidth:1,\n    backgroundColor:INK.card,\n    padding:17', 'borderRadius:18,\n    borderWidth:1,\n    backgroundColor:INK.navy,\n    padding:17')
-    .replace('claimMetric:{\n    backgroundColor:INK.water\n  }', 'claimMetric:{\n    backgroundColor:INK.brand\n  }')
+    .replace('claimMetric:{\n    backgroundColor:INK.water\n  }', 'claimMetric:{\n    backgroundColor:INK.navySoft,\n    borderColor:INK.brand\n  }')
     .replace('color:INK.ink,\n    fontSize:34,\n    fontWeight:"900"', 'color:INK.onNavy,\n    fontSize:34,\n    fontWeight:"900"')
-    .replace('color:INK.inkSoft,\n    fontSize:14,\n    fontWeight:"700",\n    lineHeight:18', 'color:INK.onNavySoft,\n    fontSize:14,\n    fontWeight:"700",\n    lineHeight:18')
-    .replace('borderRadius:18,\n    borderWidth:1,\n    backgroundColor:INK.card,\n    marginBottom:10', 'borderRadius:18,\n    borderWidth:1,\n    backgroundColor:INK.card,\n    marginBottom:10');
+    .replace('color:INK.inkSoft,\n    fontSize:14,\n    fontWeight:"700",\n    lineHeight:18', 'color:INK.onNavySoft,\n    fontSize:14,\n    fontWeight:"700",\n    lineHeight:18');
   fs.writeFileSync(path,source,"utf8");
 }
 
