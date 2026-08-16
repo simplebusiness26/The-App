@@ -110,7 +110,10 @@ export default function QuickAccessDrawer(){
 
         <View style={[styles.panel,{paddingBottom:insets.bottom+16,paddingTop:insets.top+14}]}>
           <View style={styles.head}>
-            <Text style={styles.title}>Quick access</Text>
+            <View style={styles.headingCopy}>
+              <Text style={styles.title}>Quick access</Text>
+              <Text style={styles.subtitle}>Find what you need, then get back to your plan.</Text>
+            </View>
             <Pressable
               style={styles.close}
               accessibilityRole="button"
@@ -156,12 +159,14 @@ const styles=StyleSheet.create({
     width:"86%",
     maxWidth:380,
     backgroundColor:INK.paper,
-    borderLeftWidth:2,
-    borderLeftColor:INK.ink,
-    paddingHorizontal:16
+    borderLeftWidth:1,
+    borderLeftColor:INK.hair,
+    paddingHorizontal:20
   },
-  head:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:10},
-  title:{fontSize:24,fontWeight:"800",letterSpacing:-0.4,color:INK.ink},
+  head:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",marginBottom:14},
+  headingCopy:{flex:1,paddingRight:12},
+  title:{fontSize:27,fontWeight:"800",letterSpacing:-0.6,color:INK.ink},
+  subtitle:{fontSize:13,lineHeight:18,color:INK.inkSoft,marginTop:4,maxWidth:285},
   // 44px tap target even though the mark is smaller.
   close:{width:44,height:44,alignItems:"center",justifyContent:"center"},
   closeMark:{fontSize:30,color:INK.ink,lineHeight:34},
@@ -178,22 +183,22 @@ const styles=StyleSheet.create({
   },
   scroll:{flex:1},
   scrollContent:{paddingBottom:20},
-  section:{marginBottom:18},
+  section:{marginBottom:12,backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:16,paddingHorizontal:12,paddingTop:12},
   sectionTitle:{
     fontSize:12,
     fontWeight:"800",
     color:INK.inkSoft,
-    marginBottom:8,
+    marginBottom:5,
     textTransform:"uppercase",
     letterSpacing:1
   },
   row:{
-    minHeight:48,
+    minHeight:50,
     justifyContent:"center",
     borderBottomWidth:1,
     borderBottomColor:INK.hair,
-    paddingVertical:11
+    paddingVertical:12
   },
-  rowLabel:{fontSize:16,fontWeight:"600",color:INK.ink},
+  rowLabel:{fontSize:15,fontWeight:"700",color:INK.ink},
   rowDetail:{fontSize:12,lineHeight:17,color:INK.inkSoft,marginTop:3}
 });

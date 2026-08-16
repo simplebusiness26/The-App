@@ -47,7 +47,7 @@ export default function StartupSplash({onDone,duration=SPLASH_MS}){
     <View style={styles.screen} accessibilityRole="none">
       <View style={styles.middle}>
         <Text style={styles.wordmark}>Xplorer</Text>
-        <Text style={styles.tagline}>Discover local places, stays and experiences.</Text>
+        <Text style={styles.tagline}>See what is around you, understand what to expect, and make a confident plan.</Text>
       </View>
 
       {/*
@@ -81,8 +81,8 @@ const styles=StyleSheet.create({
     elevation:1000
   },
   middle:{flex:1,alignItems:"center",justifyContent:"center"},
-  wordmark:{color:INK.ink,fontSize:52,fontWeight:"900",letterSpacing:-1},
-  tagline:{color:INK.inkSoft,fontSize:16,lineHeight:23,textAlign:"center",marginTop:10},
+  wordmark:{color:INK.ink,fontSize:48,fontWeight:"800",letterSpacing:-1.2},
+  tagline:{color:INK.inkSoft,fontSize:17,lineHeight:25,textAlign:"center",marginTop:14,maxWidth:330},
   credit:{alignItems:"center"},
   creditText:{color:INK.ink,fontSize:16,fontWeight:"700",textAlign:"center"},
   creditSmall:{color:INK.inkSoft,fontSize:12,lineHeight:17,textAlign:"center",marginTop:7}

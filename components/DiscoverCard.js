@@ -62,6 +62,7 @@ export default function DiscoverCard({item,onSeeOnMap}){
       <View style={styles.overlay}>
         <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
         {!!item.subtitle && <Text style={styles.type} numberOfLines={1}>{item.subtitle}</Text>}
+        <Text style={styles.reasonLabel}>Why it is here</Text>
         <Text style={styles.reason} numberOfLines={2}>{item.reason}</Text>
       </View>
 
@@ -90,24 +91,18 @@ export default function DiscoverCard({item,onSeeOnMap}){
   );
 }
 
-export const CARD_WIDTH=240;
-const CARD_HEIGHT=190;
+export const CARD_WIDTH=260;
+const CARD_HEIGHT=220;
 
 const styles=StyleSheet.create({
   card:{
     width:CARD_WIDTH,
     height:CARD_HEIGHT,
-    borderRadius:14,
-    borderWidth:2,
-    borderColor:INK.ink,
+    borderRadius:20,
+    borderWidth:1,
+    borderColor:INK.hair,
     backgroundColor:INK.card,
     overflow:"hidden",
-    // Hard offset shadow, never a blur -- the same rule the pins and the raised
-    // tab button follow.
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
     elevation:0
   },
   image:{width:"100%",height:CARD_HEIGHT/2,backgroundColor:INK.hair},
@@ -118,23 +113,24 @@ const styles=StyleSheet.create({
     right:0,
     bottom:0,
     height:CARD_HEIGHT/2,
-    padding:10,
+    padding:14,
     justifyContent:"flex-start",
     backgroundColor:INK.card,
-    borderTopWidth:2,
-    borderTopColor:INK.ink
+    borderTopWidth:1,
+    borderTopColor:INK.hair
   },
-  title:{color:INK.ink,fontWeight:"900",fontSize:15},
-  type:{color:INK.inkSoft,fontWeight:"700",fontSize:11,marginTop:2},
+  title:{color:INK.ink,fontWeight:"800",fontSize:17},
+  type:{color:INK.inkSoft,fontWeight:"600",fontSize:12,marginTop:2},
+  reasonLabel:{color:INK.inkSoft,fontWeight:"800",fontSize:9,letterSpacing:0.8,textTransform:"uppercase",marginTop:8},
   // The reason. Never optional -- see the note above.
-  reason:{color:INK.ink,fontWeight:"800",fontSize:11,lineHeight:15,marginTop:6},
+  reason:{color:INK.ink,fontWeight:"700",fontSize:12,lineHeight:17,marginTop:2},
   score:{
     position:"absolute",
     top:8,
     left:8,
     backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
+    borderWidth:1,
+    borderColor:INK.hair,
     borderRadius:99,
     paddingHorizontal:8,
     paddingVertical:3
@@ -150,8 +146,8 @@ const styles=StyleSheet.create({
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink
+    borderWidth:1,
+    borderColor:INK.hair
   },
   mapIcon:{color:INK.ink,fontSize:16,fontWeight:"900",lineHeight:19}
 });

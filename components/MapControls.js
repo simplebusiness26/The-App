@@ -88,7 +88,7 @@ export default function MapControls({
         <View style={styles.panel}>
           <TextInput
             style={styles.search}
-            placeholder="Search businesses, stays or clubs..."
+            placeholder="What are you looking for nearby?"
             placeholderTextColor={INK.inkSoft}
             value={search}
             onChangeText={onSearch}
@@ -119,7 +119,7 @@ export default function MapControls({
             "Tonight" sat side by side as if they were the same kind of choice.
             They are not: one is what sort of thing, the other is when.
           */}
-          <Text style={styles.heading}>What</Text>
+          <Text style={styles.heading}>What do you want to find?</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {typeFilters.map(({key,label})=>(
               <Chip
@@ -132,7 +132,7 @@ export default function MapControls({
             ))}
           </ScrollView>
 
-          <Text style={styles.heading}>When</Text>
+          <Text style={styles.heading}>When does it matter?</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             <Chip
               label="Happening"
@@ -152,7 +152,7 @@ export default function MapControls({
             ))}
           </ScrollView>
 
-          <Text style={styles.heading}>Layers</Text>
+          <Text style={styles.heading}>What should the map show?</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             <Chip
               label="Posts"
@@ -211,14 +211,14 @@ const styles=StyleSheet.create({
   wrap:{position:"absolute",left:10,right:10,zIndex:10},
   chips:{flexDirection:"row",alignItems:"center",gap:8},
   chip:{
-    width:40,
-    height:40,
-    borderRadius:20,
+    width:42,
+    height:42,
+    borderRadius:14,
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink
+    borderWidth:1,
+    borderColor:INK.hair
   },
   chipOpen:{backgroundColor:INK.ink},
   icon:{color:INK.ink,fontSize:20,fontWeight:"900",lineHeight:24},
@@ -232,12 +232,12 @@ const styles=StyleSheet.create({
   },
   badgeText:{color:INK.card,fontWeight:"800",fontSize:12},
   panel:{
-    marginTop:8,
+    marginTop:10,
     backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:14,
-    padding:10
+    borderWidth:1,
+    borderColor:INK.hair,
+    borderRadius:20,
+    padding:14
   },
   search:{
     minHeight:44,
@@ -255,9 +255,9 @@ const styles=StyleSheet.create({
     paddingHorizontal:13,
     minHeight:38,
     justifyContent:"center",
-    borderRadius:20,
-    borderWidth:2,
-    borderColor:INK.ink
+    borderRadius:14,
+    borderWidth:1,
+    borderColor:INK.hair
   },
   filterOn:{backgroundColor:INK.ink,borderColor:INK.ink},
   filterOff:{opacity:0.45},

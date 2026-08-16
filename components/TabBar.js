@@ -358,14 +358,14 @@ const styles=StyleSheet.create({
     // The borders are the print register, and not optional. On the bar, not on
     // the box around it: this is where the footer starts.
     borderTopWidth:2,
-    borderTopColor:INK.ink
+    borderTopColor:INK.hair
   },
   // 44px is the tap-target floor even where the visible target is smaller.
-  tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:6},
-  marker:{height:3,width:26,borderRadius:2,backgroundColor:"transparent",marginBottom:5},
+  tab:{flex:1,minHeight:54,alignItems:"center",justifyContent:"flex-start",paddingTop:7},
+  marker:{height:2,width:18,borderRadius:99,backgroundColor:"transparent",marginBottom:5},
   markerActive:{backgroundColor:INK.ink},
-  label:{fontSize:10,marginTop:3,color:INK.inkSoft,textAlign:"center",paddingHorizontal:2},
-  labelActive:{color:INK.ink,fontWeight:"700"},
+  label:{fontSize:11,marginTop:3,color:INK.inkSoft,textAlign:"center",paddingHorizontal:2},
+  labelActive:{color:INK.ink,fontWeight:"800"},
   // Its own column, centred over the middle tab slot. left/right:0 here is what
   // made every other tab untappable from the map -- this box is drawn last, so
   // it takes the touch before anything under it gets a look.
@@ -390,15 +390,10 @@ const styles=StyleSheet.create({
     height:RAISED_SIZE,
     borderRadius:RAISED_SIZE/2,
     backgroundColor:INK.ink,
-    borderWidth:2,
+    borderWidth:1,
     borderColor:INK.ink,
     alignItems:"center",
     justifyContent:"center",
-    // Hard offset shadow, never a blur.
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
     elevation:0
   }
 });

@@ -160,8 +160,8 @@ const styles=StyleSheet.create({
     flexDirection:"row",
     alignItems:"flex-start",
     justifyContent:"space-between",
-    paddingHorizontal:10,
-    paddingBottom:6,
+    paddingHorizontal:14,
+    paddingBottom:8,
     // NO backgroundColor and NO border. That bar was the complaint. Each
     // control carries its own ground instead, which is what lets the header sit
     // over a map without a strip of card across the top of it.
@@ -179,19 +179,19 @@ const styles=StyleSheet.create({
   // dark map tile is unreadable, and the design system's answer to "readable
   // over anything" is a bordered shape on card -- the same shape a pin uses.
   chip:{
-    width:40,
-    height:40,
-    borderRadius:20,
+    width:42,
+    height:42,
+    borderRadius:14,
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
+    borderWidth:1,
+    borderColor:INK.hair,
     position:"relative"
   },
   icon:{
     fontSize:22,
-    fontWeight:"bold",
+    fontWeight:"700",
     color:INK.ink,
     lineHeight:26
   },
