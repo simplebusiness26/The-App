@@ -15,6 +15,11 @@ export const TABS=[
   {key:"you",label:"You",route:"/profile",glyph:"person",signedIn:true}
 ];
 
+// Feed and Leaderboard are no longer primary dock destinations in Alex's IA,
+// but the owner explicitly defined them as home-like surfaces with no Back
+// control. Keeping that behaviour does not require putting them back in TABS.
+export const AUXILIARY_ROOT_ROUTES=["/feed","/leaderboard"];
+
 // On the Map, the central spatial slot becomes the existing unified Camera.
 // Moment, Memory and QR recognition still begin there; no new creation route is
 // invented.
@@ -26,9 +31,16 @@ export const MAP_CENTRE_ACTION={
   signedIn:true
 };
 
-// Discover used to live behind an upward drag from Map. It is now the visible
-// first destination, so there is deliberately no hidden critical gesture.
-export const MAP_CENTRE_SWIPE_UP=null;
+// Preserve the existing upward Map gesture even though Discover is now visible
+// in the dock. Redundant access is preferable to silently removing a working,
+// owner-reported interaction during a design-only tournament.
+export const MAP_CENTRE_SWIPE_UP={
+  key:"discover",
+  label:"Discover",
+  route:"/discover",
+  glyph:"compass",
+  signedIn:false
+};
 
 export const LOGIN_ROUTE="/auth/login";
 export const FULL_SCREEN_ROUTES=[];
@@ -38,12 +50,10 @@ export function centreButton(pathname){
   return TABS.find((tab)=>tab.raised);
 }
 
-export function centreSwipeUp(){
-  return null;
+export function centreSwipeUp(pathname){
+  return normalise(pathname)==="/map" ? MAP_CENTRE_SWIPE_UP : null;
 }
 
-// Kept as small pure helpers because older interaction code/tests import them.
-// They are no longer wired to a critical destination in Alex's navigation.
 export const DRAG_START=4;
 export const DRAG_THRESHOLD=28;
 export const DRAG_MAX=64;
@@ -65,6 +75,7 @@ export function isTabBarHidden(pathname){
 export function isRootScreen(pathname){
   const path=normalise(pathname);
   if(path==="/") return true;
+  if(AUXILIARY_ROOT_ROUTES.includes(path)) return true;
   return TABS.some((tab)=>tab.route===path);
 }
 
