@@ -48,7 +48,19 @@ jobs:
         run: npm ci
 
       - name: Apply Katie Dill whole-app redesign
-        run: node scripts/designlab-katie-dill.cjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/designlab-katie-dill.cjs
+          node <<'NODE'
+          const fs=require('fs');
+          const p='components/TabBar.js';
+          const source=fs.readFileSync(p,'utf8');
+          const before='borderTopWidth:1,\n    borderTopColor:INK.hair';
+          const after='borderTopWidth:2,\n    borderTopColor:INK.hair';
+          if(!source.includes(before)) throw new Error('Expected Katie footer boundary not found');
+          fs.writeFileSync(p,source.replace(before,after),'utf8');
+          NODE
 
       - name: Prove redesign stayed out of protected product surfaces
         shell: bash
