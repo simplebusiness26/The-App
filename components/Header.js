@@ -7,9 +7,9 @@ import {useDrawer} from "../context/DrawerContext";
 import {activeTabKey,isRootScreen} from "../utils/navigation";
 import {INK} from "../utils/tokens";
 
-// Alex challenger: a compact command bar, not three floating frozen-Xplorer
-// chips. It names the current whole-service context and keeps the same back,
-// notifications and Quick Access behaviour underneath.
+// Alex challenger: contextual floating controls rather than a screen-wide bar.
+// The hierarchy is Alex's, while preserving the owner's explicit requirement
+// that the header must not push a coloured strip across every page.
 export const HEADER_HEIGHT=60;
 
 export function useHeaderClearance(){
@@ -45,8 +45,8 @@ export default function Header(){
   }
 
   return(
-    <View style={[styles.outer,{paddingTop:insets?.top || 0}]} pointerEvents="box-none">
-      <View style={styles.bar}>
+    <View style={[styles.container,{paddingTop:insets?.top || 0}]} pointerEvents="box-none">
+      <View style={styles.row} pointerEvents="box-none">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={canGoBack ? "Go back" : "Xplorer"}
@@ -65,7 +65,7 @@ export default function Header(){
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Open notifications"
-            style={styles.action}
+            style={[styles.chip,styles.action]}
             onPress={()=>router.push("/notifications")}
           >
             <Text style={styles.actionGlyph}>●</Text>
@@ -79,7 +79,7 @@ export default function Header(){
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Open quick access"
-            style={styles.menuAction}
+            style={[styles.chip,styles.menuAction]}
             onPress={openDrawer}
           >
             <Text style={styles.menuText}>Menu</Text>
@@ -91,38 +91,21 @@ export default function Header(){
 }
 
 const styles=StyleSheet.create({
-  outer:{minHeight:HEADER_HEIGHT,paddingHorizontal:10,paddingBottom:6,backgroundColor:"transparent"},
-  bar:{
-    minHeight:54,
-    flexDirection:"row",
-    alignItems:"center",
-    backgroundColor:INK.navy,
-    borderRadius:20,
-    paddingHorizontal:8,
-    gap:9
-  },
-  leading:{
-    width:42,height:42,borderRadius:14,alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.brand
-  },
-  leadingBack:{backgroundColor:INK.navySoft},
+  container:{minHeight:HEADER_HEIGHT,paddingHorizontal:10,paddingBottom:6},
+  row:{minHeight:54,flexDirection:"row",alignItems:"center",gap:8},
+  leading:{width:42,height:42,borderRadius:14,alignItems:"center",justifyContent:"center",backgroundColor:INK.brand},
+  leadingBack:{backgroundColor:INK.navy},
   leadingText:{color:INK.navy,fontSize:17,fontWeight:"900"},
   backText:{color:INK.onNavy,fontSize:23,lineHeight:26},
-  context:{flex:1,minWidth:0},
-  contextLabel:{color:INK.onNavy,fontSize:15,fontWeight:"900",letterSpacing:-0.2},
-  contextHint:{color:INK.onNavySoft,fontSize:10,fontWeight:"700",marginTop:1},
+  context:{flex:1,minWidth:0,minHeight:46,justifyContent:"center",paddingHorizontal:13,borderRadius:16,backgroundColor:INK.navy},
+  contextLabel:{color:INK.onNavy,fontSize:14,fontWeight:"900",letterSpacing:-0.2},
+  contextHint:{color:INK.onNavySoft,fontSize:9,fontWeight:"700",marginTop:1},
   actions:{flexDirection:"row",alignItems:"center",gap:6},
-  action:{
-    width:42,height:42,borderRadius:14,alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.navySoft,position:"relative"
-  },
-  actionGlyph:{color:INK.brand,fontSize:15,fontWeight:"900"},
-  badge:{
-    position:"absolute",top:-3,right:-3,minWidth:19,height:19,borderRadius:10,
-    paddingHorizontal:4,alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.brand,borderWidth:2,borderColor:INK.navy
-  },
+  chip:{backgroundColor:INK.card,borderRadius:14},
+  action:{width:42,height:42,alignItems:"center",justifyContent:"center",position:"relative"},
+  actionGlyph:{color:INK.brandDeep,fontSize:15,fontWeight:"900"},
+  badge:{position:"absolute",top:-3,right:-3,minWidth:19,height:19,borderRadius:10,paddingHorizontal:4,alignItems:"center",justifyContent:"center",backgroundColor:INK.brand,borderWidth:2,borderColor:INK.card},
   badgeText:{color:INK.navy,fontSize:9,fontWeight:"900"},
-  menuAction:{minHeight:42,justifyContent:"center",paddingHorizontal:12,borderRadius:14,backgroundColor:INK.onNavy},
+  menuAction:{minHeight:42,justifyContent:"center",paddingHorizontal:12},
   menuText:{color:INK.navy,fontSize:12,fontWeight:"900"}
 });
