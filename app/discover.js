@@ -174,7 +174,7 @@ export default function Discover(){
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load();}} tintColor={INK.brandDeep}/>
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load();}} tintColor={INK.brandDeep}/>}
     >
       <AlexJourneyHeader
         phase="ORIENT"
