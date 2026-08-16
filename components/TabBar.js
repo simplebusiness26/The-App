@@ -93,7 +93,7 @@ export default function TabBar(){
               {...(isCentre ? swipeResponder.panHandlers : {})}
             >
               <View style={[styles.iconBox,isActive && styles.iconBoxActive,isCentre && styles.centreIconBox]}>
-                <Icon name={item.glyph} colour={isCentre ? INK.navy : isActive ? INK.brand : INK.onNavySoft} size={isCentre ? 23 : 20}/>
+                <Icon name={item.glyph} colour={isCentre ? INK.brand : isActive ? INK.brand : INK.onNavySoft} size={isCentre ? 23 : 20}/>
               </View>
               <Text style={[styles.label,isActive && styles.labelActive,isCentre && styles.centreLabel]} numberOfLines={1}>{label}</Text>
             </Pressable>
@@ -109,11 +109,11 @@ const styles=StyleSheet.create({
   dock:{minHeight:68,flexDirection:"row",alignItems:"stretch",backgroundColor:INK.navy,borderRadius:24,paddingHorizontal:6,paddingVertical:6},
   tab:{flex:1,minWidth:0,minHeight:56,alignItems:"center",justifyContent:"center",borderRadius:18,gap:3},
   tabActive:{backgroundColor:INK.navySoft},
-  centreTab:{backgroundColor:INK.brand,marginHorizontal:2},
+  centreTab:{backgroundColor:INK.navySoft,borderWidth:2,borderColor:INK.brand,marginHorizontal:2},
   iconBox:{height:25,alignItems:"center",justifyContent:"center"},
   iconBoxActive:{},
   centreIconBox:{height:26},
   label:{color:INK.onNavySoft,fontSize:10,fontWeight:"800",letterSpacing:0.1},
   labelActive:{color:INK.onNavy},
-  centreLabel:{color:INK.navy,fontWeight:"900"}
+  centreLabel:{color:INK.brand,fontWeight:"900"}
 });
