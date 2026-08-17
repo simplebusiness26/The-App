@@ -7,7 +7,7 @@ import {glyphPrimitives,heatmapPaint} from "../utils/markers";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM} from "../utils/mapZoom";
 import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE} from "../utils/tokens";
 
 // The web renderer. MapLibre GL JS, drawing what useLivingMap worked out.
 //
@@ -37,7 +37,9 @@ import {INK} from "../utils/tokens";
 // worked both out and components/PlaceMarker.js draws the identical thing on
 // native. That is what stops web and native developing two visual languages.
 //
-// 34px circle, 2px ink border, 16px glyph, per docs/design-system.md.
+// 34px circle, 1px hairline border, 16px glyph, per docs/design-system.md.
+// 1px, not 2px: the print register went with the riso system, and the native
+// pin (components/PlaceMarker.js) uses SHAPE.border. Two platforms, one pin.
 function pinElement(marker,onPress){
   const element=document.createElement("button");
   element.type="button";
@@ -45,8 +47,8 @@ function pinElement(marker,onPress){
   element.setAttribute("aria-label",marker?.label || "Open this place");
   element.style.cssText=[
     "width:34px","height:34px","border-radius:17px","cursor:pointer",
-    `background:${marker?.fill || INK.card}`,
-    `border:2px ${marker?.borderStyle || "solid"} ${marker?.border || INK.ink}`,
+    `background:${marker?.fill || INK.panel}`,
+    `border:${SHAPE.border}px ${marker?.borderStyle || "solid"} ${marker?.border || INK.readout}`,
     "display:flex","align-items:center","justify-content:center","padding:0"
   ].join(";");
 
@@ -68,8 +70,8 @@ function pinElement(marker,onPress){
         circle.setAttribute("cx",String(cx));
         circle.setAttribute("cy",String(cy));
         circle.setAttribute("r",String(r));
-        circle.setAttribute("fill",shape.fill ? (marker?.glyphInk || INK.ink) : "none");
-        circle.setAttribute("stroke",marker?.glyphInk || INK.ink);
+        circle.setAttribute("fill",shape.fill ? (marker?.glyphInk || INK.readout) : "none");
+        circle.setAttribute("stroke",marker?.glyphInk || INK.readout);
         circle.setAttribute("stroke-width","1.5");
         svg.appendChild(circle);
         continue;
@@ -78,8 +80,8 @@ function pinElement(marker,onPress){
 
       const path=document.createElementNS("http://www.w3.org/2000/svg","path");
       path.setAttribute("d",shape.path);
-      path.setAttribute("fill",shape.fill ? (marker?.glyphInk || INK.ink) : "none");
-      path.setAttribute("stroke",marker?.glyphInk || INK.ink);
+      path.setAttribute("fill",shape.fill ? (marker?.glyphInk || INK.readout) : "none");
+      path.setAttribute("stroke",marker?.glyphInk || INK.readout);
       path.setAttribute("stroke-width","1.5");
       path.setAttribute("stroke-linecap","round");
       path.setAttribute("stroke-linejoin","round");
@@ -579,5 +581,5 @@ export default function LivingMap({
 const styles=StyleSheet.create({
   wrap:{flex:1},
   canvas:{flex:1},
-  marker:{position:"absolute",bottom:0,left:0,fontSize:1,opacity:0.01,color:INK.inkSoft}
+  marker:{position:"absolute",bottom:0,left:0,fontSize:1,opacity:0.01,color:INK.readoutSoft}
 });
