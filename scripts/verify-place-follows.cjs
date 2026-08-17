@@ -471,7 +471,18 @@ check(
 );
 
 // Reachable from somewhere. An unreachable screen is a screen nobody has.
-contains("utils/drawer.js",['route:"/places"','route:"/admin/public-places"']);
+//
+// utils/drawer.js is RETIRED (DesignLab redesign -- see
+// scripts/verify-screen-gates.cjs's own note). /admin/public-places has a
+// real link independent of the drawer and still does; /places does not yet,
+// and that is a genuine, tracked cross-agent gap rather than an oversight:
+// FINAL_PRODUCT_CONTRACT.md's Map tab contents put "List toggle -> Public
+// Places" on the Map tab itself, which is components/LivingMapScreen.js and
+// out of the packet that retired the drawer (it does not touch map files).
+// Until that toggle lands, /places is declared and reachable by direct
+// navigation but has no in-app entry point -- flagged in that packet's final
+// report rather than silently left unchecked.
+contains("app/admin/dashboard.js",['router.push("/admin/public-places")']);
 contains("app/_layout.js",['name="places/index"','name="places/[id]"','name="admin/public-places"']);
 
 // ---------------------------------------------------------------------------

@@ -142,64 +142,47 @@ if(adminSecurityMigrations.length===1){
 }
 
 // ---------------------------------------------------------------------------
-// 2. The review-action screens require a session and confirm ownership
+// 2. The manager reply/dispute writes go through the two guarded RPCs
 // ---------------------------------------------------------------------------
+//
+// app/business/review-action.js and app/property/review-action.js are
+// RETIRED (DesignLab redesign, FINAL_PRODUCT_CONTRACT.md fc-03, approved).
+// The capability this section guards -- a manager's reply/dispute write must
+// go through respond_to_review/challenge_review, which check who manages the
+// listing and raise rather than silently matching no rows -- did not go with
+// them. It was already generic: components/ManagerReply.js is the one place
+// either write happens now, shared by every listing type (business, property,
+// activity club and event alike, not just the two the old per-type screens
+// covered), reached inline on the review card via components/ReviewActions.js
+// instead of a dedicated screen. The check follows the capability to where it
+// actually lives.
 
-const reviewActions=[
-  {file:"app/business/review-action.js",table:"businesses",kind:"business"},
-  {file:"app/property/review-action.js",table:"properties",kind:"property"}
-];
+const managerReply=read("components/ManagerReply.js");
+contains("components/ManagerReply.js",[
+  "canManage",
+  'rpc("respond_to_review"',
+  'rpc("challenge_review"',
+  "useFeedback"
+]);
 
-for(const {file,table,kind} of reviewActions){
-  contains(file,[
-    "auth.getUser()",
-    "router.replace(\"/auth/login\")",
-    `.from("${table}")`,
-    "select(\"owner_id\")",
-    // Rebuild Packet 10: the review is read from the one review table, and the
-    // listing it is about is identified by target_type/target_id rather than by
-    // a per-type foreign key on a copy.
-    'from("explorer_reviews")',
-    `review.target_type!=="${kind}"`,
-    "review.target_id",
-    "Only the owner of this listing can respond to its reviews.",
-    "useFeedback"
-  ]);
+check(
+  !/\.update\(/.test(readCode("components/ManagerReply.js")),
+  "components/ManagerReply.js: writes a review row directly -- a reply must go through respond_to_review or challenge_review, which check who manages the listing"
+);
 
-  const content=read(file);
+const managerReplyErrorGuards=managerReply.match(/if\(error\)\{/g) || [];
+check(
+  managerReplyErrorGuards.length===2,
+  `components/ManagerReply.js: every reply must surface the function's refusal, found ${managerReplyErrorGuards.length} error guards`
+);
 
-  // The requirement is unchanged -- a refused reply must be detectable -- but
-  // the mechanism is not, so the assertion follows it.
-  //
-  // These used to be direct .update() calls on the legacy `reviews` table,
-  // where RLS refuses by matching no rows and reporting no error, so the screen
-  // had to ask for the rows back and treat an empty result as a rejection.
-  // explorer_reviews grants update at table level, so that approach would have
-  // needed a policy letting a manager write the row -- and a policy cannot say
-  // "only these three columns changed", which would have let a manager rewrite
-  // the rating and the text of somebody else's review.
-  //
-  // Both writes go through SECURITY DEFINER functions now. They check who
-  // manages the listing and raise, so the refusal arrives as an error rather
-  // than as silence, and there is nothing to detect by counting rows.
-  check(
-    !/\.update\(/.test(content),
-    `${file}: writes a review row directly -- a reply must go through respond_to_review or challenge_review, which check who manages the listing`
-  );
-
-  for(const rpc of ["respond_to_review","challenge_review"]){
-    check(
-      new RegExp(`rpc\\("${rpc}"`).test(content),
-      `${file}: does not call ${rpc}`
-    );
-  }
-
-  const errorGuards=content.match(/if\(updateError\)\{/g) || [];
-  check(
-    errorGuards.length===2,
-    `${file}: every reply must surface the function's refusal, found ${errorGuards.length} error guards`
-  );
-}
+// canManage is a prop, decided by whoever renders the card -- never worked out
+// inside ManagerReply itself, which is what would let a manager of one listing
+// see reply tools on somebody else's.
+check(
+  !/auth\.getUser\(\)/.test(readCode("components/ManagerReply.js")),
+  "components/ManagerReply.js: must not decide who manages the listing itself -- canManage is a prop, computed once per page by whoever knows the answer"
+);
 
 // Stage 4a replaces the former three-request claim approval with one database
 // transaction. The screen gathers an auditable reason, confirms the action and
@@ -689,67 +672,36 @@ if(catalogueAnonSplitMigrations.length===1){
 }
 
 // ---------------------------------------------------------------------------
-// 2b. The drawer must not empty itself when a profile read fails
+// 2b. The old drawer's fail-open discipline, and where it lives now
 // ---------------------------------------------------------------------------
 // A build that selected a column which did not exist in the database took the
 // eight Explorer links, Manager Dashboard and Admin Dashboard off the menu at
 // once, silently: the query errored, the role flags stayed false, and every
-// gated entry vanished with nothing shown. The menu is not a security boundary
-// -- each destination re-checks the session and RLS decides the data -- so it
-// must fail open and say so, never fail closed and say nothing.
+// gated entry vanished with nothing shown. That defect is a property of any
+// menu, not of one file -- which is the reason these checks are recorded here
+// rather than just deleted.
 //
-// Packet 4 replaced app/menu.js with components/QuickAccessDrawer.js, reading
-// its rows from utils/drawer.js. The checks moved with it rather than being
-// deleted: the defect they were written for is a property of any menu.
-
-const drawer=read("components/QuickAccessDrawer.js");
-const drawerCode=readCode("components/QuickAccessDrawer.js");
-
-check(
-  drawer.includes("maybeSingle()"),
-  "components/QuickAccessDrawer.js: the profile read must use maybeSingle(), so a missing row is not an error"
-);
-check(
-  /profileResult\.error \|\| !profileResult\.data/.test(drawer),
-  "components/QuickAccessDrawer.js: the profile read must handle both a failed query and a missing row"
-);
-check(
-  drawer.includes("setNotice("),
-  "components/QuickAccessDrawer.js: a failed profile read must tell the user, not fail silently"
-);
-check(
-  !/is_admin\s*\?\s*"admin"\s*:/.test(drawerCode),
-  "components/QuickAccessDrawer.js: must not collapse is_admin and account_type into one role, which hides every Explorer link from admins"
-);
-
-// The links themselves must stay reachable. Losing one is how this started.
-// They live in utils/drawer.js now, which is also what test/drawer.test.js
-// asserts against the old menu row by row.
-contains("utils/drawer.js",[
-  'route:"/map"',
-  'route:"/activity-clubs"',
-  'route:"/events"',
-  'route:"/profile"',
-  'route:"/settings"',
-  'route:"/live"',
-  'route:"/linkups"',
-  'route:"/checkins/create"',
-  'route:"/feed"',
-  'route:"/explorers"',
-  'route:"/scan"',
-  'route:"/leaderboards"',
-  'route:"/safety/blocked"',
-  'route:"/manager/dashboard"',
-  'route:"/admin/dashboard"',
-  'route:"/admin/listings"'
-]);
-
-// The Manage section is the one with an entitlement behind it, and the
-// entitlement must be the database's answer rather than the client's guess.
-check(
-  /managesAnyListing\(\)/.test(drawerCode),
-  "components/QuickAccessDrawer.js: the Manage section must be decided by managesAnyListing(), which asks the database rather than letting the client guess"
-);
+// components/QuickAccessDrawer.js, context/DrawerContext.js and
+// utils/drawer.js are RETIRED by the DesignLab redesign
+// (FINAL_PRODUCT_CONTRACT.md's locked architecture: 5 flat tabs -- Map ·
+// Happening · Community · Messages · Me -- plus the Create hub). Every row the
+// drawer used to carry now has its own tab or hub destination; the mapping is
+// recorded in components/Header.js's own long comment. There is no longer a
+// single "the menu" file whose profile read can fail and take a role-gated
+// section down with it, because there is no longer a role-gated SECTION --
+// gating now happens per screen (useManagerGate/useAdminGate, checked
+// elsewhere in this file), each with its own fetch and its own failure.
+//
+// Route reachability -- the actual defect this section existed to catch -- is
+// covered structurally by section 3 below (every route file on disk must be
+// declared in app/_layout.js, and vice versa) and by test/navigation.test.js's
+// BEFORE/ADDED/REMOVED route inventory, which fails loudly if a screen is
+// dropped rather than deliberately retired.
+//
+// The Manage section's entitlement question (managesAnyListing()) still has
+// to be the database's answer, not the client's guess -- that has not moved,
+// it has just moved to My Places rather than the drawer. It is checked at its
+// new destination.
 
 for(const screen of ["app/business/dashboard.js","app/property/dashboard.js","app/manager/requests.js"]){
   contains(screen,["useManagerGate","managerGate.allowed"]);
@@ -776,7 +728,7 @@ const profileColumns=new Set([
   "visibility"
 ]);
 
-for(const file of ["components/QuickAccessDrawer.js","app/settings.js","app/profile/edit.js"]){
+for(const file of ["app/settings.js","app/profile/edit.js"]){
   const selects=[...readCode(file).matchAll(/\.from\("profiles"\)\s*\n?\s*\.select\("([^"]+)"\)/g)];
 
   for(const [,columnList] of selects){

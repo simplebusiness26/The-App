@@ -59,10 +59,17 @@ contains("app/_layout.js",[
   'name="social-comments/[id]"'
 ]);
 
-contains("utils/drawer.js",[
-  'route:"/feed"',
-  'route:"/explorers"'
-]);
+// utils/drawer.js is RETIRED (DesignLab redesign, FINAL_PRODUCT_CONTRACT.md's
+// locked architecture -- see scripts/verify-screen-gates.cjs's own note on
+// where every drawer row went). Feed is now a flat tab
+// (utils/navigation.js's TABS, Community); Explorers is reached from within
+// Feed, same real link this check always meant to protect.
+const {TABS}=require("../utils/navigation");
+check(
+  TABS.some((tab)=>tab.route==="/feed"),
+  "utils/navigation.js: /feed is not one of the five tabs"
+);
+contains("app/feed.js",['router.push("/explorers")']);
 
 // Rebuild Packet 4 removed the account_type check that used to be asserted
 // here. Every account is an Explorer -- 20260803120000:10 retired the other

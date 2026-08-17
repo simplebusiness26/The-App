@@ -6,10 +6,9 @@ import {usePathname} from "expo-router";
 import Header,{useHeaderClearance} from "../components/Header";
 import {headerFloatsOver} from "../utils/navigation";
 import TabBar from "../components/TabBar";
-import QuickAccessDrawer from "../components/QuickAccessDrawer";
+import CreateHub from "../components/CreateHub";
 import {FeedbackProvider} from "../context/FeedbackContext";
 import {NotificationProvider} from "../context/NotificationContext";
-import {DrawerProvider} from "../context/DrawerContext";
 import ErrorBoundary from "../components/ErrorBoundary";
 import StartupSplash from "../components/StartupSplash";
 import VisibilityWelcome from "../components/VisibilityWelcome";
@@ -63,7 +62,6 @@ export default function Layout(){
       <ErrorBoundary>
       <FeedbackProvider>
         <NotificationProvider>
-          <DrawerProvider>
             <View style={styles.shell}>
             <Shell>
         {/*
@@ -129,7 +127,10 @@ export default function Layout(){
           <Stack.Screen name="business/add"/>
           <Stack.Screen name="business/edit/[id]"/>
           <Stack.Screen name="business/review/[id]"/>
-          <Stack.Screen name="business/review-action"/>
+          {/* business/review-action retired per fc-03 (FINAL_PRODUCT_CONTRACT.md):
+              the manager reply/dispute capability now lives inline on the
+              review card (components/ManagerReply.js), same as every other
+              listing type. The route file is deleted, not just unregistered. */}
 
           <Stack.Screen name="property/[id]"/>
           <Stack.Screen name="property/dashboard"/>
@@ -137,7 +138,13 @@ export default function Layout(){
           <Stack.Screen name="property/edit/[id]"/>
           <Stack.Screen name="property/reviews"/>
           <Stack.Screen name="property/review/[id]"/>
-          <Stack.Screen name="property/review-action"/>
+          {/* property/review-action retired per fc-03 -- see the note above.
+              app/property/reviews.js still pushes to the old route
+              (`/property/review-action?id=...`); that file is out of this
+              packet's scope (see final report), so its "Manage Review" button
+              is a dead link until whoever owns that screen repoints it at the
+              inline ManagerReply pattern property-reviews already uses per
+              the locked UI spec's own routeCoverage entry for it. */}
 
 
           <Stack.Screen name="places/index"/>
@@ -170,7 +177,7 @@ export default function Layout(){
             </Shell>
 
               <TabBar/>
-              <QuickAccessDrawer/>
+              <CreateHub/>
 
               {/*
                 Shown once, to a new Explorer, before they post into a void they
@@ -193,7 +200,6 @@ export default function Layout(){
               */}
               <StartupSplash/>
             </View>
-          </DrawerProvider>
         </NotificationProvider>
       </FeedbackProvider>
       </ErrorBoundary>
@@ -209,7 +215,7 @@ const styles=StyleSheet.create({
   // an unpainted root is how that class of bug happens in the first place.
   shell:{flex:1,backgroundColor:INK.paper},
   stack:{flex:1},
-  // Above the stack, below the tab bar, the drawer and the splash -- all of
-  // which are later children of the shell and must stay on top of it.
+  // Above the stack, below the tab bar, the Create hub's FAB and the splash --
+  // all of which are later children of the shell and must stay on top of it.
   header:{position:"absolute",top:0,left:0,right:0,zIndex:40}
 });

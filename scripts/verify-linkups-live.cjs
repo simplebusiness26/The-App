@@ -63,12 +63,17 @@ contains("app/_layout.js",[
   'name="safety/blocked"'
 ]);
 
-contains("utils/drawer.js",[
-  'route:"/live"',
-  'route:"/linkups"',
-  'route:"/checkins/create"',
-  'route:"/safety/blocked"'
-]);
+// utils/drawer.js is RETIRED (DesignLab redesign -- see
+// scripts/verify-screen-gates.cjs's own note on where every drawer row went).
+// Each of these four routes has a real in-app link of its own, independent of
+// the drawer, and still does:
+contains("app/linkups/index.js",['router.push("/live")']);
+contains("app/messages/index.js",['router.push("/linkups")']);
+contains("app/live.js",['router.push("/checkins/create")']);
+// checkins/create is also the Create hub's own "Check in" branch now --
+// reachable from any screen, not only from Live Nearby.
+contains("components/CreateHub.js",['navigate("/checkins/create")']);
+contains("app/settings.js",['router.push("/safety/blocked")']);
 
 contains("components/LinkupForm.js",[
   "requestForegroundPermissionsAsync",
