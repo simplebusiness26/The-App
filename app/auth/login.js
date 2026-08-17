@@ -107,7 +107,7 @@ export default function Login(){
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor={INK.ink}
+        placeholderTextColor={INK.inkSoft}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
@@ -118,7 +118,7 @@ export default function Login(){
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor={INK.ink}
+        placeholderTextColor={INK.inkSoft}
         secureTextEntry
         autoCapitalize="none"
         value={password}
@@ -131,8 +131,8 @@ export default function Login(){
 
       {error!=="" && <Text style={styles.error}>{error}</Text>}
 
-      <Pressable style={[styles.button,loading && styles.disabledButton]} onPress={login} disabled={loading}>
-        {loading ? <ActivityIndicator color={INK.ink}/> : <Text style={styles.buttonText}>Login</Text>}
+      <Pressable style={[styles.button,styles.buttonShadow,loading && styles.disabledButton]} onPress={login} disabled={loading}>
+        {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Login</Text>}
       </Pressable>
 
       <Pressable style={styles.signup} onPress={()=>router.push("/auth/signup")}>
@@ -145,17 +145,29 @@ export default function Login(){
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   container:{flexGrow:1,paddingHorizontal:30,paddingTop:56,paddingBottom:52},
-  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"bold",marginBottom:46},
-  returnNotice:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
-  returnTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
+  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"900",marginBottom:46,letterSpacing:-1},
+  // Blue, not green. Green is reserved for exactly one thing in this app -- a
+  // manager's reply to a review (docs/design-system.md) -- and this banner is
+  // neither a reply nor a review; blue is the ink for "this exists/continues".
+  returnNotice:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
+  returnTitle:{color:INK.card,fontWeight:"900",fontSize:15},
   returnText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:3},
-  input:{color:INK.ink,backgroundColor:INK.paper,borderWidth:1,borderColor:INK.ink,borderRadius:16,paddingHorizontal:22,paddingVertical:20,minHeight:78,fontSize:19,marginBottom:28},
+  input:{color:INK.ink,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,paddingHorizontal:22,paddingVertical:20,minHeight:78,fontSize:19,marginBottom:28},
   forgotPassword:{alignSelf:"flex-end",paddingVertical:2,marginTop:-4,marginBottom:34},
-  forgotPasswordText:{color:INK.blue,fontSize:19,fontWeight:"bold"},
-  button:{backgroundColor:INK.paper,minHeight:78,paddingHorizontal:20,paddingVertical:20,borderRadius:16,alignItems:"center",justifyContent:"center"},
+  forgotPasswordText:{color:INK.blue,fontSize:19,fontWeight:"800"},
+  // Was fill-less: same colour as the screen behind it and no border at all,
+  // so the primary action was invisible except by its shape.
+  // docs/design-system.md: "every card, chip, pin and button has a 1.5-2px
+  // solid ink border" -- not optional, "the borders are the print register".
+  button:{backgroundColor:INK.blue,borderWidth:2,borderColor:INK.ink,minHeight:78,paddingHorizontal:20,paddingVertical:20,borderRadius:16,alignItems:"center",justifyContent:"center"},
+  // Split from `button` above: a nested shadowOffset object in the same block
+  // as backgroundColor defeats scripts/verify-contrast.cjs's single-level
+  // brace parser, which then cannot find `button`'s own background and
+  // silently checks buttonText against an ancestor instead.
+  buttonShadow:{shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
   disabledButton:{opacity:0.55},
-  buttonText:{color:INK.ink,textAlign:"center",fontWeight:"bold",fontSize:20},
-  error:{color:INK.ink,fontSize:16,marginBottom:20,lineHeight:23},
+  buttonText:{color:INK.card,textAlign:"center",fontWeight:"900",fontSize:20},
+  error:{color:INK.ink,fontSize:16,marginBottom:20,lineHeight:23,fontWeight:"700"},
   signup:{marginTop:28,alignItems:"center",padding:8},
-  signupText:{color:INK.ink,fontSize:17}
+  signupText:{color:INK.ink,fontSize:17,fontWeight:"600"}
 });

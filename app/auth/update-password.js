@@ -230,8 +230,8 @@ export default function UpdatePassword(){
 
   if(checking){
     return(
-      <View style={styles.center}>
-        <ActivityIndicator size="large"/>
+      <View style={[styles.screen,styles.center]}>
+        <ActivityIndicator size="large" color={INK.ink}/>
         <Text style={styles.checkingText}>Checking your reset link...</Text>
       </View>
     );
@@ -239,7 +239,7 @@ export default function UpdatePassword(){
 
   if(complete){
     return(
-      <View style={styles.container}>
+      <View style={[styles.screen,styles.container]}>
         <View style={styles.successCard}>
           <Text style={styles.successIcon}>✓</Text>
           <Text style={styles.title}>Password updated and verified</Text>
@@ -248,7 +248,7 @@ export default function UpdatePassword(){
           </Text>
         </View>
 
-        <Pressable style={styles.button} onPress={()=>router.replace("/auth/login")}>
+        <Pressable style={[styles.button,styles.buttonShadow]} onPress={()=>router.replace("/auth/login")}>
           <Text style={styles.buttonText}>Return to login</Text>
         </Pressable>
       </View>
@@ -257,11 +257,11 @@ export default function UpdatePassword(){
 
   if(!canReset){
     return(
-      <View style={styles.container}>
+      <View style={[styles.screen,styles.container]}>
         <Text style={styles.title}>Reset link unavailable</Text>
         <Text style={styles.error}>{error}</Text>
 
-        <Pressable style={styles.button} onPress={()=>router.replace("/auth/forgot-password")}>
+        <Pressable style={[styles.button,styles.buttonShadow]} onPress={()=>router.replace("/auth/forgot-password")}>
           <Text style={styles.buttonText}>Request a new link</Text>
         </Pressable>
       </View>
@@ -269,7 +269,7 @@ export default function UpdatePassword(){
   }
 
   return(
-    <View style={styles.container}>
+    <View style={[styles.screen,styles.container]}>
       <Text style={styles.title}>Set a new password</Text>
       <Text style={styles.message}>
         Updating password for {recoveryEmail}. Choose at least 8 characters.
@@ -278,6 +278,7 @@ export default function UpdatePassword(){
       <TextInput
         style={styles.input}
         placeholder="New password"
+        placeholderTextColor={INK.inkSoft}
         secureTextEntry
         autoCapitalize="none"
         autoCorrect={false}
@@ -288,6 +289,7 @@ export default function UpdatePassword(){
       <TextInput
         style={styles.input}
         placeholder="Confirm new password"
+        placeholderTextColor={INK.inkSoft}
         secureTextEntry
         autoCapitalize="none"
         autoCorrect={false}
@@ -298,12 +300,12 @@ export default function UpdatePassword(){
       {!!error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable
-        style={[styles.button,loading&&styles.disabledButton]}
+        style={[styles.button,styles.buttonShadow,loading&&styles.disabledButton]}
         onPress={savePassword}
         disabled={loading}
       >
         {loading
-          ? <ActivityIndicator color={INK.ink}/>
+          ? <ActivityIndicator color={INK.card}/>
           : <Text style={styles.buttonText}>Update and verify password</Text>
         }
       </Pressable>
@@ -312,16 +314,21 @@ export default function UpdatePassword(){
 }
 
 const styles=StyleSheet.create({
+  screen:{flex:1,backgroundColor:INK.paper},
   container:{padding:30},
   center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},
-  title:{fontSize:32,fontWeight:"bold",marginBottom:12},
-  message:{fontSize:16,lineHeight:23,color:INK.ink,marginBottom:22},
+  title:{fontSize:32,fontWeight:"900",color:INK.ink,letterSpacing:-0.6,marginBottom:12},
+  message:{fontSize:15,lineHeight:22,color:INK.inkSoft,marginBottom:22},
   checkingText:{marginTop:14,color:INK.ink},
-  input:{borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:15,marginBottom:15},
-  button:{backgroundColor:INK.blue,padding:16,borderRadius:10,alignItems:"center"},
+  input:{backgroundColor:INK.card,color:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:15,fontSize:16,marginBottom:15},
+  button:{backgroundColor:INK.blue,borderWidth:2,borderColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
+  // Nested shadowOffset split out -- see app/auth/login.js's note.
+  buttonShadow:{shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
   disabledButton:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"bold"},
-  error:{color:INK.red,marginBottom:18,lineHeight:21},
-  successCard:{borderWidth:1,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
-  successIcon:{fontSize:38,fontWeight:"bold",color:INK.green,marginBottom:8}
+  buttonText:{color:INK.card,fontWeight:"900"},
+  error:{color:INK.ink,fontWeight:"700",marginBottom:18,lineHeight:21},
+  successCard:{borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
+  // Blue, not green -- green is reserved for a manager's reply to a review
+  // (docs/design-system.md) and this is neither a reply nor a review.
+  successIcon:{fontSize:38,fontWeight:"900",color:INK.blue,marginBottom:8}
 });

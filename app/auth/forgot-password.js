@@ -42,7 +42,7 @@ export default function ForgotPassword(){
 
   if(sent){
     return(
-      <View style={styles.container}>
+      <View style={[styles.screen,styles.container]}>
         <View style={styles.successCard}>
           <Text style={styles.successIcon}>✉️</Text>
           <Text style={styles.title}>Check your email</Text>
@@ -63,7 +63,7 @@ export default function ForgotPassword(){
   }
 
   return(
-    <View style={styles.container}>
+    <View style={[styles.screen,styles.container]}>
       <Text style={styles.title}>Forgot password?</Text>
       <Text style={styles.message}>
         Enter the email address connected to your Xplorer account. We’ll send you a secure link to set a new password.
@@ -72,6 +72,7 @@ export default function ForgotPassword(){
       <TextInput
         style={styles.input}
         placeholder="Email address"
+        placeholderTextColor={INK.inkSoft}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
@@ -87,7 +88,7 @@ export default function ForgotPassword(){
         disabled={loading}
       >
         {loading
-          ? <ActivityIndicator color={INK.ink}/>
+          ? <ActivityIndicator color={INK.card}/>
           : <Text style={styles.buttonText}>Send reset link</Text>
         }
       </Pressable>
@@ -100,16 +101,17 @@ export default function ForgotPassword(){
 }
 
 const styles=StyleSheet.create({
+  screen:{flex:1,backgroundColor:INK.paper},
   container:{padding:30},
-  title:{fontSize:32,fontWeight:"bold",marginBottom:12},
-  message:{fontSize:16,lineHeight:23,color:INK.ink,marginBottom:22},
-  input:{borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:15,marginBottom:15},
-  button:{backgroundColor:INK.blue,padding:16,borderRadius:10,alignItems:"center"},
+  title:{fontSize:32,fontWeight:"900",color:INK.ink,letterSpacing:-0.6,marginBottom:12},
+  message:{fontSize:15,lineHeight:22,color:INK.inkSoft,marginBottom:22},
+  input:{backgroundColor:INK.card,color:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:15,fontSize:16,marginBottom:15},
+  button:{backgroundColor:INK.blue,borderWidth:2,borderColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
   disabledButton:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"bold"},
+  buttonText:{color:INK.card,fontWeight:"900"},
   linkButton:{marginTop:20,alignItems:"center",padding:8},
-  linkText:{fontWeight:"bold",color:INK.blue},
-  error:{color:INK.red,marginBottom:15,lineHeight:20},
-  successCard:{borderWidth:1,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
+  linkText:{fontWeight:"800",color:INK.blue},
+  error:{color:INK.ink,fontWeight:"700",marginBottom:15,lineHeight:20},
+  successCard:{borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
   successIcon:{fontSize:34,marginBottom:10}
 });

@@ -244,6 +244,8 @@ return(
 
 <ScrollView
 
+style={styles.screen}
+
 contentContainerStyle={styles.container}
 
 >
@@ -253,6 +255,10 @@ contentContainerStyle={styles.container}
 Create Account
 </Text>
 
+<Text style={styles.subtitle}>
+Join Xplorer to review places, check in and see your local world come alive.
+</Text>
+
 
 
 <TextInput
@@ -260,6 +266,8 @@ Create Account
 style={styles.input}
 
 placeholder="Name"
+
+placeholderTextColor={INK.inkSoft}
 
 value={name}
 
@@ -274,6 +282,8 @@ onChangeText={setName}
 style={styles.input}
 
 placeholder="Email"
+
+placeholderTextColor={INK.inkSoft}
 
 autoCapitalize="none"
 
@@ -293,6 +303,8 @@ style={styles.input}
 
 placeholder="Phone number"
 
+placeholderTextColor={INK.inkSoft}
+
 keyboardType="phone-pad"
 
 value={phone}
@@ -309,6 +321,8 @@ style={styles.input}
 
 placeholder="Password"
 
+placeholderTextColor={INK.inkSoft}
+
 secureTextEntry
 
 value={password}
@@ -321,7 +335,7 @@ onChangeText={setPassword}
 
 <Pressable
 
-style={styles.button}
+style={[styles.button,styles.buttonShadow,loading && styles.disabled]}
 
 onPress={signup}
 
@@ -337,7 +351,7 @@ loading
 
 <View style={styles.loadingContainer}>
 
-<ActivityIndicator color={INK.ink}/>
+<ActivityIndicator color={INK.card}/>
 
 <Text style={styles.buttonText}>
 Creating...
@@ -353,6 +367,15 @@ Create Account
 
 }
 
+</Pressable>
+
+<Pressable
+style={styles.loginLink}
+accessibilityRole="button"
+accessibilityLabel="Already have an account? Log in"
+onPress={()=>router.push("/auth/login")}
+>
+<Text style={styles.loginLinkText}>Already have an account? Log in</Text>
 </Pressable>
 
 {/*
@@ -393,39 +416,70 @@ onPress={()=>router.push("/legal/privacy")}
 
 const styles=StyleSheet.create({
 
+screen:{
+flex:1,
+backgroundColor:INK.paper
+},
+
 container:{
-padding:30
+padding:30,
+paddingBottom:50
 },
 
 title:{
-fontSize:30,
-fontWeight:"bold",
-marginBottom:30
+fontSize:34,
+fontWeight:"900",
+color:INK.ink,
+letterSpacing:-1,
+marginBottom:8
+},
+
+subtitle:{
+fontSize:14,
+color:INK.inkSoft,
+lineHeight:20,
+marginBottom:26
 },
 
 input:{
-borderWidth:1,
-borderRadius:10,
+backgroundColor:INK.card,
+color:INK.ink,
+borderColor:INK.ink,
+borderWidth:2,
+borderRadius:12,
 padding:15,
+fontSize:16,
 marginBottom:15
 },
 
-legalNote:{color:INK.ink,fontSize:13,lineHeight:20,marginTop:26,textAlign:"center"},
+legalNote:{color:INK.inkSoft,fontSize:13,lineHeight:20,marginTop:26,textAlign:"center"},
 legalRow:{flexDirection:"row",justifyContent:"center",gap:22,marginTop:10,paddingBottom:8},
 legalLink:{color:INK.blue,fontSize:14,fontWeight:"800",minHeight:44,lineHeight:44},
 
 button:{
-backgroundColor:INK.card,
+backgroundColor:INK.blue,
+borderColor:INK.ink,
+borderWidth:2,
 padding:16,
-borderRadius:10,
-marginTop:20,
+borderRadius:12,
+marginTop:8,
 alignItems:"center"
 },
 
+// Nested shadowOffset stays out of `button` itself -- see the identical note
+// in app/auth/login.js, which is where this pattern was first worked out.
+buttonShadow:{shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
+
+disabled:{opacity:0.55},
+
 buttonText:{
-color:INK.ink,
-fontWeight:"bold"
+color:INK.card,
+fontWeight:"900",
+fontSize:16
 },
+
+loginLink:{marginTop:18,alignItems:"center",padding:8},
+loginLinkText:{color:INK.ink,fontSize:14,fontWeight:"600"},
 
 loadingContainer:{
 flexDirection:"row",
