@@ -14,7 +14,7 @@ import {extractQrCode} from "../utils/qr";
 import {mediaKindFromUri} from "../utils/socialMedia";
 import {createShutter,MAX_RECORDING_SECONDS} from "../utils/shutter";
 import {useHeaderClearance} from "./Header";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
 
 // The camera. One viewfinder, three outcomes.
 //
@@ -253,7 +253,7 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
   }
 
   if(!permission){
-    return <View style={styles.centre}><ActivityIndicator size="large" color={INK.card}/></View>;
+    return <View style={styles.centre}><ActivityIndicator size="large" color={INK.readout}/></View>;
   }
 
   if(!permission.granted){
@@ -419,17 +419,18 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.ink},
-  centre:{flex:1,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",padding:24},
+  // The viewfinder ground is the deepest surface in the system -- the well.
+  screen:{flex:1,backgroundColor:INK.inset},
+  centre:{flex:1,backgroundColor:INK.inset,alignItems:"center",justifyContent:"center",padding:24},
   camera:{flex:1},
   preview:{flex:1},
 
   hintWrap:{position:"absolute",left:16,right:16,alignItems:"center"},
   hint:{
-    color:INK.card,
+    color:INK.readout,
     fontSize:12,
-    fontWeight:"700",
-    backgroundColor:"rgba(22,24,28,0.72)",
+    fontWeight:"600",
+    backgroundColor:"rgba(15,18,22,0.72)",
     borderRadius:99,
     paddingHorizontal:14,
     paddingVertical:7,
@@ -438,11 +439,13 @@ const styles=StyleSheet.create({
   },
 
   errorWrap:{position:"absolute",bottom:150,left:16,right:16,alignItems:"center"},
+  // Dark text on the dispute ink, per docs/design-system.md's contrast table --
+  // the state inks are bright on this housing and take dark text, never light.
   errorText:{
-    color:INK.card,
-    fontWeight:"800",
+    color:INK.ground,
+    fontWeight:"700",
     fontSize:13,
-    backgroundColor:"rgba(194,50,31,0.92)",
+    backgroundColor:"rgba(242,85,90,0.92)",
     borderRadius:12,
     paddingHorizontal:14,
     paddingVertical:9,
@@ -462,82 +465,85 @@ const styles=StyleSheet.create({
     paddingVertical:20
   },
   sideButton:{minWidth:88,minHeight:44,alignItems:"center",justifyContent:"center"},
-  sideText:{color:INK.card,fontWeight:"800",fontSize:13},
+  sideText:{color:INK.readout,fontWeight:"600",fontSize:13},
   shutter:{
     width:74,
     height:74,
     borderRadius:37,
     borderWidth:4,
-    borderColor:INK.card,
+    borderColor:INK.readout,
     alignItems:"center",
     justifyContent:"center"
   },
   shutterBusy:{opacity:0.5},
   // Recording: the ring fills red and the inner circle becomes a square, which
-  // is the stop shape everybody already reads without a legend. INK.red is the
-  // manager's dispute colour elsewhere and never appears on the map -- this is
-  // a viewfinder, not the map, and "recording" is the one other place a red
-  // that means "this is live and being kept" is worth more than consistency.
-  shutterRecording:{borderColor:INK.red},
-  shutterInner:{width:56,height:56,borderRadius:28,backgroundColor:INK.card},
-  shutterInnerRecording:{width:30,height:30,borderRadius:6,backgroundColor:INK.red},
+  // is the stop shape everybody already reads without a legend. INK.dispute is
+  // the manager's colour elsewhere and never appears on the map -- this is a
+  // viewfinder, not the map, and "recording" is the one other place a red that
+  // means "this is live and being kept" is worth more than consistency.
+  shutterRecording:{borderColor:INK.dispute},
+  shutterInner:{width:56,height:56,borderRadius:28,backgroundColor:INK.readout},
+  shutterInnerRecording:{width:30,height:30,borderRadius:6,backgroundColor:INK.dispute},
   videoPreview:{alignItems:"center",justifyContent:"center"},
-  videoPreviewText:{color:INK.card,fontWeight:"900",fontSize:16},
+  videoPreviewText:{color:INK.readout,fontWeight:"700",fontSize:16},
 
   tray:{
     position:"absolute",
     left:0,
     right:0,
     bottom:0,
-    backgroundColor:INK.card,
-    borderTopWidth:2,
-    borderTopColor:INK.ink,
+    backgroundColor:INK.panel,
+    borderTopWidth:SHAPE.border,
+    borderTopColor:SHAPE.edgeHighlight,
+    ...SHAPE.shadow.floating,
     padding:18,
     paddingBottom:28
   },
-  trayTitle:{color:INK.ink,fontSize:19,fontWeight:"800",marginBottom:11},
+  trayTitle:{color:INK.readout,fontSize:19,fontWeight:"700",marginBottom:11},
   choice:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card,
     padding:14,
     marginBottom:10,
-    backgroundColor:INK.paper
+    backgroundColor:INK.panelRaised
   },
-  choiceTitle:{color:INK.ink,fontWeight:"800",fontSize:16},
-  choiceText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:3},
+  choiceTitle:{color:INK.readout,fontWeight:"700",fontSize:16},
+  choiceText:{color:INK.readoutSoft,fontSize:13,lineHeight:19,marginTop:3},
   retake:{alignItems:"center",paddingVertical:11},
-  retakeText:{color:INK.inkSoft,fontWeight:"800",fontSize:14},
+  retakeText:{color:INK.readoutSoft,fontWeight:"600",fontSize:14},
 
   permissionCard:{
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:16,
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.sheet,
     padding:20,
     width:"100%",
     maxWidth:420
   },
-  permissionTitle:{color:INK.ink,fontSize:19,fontWeight:"800"},
-  permissionText:{color:INK.inkSoft,fontSize:14,lineHeight:20,marginTop:8},
-  primary:{backgroundColor:INK.ink,borderRadius:12,paddingVertical:14,alignItems:"center",marginTop:16},
-  primaryText:{color:INK.card,fontWeight:"800",fontSize:15},
+  permissionTitle:{color:INK.readout,fontSize:19,fontWeight:"700"},
+  permissionText:{color:INK.readoutSoft,fontSize:14,lineHeight:20,marginTop:8},
+  // The one lit control on the card. The readout, not a state ink -- asking for
+  // the camera is not a state a place is in.
+  primary:{backgroundColor:INK.readout,borderRadius:SHAPE.radius.card,paddingVertical:14,alignItems:"center",marginTop:16},
+  primaryText:{color:INK.ground,fontWeight:"700",fontSize:15},
   secondary:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    borderRadius:SHAPE.radius.card,
     paddingVertical:14,
     alignItems:"center",
     marginTop:10
   },
-  secondaryText:{color:INK.ink,fontWeight:"800",fontSize:15},
+  secondaryText:{color:INK.readout,fontWeight:"600",fontSize:15},
 
   webNote:{
     position:"absolute",
     bottom:96,
     left:16,
     right:16,
-    color:INK.card,
+    color:INK.readoutSoft,
     fontSize:11,
     textAlign:"center"
   }
