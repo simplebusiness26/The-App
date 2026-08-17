@@ -1,10 +1,10 @@
 /* eslint-env jest */
 
-// Packet 3 acceptance. The criterion that matters is "every existing route
-// still reachable, nothing deleted, nothing orphaned" -- a navigation change is
-// the easiest way in this codebase to lose a screen silently, and it has
-// happened before: a menu loader dropped ten links and five gate scripts stayed
-// green throughout.
+// Packet 3 acceptance, redesigned. The criterion that matters is still "every
+// existing route still reachable, nothing deleted, nothing orphaned except
+// what was deliberately named" -- a navigation change is the easiest way in
+// this codebase to lose a screen silently, and it has happened before: a menu
+// loader dropped ten links and five gate scripts stayed green throughout.
 
 const fs=require("fs");
 const path=require("path");
@@ -50,20 +50,17 @@ function routePath(name){
 const paths=onDisk.map(routePath);
 
 describe("the tab set points at real screens",()=>{
-  it("has five tabs in the order the brief names",()=>{
+  it("has five tabs in the order the locked architecture names",()=>{
     expect(TABS.map((tab)=>tab.label)).toEqual([
-      "News Feed","Messages","Map","Leaderboard","Profile"
+      "Map","Happening","Community","Messages","Me"
     ]);
   });
 
-  it("raises exactly one, and it is the centre",()=>{
-    const raised=TABS.filter((tab)=>tab.raised);
-    expect(raised).toHaveLength(1);
-    expect(TABS.indexOf(raised[0])).toBe(2);
-
-    // And it is the map. The map is the product; everything else in this app
-    // is a layer on it, so it takes the one slot that sits above the bar.
-    expect(raised[0].key).toBe("map");
+  it("raises none of them -- Create is a global action, not a tab",()=>{
+    // FINAL_PRODUCT_CONTRACT.md: "Tabs (5, none raised)". The old raised
+    // centre Map/Camera button and its drag-up-for-Discover gesture are gone
+    // rather than adapted -- see utils/navigation.js's own note on why.
+    expect(TABS.some((tab)=>tab.raised)).toBe(false);
   });
 
   it.each(TABS.map((tab)=>[tab.label,tab.route]))(
@@ -146,27 +143,27 @@ describe("no route was lost",()=>{
     "legal/privacy","legal/terms"];
 
   // Packet 4 deleted exactly one route, and the brief told it to: "Delete the
-  // old menu page once every link has a new home." Every link did -- that is
-  // what test/drawer.test.js asserts, row by row, against the menu as it was.
-  // Listing the removal here rather than editing BEFORE keeps the deletion
-  // deliberate: a route that vanishes without being named still fails.
+  // old menu page once every link has a new home." Every link did. Rebuild
+  // Packet 3 deleted six more (stubs and superseded screens with zero inbound
+  // links) -- saved, place, guest/[id], business/reviews, business/edit,
+  // property/edit.
   //
-  // Rebuild Packet 3 deleted six more, each confirmed to have zero inbound
-  // links from app/, components/, utils/ or hooks/ first:
-  //
-  //   saved, place       -- stubs from before public places existed
-  //   guest/[id]         -- the old public profile, superseded by profile/[id]
-  //   business/reviews   -- a review list nothing linked to. Its property twin
-  //                         IS linked (property/dashboard.js:225) and stays
-  //   business/edit      -- the edit form with no listing to edit. Every caller
-  //   property/edit         reaches business/edit/[id] and property/edit/[id],
-  //                         which are the real screens and are untouched
+  // THE DESIGNLAB REDESIGN adds two more, and this is fc-03 from
+  // FINAL_PRODUCT_CONTRACT.md, approved and implemented: business/review-action
+  // and property/review-action are retired as navigable screens. The manager
+  // reply/dispute capability they carried is preserved -- it now lives inline
+  // on the review card via components/ManagerReply.js, the same pattern every
+  // other listing type already used. Nothing else about fc-03 removes a
+  // capability; see components/ReviewActions.js's own long-standing comment,
+  // which already documented these two routes as dead weight before this
+  // packet deleted the files.
   const REMOVED=[
     "menu",
-    "saved","place","guest/[id]","business/reviews","business/edit","property/edit"
+    "saved","place","guest/[id]","business/reviews","business/edit","property/edit",
+    "business/review-action","property/review-action"
   ];
 
-  it("keeps every route that existed before, except the one deliberately removed",()=>{
+  it("keeps every route that existed before, except the ones deliberately removed",()=>{
     const missing=BEFORE.filter((route)=>!onDisk.includes(route) && !REMOVED.includes(route));
     expect(missing).toEqual([]);
   });
@@ -192,25 +189,10 @@ describe("no route was lost",()=>{
 });
 
 describe("the bar hides only where the brief says",()=>{
-  it("no longer hides on the QR scanner",()=>{
-    // It used to. The raised centre button becomes Scan QR while you are on the
-    // map, so a scanner that hid the bar destroyed the button that reached it:
-    // you arrive with no way back and the control you just pressed is gone.
-    // The scanner is a small viewfinder and a text field rather than a
-    // full-bleed camera, so it loses nothing by keeping 62px of navigation.
-    expect(isTabBarHidden("/scan")).toBe(false);
-  });
-
-  it("does not hide on the map tab",()=>{
-    // /map IS the Map tab. Hiding the bar there would strand a person on the
-    // tab they just opened.
-    expect(isTabBarHidden("/map")).toBe(false);
-  });
-
   it("hides nowhere at all right now",()=>{
-    // An empty list is the current, deliberate state -- see the note in
-    // utils/navigation.js. A full-screen photo viewer and an expanded map mode
-    // both belong here when they exist; neither does.
+    // An empty list is the current, deliberate state. The Create hub is an
+    // overlay above the bar rather than a route, so it never needed an entry
+    // here either.
     expect(FULL_SCREEN_ROUTES).toEqual([]);
   });
 
@@ -234,10 +216,10 @@ describe("the active tab follows the screen",()=>{
   });
 
   it("keeps a tab lit on screens beneath it",()=>{
-    // Opening a profile from the Profile tab is still being in Profile. A bar
-    // with nothing lit reads as broken.
-    expect(activeTabKey("/profile/abc")).toBe("profile");
-    expect(activeTabKey("/profile/edit")).toBe("profile");
+    // Opening a profile from the Me tab is still being in Me. A bar with
+    // nothing lit reads as broken.
+    expect(activeTabKey("/profile/abc")).toBe("me");
+    expect(activeTabKey("/profile/edit")).toBe("me");
   });
 
   it("lights nothing on a screen that is under no tab",()=>{
@@ -262,6 +244,8 @@ describe("the shell did not change how back works",()=>{
     expect(layout).toContain("<Stack");
     expect(layout).not.toContain("<Tabs");
     expect(layout).toContain("<TabBar/>");
+    // Create hub -- the persistent overlay replacing the raised button.
+    expect(layout).toContain("<CreateHub/>");
   });
 });
 
@@ -299,14 +283,12 @@ describe("the bar renders",()=>{
     return found;
   }
 
-  it("offers every tab on an ordinary screen",async()=>{
+  it("offers every tab, flat, on an ordinary screen",async()=>{
     const tree=await renderAt("/settings");
 
-    // All five are reachable and named. Compared as a set: the raised button is
-    // drawn after the bar rather than inside it, so tree order is not visual
-    // order -- that is what stops Android clipping it.
+    // All five are reachable and named.
     //
-    // There is no session in a test, so the four account-only tabs carry the
+    // There is no session in a test, so the three account-only tabs carry the
     // signed-out suffix. That is the behaviour, not a nuisance: the bar shows
     // every tab to a signed-out visitor and says which ones need an account,
     // rather than hiding them and making the app look emptier than it is.
@@ -320,9 +302,9 @@ describe("the bar renders",()=>{
       .sort();
     expect(announced).toEqual(TABS.filter((tab)=>tab.signedIn).map((tab)=>tab.label).sort());
 
-    // Only four carry a visible caption; the raised map button is the icon
-    // alone. Those four appear in the order the brief lists them.
-    const captions=TABS.filter((item)=>!item.raised).map((item)=>item.label);
+    // Every one of the five carries a visible caption -- none is icon-only,
+    // unlike the old raised centre slot.
+    const captions=TABS.map((item)=>item.label);
     expect(textOf(tree.toJSON()).filter((value)=>captions.includes(value))).toEqual(captions);
 
     await act(async()=>{tree.unmount();});
@@ -334,29 +316,8 @@ describe("the bar renders",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("turns the centre button into the camera on the map, and offers Discover on a drag up",async()=>{
-    const onMap=await renderAt("/map");
-    const mapLabels=labelsOf(onMap.toJSON());
-
-    // The camera, not the scanner: the camera is where a Moment, a Memory and a
-    // QR scan all start, so naming it after one of the three hides the others.
-    expect(mapLabels.some((label)=>label.startsWith("Camera"))).toBe(true);
-
-    // The gesture is announced rather than hidden. A gesture nobody can find is
-    // a gesture nobody uses, and a screen reader has no way to guess it at all.
-    expect(mapLabels.some((label)=>/Drag up for Discover/.test(label))).toBe(true);
-    await act(async()=>{onMap.unmount();});
-
-    // And nowhere else -- off the map the centre is the map, with no gesture.
-    const elsewhere=await renderAt("/settings");
-    const otherLabels=labelsOf(elsewhere.toJSON());
-    expect(otherLabels).toContain("Map");
-    expect(otherLabels.some((label)=>/Drag up/.test(label))).toBe(false);
-    await act(async()=>{elsewhere.unmount();});
-  });
-
   it("marks the current tab selected for a screen reader",async()=>{
-    const tree=await renderAt("/leaderboards");
+    const tree=await renderAt("/feed");
 
     const selected=[];
     (function walk(node){
@@ -369,16 +330,28 @@ describe("the bar renders",()=>{
     // Exactly one, and the right one. Colour is not the carrier. The suffix is
     // there because a test has no session -- see the note in the tab test above.
     expect(selected.map((label)=>label.replace(/\. Log in to open this\.$/,"")))
-      .toEqual(["Leaderboard"]);
+      .toEqual(["Community"]);
+
+    await act(async()=>{tree.unmount();});
+  });
+
+  it("sends a locked tab to log in carrying its own destination",async()=>{
+    const tree=await renderAt("/settings");
+
+    const messagesTab=tree.root.findAll(
+      (node)=>node.props?.accessibilityRole==="tab" && /^Messages/.test(node.props?.accessibilityLabel || ""),
+      {deep:true}
+    )[0];
+
+    await act(async()=>{messagesTab.props.onPress();});
+
+    expect(expoRouter.router.push).toHaveBeenCalledWith("/auth/login?next=%2Fmessages");
 
     await act(async()=>{tree.unmount();});
   });
 });
 
-// The same providers app/_layout.js wraps every screen in. The Camera tab
-// points at /moments/create, which calls useFeedback -- without the provider it
-// throws before rendering anything, which looks like a broken tab rather than a
-// missing test wrapper.
+// The same providers app/_layout.js wraps every screen in.
 function wrap(element){
   return React.createElement(
     SafeAreaProvider,
