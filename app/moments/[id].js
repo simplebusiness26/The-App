@@ -251,6 +251,8 @@ export default function MomentDetail(){
   );
 }
 
+const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
@@ -264,8 +266,8 @@ const styles=StyleSheet.create({
   profileText:{marginLeft:11},
   name:{color:INK.ink,fontSize:16,fontWeight:"900"},
   date:{color:INK.inkSoft,fontSize:11,marginTop:3},
-  audienceBadge:{color:INK.card,backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:99,overflow:"hidden",paddingHorizontal:9,paddingVertical:4,fontSize:9,fontWeight:"900",letterSpacing:1},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:12},
+  audienceBadge:{color:INK.card,backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:1.5,borderRadius:99,overflow:"hidden",paddingHorizontal:9,paddingVertical:4,fontSize:9,fontWeight:"900",letterSpacing:1},
+  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:17,padding:12,...shadow},
   media:{width:"100%",height:420,borderRadius:13,backgroundColor:INK.card},
   videoWrap:{height:420,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
   videoFallback:{position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:INK.paper},
@@ -273,7 +275,7 @@ const styles=StyleSheet.create({
   playIcon:{color:INK.ink,fontSize:25,marginLeft:4},
   duration:{position:"absolute",right:9,bottom:9,color:INK.ink,backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
   caption:{color:INK.ink,fontSize:16,lineHeight:23,paddingHorizontal:4,marginTop:14},
-  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:10,marginTop:14},
+  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:10,marginTop:14,...shadow},
   placeImage:{width:50,height:50,borderRadius:10,backgroundColor:INK.card},
   placeFallback:{width:50,height:50,borderRadius:10,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
   placeText:{flex:1,marginLeft:10},
@@ -285,19 +287,21 @@ const styles=StyleSheet.create({
   secondaryText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
   deleteButton:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:9},
   deleteText:{color:INK.ink,fontWeight:"900",fontSize:12},
-  panel:{backgroundColor:INK.card,borderRadius:13,padding:13,marginTop:13},
-  deletePanel:{backgroundColor:INK.card,borderColor:INK.red,borderWidth:2,borderRadius:13,padding:13,marginTop:13},
+  panel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:13,marginTop:13,...shadow},
+  deletePanel:{backgroundColor:INK.card,borderColor:INK.red,borderWidth:2,borderRadius:13,padding:13,marginTop:13,...shadow},
   panelTitle:{color:INK.ink,fontSize:14,fontWeight:"900"},
   panelBody:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:6},
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10},
-  reasonButton:{borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:10,paddingVertical:7},
-  reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  reasonText:{color:INK.card,fontSize:10,fontWeight:"800"},
+  reasonButton:{borderColor:INK.ink,borderWidth:1.5,borderRadius:18,paddingHorizontal:10,paddingVertical:7,backgroundColor:INK.card},
+  reasonActive:{backgroundColor:INK.blue,borderColor:INK.ink},
+  // Ink on card (unselected has no fill), card on blue (selected) -- never
+  // card text on the same card ground. design-system.md's accessibility floor.
+  reasonText:{color:INK.ink,fontSize:10,fontWeight:"800"},
   reasonActiveText:{color:INK.card},
   panelActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:13},
   cancelButton:{paddingHorizontal:12,paddingVertical:10},
   cancelText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
-  reportButton:{minWidth:120,backgroundColor:INK.red,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
-  confirmDeleteButton:{minWidth:135,backgroundColor:INK.red,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
+  reportButton:{minWidth:120,backgroundColor:INK.red,borderColor:INK.ink,borderWidth:1.5,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
+  confirmDeleteButton:{minWidth:135,backgroundColor:INK.red,borderColor:INK.ink,borderWidth:1.5,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
   reportText:{color:INK.card,fontWeight:"900",fontSize:12}
 });

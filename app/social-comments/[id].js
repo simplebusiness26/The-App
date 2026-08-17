@@ -210,6 +210,8 @@ export default function VideoReviewComments(){
   );
 }
 
+const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
@@ -223,20 +225,20 @@ const styles=StyleSheet.create({
   profileText:{marginLeft:11},
   name:{color:INK.ink,fontSize:16,fontWeight:"900"},
   date:{color:INK.inkSoft,fontSize:11,marginTop:3},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:12},
+  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:17,padding:12,...shadow},
   reportToggle:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:8},
   reportToggleText:{color:INK.inkSoft,fontWeight:"800",fontSize:12},
-  reportPanel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:13,padding:13,marginTop:12},
+  reportPanel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:13,marginTop:12,...shadow},
   reportTitle:{color:INK.ink,fontWeight:"900",marginBottom:9},
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
-  reasonButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:16,paddingHorizontal:11,paddingVertical:7},
-  reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
+  reasonButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1.5,borderRadius:16,paddingHorizontal:11,paddingVertical:7},
+  reasonActive:{backgroundColor:INK.blue,borderColor:INK.ink},
   reasonText:{color:INK.inkSoft,fontWeight:"800",fontSize:11},
   reasonActiveText:{color:INK.card},
   reportActions:{flexDirection:"row",gap:9,marginTop:12},
-  cancelButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,borderWidth:1,borderColor:INK.ink},
+  cancelButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,borderWidth:2,borderColor:INK.ink},
   cancelText:{color:INK.inkSoft,fontWeight:"900"},
-  reportButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,backgroundColor:INK.red},
+  reportButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,backgroundColor:INK.red,borderColor:INK.ink,borderWidth:1.5},
   reportButtonText:{color:INK.card,fontWeight:"900"},
   videoWrap:{height:370,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
   poster:{width:"100%",height:"100%"},
@@ -248,8 +250,8 @@ const styles=StyleSheet.create({
   emptyStars:{color:INK.ink},
   title:{color:INK.ink,fontSize:20,fontWeight:"900",marginTop:9},
   comment:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:7},
-  verified:{alignSelf:"flex-start",color:INK.card,backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
-  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:10,marginTop:14},
+  verified:{alignSelf:"flex-start",color:INK.card,backgroundColor:INK.green,borderColor:INK.ink,borderWidth:1.5,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
+  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:10,marginTop:14,...shadow},
   placeImage:{width:50,height:50,borderRadius:10,backgroundColor:INK.card},
   placeFallback:{width:50,height:50,borderRadius:10,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
   placeText:{flex:1,marginLeft:10},

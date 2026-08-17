@@ -372,7 +372,7 @@ export default function MemoryPage(){
   );
 }
 
-const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12};
+const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
 
 const styles=StyleSheet.create({
   respond:{marginTop:12,flexDirection:"row"},

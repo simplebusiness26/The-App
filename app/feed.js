@@ -3,9 +3,129 @@ import {ActivityIndicator,FlatList,Pressable,RefreshControl,StyleSheet,Text,View
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FeedCard,{listingRoute} from "../components/FeedCard";
+import Explorers from "./explorers";
+import Leaderboards from "./leaderboards";
 import {INK} from "../utils/tokens";
 
-// The feed, paginated and virtualised.
+// The Community tab's container. FINAL_PRODUCT_CONTRACT.md's architecture
+// section folds Feed, Explorers and Leaderboard into ONE destination --
+// "Community: Feed · Explorers · Leaderboard -- segmented within one
+// destination" -- rather than three separate tab-bar stops. This file is
+// what utils/navigation.js's Community tab and components/TabBar.js already
+// point at (it was the simplest existing screen to grow into the container),
+// so it stays app/feed.js rather than moving to a new route.
+//
+// THE OTHER TWO SEGMENTS ARE NOT REBUILT HERE. Explorers renders
+// app/explorers.js's own default export inline, Leaderboard renders
+// app/leaderboards.js's -- the exact same components app/_layout.js still
+// registers as their own directly-navigable routes (a profile's "Find
+// Explorers" empty state, a leaderboard-rank deep link, anything that still
+// pushes "/explorers" or "/leaderboards" keeps working, per the brief's "no
+// 404s"). Rendering the same function twice, once as a route and once inline,
+// is what "reuse the logic, do not duplicate the query" means in React: one
+// function, two places it gets mounted. useFocusEffect inside each still
+// fires correctly nested here -- it reads the ambient Screen's focus state
+// (this screen, /feed), not whether it is the outermost thing on it.
+//
+// The Feed segment's own quick actions still say router.push("/explorers")
+// rather than switching the segment in place -- scripts/verify-social-layer.
+// cjs pins that literal call, and pushing to the standalone screen is not
+// wrong, only less immediate than a segment switch would be. Tapping the
+// Community tab a second time, or the segmented control itself, is the
+// one-tap in-place path the contract actually asks for.
+const SEGMENTS=[
+  {key:"feed",label:"Feed"},
+  {key:"explorers",label:"Explorers"},
+  {key:"leaderboard",label:"Leaderboard"}
+];
+
+export default function Community(){
+  const [segment,setSegment]=useState("feed");
+  // Explorers and Leaderboard mount the first time they are opened and then
+  // stay mounted (hidden, not unmounted) behind the active one -- switching
+  // segments toggles visibility rather than tearing a screen down and
+  // refetching it every time somebody flips back to it. Feed itself needs no
+  // entry here: it is the segment Community opens on, so it is always in the
+  // tree from the very first render.
+  const [visited,setVisited]=useState({explorers:false,leaderboard:false});
+
+  function selectSegment(key){
+    setSegment(key);
+    if(key!=="feed") setVisited((current)=>current[key] ? current : {...current,[key]:true});
+  }
+
+  return(
+    <View style={communityStyles.root}>
+      <View style={communityStyles.segmentBar} accessibilityRole="tablist">
+        {SEGMENTS.map((item)=>{
+          const active=item.key===segment;
+          return(
+            <Pressable
+              key={item.key}
+              style={[communityStyles.segment,active && communityStyles.segmentActive]}
+              accessibilityRole="tab"
+              accessibilityState={{selected:active}}
+              accessibilityLabel={item.label}
+              onPress={()=>selectSegment(item.key)}
+            >
+              <Text style={[communityStyles.segmentText,active && communityStyles.segmentTextActive]}>{item.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={[communityStyles.segmentPane,segment!=="feed" && communityStyles.segmentPaneHidden]}>
+        <Feed/>
+      </View>
+      {visited.explorers && (
+        <View style={[communityStyles.segmentPane,segment!=="explorers" && communityStyles.segmentPaneHidden]}>
+          <Explorers/>
+        </View>
+      )}
+      {visited.leaderboard && (
+        <View style={[communityStyles.segmentPane,segment!=="leaderboard" && communityStyles.segmentPaneHidden]}>
+          <Leaderboards/>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const communityStyles=StyleSheet.create({
+  root:{flex:1,backgroundColor:INK.paper},
+  segmentBar:{
+    flexDirection:"row",
+    gap:8,
+    paddingHorizontal:18,
+    paddingTop:14,
+    paddingBottom:12,
+    backgroundColor:INK.paper,
+    borderBottomWidth:2,
+    borderBottomColor:INK.ink
+  },
+  segment:{
+    flex:1,
+    minHeight:44,
+    alignItems:"center",
+    justifyContent:"center",
+    borderWidth:2,
+    borderColor:INK.ink,
+    borderRadius:99,
+    backgroundColor:INK.card,
+    shadowColor:INK.ink,
+    shadowOffset:{width:2,height:2},
+    shadowOpacity:1,
+    shadowRadius:0,
+    elevation:2
+  },
+  segmentActive:{backgroundColor:INK.ink,shadowOffset:{width:0,height:0},elevation:0},
+  segmentPane:{flex:1},
+  segmentPaneHidden:{display:"none"},
+  segmentText:{color:INK.ink,fontWeight:"900",fontSize:13},
+  segmentTextActive:{color:INK.card}
+});
+
+// The feed itself, paginated and virtualised.
 //
 // WHAT IT USED TO DO, AND WHY IT WAS SLOW
 //
@@ -33,7 +153,7 @@ import {INK} from "../utils/tokens";
 // One value, one place. The brief asked for roughly 15-25.
 const PAGE_SIZE=20;
 
-export default function Feed(){
+function Feed(){
   const [items,setItems]=useState([]);
   const [viewerId,setViewerId]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -264,6 +384,8 @@ export default function Feed(){
   );
 }
 
+const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:70},
@@ -273,9 +395,9 @@ const styles=StyleSheet.create({
   title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},
   subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:6,maxWidth:540},
   quickActions:{flexDirection:"row",gap:10,marginBottom:17},
-  createButton:{flex:1,backgroundColor:INK.blue,borderRadius:13,paddingVertical:13,alignItems:"center"},
+  createButton:{flex:1,backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:13,paddingVertical:13,alignItems:"center",...shadow},
   createText:{color:INK.card,fontWeight:"900"},
-  findButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:13,paddingVertical:13,alignItems:"center"},
+  findButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,paddingVertical:13,alignItems:"center",...shadow},
   findText:{color:INK.ink,fontWeight:"900"},
   loader:{marginTop:45},
   footer:{paddingTop:4,paddingBottom:8,alignItems:"center"},
@@ -284,10 +406,10 @@ const styles=StyleSheet.create({
   pageErrorText:{color:INK.ink,fontSize:13,lineHeight:19,textAlign:"center"},
   retryButton:{marginTop:11,backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:99,paddingHorizontal:18,paddingVertical:10,minHeight:44,justifyContent:"center"},
   retryText:{color:INK.ink,fontWeight:"900",fontSize:13},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:27,alignItems:"center",marginTop:18},
+  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:17,padding:27,alignItems:"center",marginTop:18,...shadow},
   emptyIcon:{fontSize:36},
   emptyTitle:{color:INK.ink,fontSize:20,fontWeight:"900",textAlign:"center",marginTop:9},
   emptyText:{color:INK.inkSoft,lineHeight:21,textAlign:"center",marginTop:7},
-  emptyButton:{backgroundColor:INK.blue,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:16},
+  emptyButton:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:16,...shadow},
   emptyButtonText:{color:INK.card,fontWeight:"900"}
 });

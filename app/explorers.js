@@ -108,6 +108,8 @@ export default function Explorers(){
   );
 }
 
+const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:60},
@@ -115,9 +117,9 @@ const styles=StyleSheet.create({
   eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
   title:{color:INK.ink,fontSize:31,fontWeight:"900",marginTop:5},
   subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,maxWidth:520},
-  search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:14,color:INK.ink,fontSize:16,paddingHorizontal:15,paddingVertical:14,marginBottom:16},
+  search:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:14,color:INK.ink,fontSize:16,paddingHorizontal:15,paddingVertical:14,marginBottom:16,...shadow},
   loader:{marginTop:45},
-  card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12},
+  card:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12,...shadow},
   profileLink:{flex:1,flexDirection:"row",alignItems:"center"},
   avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.card},
   avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
@@ -126,7 +128,7 @@ const styles=StyleSheet.create({
   name:{color:INK.ink,fontSize:17,fontWeight:"900"},
   area:{color:INK.inkSoft,fontSize:12,marginTop:3},
   bio:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
-  empty:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:24,alignItems:"center",marginTop:15},
+  empty:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:24,alignItems:"center",marginTop:15,...shadow},
   emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900"},
   emptyText:{color:INK.inkSoft,textAlign:"center",marginTop:6},
   resultCount:{color:INK.inkSoft,textAlign:"center",fontSize:12,marginTop:12}

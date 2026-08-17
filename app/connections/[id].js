@@ -151,19 +151,23 @@ export default function Connections(){
   );
 }
 
+const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   content:{padding:18,paddingBottom:60},
   heading:{marginBottom:15},
   eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
   title:{color:INK.ink,fontSize:28,fontWeight:"900",marginTop:5},
-  tabs:{flexDirection:"row",backgroundColor:INK.card,borderRadius:13,padding:4,marginBottom:16},
-  tab:{flex:1,paddingVertical:11,borderRadius:10,alignItems:"center"},
+  tabs:{flexDirection:"row",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:4,marginBottom:16},
+  tab:{flex:1,paddingVertical:11,borderRadius:10,alignItems:"center",backgroundColor:INK.card},
   activeTab:{backgroundColor:INK.blue},
-  tabText:{color:INK.card,fontWeight:"900"},
+  // Ink on card (not card on card) -- design-system.md's accessibility floor:
+  // "ink on card" is 16:1, "card on card" is 1.0:1 and unreadable.
+  tabText:{color:INK.ink,fontWeight:"900"},
   activeTabText:{color:INK.card},
   loader:{marginTop:45},
-  card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12},
+  card:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12,...shadow},
   profileLink:{flex:1,flexDirection:"row",alignItems:"center"},
   avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.card},
   avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
@@ -172,9 +176,9 @@ const styles=StyleSheet.create({
   name:{color:INK.ink,fontSize:17,fontWeight:"900"},
   area:{color:INK.inkSoft,fontSize:12,marginTop:3},
   bio:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
-  empty:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:25,alignItems:"center",marginTop:10},
+  empty:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:25,alignItems:"center",marginTop:10,...shadow},
   emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900",textAlign:"center"},
   emptyText:{color:INK.inkSoft,textAlign:"center",marginTop:7,lineHeight:20},
-  findButton:{backgroundColor:INK.blue,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:15},
+  findButton:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:15,...shadow},
   findText:{color:INK.card,fontWeight:"900"}
 });
