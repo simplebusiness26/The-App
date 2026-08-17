@@ -38,7 +38,7 @@ export default function EditLinkup(){
     router.replace(`/linkups/${id}`);
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -51,4 +51,4 @@ export default function EditLinkup(){
   );
 }
 
-const styles=StyleSheet.create({screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.card}});
+const styles=StyleSheet.create({screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},eyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.ink}});

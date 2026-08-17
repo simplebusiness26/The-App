@@ -60,7 +60,7 @@ export default function LinkupsIndex(){
 
   function refresh(){setRefreshing(true);load(false);}
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>}>
@@ -117,11 +117,18 @@ export default function LinkupsIndex(){
   );
 }
 
+// Riso tokens only. The status pill is the one place this screen carries real
+// state colour: "happening" genuinely is ink-pink's meaning ("something is
+// scheduled or live"). Upcoming/full/cancelled/completed are not states the
+// token table defines, so they stay ink-on-card, distinguished by the word.
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  hero:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:18,padding:18},eyebrow:{color:INK.card,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.card,fontSize:34,fontWeight:"900",marginTop:4},subtitle:{color:INK.card,lineHeight:21,marginTop:8},createButton:{backgroundColor:INK.blue,borderRadius:12,paddingVertical:14,alignItems:"center",marginTop:16},createText:{color:INK.card,fontWeight:"900",fontSize:15},
-  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12,marginTop:14},errorText:{color:INK.card},
-  tabs:{flexDirection:"row",gap:8,marginVertical:16},tab:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:20,paddingVertical:10,alignItems:"center"},tabActive:{backgroundColor:INK.blue,borderColor:INK.blue},tabText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},tabTextActive:{color:INK.card},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:16,padding:15,marginBottom:12},cardTop:{flexDirection:"row",justifyContent:"space-between",gap:8},categoryPill:{backgroundColor:INK.blue,borderRadius:14,paddingHorizontal:9,paddingVertical:5},categoryText:{color:INK.card,fontSize:10,fontWeight:"900"},statusPill:{borderRadius:14,paddingHorizontal:9,paddingVertical:5,backgroundColor:INK.card},status_upcoming:{backgroundColor:INK.blue},status_full:{backgroundColor:INK.red},status_happening:{backgroundColor:INK.green},status_cancelled:{backgroundColor:INK.red},status_completed:{backgroundColor:INK.card},statusText:{color:INK.ink,fontSize:10,fontWeight:"900"},cardTitle:{color:INK.ink,fontSize:21,fontWeight:"900",marginTop:12},when:{color:INK.ink,fontWeight:"800",marginTop:7},place:{color:INK.inkSoft,marginTop:6},description:{color:INK.inkSoft,lineHeight:20,marginTop:9},cardBottom:{flexDirection:"row",justifyContent:"space-between",marginTop:13},creator:{color:INK.inkSoft,fontSize:11},capacity:{color:INK.ink,fontWeight:"900",fontSize:12},followersOnly:{color:INK.blue,fontSize:10,fontWeight:"900",marginTop:8},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:16,padding:28,alignItems:"center"},emptyIcon:{fontSize:38},emptyTitle:{color:INK.ink,fontSize:19,fontWeight:"900",marginTop:10},emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:19,marginTop:6},liveButton:{borderColor:INK.blue,borderWidth:1,backgroundColor:INK.blue,borderRadius:13,padding:14,alignItems:"center",marginTop:6},liveText:{color:INK.card,fontWeight:"900"}
+  hero:{padding:2},eyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:34,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:8},createButton:{backgroundColor:INK.ink,borderRadius:12,paddingVertical:14,alignItems:"center",marginTop:16},createText:{color:INK.card,fontWeight:"900",fontSize:15},
+  errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:12,marginTop:14},errorText:{color:INK.ink},
+  tabs:{flexDirection:"row",gap:8,marginVertical:16},tab:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:20,paddingVertical:10,alignItems:"center"},tabActive:{backgroundColor:INK.ink},tabText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},tabTextActive:{color:INK.card},
+  card:{
+    backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16,padding:15,marginBottom:12,
+    shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0
+  },cardTop:{flexDirection:"row",justifyContent:"space-between",gap:8},categoryPill:{borderWidth:2,borderColor:INK.ink,borderRadius:14,paddingHorizontal:9,paddingVertical:4},categoryText:{color:INK.ink,fontSize:10,fontWeight:"900"},statusPill:{borderRadius:14,paddingHorizontal:9,paddingVertical:4,borderWidth:2,borderColor:INK.hair,backgroundColor:INK.card},status_upcoming:{borderColor:INK.ink},status_full:{borderColor:INK.ink},status_happening:{borderColor:INK.pink},status_cancelled:{borderColor:INK.hair},status_completed:{borderColor:INK.hair},statusText:{color:INK.ink,fontSize:10,fontWeight:"900",textTransform:"uppercase"},cardTitle:{color:INK.ink,fontSize:21,fontWeight:"900",marginTop:12},when:{color:INK.ink,fontWeight:"800",marginTop:7},place:{color:INK.inkSoft,marginTop:6},description:{color:INK.inkSoft,lineHeight:20,marginTop:9},cardBottom:{flexDirection:"row",justifyContent:"space-between",marginTop:13},creator:{color:INK.inkSoft,fontSize:11},capacity:{color:INK.ink,fontWeight:"900",fontSize:12},followersOnly:{color:INK.inkSoft,fontSize:10,fontWeight:"900",marginTop:8},
+  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16,padding:28,alignItems:"center"},emptyIcon:{fontSize:38},emptyTitle:{color:INK.ink,fontSize:19,fontWeight:"900",marginTop:10},emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:19,marginTop:6},liveButton:{borderColor:INK.ink,borderWidth:2,backgroundColor:INK.card,borderRadius:13,padding:14,alignItems:"center",marginTop:6},liveText:{color:INK.ink,fontWeight:"900"}
 });

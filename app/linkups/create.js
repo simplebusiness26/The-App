@@ -38,7 +38,7 @@ export default function CreateLinkup(){
     router.replace(`/linkups/${data}`);
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -60,9 +60,13 @@ export default function CreateLinkup(){
   );
 }
 
+// pinnedBadge stays ink-blue on purpose (UI spec: "shows a blue 'Pinned'
+// badge instead of a location field") -- a dropped point is a place that now
+// exists for this Link-up, which is exactly what ink-blue means everywhere
+// else. Nothing else on this screen gets a state colour.
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.card},
+  eyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.ink},
   pinnedBadge:{alignSelf:"flex-start",backgroundColor:INK.blue,borderRadius:99,paddingHorizontal:13,paddingVertical:8,marginTop:14},
   pinnedBadgeText:{color:INK.card,fontWeight:"800",fontSize:12}
 });
