@@ -1,17 +1,12 @@
 /* eslint-env jest */
 
-// The header.
-//
-// The owner: "the header is the ugliest part of the app... I dislike how it
-// drops the whole page down, very old school. There shouldn't be a back button
-// on the news feed, messages, map, leaderboard or profile -- only on child
-// pages. Keep the hamburger everywhere. Let's get smart."
-//
-// It was a 60px card-coloured bar with a 2px border, INSIDE the navigator, on
-// every screen -- so every screen started below it, including the map, where it
-// pushed the search box off the map and left a strip of nothing above it. And
-// it carried a back arrow on all 77 screens, including the five you cannot go
-// back from.
+// The header, redesigned. FINAL_PRODUCT_CONTRACT.md's architecture section:
+// "Header: unchanged persistent notification bell (deep-link carrier)" -- no
+// hamburger, no overflow menu named anywhere in the new shell. See
+// components/Header.js's own long comment for the row-by-row reasoning: every
+// destination the old QuickAccessDrawer carried now has a tab or Create-hub
+// home, so the control that only ever opened the drawer has nothing left to
+// open.
 
 const React=require("react");
 const {act,create}=require("react-test-renderer");
@@ -19,7 +14,6 @@ const fs=require("fs");
 const path=require("path");
 const {SafeAreaProvider}=require("react-native-safe-area-context");
 const {NotificationProvider}=require("../context/NotificationContext");
-const {DrawerProvider}=require("../context/DrawerContext");
 const {installFixture,restoreRouterParams}=require("./fixture");
 const {isRootScreen,headerFloatsOver,TABS}=require("../utils/navigation");
 
@@ -30,8 +24,7 @@ function wrap(element){
   return React.createElement(
     SafeAreaProvider,
     {initialMetrics:{frame:{x:0,y:0,width:390,height:844},insets:{top:47,left:0,right:0,bottom:34}}},
-    React.createElement(NotificationProvider,null,
-      React.createElement(DrawerProvider,null,element))
+    React.createElement(NotificationProvider,null,element)
   );
 }
 
@@ -113,12 +106,14 @@ test("a back arrow on a child page",async()=>{
   await act(async()=>{tree.unmount();});
 });
 
-test("the hamburger is on every screen, root or not",async()=>{
-  // The owner asked for this in as many words.
-  for(const pathname of ["/map","/feed","/business/b1","/settings","/"]){
+test("the bell is on every screen, root or not, and there is no hamburger",async()=>{
+  for(const pathname of ["/map","/discover","/business/b1","/settings","/"]){
     const tree=await renderAt(pathname);
-    expect(labels(tree)).toContain("Open quick access");
     expect(labels(tree)).toContain("Open notifications");
+    // The drawer is gone -- see components/Header.js's note on why nothing
+    // replaced it. A stray "Open quick access" control would mean the old
+    // control survived with nothing left for it to open.
+    expect(labels(tree)).not.toContain("Open quick access");
     await act(async()=>{tree.unmount();});
   }
 });
@@ -177,7 +172,7 @@ test("the header is not inside the navigator any more",()=>{
 test("the map and the camera keep their own controls clear of it",()=>{
   const root=path.resolve(__dirname,"..");
 
-  for(const file of ["components/LivingMapScreen.js","app/camera.js"]){
+  for(const file of ["components/LivingMapScreen.js","components/CameraCapture.js"]){
     const source=code(fs.readFileSync(path.join(root,file),"utf8"));
     // Both float, so nothing reserves space for them -- they have to clear the
     // chips themselves or the header sits on top of a search box.

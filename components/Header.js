@@ -9,43 +9,54 @@ import {
 import {router,usePathname} from "expo-router";
 import {SafeAreaInsetsContext} from "react-native-safe-area-context";
 import {useNotifications} from "../context/NotificationContext";
-import {useDrawer} from "../context/DrawerContext";
 import {isRootScreen} from "../utils/navigation";
 import {INK} from "../utils/tokens";
 
-// The header, rebuilt.
+// The header, for the redesigned shell.
 //
-// WHAT WAS WRONG WITH IT
+// WHAT CHANGED FROM THE OLD ONE
 //
-// The owner: "the header is the ugliest part of the app... I dislike how it
-// drops the whole page down, very old school."
+// The old header carried three chips: Back, Bell, Hamburger. The hamburger
+// opened components/QuickAccessDrawer.js -- a 27-row overflow menu standing
+// in for navigation the old 5-tab bar had no room for.
 //
-// It was a 60px card-coloured bar with a 2px border, in the layout flow, on
-// every screen -- including the map, where it pushed the search box off the map
-// and left a strip of nothing above it. And it carried a back arrow on all 77
-// screens, including the five you cannot go back from.
+// FINAL_PRODUCT_CONTRACT.md's architecture section lists the header's only
+// persistent element as the bell ("unchanged persistent notification bell
+// (deep-link carrier)") and names no hamburger or overflow menu anywhere in
+// the new shell. That is not an oversight to patch here -- it is the direct
+// consequence of the new tab set actually having room for what the drawer
+// used to hold:
 //
-// WHAT IT IS NOW
+//   Explore rows      -> Map tab, Happening tab
+//   Community rows     -> Community tab
+//   My app rows         -> Create hub (check in, camera, scan), Me tab
+//   Manage rows          -> Me -> My Places
+//   Account/safety rows   -> Me -> Account & Safety, Me -> Admin Console
+//   Log in / Create account -> already own surface: components/FloatingLogin.js
+//   Log out               -> already reachable from Settings and Profile
 //
-// No bar. Three floating controls on a transparent ground, each in its own
-// bordered chip so it stays readable over a map, a photograph or a page.
+// Every row the drawer ever carried maps onto something that already has, or
+// per the contract will have, its own tab or hub destination -- see this
+// packet's final report for the row-by-row mapping. With nowhere left that
+// ONLY the hamburger could reach, the control has no destination to open, so
+// it is removed rather than kept as a button to nothing. components/
+// QuickAccessDrawer.js, context/DrawerContext.js and utils/drawer.js are
+// deleted along with it -- nothing else in the app imports them (checked
+// before deleting).
 //
-//   Back      only on a child page. Never on the five tab roots or the splash
-//             -- see isRootScreen() in utils/navigation.js for why.
-//   Bell      always, with its unread count.
-//   Hamburger always. The owner asked for it in as many words.
+// WHAT STAYS
 //
-// AND NOT A LOG IN BUTTON. There was one here as well as the pair in
-// components/FloatingLogin.js, so a signed-out visitor saw "Log in" twice at
-// once -- the owner's "look at the logins and the buttons in the way".
+// Back      only on a child page. Never on the five tab roots or the splash
+//           -- see isRootScreen() in utils/navigation.js for why.
+// Bell      always, with its unread count. The one persistent header element
+//           the contract names.
 //
-// The pair won because it carries CREATE ACCOUNT too, and this could not: a
-// header has room for one word, and of the two, signing up is the one a first
-// visitor needs. It also sits where a thumb reaches.
+// AND STILL NOT A LOG IN BUTTON -- that lives in components/FloatingLogin.js,
+// unchanged from before.
 //
 // On the map and the camera it floats OVER the screen (headerFloatsOver()); on
-// a page it sits above the content, but as three chips rather than a bar, so
-// nothing is covered and nothing looks bolted on.
+// a page it sits above the content, but as bordered chips rather than a bar,
+// so nothing is covered and nothing looks bolted on.
 
 // What app/_layout.js reserves on a screen the header does not float over.
 export const HEADER_HEIGHT=56;
@@ -65,7 +76,6 @@ export function useHeaderClearance(){
 export default function Header(){
   const pathname=usePathname();
   const {unreadCount}=useNotifications();
-  const {openDrawer}=useDrawer();
   const insets=React.useContext(SafeAreaInsetsContext);
 
   // A tab root is somewhere you live, not somewhere you leave. The tab bar
@@ -95,8 +105,8 @@ export default function Header(){
   return(
     <View
       style={[styles.container,{paddingTop:insets?.top || 0}]}
-      // The gaps between the chips belong to whatever is underneath -- the map
-      // pans through them, a page scrolls through them.
+      // The gap between the chips belongs to whatever is underneath -- the map
+      // pans through it, a page scrolls through it.
       pointerEvents="box-none"
     >
       <View style={styles.side} pointerEvents="box-none">
@@ -115,10 +125,7 @@ export default function Header(){
 
       {/*
         Empty on purpose. No product name -- the screen beneath says what it is,
-        and a name repeated on all 77 screens is a wordmark, not navigation --
-        and no Log in, which lives with Create account in
-        components/FloatingLogin.js. This keeps the two side areas apart so the
-        back arrow stays where a thumb expects it.
+        and a name repeated on every screen is a wordmark, not navigation.
       */}
       <View style={styles.middle} pointerEvents="none"/>
 
@@ -137,16 +144,6 @@ export default function Header(){
             </View>
           )}
         </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open quick access"
-          style={styles.chip}
-          hitSlop={8}
-          onPress={openDrawer}
-        >
-          <Text style={styles.icon}>☰</Text>
-        </Pressable>
       </View>
     </View>
   );
@@ -162,9 +159,9 @@ const styles=StyleSheet.create({
     justifyContent:"space-between",
     paddingHorizontal:10,
     paddingBottom:6,
-    // NO backgroundColor and NO border. That bar was the complaint. Each
-    // control carries its own ground instead, which is what lets the header sit
-    // over a map without a strip of card across the top of it.
+    // NO backgroundColor and NO border. Each control carries its own ground
+    // instead, which is what lets the header sit over a map without a strip
+    // of card across the top of it.
     minHeight:HEADER_HEIGHT
   },
   side:{
