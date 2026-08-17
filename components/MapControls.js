@@ -46,7 +46,15 @@ export default function MapControls({
   showHeat,
   onShowHeat,
   historical,
-  onHistorical
+  onHistorical,
+  // Public places (parks/beaches/viewpoints) have their own directory --
+  // app/places/index.js -- and until now nothing on the restyled map could
+  // reach it: the old drawer's "Explore > Public places" row was the only
+  // door in, and Packet 21 removed the drawer. This is a third icon, not a
+  // panel toggle -- pressing it leaves the map rather than opening a sheet
+  // over it, so it calls straight through rather than going via `onOpen`.
+  // This file still decides nothing: the screen owns the actual navigation.
+  onOpenList
 }){
   const toggle=(panel)=>onOpen?.(open===panel ? PANELS.NONE : panel);
 
@@ -74,6 +82,20 @@ export default function MapControls({
         >
           <Text style={[styles.icon,open===PANELS.FILTERS && styles.iconOpen]}>≡</Text>
         </Pressable>
+
+        {/* Public places, as a flat list. Not a toggle -- there is nothing to
+            hide again, it is a door to a screen the map does not have. */}
+        {!!onOpenList && (
+          <Pressable
+            style={styles.chip}
+            accessibilityRole="button"
+            accessibilityLabel="See public places as a list"
+            hitSlop={8}
+            onPress={onOpenList}
+          >
+            <Text style={styles.icon}>▤</Text>
+          </Pressable>
+        )}
 
         {/* What is currently narrowed, so a filter left on is never invisible.
             A map quietly hiding two thirds of itself is worse than a chip. */}
