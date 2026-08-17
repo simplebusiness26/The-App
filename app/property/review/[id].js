@@ -1,8 +1,11 @@
 import React from "react";
 import {useLocalSearchParams} from "expo-router";
-import ExplorerReviewForm from "../../../components/ExplorerReviewForm";
+import ReviewComposer from "../../../components/ReviewComposer";
 
+// Contextual entry into the Review Composer -- type and id already known, so
+// this renders the real form directly with no picker. See
+// components/ReviewComposer.js for the generic (Create hub) entry.
 export default function PropertyReview(){
   const {id,qr}=useLocalSearchParams();
-  return <ExplorerReviewForm targetType="property" targetId={id} qrCode={qr}/>;
+  return <ReviewComposer type="property" id={id} qr={qr}/>;
 }
