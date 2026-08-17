@@ -14,6 +14,7 @@ const fs=require("fs");
 const path=require("path");
 const {installFixture,textOf,labelsOf,restoreRouterParams}=require("./fixture");
 const {FeedbackProvider}=require("../context/FeedbackContext");
+const {SafeAreaProvider}=require("react-native-safe-area-context");
 const {supabase}=require("../services/supabase");
 
 function read(file){
@@ -24,8 +25,15 @@ function code(source){
   return source.replace(/\/\*[\s\S]*?\*\//g,"").replace(/(^|[^:])\/\/.*$/gm,"$1");
 }
 
+// components/PinSheet.js reads useSafeAreaInsets for its bottom padding, so
+// any tree that can open the pin sheet -- which is now every render of
+// LivingMapScreen with a place tapped -- needs a real provider above it.
 function wrap(element){
-  return React.createElement(FeedbackProvider,null,element);
+  return React.createElement(
+    SafeAreaProvider,
+    {initialMetrics:{frame:{x:0,y:0,width:390,height:844},insets:{top:47,left:0,right:0,bottom:34}}},
+    React.createElement(FeedbackProvider,null,element)
+  );
 }
 
 const BUSINESS={id:"b1",name:"The Lamb and Flag",category:"food_and_drink",
@@ -339,7 +347,7 @@ describe("when the map itself cannot run",()=>{
 });
 
 describe("Xplorer renders the Xplorer experience",()=>{
-  it("opens its own place panel rather than a provider popup",async()=>{
+  it("opens its own draggable sheet rather than a provider popup, directions inside its Full content",async()=>{
     fixture();
     const tree=await renderMap();
 
@@ -350,9 +358,22 @@ describe("Xplorer renders the Xplorer experience",()=>{
 
     await act(async()=>{pin.props.onPress();});
 
+    // Peek first -- a glance, not the whole panel.
+    expect(textOf(tree.toJSON())).toContain("The Lamb and Flag");
+    expect(labelsOf(tree.toJSON()).join(" ")).not.toContain("Get directions");
+
+    // The non-gesture fallback snaps the sheet to Full.
+    const viewFull=tree.root.findAll(
+      (node)=>node.props?.accessibilityLabel==="View full page" && typeof node.props?.onPress==="function",
+      {deep:true}
+    )[0];
+    expect(viewFull).toBeTruthy();
+    await act(async()=>{viewFull.props.onPress();});
+
     const labels=labelsOf(tree.toJSON()).join(" ");
-    // Named after the place, because there is one panel for the place that was
-    // tapped rather than a sheet of eight to swipe through.
+    // Named after the place, because there is one panel's worth of content
+    // for the place that was tapped rather than a sheet of eight to swipe
+    // through.
     expect(labels).toContain("Close The Lamb and Flag");
     expect(labels).toContain("Open The Lamb and Flag");
     // And the route is inside it, not in a second card in the same corner.

@@ -232,23 +232,36 @@ describe("the map keeps its position",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("opens one panel on the tapped place, with the directions inside it",async()=>{
+  it("opens a draggable sheet on the tapped place, Peek first, with the directions inside its Full content",async()=>{
     fixture();
     const tree=await render(require("../app/map").default);
 
     const markers=nodes(tree.toJSON(),"MapLibreMarker");
     await act(async()=>{markers[0].props.onPress();});
 
+    // Peek: a glance, not the whole panel. The full content -- hero image,
+    // score, Directions -- has not rendered yet.
+    const peekLabels=labelsOf(tree.toJSON()).join(" ");
+    expect(textOf(tree.toJSON())).toContain("The Lamb and Flag");
+    expect(peekLabels).not.toContain("Get directions");
+
+    // The non-gesture fallback: no onOpenFullPage is supplied, so this snaps
+    // the sheet to Full rather than leaving the map.
+    const viewFull=pressable(tree,"View full page");
+    expect(viewFull).not.toBeNull();
+    await act(async()=>{viewFull.props.onPress();});
+
     const labels=labelsOf(tree.toJSON()).join(" ");
 
-    // Named, not "place card". One panel, for the place that was tapped.
+    // Named, not "place card". One panel's worth of content, for the place
+    // that was tapped, now filling the sheet's Full level.
     expect(labels).toContain("Close The Lamb and Flag");
     expect(labels).toContain("Open The Lamb and Flag");
 
     // THE WHOLE POINT OF THE CHANGE. Directions used to be a separate card at
     // the same bottom corner as the swipe sheet, so asking for a route put a
-    // place card over the answer. They are in the panel now, and a panel
-    // cannot cover itself.
+    // place card over the answer. They are in the sheet's own content now,
+    // and a panel cannot cover itself.
     expect(labels).toContain("Get directions");
 
     // And the swipe set has gone with it: no "1 of 8 nearby".

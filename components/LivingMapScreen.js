@@ -12,6 +12,7 @@ import {clusterPins,visibleKeys} from "../utils/mapClusters";
 import {bubbleIntervalFor} from "../utils/mapZoom";
 import MapControls,{PANELS} from "./MapControls";
 import PlacePanel from "./PlacePanel";
+import PinSheet,{PIN_SHEET_LEVELS} from "./PinSheet";
 import TimeSlider from "./TimeSlider";
 import {
   memoriesAt,
@@ -77,6 +78,10 @@ export default function LivingMapScreen(){
     return Number.isFinite(latitude) && Number.isFinite(longitude) ? {latitude,longitude} : null;
   });
   const [openKey,setOpenKey]=useState(null);
+  // The pin sheet's own snap point -- Peek, Half or Full. Reset to Peek every
+  // time a NEW pin is tapped, so the sheet does not reopen full-height on the
+  // next place just because the last one was dragged there.
+  const [sheetLevel,setSheetLevel]=useState(PIN_SHEET_LEVELS.PEEK);
   // Only ever set when the map itself cannot run. The List used to be a filter
   // button as well; browsing is Discover's job and the owner asked for it back
   // there, so this is now the failure branch and nothing else.
@@ -228,7 +233,34 @@ export default function LivingMapScreen(){
 
   const handleDropPin=useCallback((at)=>setDropped(linkupLocationFrom(at)),[]);
   const handleUnavailable=useCallback((why)=>setMapFailed(why || "unavailable"),[]);
-  const handleSelectPlace=useCallback((place)=>setOpenKey(place.card?.key || null),[]);
+  const handleSelectPlace=useCallback((place)=>{
+    setOpenKey(place.card?.key || null);
+    setSheetLevel(PIN_SHEET_LEVELS.PEEK);
+  },[]);
+
+  // Closing the sheet and clearing a route are the same act from three
+  // different places (the sheet's own X, its backdrop tap, and its embedded
+  // panel's own close) -- one function so all three agree.
+  const handleClosePlace=useCallback(()=>{
+    setOpenKey(null);
+    setRoute(null);
+  },[]);
+
+  // Directions live inside the sheet's own content now, same as they lived
+  // inside PlacePanel before it moved there -- this is the same handler that
+  // used to sit inline in the JSX below.
+  const handlePlaceRoute=useCallback((model)=>{
+    if(!model){setRoute(null);return;}
+    const look=routeAppearance();
+    setRoute({
+      // [lng,lat] for the map, converted once, here.
+      line:model.geometry.map((point)=>[point.longitude,point.latitude]),
+      colour:look.colour,
+      width:look.width,
+      casingColour:look.casingColour,
+      casingWidth:look.casingWidth
+    });
+  },[]);
   const handleSelectActivity=useCallback((item)=>{
     if(item.deepLink) router.push(item.deepLink);
   },[]);
@@ -345,6 +377,7 @@ export default function LivingMapScreen(){
           onShowPosts={map.setShowPosts}
           showHeat={map.showHeat}
           onShowHeat={map.setShowHeat}
+          onOpenList={()=>router.push("/places")}
           historical={historical}
           onHistorical={(next)=>{
             setHistorical(next);
@@ -499,34 +532,54 @@ export default function LivingMapScreen(){
       )}
 
       {/*
-        ONE PANEL FOR THE PLACE SOMEBODY TAPPED, DIRECTIONS INCLUDED.
+        THE PLACE SOMEBODY TAPPED, IN A REAL DRAGGABLE SHEET.
 
-        It used to be two things in the same corner: components/PlaceCards.js,
-        a swipeable "1 of 8 nearby" sheet, and a separate Directions card, both
-        pinned to bottom:12. So asking for a route put a card over the answer.
+        It used to be one fixed panel, always at its full height. The locked
+        UX asks for three snap points instead -- Peek, Half, Full -- with the
+        map always visible behind it, which is components/PinSheet.js.
 
-        The owner: "I don't want that place card to come up", and the directions
-        should carry "the hero image, the review score and a brief summary of
-        the business, all in one thing". One panel cannot cover itself.
+        Peek shows a one-line preview; Half and Full hand off to
+        components/PlacePanel.js in its `embedded` shape, so this screen still
+        does not duplicate the hero image, the review score, the summary or
+        Directions -- they live in exactly one place, same as before.
+
+        No `onOpenFullPage` is supplied: the "View full page ▸" button snaps
+        to Full instead of leaving the map, and Full is the SAME PlacePanel
+        content, only with more of the sheet to show it in. "Open profile",
+        inside that content, is what leaves the map for the place's own routed
+        page -- the two buttons answer different questions.
       */}
       {!!tapped && (
-        <PlacePanel
-          place={tapped}
-          onClose={()=>{setOpenKey(null);setRoute(null);}}
-          onRoute={(model)=>{
-            if(!model){setRoute(null);return;}
-            const look=routeAppearance();
-            setRoute({
-              // [lng,lat] for the map, converted once, here.
-              line:model.geometry.map((point)=>[point.longitude,point.latitude]),
-              colour:look.colour,
-              width:look.width,
-              casingColour:look.casingColour,
-              casingWidth:look.casingWidth
-            });
-          }}
+        <PinSheet
+          item={tapped}
+          level={sheetLevel}
+          onLevelChange={setSheetLevel}
+          onClose={handleClosePlace}
+          renderContent={(level)=>
+            level===PIN_SHEET_LEVELS.PEEK
+              ? <PinPeekPreview place={tapped}/>
+              : <PlacePanel place={tapped} embedded onClose={handleClosePlace} onRoute={handlePlaceRoute}/>
+          }
         />
       )}
+    </View>
+  );
+}
+
+// A ONE-LINE GLANCE, NOT THE WHOLE PANEL.
+//
+// Peek is 16% of the window -- room for a name and what it is, not a hero
+// image and a route. Dragging up (or the sheet's own "View full page ▸")
+// is what reaches the same content components/PlacePanel.js has always shown.
+function PinPeekPreview({place}){
+  const card=place.card || {};
+  const where=card.detail || place.address || place.location || "";
+
+  return(
+    <View style={styles.peek}>
+      <Text style={styles.peekName} numberOfLines={1}>{place.name || card.name || "This place"}</Text>
+      {!!card.typeLabel && <Text style={styles.peekType}>{card.typeLabel}</Text>}
+      {!!where && <Text style={styles.peekWhere} numberOfLines={1}>📍 {where}</Text>}
     </View>
   );
 }
@@ -570,6 +623,10 @@ const styles=StyleSheet.create({
     paddingHorizontal:16,paddingVertical:8,backgroundColor:INK.card,marginBottom:10
   },
   switchText:{color:INK.ink,fontWeight:"800"},
+  peek:{paddingTop:2},
+  peekName:{color:INK.ink,fontWeight:"900",fontSize:17},
+  peekType:{color:INK.inkSoft,fontWeight:"700",fontSize:12,marginTop:3},
+  peekWhere:{color:INK.inkSoft,fontSize:12,marginTop:8},
   notice:{
     backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,
     padding:14,marginBottom:10
