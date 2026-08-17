@@ -1,6 +1,6 @@
 import React from "react";
-import {View,Text,Pressable,ScrollView,StyleSheet} from "react-native";
-import {INK} from "../utils/tokens";
+import {Platform,Text,Pressable,ScrollView,StyleSheet} from "react-native";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
 
 // The Happening tab's segmented control.
 //
@@ -10,11 +10,24 @@ import {INK} from "../utils/tokens";
 // only draws the row and reports which one is pressed. app/discover.js owns
 // the switch.
 //
-// Styled off the same chip language every other filter row in this app
-// already uses (see app/checkins/create.js's TYPES row) rather than a new
-// pattern: card surface, 2px ink border, ink fill + card text when selected.
-// No ink-blue/pink/yellow here -- those are state colours (design-system.md),
-// and which sub-screen you are looking at is not a state a place is in.
+// FIELD INSTRUMENT, NOT RISO. The old riso treatment (card surface, 2px ink
+// border, ink fill when selected) is gone with the rest of the print system:
+// hairline edges at 1px on a panel surface, and a SELECTED pill steps up a
+// surface tone (panel -> panelRaised) with a hairlineStrong edge rather than
+// filling with colour. Which sub-screen you are looking at is not a state a
+// place is in, so none of exists/scheduled/offer appears here -- that rule
+// survived the redesign, only its inks changed.
+//
+// The labels are mono because they name system categories, not sentences
+// somebody wrote.
+
+// The mono face, resolved per platform. The stack in TYPE.data.family is a CSS
+// font stack -- correct on web, meaningless to native, which matches a single
+// family name only. So native gets a real mono it actually has (the same pair
+// components/MarkerPreview.js already uses) and web gets the full stack.
+// JetBrains Mono itself is not bundled yet; when it is, this is the one place
+// that changes.
+const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
 
 export const HAPPENING_SEGMENTS=[
   {key:"for-you",label:"For You"},
@@ -53,17 +66,46 @@ export default function HappeningSegments({active,onChange}){
 }
 
 const styles=StyleSheet.create({
-  row:{backgroundColor:INK.paper,borderBottomWidth:2,borderBottomColor:INK.ink},
-  rowContent:{flexDirection:"row",gap:8,paddingHorizontal:16,paddingTop:14,paddingBottom:14},
+  // DO NOT REMOVE flexGrow/flexShrink. This ScrollView is a flex CHILD of the
+  // Happening screen's column (app/discover.js). A horizontal ScrollView has no
+  // intrinsic height, so with the default flex rules it claims every pixel of
+  // leftover vertical space in that column -- and because a flex container
+  // stretches its children by default, each pill then filled the whole of it.
+  // Measured: 402px tall pills. flexGrow:0/flexShrink:0 stops the row taking
+  // more than its content, and alignItems:"center" on the content container
+  // stops the pills stretching to whatever height the row does end up. Measured
+  // after: 36px. It looks like tidy-uppable noise. It is the fix.
+  row:{
+    flexGrow:0,
+    flexShrink:0,
+    backgroundColor:INK.ground,
+    borderBottomWidth:SHAPE.border,
+    borderBottomColor:INK.hairline
+  },
+  rowContent:{
+    flexDirection:"row",
+    alignItems:"center",
+    gap:8,
+    paddingHorizontal:16,
+    paddingTop:14,
+    paddingBottom:14
+  },
   pill:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.pill,
     paddingHorizontal:14,
     paddingVertical:9,
-    backgroundColor:INK.card
+    backgroundColor:INK.panel
   },
-  pillActive:{backgroundColor:INK.ink},
-  pillText:{color:INK.ink,fontWeight:"800",fontSize:12,letterSpacing:0.1},
-  pillTextActive:{color:INK.card}
+  // Selection is a surface step and a stronger etched edge, never a state ink.
+  pillActive:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  pillText:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase"
+  },
+  pillTextActive:{color:INK.readout}
 });
