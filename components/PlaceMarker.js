@@ -3,9 +3,10 @@ import {View} from "react-native";
 import {BlurView} from "expo-blur";
 import Svg,{Circle,G,Path} from "react-native-svg";
 import {glyphPrimitives} from "../utils/markers";
+import {SHAPE} from "../utils/tokens";
 
-// The pin, per design-system.md: 34px circle, 2px ink border, icon centred at
-// 16px. Colour comes from the marker descriptor and means state; the glyph
+// The pin, per design-system.md: 34px circle, 1px hairline border, icon centred
+// at 16px. Colour comes from the marker descriptor and means state; the glyph
 // comes from the descriptor and means type. This component decides neither --
 // it draws what utils/markers.js worked out, which is what keeps "no manual
 // marker override" true by construction rather than by discipline.
@@ -19,8 +20,9 @@ const GLYPH_CANVAS=16;
 // The pin graft, from FINAL_PRODUCT_CONTRACT.md's UI system section (the
 // Meng To pin face, grafted onto de With's base): "pins render as 34px
 // frosted-glass discs -- background: rgba(state-color, .82), backdrop-filter:
-// blur(7px) saturate(170%), same 2px ink border and state-color logic as
-// everywhere else."
+// blur(7px) saturate(170%), same border and state-color logic as everywhere
+// else." The border is 1px now, with the rest of the system -- the 2px print
+// register went when the riso system did.
 //
 // THE BORDER, THE GLYPH AND THE OVERPRINT ARE UNCHANGED. This graft touches
 // only the main disc's FILL -- from an opaque Circle to a translucent, blurred
@@ -130,7 +132,10 @@ export default function PlaceMarker({marker,size=CANVAS}){
           below. */}
       <BlurView
         intensity={BLUR_INTENSITY}
-        tint="light"
+        // Dark, because the housing and the map under it are dark now. A light
+        // tint milked the state ink and lifted the terrain behind the pin,
+        // which is the opposite of "the housing recedes, the readings glow".
+        tint="dark"
         style={{
           position:"absolute",
           left:discLeft,
@@ -166,7 +171,8 @@ export default function PlaceMarker({marker,size=CANVAS}){
           // translucently and blurred. The border stays a crisp Svg stroke.
           fill="none"
           stroke={marker.border}
-          strokeWidth={2}
+          // 1px, per docs/design-system.md. A 2px border is a bug now.
+          strokeWidth={SHAPE.border}
           // An unclaimed place is an invitation, not an error. The dash is the
           // only thing that says so visually; marker.label says it in words.
           strokeDasharray={marker.borderStyle==="dashed" ? [3.4,2.6] : undefined}

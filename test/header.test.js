@@ -149,8 +149,10 @@ test("the header has no bar: no fill, no border across the screen",()=>{
   expect(container).not.toMatch(/borderBottomWidth|borderWidth/);
 
   // Each control carries its own ground instead, so it stays readable over a
-  // map tile or a photograph.
-  expect(source).toMatch(/chip:\{[\s\S]*?backgroundColor:INK\.card/);
+  // map tile or a photograph. INK.panel under the Field Instrument system --
+  // the assertion is that the chip HAS a ground of its own, not which palette
+  // that ground comes from.
+  expect(source).toMatch(/chip:\{[\s\S]*?backgroundColor:INK\.panel/);
 });
 
 test("the header is not inside the navigator any more",()=>{

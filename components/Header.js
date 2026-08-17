@@ -10,7 +10,7 @@ import {router,usePathname} from "expo-router";
 import {SafeAreaInsetsContext} from "react-native-safe-area-context";
 import {useNotifications} from "../context/NotificationContext";
 import {isRootScreen} from "../utils/navigation";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE} from "../utils/tokens";
 
 // The header, for the redesigned shell.
 //
@@ -149,9 +149,9 @@ export default function Header(){
   );
 }
 
-// Every colour here comes from utils/tokens.js. The three inks -- blue, pink,
-// yellow -- are excluded on purpose: they mean a state a place is in, and
-// nothing in the navigation shell is a place.
+// Every colour here comes from utils/tokens.js. The three state inks --
+// exists, scheduled, offer -- are excluded on purpose: they mean a state a
+// place is in, and nothing in the navigation shell is a place.
 const styles=StyleSheet.create({
   container:{
     flexDirection:"row",
@@ -181,37 +181,40 @@ const styles=StyleSheet.create({
     borderRadius:20,
     alignItems:"center",
     justifyContent:"center",
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
+    backgroundColor:INK.panel,
+    // 1px, and hairlineStrong rather than hairline: this chip has to read over
+    // a live map as well as over a page, so it takes the emphasis edge.
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
     position:"relative"
   },
   icon:{
     fontSize:22,
-    fontWeight:"bold",
-    color:INK.ink,
+    fontWeight:"600",
+    color:INK.readout,
     lineHeight:26
   },
   bell:{fontSize:18},
-  // Ink on card, bordered like every other raised shape. Not one of the three
-  // inks: a count of unread notifications is not a state a place is in.
+  // The lit readout itself, on the housing -- still not one of the state inks,
+  // because a count of unread notifications is not a state a place is in. The
+  // ring is the panel behind it, so the badge reads as cut out of the chip.
   badge:{
     position:"absolute",
     top:-4,
     right:-4,
     minWidth:19,
     height:19,
-    borderRadius:99,
+    borderRadius:SHAPE.radius.pill,
     paddingHorizontal:4,
-    backgroundColor:INK.ink,
+    backgroundColor:INK.readout,
     alignItems:"center",
     justifyContent:"center",
-    borderWidth:2,
-    borderColor:INK.card
+    borderWidth:SHAPE.border,
+    borderColor:INK.panel
   },
   badgeText:{
-    color:INK.card,
+    color:INK.ground,
     fontSize:10,
-    fontWeight:"bold"
+    fontWeight:"700"
   }
 });

@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useRef} from "react";
 import {View,Text,Pressable,StyleSheet,Animated,PanResponder,useWindowDimensions} from "react-native";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
 
 // The map pin bottom sheet -- FINAL_PRODUCT_CONTRACT.md's UX behaviour
 // section: "tapping a pin opens a real pointer-draggable bottom sheet, 3 snap
@@ -242,15 +242,16 @@ const styles=StyleSheet.create({
     left:0,
     right:0,
     bottom:0,
-    backgroundColor:INK.card,
-    borderTopWidth:2,
-    borderTopColor:INK.ink,
-    // Hard offset shadow, never a blur -- design-system.md's elevation rule.
-    shadowColor:INK.ink,
-    shadowOffset:{width:0,height:-3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:8,
+    backgroundColor:INK.panel,
+    borderTopLeftRadius:SHAPE.radius.sheet,
+    borderTopRightRadius:SHAPE.radius.sheet,
+    // 1px etched edge where the sheet leaves the map, plus the bevel highlight
+    // that carries elevation now that the print offset is gone.
+    borderTopWidth:SHAPE.border,
+    borderTopColor:SHAPE.edgeHighlight,
+    // The sheet genuinely floats over the map, which is one of the two things
+    // docs/design-system.md still allows a soft ambient shadow for.
+    ...SHAPE.shadow.floating,
     overflow:"hidden"
   },
   handleArea:{paddingTop:8,paddingHorizontal:14,paddingBottom:6},
@@ -259,29 +260,29 @@ const styles=StyleSheet.create({
     width:40,
     height:4,
     borderRadius:2,
-    backgroundColor:INK.hair,
+    backgroundColor:INK.hairlineStrong,
     marginBottom:8
   },
   handleRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
   fullPageButton:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    borderRadius:SHAPE.radius.pill,
     paddingHorizontal:14,
     paddingVertical:7,
-    backgroundColor:INK.paper
+    backgroundColor:INK.panelRaised
   },
-  fullPageText:{color:INK.ink,fontWeight:"800",fontSize:12.5},
+  fullPageText:{color:INK.readout,fontWeight:"600",fontSize:TYPE.body.sizes.md},
   closeButton:{
     width:34,
     height:34,
     borderRadius:17,
     alignItems:"center",
     justifyContent:"center",
-    backgroundColor:INK.paper,
-    borderWidth:2,
-    borderColor:INK.ink
+    backgroundColor:INK.panelRaised,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong
   },
-  closeText:{fontSize:18,fontWeight:"900",color:INK.ink,lineHeight:20},
+  closeText:{fontSize:18,fontWeight:"600",color:INK.readout,lineHeight:20},
   content:{flex:1,paddingHorizontal:16}
 });

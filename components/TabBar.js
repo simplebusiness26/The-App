@@ -4,7 +4,7 @@ import Svg,{Circle,Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {TABS,activeTabKey,isTabBarHidden,withNext} from "../utils/navigation";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
 import {signedIn} from "../utils/permissions";
 
 // The navigation shell, redesigned. Five flat tabs, none raised -- Map ·
@@ -150,7 +150,7 @@ export default function TabBar(){
               {/* Active is carried by a bar and by weight as well as by colour,
                   because state is never carried by colour alone. */}
               <View style={[styles.marker,isActive && styles.markerActive]}/>
-              <Icon name={tab.glyph} colour={isActive ? INK.ink : INK.inkSoft}/>
+              <Icon name={tab.glyph} colour={isActive ? INK.readout : INK.readoutSoft}/>
               <Text style={[styles.label,isActive && styles.labelActive]} numberOfLines={1}>
                 {tab.label}
               </Text>
@@ -174,15 +174,20 @@ const styles=StyleSheet.create({
     bottom:0,
     flexDirection:"row",
     alignItems:"flex-start",
-    backgroundColor:INK.card,
-    // The borders are the print register, and not optional.
-    borderTopWidth:2,
-    borderTopColor:INK.ink
+    // Chrome sits one step above the housing, separated by an etched hairline
+    // rather than the old 2px print register.
+    backgroundColor:INK.panel,
+    borderTopWidth:SHAPE.border,
+    borderTopColor:INK.hairline
   },
   // 44px is the tap-target floor even where the visible target is smaller.
   tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:6},
+  // WHERE YOU ARE IS NOT A STATE A PLACE IS IN. The active tab is never a
+  // state-ink fill: the readout brightens (icon and label to INK.readout) and
+  // this indicator steps up to hairlineStrong. Colour is still not the only
+  // carrier -- accessibilityState above says it in words.
   marker:{height:3,width:26,borderRadius:2,backgroundColor:"transparent",marginBottom:5},
-  markerActive:{backgroundColor:INK.ink},
-  label:{fontSize:10,marginTop:3,color:INK.inkSoft,textAlign:"center",paddingHorizontal:2},
-  labelActive:{color:INK.ink,fontWeight:"700"}
+  markerActive:{backgroundColor:INK.hairlineStrong},
+  label:{fontSize:10,marginTop:3,color:INK.readoutSoft,textAlign:"center",paddingHorizontal:2},
+  labelActive:{color:INK.readout,fontWeight:"600"}
 });
