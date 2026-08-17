@@ -147,7 +147,7 @@ export default function EditEvent(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
   }
 
   if(error){
@@ -177,15 +177,19 @@ export default function EditEvent(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
+  container:{flex:1,backgroundColor:INK.paper},
   content:{padding:20,paddingBottom:50},
-  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},
-  error:{fontSize:17,textAlign:"center",lineHeight:24},
-  title:{fontSize:30,fontWeight:"bold"},
+  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.paper},
+  error:{fontSize:17,textAlign:"center",lineHeight:24,color:INK.ink},
+  title:{fontSize:30,fontWeight:"900",color:INK.ink},
   subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},
-  saveButton:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},
-  deleteButton:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.red,padding:15,borderRadius:12,alignItems:"center",marginTop:12},
+  saveButton:{backgroundColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
+  // Delete is a destructive choice, not a manager dispute -- ink.red is
+  // reserved for that pair alone (design-system.md). An outline in the same
+  // ink border language everything else uses says "different from Save"
+  // without borrowing a colour that means something else.
+  deleteButton:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,padding:15,borderRadius:12,alignItems:"center",marginTop:12},
   disabled:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"bold"},
-  deleteText:{color:INK.red,fontWeight:"bold"}
+  buttonText:{color:INK.card,fontWeight:"800"},
+  deleteText:{color:INK.ink,fontWeight:"800"}
 });

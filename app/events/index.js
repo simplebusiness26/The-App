@@ -69,7 +69,7 @@ export default function Events(){
         onChangeText={setQuery}
       />
 
-      {loading && <ActivityIndicator size="large" style={styles.loader}/>}
+      {loading && <ActivityIndicator size="large" color={INK.ink} style={styles.loader}/>}
 
       {!!error && (
         <View style={styles.notice}>
@@ -114,29 +114,34 @@ export default function Events(){
   );
 }
 
+// Riso tokens only. Blue is a state colour ("a place exists") -- it is not a
+// brand accent, so a hero block, a price or a category pill do not get it.
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
+  container:{flex:1,backgroundColor:INK.paper},
   content:{padding:20,paddingBottom:50},
-  hero:{backgroundColor:INK.blue,padding:22,borderRadius:18,marginBottom:18},
-  eyebrow:{color:INK.card,fontSize:12,fontWeight:"bold",letterSpacing:1},
-  title:{fontSize:32,fontWeight:"bold",color:INK.card,marginTop:7},
-  subtitle:{fontSize:16,color:INK.card,lineHeight:23,marginTop:8},
-  search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:12,padding:15,marginBottom:18},
+  hero:{padding:2,marginBottom:18},
+  eyebrow:{color:INK.inkSoft,fontSize:11,fontWeight:"900",letterSpacing:1},
+  title:{fontSize:32,fontWeight:"900",color:INK.ink,marginTop:7},
+  subtitle:{fontSize:15,color:INK.inkSoft,lineHeight:22,marginTop:8},
+  search:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,marginBottom:18,color:INK.ink},
   loader:{marginTop:40},
-  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:1,borderColor:INK.hair},
-  noticeTitle:{fontSize:18,fontWeight:"bold",marginBottom:7},
+  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:2,borderColor:INK.ink},
+  noticeTitle:{fontSize:18,fontWeight:"800",marginBottom:7,color:INK.ink},
   noticeText:{color:INK.ink,lineHeight:21},
-  retryButton:{backgroundColor:INK.blue,padding:12,borderRadius:10,marginTop:14,alignSelf:"flex-start"},
-  retryText:{color:INK.card,fontWeight:"bold"},
-  card:{backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:1,borderColor:INK.ink,marginBottom:16},
+  retryButton:{backgroundColor:INK.ink,padding:12,borderRadius:10,marginTop:14,alignSelf:"flex-start"},
+  retryText:{color:INK.card,fontWeight:"800"},
+  card:{
+    backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:2,borderColor:INK.ink,marginBottom:16,
+    shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0
+  },
   badgeRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:10},
-  category:{backgroundColor:INK.card,color:INK.blue,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12,overflow:"hidden"},
-  price:{fontWeight:"bold",color:INK.green},
-  eventName:{fontSize:23,fontWeight:"bold",marginTop:14},
-  date:{fontWeight:"600",color:INK.blue,marginTop:8,lineHeight:20},
-  location:{color:INK.ink,marginTop:6},
+  category:{borderWidth:2,borderColor:INK.ink,color:INK.ink,paddingHorizontal:10,paddingVertical:5,borderRadius:20,fontWeight:"800",fontSize:11,overflow:"hidden"},
+  price:{fontWeight:"800",color:INK.ink},
+  eventName:{fontSize:23,fontWeight:"800",marginTop:14,color:INK.ink},
+  date:{fontWeight:"800",color:INK.ink,marginTop:8,lineHeight:20,fontSize:12},
+  location:{color:INK.inkSoft,marginTop:6},
   description:{color:INK.ink,lineHeight:21,marginTop:12},
   cardFooter:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:16},
   capacity:{fontSize:13,color:INK.inkSoft,fontWeight:"600"},
-  viewText:{fontWeight:"bold",color:INK.blue}
+  viewText:{fontWeight:"800",color:INK.ink}
 });

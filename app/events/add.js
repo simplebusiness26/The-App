@@ -75,11 +75,11 @@ export default function AddEvent(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
+  container:{flex:1,backgroundColor:INK.paper},
   content:{padding:20,paddingBottom:50},
-  title:{fontSize:30,fontWeight:"bold"},
-  subtitle:{color:INK.ink,lineHeight:22,marginTop:7,marginBottom:20},
-  button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},
+  title:{fontSize:30,fontWeight:"900",color:INK.ink},
+  subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},
+  button:{backgroundColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
   disabled:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"bold"}
+  buttonText:{color:INK.card,fontWeight:"800"}
 });
