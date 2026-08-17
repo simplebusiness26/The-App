@@ -5,6 +5,7 @@ import {supabase} from "../services/supabase";
 import {SECTIONS,recommend} from "../utils/discover";
 import DiscoverCarousel from "../components/DiscoverCarousel";
 import DiscoverCard from "../components/DiscoverCard";
+import HappeningSegments from "../components/HappeningSegments";
 import {loadPlaceRatings} from "../utils/reviews";
 import {reviewTargetType,CARD_KINDS} from "../utils/placeCards";
 import {
@@ -14,7 +15,21 @@ import {
   typeLabelForBusiness
 } from "../utils/markers";
 import {INK} from "../utils/tokens";
+import LiveNow from "./live";
+import EventsSegment from "./events/index";
+import ClubsSegment from "./activity-clubs/index";
+import LinkupsSegment from "./linkups/index";
 
+// Happening tab container. FINAL_PRODUCT_CONTRACT.md: "For You (Discover) ·
+// Live Now · Events · Clubs · Link-ups — segmented within one destination,"
+// not five screens reached five different ways. app/live.js,
+// app/events/index.js, app/activity-clubs/index.js and app/linkups/index.js
+// stay real, independently-routable screens (deep links, e.g. from
+// notifications, still open them directly) -- this file imports each one's
+// own default-exported component and renders it inline for its segment
+// rather than owning a second copy of any of their Supabase queries. Only
+// "For You" lives here, because it always has: this is app/discover.js.
+//
 // Packet 7: the Discover screen. Replaces the placeholder Packet 3 left here.
 //
 // The rule this screen exists to obey lives in utils/discover.js: an item
@@ -44,6 +59,10 @@ import {INK} from "../utils/tokens";
 //   the bottom section.
 
 export default function Discover(){
+  // Which of the five Happening segments is showing. "For You" first and by
+  // default -- it is what this route has always opened to, and every existing
+  // link and test that opens /discover expects to land here, not on a picker.
+  const [segment,setSegment]=useState("for-you");
   const [area,setArea]=useState("");
   const [items,setItems]=useState({});
   const [loading,setLoading]=useState(true);
@@ -311,15 +330,15 @@ export default function Discover(){
     router.push(`/map?lat=${latitude}&lng=${longitude}`);
   },[]);
 
-  if(loading){
-    return(
-      <View style={styles.centre}>
-        <ActivityIndicator size="large" color={INK.ink}/>
-      </View>
-    );
-  }
-
-  return(
+  // "For You" is the one segment that has always lived in this file -- see
+  // scripts/verify-discover.cjs, which reads app/discover.js's own source for
+  // the setItems() -> recommend() chain and the explorer_favourites read.
+  // Kept exactly where it was; only wrapped, so that check still finds it.
+  const forYouContent=loading ? (
+    <View style={styles.centre}>
+      <ActivityIndicator size="large" color={INK.ink}/>
+    </View>
+  ) : (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -400,6 +419,21 @@ export default function Discover(){
       </Pressable>
     </ScrollView>
   );
+
+  // The other four segments are real, independently-routable screens
+  // (app/live.js, app/events/index.js, app/activity-clubs/index.js,
+  // app/linkups/index.js) rendered inline -- one component, one set of
+  // Supabase queries, reachable both from here and by a direct deep link.
+  return(
+    <View style={styles.root}>
+      <HappeningSegments active={segment} onChange={setSegment}/>
+      {segment==="for-you" && forYouContent}
+      {segment==="live" && <LiveNow/>}
+      {segment==="events" && <EventsSegment/>}
+      {segment==="clubs" && <ClubsSegment/>}
+      {segment==="linkups" && <LinkupsSegment/>}
+    </View>
+  );
 }
 
 function savedRoute(row){
@@ -411,6 +445,7 @@ function savedRoute(row){
 }
 
 const styles=StyleSheet.create({
+  root:{flex:1,backgroundColor:INK.paper},
   screen:{flex:1,backgroundColor:INK.paper},
   centre:{flex:1,alignItems:"center",justifyContent:"center",backgroundColor:INK.paper},
   content:{padding:20,paddingBottom:40},
