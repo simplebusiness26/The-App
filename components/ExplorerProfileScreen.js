@@ -16,6 +16,7 @@ import MyMap from "./MyMap";
 import StoryRing from "./StoryRing";
 import StoryViewer from "./StoryViewer";
 import {managesAnyListing} from "../utils/permissions";
+import {withNext} from "../utils/navigation";
 import {INK} from "../utils/tokens";
 
 function dateLabel(value){
@@ -158,7 +159,12 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
     setResolvedId(id || null);
 
     if(!id){
-      router.replace("/auth/login");
+      // Deep-linking straight to /profile while signed out. TabBar's own
+      // signedIn gate already sends the Me tab itself through withNext, but a
+      // direct link still lands here -- so this follows the same "return to
+      // the exact in-progress action" rule rather than dropping the visitor
+      // on the splash.
+      router.replace(withNext("/profile"));
       return;
     }
 
@@ -379,14 +385,6 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
           <View style={styles.ownerActions}>
             <Pressable style={styles.editProfileButton} onPress={()=>router.push("/profile/edit")}><Text style={styles.editProfileText}>Edit profile</Text></Pressable>
             <Pressable style={styles.newMomentButton} onPress={()=>router.push("/camera")}><Text style={styles.newMomentText}>＋ New Moment</Text></Pressable>
-            {/*
-              This was the one thing the separate Manager screen had that this
-              one did not. It is now shown to anybody who actually manages
-              something, which is the real question -- the old screen showed it
-              on account_type, so a Manager who ran nothing still got the
-              button and an Explorer who ran a club did not.
-            */}
-            {managesSomething && <Pressable style={styles.managerDashboardButton} onPress={()=>router.push("/manager/dashboard")}><Text style={styles.editProfileText}>Manager dashboard</Text></Pressable>}
           </View>
         )}
       </View>
@@ -399,6 +397,72 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         whose they were. Under the picture is where they belong.
       */}
       {belowIdentity}
+
+      {/*
+        MANAGE. The Me tab's tiered structure per FINAL_PRODUCT_CONTRACT.md:
+        Profile (this screen) with My Places / Account & Safety / Admin Console
+        underneath, replacing the drawer's old "Manage" and "Account" rows,
+        which had no home at all once the drawer was removed.
+
+        My Places is unconditional -- it is where an Explorer who manages
+        nothing yet REQUESTS a capability (app/manager/dashboard.js is not
+        gated on already managing something, on purpose: see
+        hooks/useManagerGate.js's own comment). Gating this card on
+        managesSomething would close the only door in, same mistake the old
+        Manager-screen button made showing on account_type instead of on
+        managing anything real.
+
+        Admin Console only ever appears for profile.is_admin -- a separate
+        flag from the manager capability layer, per CLAUDE.md's account model.
+      */}
+      {isOwner && (
+        <View style={styles.manageSection}>
+          <Text style={styles.sectionEyebrowDark}>MANAGE</Text>
+
+          <Pressable
+            style={styles.manageRow}
+            accessibilityRole="button"
+            accessibilityLabel="Open My Places, your manager tools"
+            onPress={()=>router.push("/manager/dashboard")}
+          >
+            <View style={styles.manageRowText}>
+              <Text style={styles.manageRowTitle}>My Places</Text>
+              <Text style={styles.manageRowSub}>
+                {managesSomething ? "Businesses, properties, clubs and events you run" : "Request access to manage a listing"}
+              </Text>
+            </View>
+            <Text style={styles.manageRowChevron}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.manageRow}
+            accessibilityRole="button"
+            accessibilityLabel="Open Account and Safety settings"
+            onPress={()=>router.push("/settings")}
+          >
+            <View style={styles.manageRowText}>
+              <Text style={styles.manageRowTitle}>Account &amp; Safety</Text>
+              <Text style={styles.manageRowSub}>Notifications, safety, legal and your account</Text>
+            </View>
+            <Text style={styles.manageRowChevron}>›</Text>
+          </Pressable>
+
+          {!!profile.is_admin && (
+            <Pressable
+              style={[styles.manageRow,styles.manageRowLast]}
+              accessibilityRole="button"
+              accessibilityLabel="Open the Admin Console"
+              onPress={()=>router.push("/admin/dashboard")}
+            >
+              <View style={styles.manageRowText}>
+                <Text style={styles.manageRowTitle}>Admin Console</Text>
+                <Text style={styles.manageRowSub}>Claims, moderation and platform review queues</Text>
+              </View>
+              <Text style={styles.manageRowChevron}>›</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       <View style={styles.statsGrid}>
         <StatCard label="Reviews" value={stats?.review_count || 0}/>
@@ -657,7 +721,7 @@ const styles=StyleSheet.create({
   center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
   errorTitle:{color:INK.ink,fontSize:23,fontWeight:"900"},
   errorText:{color:INK.inkSoft,textAlign:"center",marginTop:8},
-  profileCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:20,padding:20,alignItems:"center"},
+  profileCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:20,padding:20,alignItems:"center"},
   topScoreRow:{width:"100%",flexDirection:"row",justifyContent:"space-between",gap:6,marginBottom:12},
   scorePill:{flex:1,minWidth:82,backgroundColor:INK.card,borderRadius:15,paddingHorizontal:8,paddingVertical:9,alignItems:"center"},
   reputationPill:{borderColor:INK.green,borderWidth:2},
@@ -672,11 +736,18 @@ const styles=StyleSheet.create({
   area:{color:INK.inkSoft,fontSize:15,marginTop:6},
   bio:{color:INK.inkSoft,fontSize:15,lineHeight:22,textAlign:"center",marginTop:10,maxWidth:520},
   ownerActions:{flexDirection:"row",gap:9,marginTop:15},
-  editProfileButton:{borderColor:INK.blue,borderWidth:1,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
-  managerDashboardButton:{borderColor:INK.blue,borderWidth:1,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
+  editProfileButton:{borderColor:INK.ink,borderWidth:2,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
   editProfileText:{color:INK.ink,fontWeight:"900"},
-  newMomentButton:{backgroundColor:INK.blue,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
+  newMomentButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:2,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
   newMomentText:{color:INK.card,fontWeight:"900"},
+  manageSection:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16,marginTop:16,paddingTop:14,paddingHorizontal:16,paddingBottom:4},
+  sectionEyebrowDark:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:0.8,marginBottom:6},
+  manageRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingVertical:14,borderTopWidth:1.5,borderTopColor:INK.hair},
+  manageRowLast:{},
+  manageRowText:{flex:1,paddingRight:10},
+  manageRowTitle:{color:INK.ink,fontSize:16,fontWeight:"900"},
+  manageRowSub:{color:INK.inkSoft,fontSize:12,marginTop:3,lineHeight:17},
+  manageRowChevron:{color:INK.inkSoft,fontSize:22,fontWeight:"700"},
   statsGrid:{flexDirection:"row",flexWrap:"wrap",gap:10,marginTop:13},
   statCard:{width:"48%",flexGrow:1,backgroundColor:INK.card,borderColor:INK.hair,borderWidth:1,borderRadius:14,padding:15,alignItems:"center"},
   statCardAccent:{borderColor:INK.blue,borderWidth:2},

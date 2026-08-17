@@ -371,6 +371,17 @@ export default function ManagerDashboard(){
           onRequest={()=>requestCapability("businesses","Businesses")}
         />
 
+        {businessesEnabled && (
+          <Pressable
+            style={styles.dashboardLink}
+            accessibilityRole="button"
+            accessibilityLabel="Open the full Business Dashboard"
+            onPress={()=>router.push("/business/dashboard")}
+          >
+            <Text style={styles.dashboardLinkText}>Open Business Dashboard →</Text>
+          </Pressable>
+        )}
+
         {businessesEnabled ? <>
           {businesses.length===0 && (
             <EmptyCard title="No businesses yet" text="Create your first business listing."/>
@@ -418,6 +429,17 @@ export default function ManagerDashboard(){
           requestStatus={requests.properties}
           onRequest={()=>requestCapability("properties","Properties")}
         />
+
+        {propertiesEnabled && (
+          <Pressable
+            style={styles.dashboardLink}
+            accessibilityRole="button"
+            accessibilityLabel="Open the full Property Dashboard"
+            onPress={()=>router.push("/property/dashboard")}
+          >
+            <Text style={styles.dashboardLinkText}>Open Property Dashboard →</Text>
+          </Pressable>
+        )}
 
         {propertiesEnabled ? <>
           {properties.length===0 && (
@@ -682,6 +704,8 @@ const styles=StyleSheet.create({
   inactivePill:{backgroundColor:INK.card,color:INK.red},
   requestButton:{backgroundColor:INK.blue,padding:13,borderRadius:10,marginTop:12,alignSelf:"flex-start"},
   requestButtonText:{color:INK.card,fontWeight:"bold"},
+  dashboardLink:{alignSelf:"flex-start",marginBottom:12},
+  dashboardLinkText:{color:INK.blue,fontWeight:"800",fontSize:13},
   card:{backgroundColor:INK.card,padding:18,borderRadius:14,marginBottom:15,borderWidth:1,borderColor:INK.ink},
   clubCard:{backgroundColor:INK.card,padding:18,borderRadius:18,marginBottom:28,borderWidth:2,borderColor:INK.ink},
   clubEyebrow:{fontSize:11,fontWeight:"bold",color:INK.blue,letterSpacing:0.6,marginBottom:7},
