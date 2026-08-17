@@ -196,6 +196,13 @@ describe("the pin renders",()=>{
     return found;
   }
 
+  // The frosted-glass fill is a real native BlurView now, not an Svg Circle
+  // fill -- see components/PlaceMarker.js's own note on the graft. Found by
+  // its native view-manager type rather than by style shape, since that is
+  // the one thing about it that will not shift if expo-blur's own style
+  // merging ever changes.
+  const {StyleSheet}=require("react-native");
+
   async function render(marker){
     let tree;
     await act(async()=>{
@@ -204,15 +211,45 @@ describe("the pin renders",()=>{
     return tree;
   }
 
-  it("draws the circle and every glyph primitive",async()=>{
+  it("draws the frosted-glass fill behind an unfilled bordered circle",async()=>{
+    const marker=markerForBusiness(business("food_and_drink","pub"));
+    const tree=await render(marker);
+    const json=tree.toJSON();
+
+    // The border circle carries no fill of its own any more -- the colour
+    // comes from the BlurView behind it. Only the border and the glyph are
+    // still Svg.
+    const circle=nodes(json,"RNSVGCircle")[0];
+    expect(circle.props.fill).toBeNull();
+    expect(circle.props.stroke.payload).toBe(argb(marker.border));
+
+    // The BlurView itself: present, and tinted with the marker's own state
+    // colour at the graft's 82% opacity -- "background: rgba(state-color,
+    // .82)" per FINAL_PRODUCT_CONTRACT.md's UI system section.
+    const blurViews=tree.root.findAll((n)=>n.type==="ViewManagerAdapter_ExpoBlur",{deep:true});
+    expect(blurViews.length).toBe(1);
+
+    const [r,g,b]=[
+      parseInt(marker.fill.slice(1,3),16),
+      parseInt(marker.fill.slice(3,5),16),
+      parseInt(marker.fill.slice(5,7),16)
+    ];
+    const expectedRgba=`rgba(${r},${g},${b},0.82)`;
+
+    const tinted=tree.root.findAll(
+      (n)=>n.type==="View" && StyleSheet.flatten(n.props.style || {}).backgroundColor===expectedRgba,
+      {deep:true}
+    );
+    expect(tinted.length).toBeGreaterThan(0);
+
+    await act(async()=>{tree.unmount();});
+  });
+
+  it("draws every glyph primitive",async()=>{
     const marker=markerForBusiness(business("food_and_drink","pub"));
     const primitives=glyphPrimitives(marker.glyph);
     const tree=await render(marker);
     const json=tree.toJSON();
-
-    const circle=nodes(json,"RNSVGCircle")[0];
-    expect(circle.props.fill.payload).toBe(argb(marker.fill));
-    expect(circle.props.stroke.payload).toBe(argb(marker.border));
 
     const paths=nodes(json,"RNSVGPath");
     expect(paths.map((node)=>node.props.d)).toEqual(
