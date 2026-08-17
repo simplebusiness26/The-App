@@ -1,0 +1,59 @@
+name: Ghost Writer project report
+
+on:
+  push:
+    branches: [main2.0-Dev]
+    paths-ignore:
+      - "ghostwriter-bridge.mjs"
+      - ".github/workflows/ghostwriter-report.yml"
+      - ".env.example"
+  workflow_dispatch:
+
+jobs:
+  report-xplorer:
+    runs-on: ubuntu-latest
+    env:
+      GHOSTWRITER_ENDPOINT: https://theghostwriterv2.onrender.com
+      GHOSTWRITER_PROJECT_ID: xplorer
+      GHOSTWRITER_PROJECT_ORIGIN: existing
+      GHOSTWRITER_INGEST_SECRET: ${{ secrets.GHOSTWRITER_INGEST_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - name: Skip until ingest secret is configured
+        if: ${{ env.GHOSTWRITER_INGEST_SECRET == '' }}
+        run: echo "Ghost Writer reporting is installed but inactive until the GHOSTWRITER_INGEST_SECRET repository secret is added."
+
+      - name: Bootstrap Xplorer introduction from existing history
+        if: ${{ github.event_name == 'workflow_dispatch' && env.GHOSTWRITER_INGEST_SECRET != '' }}
+        run: node ghostwriter-bridge.mjs --bootstrap-existing
+
+      - name: Report Xplorer commits
+        if: ${{ github.event_name == 'push' && env.GHOSTWRITER_INGEST_SECRET != '' }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          import { sendGhostWriterEvent } from "./ghostwriter-bridge.mjs";
+
+          const payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+          const branch = String(payload.ref ?? "").replace(/^refs\/heads\//, "");
+          for (const commit of payload.commits ?? []) {
+            await sendGhostWriterEvent({
+              source: "github-actions-project-report",
+              sourceEventId: commit.id,
+              type: "git.commit",
+              truthState: "in_progress",
+              privacy: "content_eligible",
+              contentEligible: true,
+              title: "Xplorer development update",
+              summary: commit.message,
+              sourceReference: commit.url,
+              payload: {
+                branch,
+                projectOrigin: "existing"
+              }
+            });
+          }
+          NODE
