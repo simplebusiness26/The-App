@@ -410,8 +410,18 @@ export default function Settings(){
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Settings</Text>
+      <Text style={styles.title}>Account &amp; Safety</Text>
       <Text style={styles.subtitle}>Your account, what you share, and how you sign in.</Text>
+
+      {/*
+        FIVE TIERS, PER FINAL_PRODUCT_CONTRACT.md's Me -> Account & Safety
+        entry: Profile / Notifications / Safety / Legal / Account. This used
+        to be a flat run of section headers with no grouping above them --
+        the tier eyebrow is the only thing that changed about the structure
+        here; every field, toggle and handler below is the same one that was
+        already on this screen.
+      */}
+      <Text style={styles.tierEyebrow}>PROFILE</Text>
 
       <Text style={styles.sectionTitle}>Profile</Text>
       <Pressable style={styles.linkCard} onPress={()=>router.push("/profile/edit")}>
@@ -491,6 +501,137 @@ export default function Settings(){
         <Text style={styles.primaryText}>{savingPrivacy ? "Saving..." : "Save privacy settings"}</Text>
       </Pressable>
 
+      {/*
+        NOTIFICATIONS TIER.
+
+        PUSH NOTIFICATIONS, EVERY ONE OFF UNTIL SOMEBODY TURNS IT ON.
+
+        The permission is asked for HERE, when a switch goes on -- never on
+        launch. A push prompt on first open, before anybody knows what the app
+        is, is how notifications get turned off for ever.
+
+        Categories mirror the notifications that already exist rather than
+        inventing a second vocabulary; utils/pushCategories.js is the list and
+        scripts/verify-push.cjs checks it against the database. No quick-
+        action toggle lives here -- that is fc-01, deferred pending a product
+        decision, and this tier is push categories only, same as before.
+      */}
+      <Text style={styles.tierEyebrow}>NOTIFICATIONS</Text>
+      <Text style={styles.sectionTitle}>Notifications on your phone</Text>
+      {!pushIsSupported() ? (
+        <Text style={styles.helpText}>
+          Push notifications only work on a phone. Everything still appears in
+          the app.
+        </Text>
+      ) : (
+        <>
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextWrap}>
+              <Text style={styles.settingTitle}>Send me push notifications</Text>
+              <Text style={styles.settingText}>
+                Off means off, whatever the switches below say.
+              </Text>
+            </View>
+            <Switch
+              value={!!pushes.enabled}
+              onValueChange={togglePushMaster}
+              accessibilityLabel="Send me push notifications"
+            />
+          </View>
+
+          {PUSH_CATEGORIES.map((category)=>(
+            <View key={category.key} style={styles.settingRow}>
+              <View style={styles.settingTextWrap}>
+                <Text style={styles.settingTitle}>{category.label}</Text>
+                <Text style={styles.settingText}>{category.help}</Text>
+              </View>
+              <Switch
+                value={!!pushes[category.key]}
+                disabled={!pushes.enabled}
+                onValueChange={(next)=>togglePushCategory(category.key,next)}
+                accessibilityLabel={category.label}
+              />
+            </View>
+          ))}
+        </>
+      )}
+
+      {/* SAFETY TIER. */}
+      <Text style={styles.tierEyebrow}>SAFETY</Text>
+      <Text style={styles.sectionTitle}>Safety</Text>
+      <Pressable style={styles.linkCard} onPress={()=>router.push("/safety/blocked")}>
+        <View style={styles.linkTextWrap}>
+          <Text style={styles.linkTitle}>Blocked Explorers</Text>
+          <Text style={styles.linkText}>People you have blocked, and where to unblock them.</Text>
+        </View>
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
+
+      {/*
+        LEGAL TIER.
+
+        Reachable from here and from sign-up, because a policy nobody can find
+        is not a policy. Both are marked as drafts on the screen itself -- see
+        the note in utils/legal.js.
+
+        THE PERMANENT HOME OF THE MAP CREDIT.
+
+        The map itself carries no attribution control any more -- both of
+        MapLibre's are turned off in components/LivingMap.js and
+        LivingMap.web.js. That is only defensible because the credit is still in
+        the app, in two places that cannot be missed: the startup screen shows
+        it for five seconds on every launch, and this section states it
+        permanently with a link to the licence. If this section is ever
+        deleted, the map has to get its credit back --
+        test/map-attribution.test.js is what enforces that.
+      */}
+      <Text style={styles.tierEyebrow}>LEGAL</Text>
+      <Text style={styles.sectionTitle}>Privacy and terms</Text>
+      <Pressable
+        style={styles.secondaryButton}
+        accessibilityRole="button"
+        accessibilityLabel="Read the privacy policy"
+        onPress={()=>router.push("/legal/privacy")}
+      >
+        <Text style={styles.secondaryText}>Privacy policy</Text>
+      </Pressable>
+      <Pressable
+        style={[styles.secondaryButton,styles.secondaryButtonSpaced]}
+        accessibilityRole="button"
+        accessibilityLabel="Read the terms"
+        onPress={()=>router.push("/legal/terms")}
+      >
+        <Text style={styles.secondaryText}>Terms</Text>
+      </Pressable>
+
+      <Text style={styles.sectionTitle}>About and licences</Text>
+      <View style={styles.licenceCard}>
+        <Text style={styles.licenceTitle}>Map data</Text>
+        <Text style={styles.licenceText}>{ATTRIBUTION}</Text>
+        <Text style={styles.licenceText}>{ATTRIBUTION_COPYRIGHT}</Text>
+        <Text style={styles.licenceSmall}>
+          Xplorer&apos;s maps are built from OpenStreetMap, a free map of the
+          world made by volunteers. The data is available under the Open
+          Database Licence.
+        </Text>
+        <Pressable
+          style={styles.licenceLink}
+          accessibilityRole="link"
+          accessibilityLabel="Open the OpenStreetMap copyright and licence page"
+          onPress={()=>Linking.openURL(ATTRIBUTION_URL)}
+        >
+          <Text style={styles.licenceLinkText}>{ATTRIBUTION_URL}</Text>
+        </Pressable>
+      </View>
+
+      {/*
+        ACCOUNT TIER: whether you have manager tools switched on at all,
+        signing in, and the account itself. Managing individual businesses,
+        properties, clubs and events lives at Me -> My Places now -- this is
+        the account-level switch that turns the capability on and off, which
+        is a different question from what any one listing looks like.
+      */}
+      <Text style={styles.tierEyebrow}>ACCOUNT</Text>
       <Text style={styles.sectionTitle}>Managing places</Text>
       <Text style={styles.helpText}>
         There is no separate manager account. A manager is an Explorer with the
@@ -566,7 +707,7 @@ export default function Settings(){
       {isManager && (
         <Pressable style={styles.linkCard} onPress={()=>router.push("/manager/dashboard")}>
           <View style={styles.linkTextWrap}>
-            <Text style={styles.linkTitle}>Open manager dashboard</Text>
+            <Text style={styles.linkTitle}>Open My Places</Text>
             <Text style={styles.linkText}>Your listings, and everything you manage.</Text>
           </View>
           <Text style={styles.chevron}>›</Text>
@@ -642,15 +783,6 @@ export default function Settings(){
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>Safety</Text>
-      <Pressable style={styles.linkCard} onPress={()=>router.push("/safety/blocked")}>
-        <View style={styles.linkTextWrap}>
-          <Text style={styles.linkTitle}>Blocked Explorers</Text>
-          <Text style={styles.linkText}>People you have blocked, and where to unblock them.</Text>
-        </View>
-        <Text style={styles.chevron}>›</Text>
-      </Pressable>
-
       <Text style={styles.sectionTitle}>Sign in</Text>
       <Pressable
         style={[styles.secondaryButton,sendingReset && styles.disabled]}
@@ -717,116 +849,6 @@ export default function Settings(){
           </Text>
         </Pressable>
       </View>
-
-      {/*
-        THE TWO DOCUMENTS BOTH STORES REQUIRE.
-
-        Reachable from here and from sign-up, because a policy nobody can find
-        is not a policy. Both are marked as drafts on the screen itself -- see
-        the note in utils/legal.js.
-      */}
-      {/*
-        PUSH NOTIFICATIONS, EVERY ONE OFF UNTIL SOMEBODY TURNS IT ON.
-
-        The permission is asked for HERE, when a switch goes on -- never on
-        launch. A push prompt on first open, before anybody knows what the app
-        is, is how notifications get turned off for ever.
-
-        Categories mirror the notifications that already exist rather than
-        inventing a second vocabulary; utils/pushCategories.js is the list and
-        scripts/verify-push.cjs checks it against the database.
-      */}
-      <Text style={styles.sectionTitle}>Notifications on your phone</Text>
-      {!pushIsSupported() ? (
-        <Text style={styles.helpText}>
-          Push notifications only work on a phone. Everything still appears in
-          the app.
-        </Text>
-      ) : (
-        <>
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextWrap}>
-              <Text style={styles.settingTitle}>Send me push notifications</Text>
-              <Text style={styles.settingText}>
-                Off means off, whatever the switches below say.
-              </Text>
-            </View>
-            <Switch
-              value={!!pushes.enabled}
-              onValueChange={togglePushMaster}
-              accessibilityLabel="Send me push notifications"
-            />
-          </View>
-
-          {PUSH_CATEGORIES.map((category)=>(
-            <View key={category.key} style={styles.settingRow}>
-              <View style={styles.settingTextWrap}>
-                <Text style={styles.settingTitle}>{category.label}</Text>
-                <Text style={styles.settingText}>{category.help}</Text>
-              </View>
-              <Switch
-                value={!!pushes[category.key]}
-                disabled={!pushes.enabled}
-                onValueChange={(next)=>togglePushCategory(category.key,next)}
-                accessibilityLabel={category.label}
-              />
-            </View>
-          ))}
-        </>
-      )}
-
-      <Text style={styles.sectionTitle}>Privacy and terms</Text>
-      <Pressable
-        style={styles.secondaryButton}
-        accessibilityRole="button"
-        accessibilityLabel="Read the privacy policy"
-        onPress={()=>router.push("/legal/privacy")}
-      >
-        <Text style={styles.secondaryText}>Privacy policy</Text>
-      </Pressable>
-      <Pressable
-        style={styles.secondaryButton}
-        accessibilityRole="button"
-        accessibilityLabel="Read the terms"
-        onPress={()=>router.push("/legal/terms")}
-      >
-        <Text style={styles.secondaryText}>Terms</Text>
-      </Pressable>
-
-      {/*
-        About and licences.
-
-        THE PERMANENT HOME OF THE MAP CREDIT.
-
-        The map itself carries no attribution control any more -- both of
-        MapLibre's are turned off in components/LivingMap.js and
-        LivingMap.web.js. That is only defensible because the credit is still in
-        the app, in two places that cannot be missed: the startup screen shows
-        it for five seconds on every launch, and this section states it
-        permanently with a link to the licence.
-
-        If this section is ever deleted, the map has to get its credit back.
-        test/map-attribution.test.js is what enforces that.
-      */}
-      <Text style={styles.sectionTitle}>About and licences</Text>
-      <View style={styles.licenceCard}>
-        <Text style={styles.licenceTitle}>Map data</Text>
-        <Text style={styles.licenceText}>{ATTRIBUTION}</Text>
-        <Text style={styles.licenceText}>{ATTRIBUTION_COPYRIGHT}</Text>
-        <Text style={styles.licenceSmall}>
-          Xplorer&apos;s maps are built from OpenStreetMap, a free map of the
-          world made by volunteers. The data is available under the Open
-          Database Licence.
-        </Text>
-        <Pressable
-          style={styles.licenceLink}
-          accessibilityRole="link"
-          accessibilityLabel="Open the OpenStreetMap copyright and licence page"
-          onPress={()=>Linking.openURL(ATTRIBUTION_URL)}
-        >
-          <Text style={styles.licenceLinkText}>{ATTRIBUTION_URL}</Text>
-        </Pressable>
-      </View>
     </ScrollView>
   );
 }
@@ -838,7 +860,12 @@ const styles=StyleSheet.create({
   title:{color:INK.ink,fontSize:31,fontWeight:"900"},
   subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6},
   errorText:{color:INK.ink,fontSize:16,fontWeight:"700",textAlign:"center",lineHeight:22},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"900",marginTop:28,marginBottom:10},
+  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"900",marginTop:14,marginBottom:10},
+  // The five tiers -- Profile / Notifications / Safety / Legal / Account --
+  // per FINAL_PRODUCT_CONTRACT.md. A heavier rule than sectionTitle carries
+  // and a top margin big enough to read as a new zone, not just another
+  // heading in the same run.
+  tierEyebrow:{color:INK.inkSoft,fontSize:11,fontWeight:"900",letterSpacing:1.2,marginTop:34,paddingTop:20,borderTopWidth:2,borderTopColor:INK.ink},
   helpText:{color:INK.inkSoft,lineHeight:20,marginBottom:12},
   input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:13},
   settingRow:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
@@ -893,7 +920,8 @@ const styles=StyleSheet.create({
   pillOff:{backgroundColor:INK.card,color:INK.inkSoft},
   primaryButton:{backgroundColor:INK.blue,padding:16,borderRadius:13,alignItems:"center",marginTop:8},
   primaryText:{color:INK.card,fontWeight:"900",fontSize:16},
-  secondaryButton:{borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:16,alignItems:"center"},
+  secondaryButton:{borderColor:INK.blue,borderWidth:2,borderRadius:13,padding:16,alignItems:"center"},
+  secondaryButtonSpaced:{marginTop:10},
   secondaryText:{color:INK.ink,fontWeight:"900",fontSize:16},
   dangerButton:{backgroundColor:INK.red,padding:16,borderRadius:13,alignItems:"center"},
   disabled:{opacity:0.55}
