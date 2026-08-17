@@ -49,17 +49,34 @@
 
 const HOST="https://tiles.openfreemap.org";
 
-// The styles the provider publishes. `positron` is the quiet one and it is the
-// right default here: docs/design-system.md's whole sentence is "the map base is
-// quiet, the pins carry all the colour". Liberty and bright are more colourful
-// maps, which would fight every marker Xplorer draws on them.
+// THE DARK MAP IS OURS, THE TILES ARE STILL THEIRS.
+//
+// The Field Instrument system (docs/design-system.md) needs a dark map: the
+// housing recedes so the readings glow. OpenFreeMap publishes only light styles
+// -- positron, liberty, bright -- so none of them can be the default any more.
+//
+// A MapLibre style is only paint over a vector tile source, and the style spec
+// is ours to author. assets/map/instrument-dark.json is derived from positron's
+// own 55-layer OpenMapTiles schema with terrain recoloured to the instrument's
+// land/water/park/road tokens, pointing at the SAME openmaptiles vector source,
+// sprite and glyphs the provider serves. So we get a dark base without
+// self-hosting tiles, and their schema keeps working.
+//
+// Nothing about the licence changes: the data is still OpenStreetMap's and the
+// attribution obligation below is untouched.
+//
+// The provider's light styles stay listed as a fallback if the local style ever
+// fails to parse.
+import instrumentDark from "../assets/map/instrument-dark.json";
+
 export const MAP_STYLES={
+  instrument:instrumentDark,
   quiet:`${HOST}/styles/positron`,
   standard:`${HOST}/styles/liberty`,
   bright:`${HOST}/styles/bright`
 };
 
-export const DEFAULT_STYLE=MAP_STYLES.quiet;
+export const DEFAULT_STYLE=MAP_STYLES.instrument;
 
 // The full wording, for the permanent notice in Settings.
 export const ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap";

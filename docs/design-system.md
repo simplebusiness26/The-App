@@ -1,187 +1,230 @@
-# Design system
+# Design system — Field Instrument
 
-The look is **riso-printed flyer**: cheap local print, three inks on
-newsprint. Local life is advertised on taped-up posters and handbills,
-so that's where the visual language comes from.
+> **Superseded the riso-print system on 2026-08-17.** This document is the
+> output of the DesignLab tournament: the "instrument" concept (de With) with
+> frosted-glass map pins (Meng To), chosen by the product owner. The previous
+> riso system — warm paper, flat inks, 2px black borders, hard offset shadows —
+> is prior art. It is not a fallback, and nothing in this app should be styled
+> back toward it. If you find older guidance that disagrees with this file,
+> this file wins.
 
-One sentence to hold onto: **the map base is quiet, the pins carry all
-the colour.**
+The look is a **precision field instrument**: a calm dark housing, so the map
+and its readings are the only lit things on screen. Hairline etched rules
+instead of printed borders. Measured data set in mono, because an instrument is
+read, not just looked at.
+
+One sentence to hold onto: **the housing recedes, the readings glow.**
+
+## Why this replaced the print system
+
+The riso system was coherent, and its best idea survives here (see Type). But it
+made every surface shout equally — a 2px black border and a hard offset shadow
+on every card, chip and pin — which left no visual room for *this reading is
+live right now*. That is the one thing a local-discovery app most needs to say.
+
+The instrument inverts it. The housing drops to near-black and holds no
+decoration. Borders become a 1px hairline. Elevation comes from layered surface
+tones, not print offset. Saturated colour is spent only on state.
 
 ## Colour
 
-Never introduce a colour outside this list. If something needs a new
-colour, the design is wrong.
+Never introduce a colour outside this list. If something needs a new colour, the
+design is wrong. (That rule was right in the old system; only its subject
+changed.)
+
+### Surfaces — the housing
 
 | Token | Hex | Used for |
 |---|---|---|
-| `paper` | `#E7E8E1` | Map land, app background |
-| `card` | `#F3F3ED` | Sheets, cards, raised surfaces |
-| `ink` | `#16181C` | Text, every border, every stroke |
-| `ink-soft` | `#63686F` | Secondary text, metadata |
-| `hair` | `#C9CBC2` | Dividers, inactive rules |
-| `water` | `#BFD1CF` | Water on the map |
-| `park` | `#C2CFAF` | Green space on the map |
-| `ink-blue` | `#2B4BE8` | State: it exists |
-| `ink-pink` | `#FF3D6E` | State: something is scheduled |
-| `ink-yellow` | `#FFC61A` | State: an offer is running |
-| `ink-green` | `#1E7A4C` | A manager has answered a review |
-| `ink-red` | `#C2321F` | A manager disputes a review |
-| `heat-1` | `#1D3F8F` | Heat ramp: barely anything |
-| `heat-2` | `#17A2B8` | Heat ramp: some |
-| `heat-3` | `#3FBF5F` | Heat ramp: busy |
-| `heat-4` | `#F5B324` | Heat ramp: very busy |
-| `heat-5` | `#E8571F` | Heat ramp: the hottest thing on screen |
+| `ground` | `#0F1216` | App background, map housing |
+| `panel` | `#161B22` | Cards, sheets, rows |
+| `panelRaised` | `#1E252E` | Nested cards, raised chrome, pressed states |
+| `inset` | `#0B0E12` | Inputs, wells, the camera viewfinder ground |
 
-**The three-ink rule.** Blue, pink and yellow are the only saturated
-colours on the map. They mean something. Never use them decoratively —
-not for a nice heading, not for a hover tint, not for a brand flourish.
-Land, water and parks stay desaturated so the inks stay legible.
+Four steps, so depth reads without a single shadow.
 
-**Green and red are not map inks.** They exist for exactly one pair of
-things: a manager's reply to a review, and a manager's challenge to one.
-Agreeing and disputing are opposites, they always appear next to each
-other, and green/red is the one colour pair everybody already reads that
-way without a legend. They never appear on the map, never on a pin, and
-never anywhere else in the app. This is a deliberate exception to the
-sentence above and it is the only one.
+### Lines — the etched rule
 
-**The heat ramp is the second exception, and it is recorded here rather
-than discovered later.** The owner asked for a heatmap "exactly like
-Snapchat's" — a continuous wash that runs cool to hot as more public
-Moments are posted in an area. A ramp is the whole point of it: five
-flat inks would say "busy / busier / busiest" in steps nobody could
-read, and one ink at five opacities cannot carry the difference between
-quiet and packed at a glance. So `heat-1` to `heat-5` exist, they are
-used in exactly one place — the heat layer on the map — and they are
-never a pin, never a border, never text, and never a background.
+| Token | Hex | Used for |
+|---|---|---|
+| `hairline` | `#262E38` | Every card, chip, row, control edge — at **1px** |
+| `hairlineStrong` | `#38424E` | Emphasis, active control edge, dial tracks |
 
-They are also not one of the three inks and must never be swapped for
-one. Blue, pink and yellow say what state a **place** is in. The ramp
-says how many **people** are posting. Those are different questions, and
-sharing a colour between them would make the map answer the wrong one.
+**1px, not 2px.** This is the single biggest visual difference from the print
+system, and the reason the UI reads as machined rather than stamped. A 2px
+border anywhere is a bug.
 
-**Heat is ground, and stays under everything.** It is capped at 55%
-opacity and it fades out as you zoom in, so pins keep their contrast and
-nobody's street ever glows. The land, water and park colours stay
-desaturated for the same reason they always did.
+### Text — the backlit readout
 
-**No gradients.** Flat ink only. Two exceptions: a photo placeholder,
-and the heat ramp above — which is a data gradient, not a decorative
-one.
+| Token | Hex | Used for |
+|---|---|---|
+| `readout` | `#E8EDF2` | Primary text |
+| `readoutSoft` | `#97A3B2` | Secondary text, metadata |
+| `readoutFaint` | `#616E7D` | Tertiary, mono captions, disabled |
+
+Slightly cool white, never pure `#FFF` — an instrument's readout is lit, not
+blown out.
+
+### State inks — what a place IS
+
+| Token | Hex | Meaning |
+|---|---|---|
+| `exists` | `#4CC9E8` | A place exists — business, property, park |
+| `scheduled` | `#FFAB2E` | Something is happening here — club session, event, live check-in |
+| `offer` | `#A78BFA` | A time-bound offer. Always expires itself |
+
+**Cool means a static fact, warm means live and temporal.** That is the whole
+logic, and it is why `scheduled` is the warmest thing on the map.
+
+These three are the only saturated colours that appear on the map, and they are
+never decorative — not for a nice heading, not for a hover tint, not for a brand
+flourish. An active tab is a place you are, not a state a place is in, so the
+navigation uses none of them as fill.
+
+### Map terrain
+
+| Token | Hex | Used for |
+|---|---|---|
+| `land` | `#12161C` | Map land |
+| `water` | `#10202C` | Water |
+| `park` | `#142218` | Green space |
+| `road` | `#1C2430` | Roads |
+
+Desaturated and close to the housing, so the state inks stay the brightest thing
+on the map. The dark map style is built from these in `utils/mapProvider.js`.
+
+### The manager's two answers
+
+| Token | Hex | Meaning |
+|---|---|---|
+| `agree` | `#3FBF7F` | A manager replying to a review |
+| `dispute` | `#F2555A` | A manager disputing one |
+
+Exactly two jobs. They appear together or not at all. **Never on the map, never
+as a generic success/error colour, and never for admin approve/reject** — admin
+decisions use `exists` and an outline, because approving a claim is not the same
+act as a manager answering a customer.
+
+### The heat ramp
+
+| Token | Hex | Density |
+|---|---|---|
+| `heat-1` | `#22346E` | Barely anything |
+| `heat-2` | `#16717F` | Some |
+| `heat-3` | `#2A9457` | Busy |
+| `heat-4` | `#C89A22` | Very busy |
+| `heat-5` | `#E0543A` | The hottest thing on screen |
+
+A continuous wash for public Moment density. It exists for exactly one layer:
+never a pin, a border, text or a background. Re-keyed for the dark housing — the
+old ramp's mid greens glowed against dark and pulled attention off the pins.
+
+Capped at 55% opacity and faded out as you zoom in, so pins keep their contrast.
+The state inks say what a **place** is; this says how many **people** are
+posting. Different questions, so they never share a colour.
 
 ## Type
 
 Three faces, three jobs. Never use one for another's job.
 
-**Archivo** — display. Variable width, run expanded.
-Place names, screen titles, buttons, numbers in stat blocks.
-`font-variation-settings: "wdth" 104–122, "wght" 700–880`
-Tight tracking: `letter-spacing: -0.02em` at large sizes.
+**Inter Tight** — display. Screen titles, place names, buttons, stat numerals.
+`letter-spacing: -0.02em`. Tight and neutral; the instrument's engraved labels.
 
-**Instrument Sans** — body. Everything a person wrote.
-Reviews, descriptions, control labels, help text. 13–15px, 1.45–1.55
-line height.
+**Inter** — body. Everything a person wrote: reviews, descriptions, control
+labels, help text. 12.5–15px, 1.5 line height.
 
-**Martian Mono** — data. Everything the system measured.
-Distance, times, counts, status, category. Uppercase, `letter-spacing:
-0.06–0.14em`, 9–11px.
+**JetBrains Mono** — data. Everything the system measured: distance, times,
+counts, status, category, coordinates. Uppercase, `letter-spacing: 0.08em`,
+9.5–12px.
 
-The mono/sans split is the tell that makes the app feel like an
-instrument: if a human typed it, it's Instrument Sans. If the app
-computed it, it's Martian Mono. Don't blur that line.
+**The mono/sans split is the old system's best idea and it survives unchanged:**
+if a human typed it, it is Inter. If the app computed it, it is JetBrains Mono.
+Do not blur that line — it is what makes the app feel like an instrument rather
+than a page.
 
-## Surfaces
+## Surfaces and elevation
 
-- Every card, chip, pin and button has a **1.5–2px solid `ink` border**.
-  This is not optional — the borders are the print register.
-- Radius: 9–14px on cards and buttons, 99px on pills, 50% on pins.
-- Elevation is a **hard offset shadow in ink or an ink colour**
-  (`box-shadow: 3px 3px 0`), never a soft blur. Blurred shadows belong
-  to a different product.
-- Halftone texture: `radial-gradient(rgba(22,24,28,.2) 1px, transparent
-  1.2px)` at `background-size: 6px 6px`. Use on photo areas and hero
-  blocks only. Never behind text.
+- Every card, chip, row and control has a **1px `hairline` border**.
+- Radius: 6px controls, 10px cards, 14px sheets, 99px pills, 50% pins.
+- **Elevation is layering, not shadow.** Move up a surface step
+  (`panel` → `panelRaised`) and add a 1px top highlight
+  (`rgba(255,255,255,.06)`) for a bevelled panel edge.
+- A soft ambient shadow is reserved for genuinely floating things — the map
+  sheet, the Create action. **No hard offset shadows.** Those belonged to the
+  print system.
 
 ## Pins — the signature
 
-A pin is a state, not a dot.
+A pin is a state, and now also a lens.
 
-- 34px circle, 2px ink border, icon centred, 16px.
-- **Blue** — a place that exists. Business, property, park.
-- **Pink** — something scheduled here. Club session or event.
-- **Yellow** — an offer running. Always time-bound, expires itself.
-- **Dashed border, `card` fill** — unclaimed. An invitation, not an error.
-- **Overprint** — a place hosting something. A second pink disc sits
-  behind, offset `translate(4px, -4px)`, `mix-blend-mode: multiply`.
-  Deliberate misregistration, like a flyer run through the press twice.
+- 34px circle, 1px hairline border, glyph centred.
+- Fill is the state ink at **~82% opacity over a real blur** (`expo-blur`
+  `BlurView` on native), so the map reads *through* the pin instead of being
+  covered by it. This is the Meng To graft, and it is the one place the
+  instrument's hard-edged discipline deliberately softens — the map is where
+  you look *through* the interface at the world.
+- **Cyan** — a place that exists. **Amber** — something scheduled here.
+  **Violet** — an offer running.
+- **Dashed hairline, `panel` fill** — unclaimed. An invitation, not an error.
+- **Overprint** — a place hosting something: a second `scheduled` disc offset
+  `translate(4px, -4px)` behind. `react-native-svg` has no blend mode, so this
+  is an opacity approximation on native; the intent is a doubled reading, two
+  facts about one point.
 
-The overprint is the one memorable thing in this design. Everything else
-stays quiet so it lands. Don't add a second signature.
-
-**Implemented 2026-08-10**, in `components/PlaceMarker.js`, and it is what
-carries "happening right now". The palette has three inks and the product names
-five Event states, so liveness is a second *channel* rather than a fourth
-colour. `react-native-svg` has no `mix-blend-mode`, so the multiply is
-approximated with opacity — the ink itself is unchanged, which is what keeps it
-inside the table. Only pins that carry it get the extra 4px of canvas, so every
-other pin keeps its exact geometry.
-
-It is derived in `utils/markers.js` and cannot be switched on by a caller;
-`scripts/verify-marker-assignment.cjs` fails if that changes, if the disc stops
-reusing the marker's own ink, or if a glow or pulse appears.
+The glass pin is the memorable thing in this design. Everything else stays quiet
+so it lands. Don't add a second signature.
 
 ## Motion
 
-Almost none. Pin select scales to 1.16 on
-`cubic-bezier(.2,.9,.3,1.3)`, 180ms. Sheets slide. That's the budget.
-No parallax, no ambient animation, no staggered reveals.
-`prefers-reduced-motion: reduce` disables all of it.
+Precise and damped. An instrument responds; it does not perform.
+
+- 90ms press feedback. 140ms standard transition. 320ms spring for the map
+  sheet's snap between Peek/Half/Full.
+- No parallax, no ambient animation, no staggered reveals.
+- The one exception: a slow pulse on a genuinely live reading (an active
+  check-in, a session happening now). Liveness is the app's whole point, so it
+  gets the only moving thing on screen.
+- `prefers-reduced-motion` / reduce-motion disables all of it.
 
 ## Copy
 
-- Explorers, not users. Managers, not owners. Sessions for clubs, events
-  for dated things. Full lexicon is in RULES.md — it is binding on UI
-  copy too.
+- Explorers, not users. Managers, not owners. Sessions for clubs, events for
+  dated things. Full lexicon is in RULES.md — binding on UI copy too.
 - Sentence case everywhere except mono data labels.
-- Buttons say what happens: "Save this club", not "Submit". The button
-  name survives into the confirmation.
-- Empty states are instructions, not moods. "Nobody manages this yet.
-  Scan the QR inside to claim it." — not "Nothing here."
-- Privacy controls read as sentences about people: "Nobody can see where
-  you are." Never "Location sharing: disabled."
-- No exclamation marks. No "Oops". Errors say what happened and what to
-  do next.
+- Buttons say what happens: "Save this club", not "Submit". The button name
+  survives into the confirmation.
+- Empty states are instructions, not moods. "Nobody manages this yet. Scan the
+  QR inside to claim it." — not "Nothing here."
+- Privacy controls read as sentences about people: "Nobody can see where you
+  are." Never "Location sharing: disabled."
+- No exclamation marks. No "Oops". Errors say what happened and what to do next.
 
 ## Accessibility floor
 
-- Visible focus ring: 3px `ink-yellow`, 3px offset.
-- **Which text on which ground.** This used to read "ink on all three inks
-  passes contrast", and that is not true — ink on `ink-blue` is 2.77:1,
-  under the 4.5:1 a person needs. Believing it put barely-legible labels on
-  every filled button in the app. The measured numbers:
+- Visible focus ring: 2px `exists`, 2px offset.
+- **Which text on which ground.** The state inks are bright colours on a dark
+  housing, which inverts the old system's rule: they take **dark** text, never
+  white.
 
-  | ground | `ink` text | `card` text |
+  | ground | light `readout` text | dark `ground` text |
   | --- | --- | --- |
-  | `paper` | 14.4:1 ✅ | 1.1:1 ❌ |
-  | `card` | 16.0:1 ✅ | 1.0:1 ❌ |
-  | `hair` | 10.8:1 ✅ | 1.5:1 ❌ |
-  | `ink-blue` | 2.8:1 ❌ | 5.8:1 ✅ |
-  | `ink-red` | 3.2:1 ❌ | 5.0:1 ✅ |
-  | `ink-green` | 3.3:1 ❌ | 4.8:1 ✅ |
-  | `ink-yellow` | 11.3:1 ✅ | 1.4:1 ❌ |
-  | `ink-pink` | 5.2:1 ✅ | 3.1:1 ❌ |
+  | `ground` `#0F1216` | ✅ | ❌ |
+  | `panel` `#161B22` | ✅ | ❌ |
+  | `panelRaised` `#1E252E` | ✅ | ❌ |
+  | `exists` `#4CC9E8` | ❌ | ✅ |
+  | `scheduled` `#FFAB2E` | ❌ | ✅ |
+  | `offer` `#A78BFA` | ❌ | ✅ |
+  | `agree` `#3FBF7F` | ❌ | ✅ |
+  | `dispute` `#F2555A` | ❌ | ✅ |
 
-  So: light text on blue, red and green; ink on everything else. Pink and
-  yellow look like strong colours and are not — they take ink, not white.
-- **A state does not have to be a fill.** Where one label style serves a
-  card and its selected variant, the variant marks itself with a 2px
-  coloured border and keeps the light fill. Filling it means every label
-  inside has to change too, and the ones that get missed become
-  unreadable — which is exactly what happened on the Link-up board, the
-  leaderboard and the profile pills.
-- `scripts/verify-contrast.cjs` checks all of this on every push. It reads
-  the real hex values out of `utils/tokens.js`, works out what ground each
-  piece of text is drawn on, and does the sums. Fix the pair, not the gate.
-- Every pin needs a text label available to screen readers; colour is
-  never the only carrier of state.
+  So: `readout` on every housing surface; dark `ground` text on every filled
+  state colour.
+- A filled state colour is not the only way to show selection. A selected chip
+  may mark itself with a `hairlineStrong` edge and a `panelRaised` fill, which
+  avoids restyling every label inside it — the failure mode where a fill lands
+  and the labels inside it become unreadable.
+- `scripts/verify-contrast.cjs` checks this on every push. It reads the real hex
+  values out of `utils/tokens.js` and does the sums. Fix the pair, not the gate.
+- Every pin needs a text label available to screen readers; colour is never the
+  only carrier of state.
 - Minimum tap target 44px even where the visible pin is 34px.
