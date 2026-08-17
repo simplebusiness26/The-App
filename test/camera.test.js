@@ -13,7 +13,6 @@ const {act,create}=require("react-test-renderer");
 const {installFixture,textOf,labelsOf,restoreRouterParams}=require("./fixture");
 const {extractQrCode}=require("../utils/qr");
 const {assetFromCameraUri}=require("../utils/socialMedia");
-const {centreButton}=require("../utils/navigation");
 const expoRouter=require("expo-router");
 
 const camera=require("expo-camera");
@@ -25,9 +24,14 @@ beforeEach(()=>{
 
 afterEach(()=>{restoreRouterParams();});
 
-it("the centre button on the map opens the camera, not the photo library",()=>{
-  expect(centreButton("/map").route).toBe("/camera");
-});
+// The old raised centre button (utils/navigation.js's centreButton()) is gone
+// -- Create is a global floating action now, not a tab-bar slot that changes
+// meaning on the map. See components/CreateHub.js and utils/navigation.js's
+// own notes. The camera itself is unchanged and untested here by that route:
+// every test below mounts app/camera.js directly, which is what actually
+// matters -- a real camera, live, whether it is reached via the /camera route
+// or the Create hub's default surface (components/CameraCapture.js is shared
+// by both, see that file's own comment).
 
 describe("the viewfinder",()=>{
   async function render(){

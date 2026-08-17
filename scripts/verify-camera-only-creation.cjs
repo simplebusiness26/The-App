@@ -76,7 +76,12 @@ for(const screen of ["app/moments/create.js","app/memories/create.js"]){
 // ---------------------------------------------------------------------------
 // The camera is the only file allowed to, because that IS the flow.
 
-const ALLOWED_TO_PUSH_CREATE=new Set(["app/camera.js"]);
+// The viewfinder itself moved into components/CameraCapture.js (shared by the
+// /camera route and the Create hub's default surface) -- see the note on
+// check 4 below. app/camera.js stays listed too: it is a thin wrapper today,
+// but the rule is about WHERE a photo can be handed to a create screen from,
+// not which file currently implements that.
+const ALLOWED_TO_PUSH_CREATE=new Set(["app/camera.js","components/CameraCapture.js"]);
 
 function walk(dir){
   const out=[];
@@ -140,10 +145,17 @@ check(
 // A place page's "post a Moment here" now routes via the camera. If the camera
 // dropped target_type/target_id, camera-only creation would have quietly cost
 // every Moment posted from a place page its place.
+//
+// DesignLab redesign: the viewfinder itself moved into
+// components/CameraCapture.js, shared by the /camera route (app/camera.js is
+// now a three-line wrapper around it) and the Create hub's default surface
+// (components/CreateHub.js). The target_type/target_id carry-through lives in
+// the shared component now, not the thin route file, so the check follows it
+// there.
 
-const camera=code(read("app/camera.js") || "");
-check(/target_type/.test(camera) && /target_id/.test(camera),
-  "app/camera.js does not carry target_type/target_id through to the create screen — a Moment posted from a place page would lose its place");
+const cameraCapture=code(read("components/CameraCapture.js") || "");
+check(/target_type/.test(cameraCapture) && /target_id/.test(cameraCapture),
+  "components/CameraCapture.js does not carry target_type/target_id through to the create screen — a Moment posted from a place page would lose its place");
 
 // ---------------------------------------------------------------------------
 
