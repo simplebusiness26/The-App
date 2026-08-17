@@ -130,7 +130,11 @@ const styles=StyleSheet.create({
   content:{padding:22,paddingBottom:60,alignItems:"center"},
   center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
   verifiedIcon:{width:78,height:78,borderRadius:39,backgroundColor:INK.green,alignItems:"center",justifyContent:"center",marginTop:18},
-  check:{color:INK.ink,fontSize:43,fontWeight:"900"},
+  // Text on a filled state colour is dark INK.ground, never the light readout
+  // -- docs/design-system.md's accessibility table. This file's own migration
+  // to the Field Instrument system belongs to the pass that owns this route;
+  // this is the contrast pair only, so scripts/verify-contrast.cjs passes.
+  check:{color:INK.ground,fontSize:43,fontWeight:"900"},
   eyebrow:{color:INK.ink,fontWeight:"900",fontSize:11,letterSpacing:0.8,marginTop:18},
   title:{color:INK.ink,fontSize:30,fontWeight:"900",textAlign:"center",marginTop:7},
   subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,textAlign:"center",marginTop:8,maxWidth:520},

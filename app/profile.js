@@ -13,5 +13,5 @@ export default function Profile(){
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper}
+  screen:{flex:1,backgroundColor:INK.ground}
 });

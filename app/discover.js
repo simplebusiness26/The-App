@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
-import {View,Text,TextInput,Pressable,StyleSheet,ScrollView,ActivityIndicator,RefreshControl} from "react-native";
+import {Platform,View,Text,TextInput,Pressable,StyleSheet,ScrollView,ActivityIndicator,RefreshControl} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {SECTIONS,recommend} from "../utils/discover";
@@ -14,7 +14,8 @@ import {
   markerForClub,
   typeLabelForBusiness
 } from "../utils/markers";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
 import LiveNow from "./live";
 import EventsSegment from "./events/index";
 import ClubsSegment from "./activity-clubs/index";
@@ -57,6 +58,10 @@ import LinkupsSegment from "./linkups/index";
 //   CAROUSELS instead of stacked boxes. Seven sections of six boxes is
 //   forty-two boxes; the owner's word was "too long", and nobody ever reached
 //   the bottom section.
+
+// Native matches a single family name, not a CSS stack -- see the same note in
+// components/HappeningSegments.js.
+const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
 
 export default function Discover(){
   // Which of the five Happening segments is showing. "For You" first and by
@@ -336,7 +341,7 @@ export default function Discover(){
   // Kept exactly where it was; only wrapped, so that check still finds it.
   const forYouContent=loading ? (
     <View style={styles.centre}>
-      <ActivityIndicator size="large" color={INK.ink}/>
+      <ActivityIndicator size="large" color={INK.readout}/>
     </View>
   ) : (
     <ScrollView
@@ -351,7 +356,7 @@ export default function Discover(){
       <TextInput
         style={styles.search}
         placeholder="Search businesses, stays or clubs..."
-        placeholderTextColor={INK.inkSoft}
+        placeholderTextColor={INK.readoutSoft}
         value={query}
         onChangeText={setQuery}
         accessibilityLabel="Search businesses, stays or clubs"
@@ -380,7 +385,7 @@ export default function Discover(){
             {!searching && <Text style={styles.count}>{results.length}</Text>}
           </View>
 
-          {searching && <ActivityIndicator color={INK.ink} style={styles.searchSpinner}/>}
+          {searching && <ActivityIndicator color={INK.readoutSoft} style={styles.searchSpinner}/>}
 
           {!searching && results.length===0 && (
             <View style={styles.empty}>
@@ -445,68 +450,93 @@ function savedRoute(row){
 }
 
 const styles=StyleSheet.create({
-  root:{flex:1,backgroundColor:INK.paper},
-  screen:{flex:1,backgroundColor:INK.paper},
-  centre:{flex:1,alignItems:"center",justifyContent:"center",backgroundColor:INK.paper},
-  content:{padding:20,paddingBottom:40},
+  root:{flex:1,backgroundColor:INK.ground},
+  screen:{flex:1,backgroundColor:INK.ground},
+  centre:{flex:1,alignItems:"center",justifyContent:"center",backgroundColor:INK.ground},
+  // The Create action floats bottom-right over every screen. Reserving its
+  // footprint here is what lets the last card be scrolled clear of it instead
+  // of sitting underneath it -- see CREATE_HUB_CLEARANCE in
+  // components/CreateHub.js.
+  content:{padding:20,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  // An input is a well, not a panel: the deepest surface in the housing.
   search:{
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
+    backgroundColor:INK.inset,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,
     paddingHorizontal:14,
     paddingVertical:13,
     marginTop:16,
-    color:INK.ink,
-    fontSize:15
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.lg
   },
   toMap:{
     alignSelf:"flex-start",
     marginTop:10,
     minHeight:44,
     justifyContent:"center",
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    borderRadius:SHAPE.radius.pill,
     paddingHorizontal:16,
-    backgroundColor:INK.card
+    backgroundColor:INK.panelRaised
   },
-  toMapText:{color:INK.ink,fontWeight:"900",fontSize:13},
+  toMapText:{color:INK.readout,fontWeight:"600",fontSize:TYPE.body.sizes.md},
   searchSpinner:{marginTop:14},
   results:{gap:12,alignItems:"flex-start"},
-  title:{fontSize:30,fontWeight:"800",letterSpacing:-0.5,color:INK.ink},
-  lead:{fontSize:14,lineHeight:21,color:INK.inkSoft,marginTop:6},
+  title:{
+    fontSize:TYPE.display.sizes.xl,
+    fontWeight:"700",
+    letterSpacing:TYPE.display.tracking*TYPE.display.sizes.xl,
+    color:INK.readout
+  },
+  lead:{fontSize:TYPE.body.sizes.lg,lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,color:INK.readoutSoft,marginTop:6},
   notice:{
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card,
     padding:12,
     marginTop:14,
-    fontSize:13,
-    lineHeight:19,
-    color:INK.ink
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    color:INK.readout
   },
   section:{marginTop:24},
   sectionHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:10},
-  sectionTitle:{fontSize:20,fontWeight:"800",color:INK.ink,letterSpacing:-0.3},
-  count:{fontSize:12,fontWeight:"800",color:INK.inkSoft},
-  empty:{borderTopWidth:2,borderTopColor:INK.hair,paddingTop:12},
-  emptyText:{fontSize:13,lineHeight:19,color:INK.inkSoft},
-  card:{
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    padding:14,
-    marginBottom:10,
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:0
+  sectionTitle:{
+    fontSize:TYPE.display.sizes.lg,
+    fontWeight:"700",
+    color:INK.readout,
+    letterSpacing:TYPE.display.tracking*TYPE.display.sizes.lg
   },
-  cardTitle:{fontSize:16,fontWeight:"800",color:INK.ink},
-  cardSubtitle:{fontSize:13,color:INK.ink,marginTop:3},
-  reason:{fontSize:11,fontWeight:"800",color:INK.inkSoft,marginTop:8,textTransform:"uppercase",letterSpacing:0.8}
+  // A count is something the app measured, so it is mono.
+  count:{
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    color:INK.readoutSoft
+  },
+  empty:{borderTopWidth:SHAPE.border,borderTopColor:INK.hairline,paddingTop:12},
+  emptyText:{fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,color:INK.readoutSoft},
+  // Elevation is a surface step and a 1px bevel, never the old print offset.
+  card:{
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card,
+    padding:14,
+    marginBottom:10
+  },
+  cardTitle:{fontSize:16,fontWeight:"700",color:INK.readout},
+  cardSubtitle:{fontSize:TYPE.body.sizes.md,color:INK.readoutSoft,marginTop:3},
+  // A reason is a computed label, not a sentence somebody wrote: mono eyebrow.
+  reason:{
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.sm,
+    color:INK.readoutSoft,
+    marginTop:8,
+    textTransform:"uppercase",
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.sm
+  }
 });

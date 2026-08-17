@@ -1,5 +1,6 @@
 import React,{useCallback,useMemo,useState} from "react";
 import {
+  Platform,
   View,
   Text,
   StyleSheet,
@@ -17,7 +18,12 @@ import StoryRing from "./StoryRing";
 import StoryViewer from "./StoryViewer";
 import {managesAnyListing} from "../utils/permissions";
 import {withNext} from "../utils/navigation";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "./CreateHub";
+
+// Native matches a single family name, not a CSS stack -- see the same note in
+// components/HappeningSegments.js.
+const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
 
 function dateLabel(value){
   if(!value) return "";
@@ -38,7 +44,7 @@ function listingRoute(item){
 
 function Avatar({profile,size=94}){
   if(profile?.profile_photo){
-    return <Image source={{uri:profile.profile_photo}} style={{width:size,height:size,borderRadius:size/2,backgroundColor:INK.card}}/>;
+    return <Image source={{uri:profile.profile_photo}} style={{width:size,height:size,borderRadius:size/2,backgroundColor:INK.panelRaised}}/>;
   }
 
   return(
@@ -305,7 +311,7 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
   const isOwner=!!currentUser && currentUser.id===resolvedId;
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></View>;
   }
 
   if(error || !profile){
@@ -710,139 +716,481 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
       )}
       </>}
 
-      {isOwner && <Pressable style={styles.logoutButton} onPress={logout}><Text style={styles.primaryButtonText}>Logout</Text></Pressable>}
+      {isOwner && <Pressable style={styles.logoutButton} onPress={logout}><Text style={styles.logoutText}>Logout</Text></Pressable>}
     </ScrollView>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:70},
-  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  errorTitle:{color:INK.ink,fontSize:23,fontWeight:"900"},
-  errorText:{color:INK.inkSoft,textAlign:"center",marginTop:8},
-  profileCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:20,padding:20,alignItems:"center"},
+  // FIELD INSTRUMENT. A profile is not the map, so it spends NO state ink:
+  // exists/scheduled/offer say what a PLACE is, and agree/dispute are a
+  // manager's two answers to a review. A reputation score, a leaderboard rank
+  // and a points badge are none of those -- they are readings, so they are set
+  // in the readout on layered housing surfaces. That is also what fixed the
+  // 1.99:1 reputation headline: there is no filled state colour left to put
+  // light text on.
+  screen:{flex:1,backgroundColor:INK.ground},
+  // The Create action floats bottom-right over this screen; reserve its
+  // footprint so the last row can be scrolled clear of it.
+  content:{padding:18,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  center:{flex:1,backgroundColor:INK.ground,alignItems:"center",justifyContent:"center",padding:28},
+  errorTitle:{color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700"},
+  errorText:{color:INK.readoutSoft,textAlign:"center",marginTop:8},
+
+  profileCard:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.sheet,
+    padding:20,
+    alignItems:"center"
+  },
   topScoreRow:{width:"100%",flexDirection:"row",justifyContent:"space-between",gap:6,marginBottom:12},
-  scorePill:{flex:1,minWidth:82,backgroundColor:INK.card,borderRadius:15,paddingHorizontal:8,paddingVertical:9,alignItems:"center"},
-  reputationPill:{borderColor:INK.green,borderWidth:2},
-  reputationNumber:{color:INK.ink,fontSize:20,fontWeight:"900"},
-  pointsPill:{borderColor:INK.blue,borderWidth:2},
-  scoreNumber:{color:INK.ink,fontSize:20,fontWeight:"900"},
-  pointsNumber:{color:INK.ink,fontSize:20,fontWeight:"900"},
-  scoreLabel:{color:INK.inkSoft,fontSize:9,fontWeight:"900",letterSpacing:0.5,marginTop:2},
-  avatarFallback:{backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontWeight:"900"},
-  profileName:{color:INK.ink,fontSize:30,fontWeight:"900",textAlign:"center",marginTop:13},
-  area:{color:INK.inkSoft,fontSize:15,marginTop:6},
-  bio:{color:INK.inkSoft,fontSize:15,lineHeight:22,textAlign:"center",marginTop:10,maxWidth:520},
+  scorePill:{
+    flex:1,
+    minWidth:82,
+    backgroundColor:INK.panelRaised,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    paddingHorizontal:8,
+    paddingVertical:9,
+    alignItems:"center"
+  },
+  // Emphasis is an edge, not a fill.
+  reputationPill:{borderColor:INK.hairlineStrong},
+  pointsPill:{borderColor:INK.hairlineStrong},
+  // Numbers the app worked out: mono.
+  reputationNumber:{color:INK.readout,fontFamily:MONO,fontSize:20},
+  scoreNumber:{color:INK.readout,fontFamily:MONO,fontSize:20},
+  pointsNumber:{color:INK.readout,fontFamily:MONO,fontSize:20},
+  scoreLabel:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.sm,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.sm,
+    textTransform:"uppercase",
+    marginTop:2
+  },
+
+  avatarFallback:{backgroundColor:INK.panelRaised,alignItems:"center",justifyContent:"center"},
+  avatarLetter:{color:INK.readout,fontWeight:"700"},
+  profileName:{
+    color:INK.readout,
+    fontSize:TYPE.display.sizes.xl,
+    fontWeight:"700",
+    letterSpacing:TYPE.display.tracking*TYPE.display.sizes.xl,
+    textAlign:"center",
+    marginTop:13
+  },
+  area:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.lg,marginTop:6},
+  bio:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.lg,
+    lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,
+    textAlign:"center",
+    marginTop:10,
+    maxWidth:520
+  },
+
   ownerActions:{flexDirection:"row",gap:9,marginTop:15},
-  editProfileButton:{borderColor:INK.ink,borderWidth:2,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
-  editProfileText:{color:INK.ink,fontWeight:"900"},
-  newMomentButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:2,borderRadius:11,paddingHorizontal:16,paddingVertical:10},
-  newMomentText:{color:INK.card,fontWeight:"900"},
-  manageSection:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16,marginTop:16,paddingTop:14,paddingHorizontal:16,paddingBottom:4},
-  sectionEyebrowDark:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:0.8,marginBottom:6},
-  manageRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingVertical:14,borderTopWidth:1.5,borderTopColor:INK.hair},
+  editProfileButton:{
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.control,
+    paddingHorizontal:16,
+    paddingVertical:10
+  },
+  editProfileText:{color:INK.readout,fontWeight:"600"},
+  // The one lit control: the readout itself, with dark ground text on it.
+  newMomentButton:{
+    backgroundColor:INK.readout,
+    borderColor:INK.readout,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.control,
+    paddingHorizontal:16,
+    paddingVertical:10
+  },
+  newMomentText:{color:INK.ground,fontWeight:"700"},
+
+  manageSection:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.sheet,
+    marginTop:16,
+    paddingTop:14,
+    paddingHorizontal:16,
+    paddingBottom:4
+  },
+  sectionEyebrowDark:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    marginBottom:6
+  },
+  manageRow:{
+    flexDirection:"row",
+    alignItems:"center",
+    justifyContent:"space-between",
+    paddingVertical:14,
+    borderTopWidth:SHAPE.border,
+    borderTopColor:INK.hairline
+  },
   manageRowLast:{},
   manageRowText:{flex:1,paddingRight:10},
-  manageRowTitle:{color:INK.ink,fontSize:16,fontWeight:"900"},
-  manageRowSub:{color:INK.inkSoft,fontSize:12,marginTop:3,lineHeight:17},
-  manageRowChevron:{color:INK.inkSoft,fontSize:22,fontWeight:"700"},
+  manageRowTitle:{color:INK.readout,fontSize:16,fontWeight:"700"},
+  manageRowSub:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3,lineHeight:17},
+  manageRowChevron:{color:INK.readoutSoft,fontSize:22,fontWeight:"600"},
+
   statsGrid:{flexDirection:"row",flexWrap:"wrap",gap:10,marginTop:13},
-  statCard:{width:"48%",flexGrow:1,backgroundColor:INK.card,borderColor:INK.hair,borderWidth:1,borderRadius:14,padding:15,alignItems:"center"},
-  statCardAccent:{borderColor:INK.blue,borderWidth:2},
-  statValue:{color:INK.ink,fontSize:25,fontWeight:"900"},
-  statValueAccent:{color:INK.card},
-  statLabel:{color:INK.inkSoft,fontWeight:"700",fontSize:12,marginTop:3},
-  rankCard:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:15,padding:16,marginTop:13,flexDirection:"row",justifyContent:"space-between",alignItems:"center"},
-  sectionEyebrow:{color:INK.card,fontSize:10,fontWeight:"900",letterSpacing:0.7},
-  rankTitle:{color:INK.card,fontWeight:"900",fontSize:16,marginTop:4},
+  statCard:{
+    width:"48%",
+    flexGrow:1,
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:15,
+    alignItems:"center"
+  },
+  statCardAccent:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  statValue:{color:INK.readout,fontFamily:MONO,fontSize:25},
+  statValueAccent:{color:INK.readout},
+  statLabel:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    marginTop:3
+  },
+
+  rankCard:{
+    backgroundColor:INK.panelRaised,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:16,
+    marginTop:13,
+    flexDirection:"row",
+    justifyContent:"space-between",
+    alignItems:"center"
+  },
+  sectionEyebrow:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase"
+  },
+  rankTitle:{color:INK.readout,fontWeight:"700",fontSize:16,marginTop:4},
   rankValues:{alignItems:"flex-end"},
-  rankText:{color:INK.card,fontWeight:"800",fontSize:12,marginVertical:2},
-  reputationCard:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:15,padding:16,marginTop:13},
-  reputationHeadline:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:5},
+  rankText:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.lg,marginVertical:2},
+
+  reputationCard:{
+    backgroundColor:INK.panelRaised,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:16,
+    marginTop:13
+  },
+  reputationHeadline:{color:INK.readout,fontSize:18,fontWeight:"700",marginTop:5},
   reputationRow:{flexDirection:"row",gap:22,marginTop:13},
   reputationStat:{alignItems:"flex-start"},
-  reputationValue:{color:INK.card,fontSize:22,fontWeight:"900"},
-  reputationLabel:{color:INK.card,fontWeight:"700",fontSize:11,marginTop:2},
-  reputationMostUseful:{color:INK.card,fontSize:12,lineHeight:18,marginTop:13},
+  reputationValue:{color:INK.readout,fontFamily:MONO,fontSize:22},
+  reputationLabel:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    marginTop:2
+  },
+  reputationMostUseful:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:18,
+    marginTop:13
+  },
+
   sectionHeader:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:27,marginBottom:11},
-  sectionTitle:{color:INK.ink,fontSize:23,fontWeight:"900"},
-  sectionCount:{color:INK.blue,fontWeight:"900"},
+  sectionTitle:{
+    color:INK.readout,
+    fontSize:TYPE.display.sizes.lg,
+    fontWeight:"700",
+    letterSpacing:TYPE.display.tracking*TYPE.display.sizes.lg
+  },
+  sectionCount:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.lg,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.lg
+  },
+
   horizontalRow:{paddingRight:10},
-  favouriteCard:{width:145,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:9,marginRight:10},
-  favouriteImage:{width:"100%",height:95,borderRadius:10,backgroundColor:INK.card},
-  favouriteFallback:{width:"100%",height:95,borderRadius:10,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
+  favouriteCard:{
+    width:145,
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:9,
+    marginRight:10
+  },
+  favouriteImage:{width:"100%",height:95,borderRadius:8,backgroundColor:INK.inset},
+  favouriteFallback:{
+    width:"100%",
+    height:95,
+    borderRadius:8,
+    backgroundColor:INK.panelRaised,
+    alignItems:"center",
+    justifyContent:"center"
+  },
   favouriteEmoji:{fontSize:29},
-  favouriteName:{color:INK.ink,fontWeight:"900",fontSize:14,marginTop:9},
-  favouriteType:{color:INK.inkSoft,fontSize:11,textTransform:"capitalize",marginTop:4},
-  galleryCard:{width:165,height:145,borderRadius:14,overflow:"hidden",marginRight:10,backgroundColor:INK.card},
+  favouriteName:{color:INK.readout,fontWeight:"700",fontSize:14,marginTop:9},
+  favouriteType:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    marginTop:4
+  },
+
+  galleryCard:{width:165,height:145,borderRadius:SHAPE.radius.card,overflow:"hidden",marginRight:10,backgroundColor:INK.inset},
   galleryImage:{width:"100%",height:"100%"},
-  galleryOverlay:{position:"absolute",left:0,right:0,bottom:0,backgroundColor:"rgba(0,0,0,0.72)",padding:8},
-  galleryText:{color:INK.ink,fontSize:12,fontWeight:"800"},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.hair,borderWidth:1,borderRadius:14,padding:18},
-  emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:20},
+  galleryOverlay:{position:"absolute",left:0,right:0,bottom:0,backgroundColor:"rgba(11,14,18,0.78)",padding:8},
+  galleryText:{color:INK.readout,fontSize:TYPE.body.sizes.sm,fontWeight:"600"},
+
+  emptyCard:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:18
+  },
+  emptyText:{color:INK.readoutSoft,textAlign:"center",lineHeight:20},
+
   reviewHeadingRow:{marginTop:28,marginBottom:11},
   sortRow:{flexDirection:"row",gap:7,marginTop:11},
-  sortButton:{backgroundColor:INK.card,borderColor:INK.hair,borderWidth:1,borderRadius:20,paddingHorizontal:12,paddingVertical:7},
-  sortButtonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  sortText:{color:INK.inkSoft,fontSize:12,fontWeight:"800"},
-  sortTextActive:{color:INK.card},
-  reviewCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:16,padding:16,marginBottom:12},
+  sortButton:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.pill,
+    paddingHorizontal:12,
+    paddingVertical:7
+  },
+  sortButtonActive:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  sortText:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase"
+  },
+  sortTextActive:{color:INK.readout},
+
+  reviewCard:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.sheet,
+    padding:16,
+    marginBottom:12
+  },
   reviewTopRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
   reviewTitleWrap:{flex:1,paddingRight:10},
-  reviewPlace:{color:INK.ink,fontSize:18,fontWeight:"900"},
-  reviewType:{color:INK.inkSoft,fontSize:11,textTransform:"capitalize",marginTop:3},
-  pointsBadge:{backgroundColor:INK.blue,borderRadius:20,paddingHorizontal:10,paddingVertical:6},
-  pointsBadgeText:{color:INK.card,fontWeight:"900",fontSize:12},
-  reviewStars:{color:INK.ink,fontSize:18,letterSpacing:1,marginTop:12},
-  emptyStars:{color:INK.ink},
-  reviewTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginTop:10},
-  reviewComment:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:7},
-  verifiedBadge:{alignSelf:"flex-start",backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12},
-  verifiedText:{color:INK.card,fontSize:10,fontWeight:"900",letterSpacing:0.4},
+  reviewPlace:{color:INK.readout,fontSize:18,fontWeight:"700"},
+  reviewType:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    marginTop:3
+  },
+  pointsBadge:{
+    backgroundColor:INK.panelRaised,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.pill,
+    paddingHorizontal:10,
+    paddingVertical:6
+  },
+  pointsBadgeText:{color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.lg},
+  reviewStars:{color:INK.readout,fontSize:18,letterSpacing:1,marginTop:12},
+  emptyStars:{color:INK.readoutSoft},
+  reviewTitle:{color:INK.readout,fontSize:17,fontWeight:"700",marginTop:10},
+  reviewComment:{
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.lg,
+    lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,
+    marginTop:7
+  },
+  // A verified visit is a fact the app checked, so it is a mono readout on a
+  // raised surface -- not the manager's agree ink, which belongs to a review
+  // reply and nothing else.
+  verifiedBadge:{
+    alignSelf:"flex-start",
+    backgroundColor:INK.panelRaised,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.pill,
+    paddingHorizontal:10,
+    paddingVertical:6,
+    marginTop:12
+  },
+  verifiedText:{
+    color:INK.readout,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase"
+  },
   reviewImageRow:{paddingTop:13},
-  reviewImage:{width:115,height:115,borderRadius:11,backgroundColor:INK.card,marginRight:9},
-  videoButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:12,flexDirection:"row",alignItems:"center",marginTop:13},
-  videoButtonIcon:{color:INK.card,fontSize:20,marginRight:12},
-  videoButtonTitle:{color:INK.card,fontWeight:"900"},
-  videoButtonText:{color:INK.card,fontSize:11,marginTop:2},
+  reviewImage:{width:115,height:115,borderRadius:SHAPE.radius.control,backgroundColor:INK.inset,marginRight:9},
+  videoButton:{
+    backgroundColor:INK.panelRaised,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:12,
+    flexDirection:"row",
+    alignItems:"center",
+    marginTop:13
+  },
+  videoButtonIcon:{color:INK.readout,fontSize:20,marginRight:12},
+  videoButtonTitle:{color:INK.readout,fontWeight:"700"},
+  videoButtonText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:2},
   reviewActions:{flexDirection:"row",alignItems:"center",gap:9,marginTop:13},
   commentsLink:{paddingHorizontal:11,paddingVertical:9},
-  commentsLinkText:{color:INK.blue,fontWeight:"900",fontSize:12},
+  commentsLinkText:{color:INK.readoutSoft,fontWeight:"600",fontSize:TYPE.body.sizes.sm},
+
   scrapbookTabRow:{marginTop:26,maxHeight:52},
   scrapbookTabContent:{gap:7},
-  scrapbookTab:{backgroundColor:INK.card,borderColor:INK.hair,borderWidth:1,borderRadius:20,paddingHorizontal:15,paddingVertical:11},
-  scrapbookTabActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  scrapbookTabText:{color:INK.inkSoft,fontWeight:"900",fontSize:13},
-  scrapbookTabTextActive:{color:INK.card},
-  mediaTabRow:{flexDirection:"row",backgroundColor:INK.card,borderRadius:13,padding:4,marginTop:28,marginBottom:12},
-  mediaTab:{flex:1,padding:11,borderRadius:10,alignItems:"center"},
-  mediaTabActive:{backgroundColor:INK.blue},
-  mediaTabText:{color:INK.inkSoft,fontWeight:"900"},
-  mediaTabTextActive:{color:INK.ink},
-  videoCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,overflow:"hidden",marginBottom:12},
-  videoPoster:{height:165,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  scrapbookTab:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.pill,
+    paddingHorizontal:15,
+    paddingVertical:11
+  },
+  scrapbookTabActive:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  scrapbookTabText:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase"
+  },
+  scrapbookTabTextActive:{color:INK.readout},
+
+  mediaTabRow:{
+    flexDirection:"row",
+    backgroundColor:INK.inset,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:4,
+    marginTop:28,
+    marginBottom:12
+  },
+  mediaTab:{flex:1,padding:11,borderRadius:SHAPE.radius.control,alignItems:"center"},
+  mediaTabActive:{backgroundColor:INK.panelRaised},
+  mediaTabText:{color:INK.readoutSoft,fontWeight:"600"},
+  mediaTabTextActive:{color:INK.readout},
+
+  videoCard:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    overflow:"hidden",
+    marginBottom:12
+  },
+  videoPoster:{height:165,backgroundColor:INK.inset,alignItems:"center",justifyContent:"center"},
   videoPosterImage:{width:"100%",height:"100%"},
-  largePlay:{color:INK.ink,fontSize:42},
-  playOverlay:{position:"absolute",width:52,height:52,borderRadius:26,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
-  playOverlayText:{color:INK.ink,fontSize:20,marginLeft:3},
+  largePlay:{color:INK.readout,fontSize:42},
+  playOverlay:{
+    position:"absolute",
+    width:52,
+    height:52,
+    borderRadius:26,
+    backgroundColor:"rgba(11,14,18,0.78)",
+    alignItems:"center",
+    justifyContent:"center"
+  },
+  playOverlayText:{color:INK.readout,fontSize:20,marginLeft:3},
   videoCardBody:{padding:14},
-  videoCardTitle:{color:INK.ink,fontSize:18,fontWeight:"900"},
-  videoCardPlace:{color:INK.inkSoft,fontWeight:"700",marginTop:4},
-  videoCardMeta:{color:INK.inkSoft,fontSize:12,marginTop:5},
-  createMomentWide:{backgroundColor:INK.blue,borderRadius:13,paddingVertical:14,alignItems:"center",marginBottom:12},
-  createMomentWideText:{color:INK.card,fontWeight:"900"},
+  videoCardTitle:{color:INK.readout,fontSize:18,fontWeight:"700"},
+  videoCardPlace:{color:INK.readoutSoft,fontWeight:"600",marginTop:4},
+  videoCardMeta:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    marginTop:5
+  },
+
+  createMomentWide:{
+    backgroundColor:INK.readout,
+    borderRadius:SHAPE.radius.card,
+    paddingVertical:14,
+    alignItems:"center",
+    marginBottom:12
+  },
+  createMomentWideText:{color:INK.ground,fontWeight:"700"},
+
   momentGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},
-  momentCard:{width:"48%",flexGrow:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,overflow:"hidden"},
-  momentMediaWrap:{height:170,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  momentCard:{
+    width:"48%",
+    flexGrow:1,
+    backgroundColor:INK.panel,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    overflow:"hidden"
+  },
+  momentMediaWrap:{height:170,backgroundColor:INK.inset,alignItems:"center",justifyContent:"center"},
   momentImage:{width:"100%",height:"100%"},
-  momentPlay:{position:"absolute",width:44,height:44,borderRadius:22,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
-  momentPlayText:{color:INK.ink,fontSize:17,marginLeft:3},
+  momentPlay:{
+    position:"absolute",
+    width:44,
+    height:44,
+    borderRadius:22,
+    backgroundColor:"rgba(11,14,18,0.78)",
+    alignItems:"center",
+    justifyContent:"center"
+  },
+  momentPlayText:{color:INK.readout,fontSize:17,marginLeft:3},
   momentBody:{padding:10},
-  momentCaption:{color:INK.ink,fontSize:13,fontWeight:"800",lineHeight:18},
-  momentMeta:{color:INK.inkSoft,fontSize:10,marginTop:5},
-  primaryButton:{backgroundColor:INK.blue,padding:16,borderRadius:12,marginTop:15},
-  logoutButton:{backgroundColor:INK.red,padding:16,borderRadius:12,marginTop:25},
-  primaryButtonText:{color:INK.card,fontWeight:"900",textAlign:"center"}
+  momentCaption:{color:INK.readout,fontSize:TYPE.body.sizes.md,fontWeight:"600",lineHeight:18},
+  momentMeta:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.sm,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.sm,
+    marginTop:5
+  },
+
+  primaryButton:{backgroundColor:INK.readout,padding:16,borderRadius:SHAPE.radius.card,marginTop:15},
+  primaryButtonText:{color:INK.ground,fontWeight:"700",textAlign:"center"},
+  // Logging out is not a manager disputing a review, so it is not INK.dispute.
+  // The design system reserves that ink for exactly two jobs and says in as
+  // many words that it is never a generic error colour.
+  logoutButton:{
+    backgroundColor:INK.panel,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    padding:16,
+    borderRadius:SHAPE.radius.card,
+    marginTop:25
+  },
+  logoutText:{color:INK.readout,fontWeight:"700",textAlign:"center"}
 });

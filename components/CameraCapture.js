@@ -445,7 +445,7 @@ const styles=StyleSheet.create({
     color:INK.ground,
     fontWeight:"700",
     fontSize:13,
-    backgroundColor:"rgba(242,85,90,0.92)",
+    backgroundColor:INK.dispute,
     borderRadius:12,
     paddingHorizontal:14,
     paddingVertical:9,
