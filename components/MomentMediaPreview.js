@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from "react";
 import {Image,Platform,StyleSheet,Text,View} from "react-native";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE} from "../utils/tokens";
 
 export default function MomentMediaPreview({asset,mediaType,onPreviewError}){
   const previewUri=asset?.previewUri || asset?.uri || null;
@@ -64,27 +64,61 @@ const webStyles={
     width:"100%",
     height:"300px",
     objectFit:"cover",
-    borderRadius:"13px",
-    backgroundColor:INK.card
+    borderRadius:"10px",
+    backgroundColor:INK.panel
   },
   video:{
     display:"block",
     width:"100%",
     height:"300px",
     objectFit:"contain",
-    borderRadius:"13px",
-    backgroundColor:INK.paper
+    borderRadius:"10px",
+    // A viewfinder ground: the well, not the panel.
+    backgroundColor:INK.inset
   }
 };
 
 const styles=StyleSheet.create({
-  image:{width:"100%",height:300,borderRadius:13,backgroundColor:INK.card},
-  videoFallback:{height:230,borderRadius:13,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  playIcon:{color:INK.ink,fontSize:40},
-  videoTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:9},
-  videoMeta:{color:INK.inkSoft,marginTop:4},
-  failed:{height:220,borderRadius:13,backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,alignItems:"center",justifyContent:"center",padding:22},
-  failedIcon:{width:34,height:34,borderRadius:17,backgroundColor:INK.red,color:INK.ink,fontSize:22,fontWeight:"900",textAlign:"center",lineHeight:34},
-  failedTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:10},
-  failedText:{color:INK.card,textAlign:"center",marginTop:5}
+  image:{width:"100%",height:300,borderRadius:SHAPE.radius.card,backgroundColor:INK.panel},
+  videoFallback:{
+    height:230,
+    borderRadius:SHAPE.radius.card,
+    backgroundColor:INK.inset,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    alignItems:"center",
+    justifyContent:"center"
+  },
+  playIcon:{color:INK.readout,fontSize:40},
+  videoTitle:{color:INK.readout,fontSize:18,fontWeight:"700",marginTop:9},
+  videoMeta:{color:INK.readoutSoft,marginTop:4},
+
+  // TEXT ON A FILLED STATE COLOUR IS DARK. The instrument's inks are bright
+  // colours on a dark housing, which inverts the old print system's rule --
+  // INK.readout on INK.dispute measured 2.86:1, which is a screen nobody can
+  // read. docs/design-system.md's accessibility table: dark `ground` text on
+  // every filled state colour, and scripts/verify-contrast.cjs enforces it.
+  failed:{
+    height:220,
+    borderRadius:SHAPE.radius.card,
+    backgroundColor:INK.dispute,
+    borderColor:INK.dispute,
+    borderWidth:SHAPE.border,
+    alignItems:"center",
+    justifyContent:"center",
+    padding:22
+  },
+  failedIcon:{
+    width:34,
+    height:34,
+    borderRadius:17,
+    backgroundColor:INK.dispute,
+    color:INK.ground,
+    fontSize:22,
+    fontWeight:"700",
+    textAlign:"center",
+    lineHeight:34
+  },
+  failedTitle:{color:INK.ground,fontSize:18,fontWeight:"700",marginTop:10},
+  failedText:{color:INK.ground,textAlign:"center",marginTop:5}
 });
