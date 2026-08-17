@@ -45,13 +45,24 @@ export default function CreateLinkup(){
       <Text style={styles.eyebrow}>MAKE A PLAN</Text>
       <Text style={styles.title}>Create Link-up</Text>
       <Text style={styles.subtitle}>Invite local Explorers to something simple, public and easy to join.</Text>
+      {/* The map's long-press already rounds the spot before it gets here --
+          see components/LivingMapScreen.js's own drop card. This says so in
+          words, so the drop is visible rather than something LinkupForm's own
+          "Approximate location added" line has to be found to notice. */}
+      {!!dropped && (
+        <View style={styles.pinnedBadge}>
+          <Text style={styles.pinnedBadgeText}>📍 Pinned from the map</Text>
+        </View>
+      )}
       {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
-      {allowed && <LinkupForm onSubmit={create} working={working} titleOnly initial={dropped}/>} 
+      {allowed && <LinkupForm onSubmit={create} working={working} titleOnly initial={dropped}/>}
     </ScrollView>
   );
 }
 
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.card}
+  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.card},
+  pinnedBadge:{alignSelf:"flex-start",backgroundColor:INK.blue,borderRadius:99,paddingHorizontal:13,paddingVertical:8,marginTop:14},
+  pinnedBadgeText:{color:INK.card,fontWeight:"800",fontSize:12}
 });
