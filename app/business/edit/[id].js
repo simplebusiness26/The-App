@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import {useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../../services/supabase";
-import LocationPicker from "../../../components/LocationPicker";
+import ListingLocationPicker from "../../../components/ListingLocationPicker";
 import ClassificationPicker from "../../../components/ClassificationPicker";
 import {UNCLASSIFIED} from "../../../utils/taxonomy";
 import {useFeedback} from "../../../context/FeedbackContext";
@@ -161,7 +161,7 @@ export default function EditBusiness(){
       />
       <TextInput style={[styles.input,styles.multiline]} value={description} onChangeText={setDescription} placeholder="Description" multiline/>
 
-      <LocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+      <ListingLocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
 
       <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone"/>
       <TextInput style={styles.input} value={website} onChangeText={setWebsite} placeholder="Website"/>

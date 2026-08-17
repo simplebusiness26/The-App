@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
-import LocationPicker from "../../components/LocationPicker";
+import ListingLocationPicker from "../../components/ListingLocationPicker";
 import ClassificationPicker from "../../components/ClassificationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
 import {UNCLASSIFIED} from "../../utils/taxonomy";
@@ -101,7 +101,7 @@ export default function AddBusiness(){
       />
       <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
 
-      <LocationPicker onChange={setSelectedLocation}/>
+      <ListingLocationPicker onChange={setSelectedLocation}/>
 
       <TextInput style={styles.input} placeholder="Website" value={website} onChangeText={setWebsite}/>
       <TextInput style={styles.input} placeholder="Phone" value={phone} onChangeText={setPhone}/>

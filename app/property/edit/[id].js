@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
-import LocationPicker from "../../../components/LocationPicker";
+import ListingLocationPicker from "../../../components/ListingLocationPicker";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
 import {INK} from "../../../utils/tokens";
@@ -189,7 +189,7 @@ export default function EditProperty(){
         </>
       )}
 
-      <LocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+      <ListingLocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
 
       <Pressable style={styles.button} onPress={save} disabled={saving}>
         {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}

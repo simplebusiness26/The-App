@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
-import LocationPicker from "../../components/LocationPicker";
+import ListingLocationPicker from "../../components/ListingLocationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
 import {INK} from "../../utils/tokens";
 
@@ -80,7 +80,7 @@ export default function AddProperty(){
       <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
       <TextInput style={styles.input} placeholder="Booking URL" value={bookingUrl} onChangeText={setBookingUrl}/>
 
-      <LocationPicker onChange={setSelectedLocation}/>
+      <ListingLocationPicker onChange={setSelectedLocation}/>
 
       <Pressable style={styles.button} onPress={addProperty} disabled={loading}>
         {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Create Property Listing</Text>}

@@ -187,6 +187,10 @@ jest.mock("@maplibre/maplibre-react-native",()=>{
     Map:pass("MapLibreMap"),
     Camera:pass("MapLibreCamera"),
     Marker:pass("MapLibreMarker"),
+    // components/ListingPinMap.js's draggable manager-form pin. Marker (above)
+    // has no drag support in the installed package -- ViewAnnotation is the
+    // component that does, per its own docs.
+    ViewAnnotation:pass("MapLibreViewAnnotation"),
     UserLocation:pass("MapLibreUserLocation"),
     // v11 NAMES. `ShapeSource` was v10's and was the only source name in here,
     // so <GeoJSONSource> and <Layer> resolved to undefined and React refused to
