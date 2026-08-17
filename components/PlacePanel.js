@@ -33,7 +33,7 @@ import {INK} from "../utils/tokens";
 // tap, for the place in front of somebody. See loadPlaceRating in
 // utils/reviews.js.
 
-export default function PlacePanel({place,onClose,onRoute}){
+export default function PlacePanel({place,onClose,onRoute,embedded=false}){
   const [rating,setRating]=useState(null);
 
   useEffect(()=>{
@@ -56,11 +56,21 @@ export default function PlacePanel({place,onClose,onRoute}){
   const hero=heroImageFor(place);
   const summary=summaryFor(place);
   const where=card.detail || place.address || place.location || "";
+  // The review route is one segment inserted into the same route the "Open
+  // profile" button already uses -- /business/b1 -> /business/review/b1 --
+  // so this needs no second lookup table for what a kind is called.
+  const reviewRoute=card.route ? card.route.replace(/\/([^/]+)$/,"/review/$1") : null;
 
   return(
-    <View style={styles.panel}>
+    // `embedded`: components/PinSheet.js's Half/Full content area already
+    // supplies the border, the elevation and the position -- a caller that
+    // draws its own fixed panel on top of that would be two frames around
+    // one card. components/PlacesList.js still renders this as the fixed
+    // corner panel it has always been, for its own screen with no sheet
+    // underneath.
+    <View style={embedded ? styles.embedded : styles.panel}>
       <ScrollView
-        style={styles.scroll}
+        style={embedded ? styles.embeddedScroll : styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
@@ -117,6 +127,19 @@ export default function PlacePanel({place,onClose,onRoute}){
           <Text style={styles.openText}>Open profile</Text>
         </Pressable>
 
+        {/* One tap from the map to the review form -- the map's own quick-
+            action, not only the one on the full listing page. */}
+        {!!reviewRoute && (
+          <Pressable
+            style={styles.review}
+            accessibilityRole="button"
+            accessibilityLabel={`Leave a review for ${place.name || "this place"}`}
+            onPress={()=>router.push(reviewRoute)}
+          >
+            <Text style={styles.reviewText}>Leave a review</Text>
+          </Pressable>
+        )}
+
         {/*
           DIRECTIONS, INSIDE THE SAME PANEL.
           It used to be a separate card at the same bottom corner as the swipe
@@ -140,7 +163,15 @@ const styles=StyleSheet.create({
     position:"absolute",left:12,right:12,bottom:12,zIndex:20,maxHeight:"62%",
     backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16
   },
+  // No position, no border, no cap -- components/PinSheet.js's own sheet
+  // already draws all three, and its content area already scrolls.
+  embedded:{flex:1},
   scroll:{flexGrow:0},
+  // A bounded ScrollView, unlike the standalone panel's shrink-to-fit one --
+  // components/PinSheet.js gives this a fixed height per snap level, and
+  // content taller than Peek or Half must scroll inside it, not spill past
+  // the sheet's own overflow:hidden edge.
+  embeddedScroll:{flex:1},
   content:{padding:14},
   head:{flexDirection:"row",alignItems:"flex-start",gap:12},
   hero:{width:84,height:84,borderRadius:12,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.hair},
@@ -161,5 +192,10 @@ const styles=StyleSheet.create({
     marginTop:12,minHeight:44,justifyContent:"center",alignItems:"center",
     borderRadius:99,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.paper
   },
-  openText:{color:INK.ink,fontWeight:"900",fontSize:14}
+  openText:{color:INK.ink,fontWeight:"900",fontSize:14},
+  review:{
+    marginTop:9,minHeight:40,justifyContent:"center",alignItems:"center",
+    borderRadius:99,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card
+  },
+  reviewText:{color:INK.ink,fontWeight:"800",fontSize:13}
 });
