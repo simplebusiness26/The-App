@@ -1,11 +1,11 @@
 import React,{useState} from "react";
-import {View,Text,Pressable,StyleSheet,Modal} from "react-native";
+import {Platform,View,Text,Pressable,StyleSheet,Modal} from "react-native";
 import Svg,{Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import CameraCapture from "./CameraCapture";
 import ReviewComposer from "./ReviewComposer";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
 
 // The Create hub. FINAL_PRODUCT_CONTRACT.md: "Global floating action: Create
 // -- reachable identically from any screen, not gesture-dependent, not
@@ -40,8 +40,33 @@ import {INK} from "../utils/tokens";
 // them, would be a second control offering the same eventual screen with
 // nothing behind it yet -- the placeholder-UI RULES.md forbids. Check in,
 // Scan a code and Review need no photo, so they get real, immediate chips.
+// Native matches a single family name, not a CSS stack -- see the same note in
+// components/HappeningSegments.js.
+const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
+
 const FAB_SIZE=58;
 const FAB_BOTTOM=78;   // Clears the 62px tab bar plus its own breathing room.
+
+// WHY THE BUTTON MOVED, AND WHAT SCREENS OWE IT.
+//
+// It used to sit dead centre (left:"50%", marginLeft:-FAB_SIZE/2), floating
+// over whatever happened to be underneath. In real screenshots that was
+// "Create account", a profile's Following stat and its "Find Explorers"
+// button, and a section heading. Worse, a raised control in the centre above
+// the tab bar re-creates the exact position the new architecture deliberately
+// removed when it took the raised centre button out of components/TabBar.js.
+//
+// So it is bottom-RIGHT now. That fixes the collisions the button causes by
+// where it sits; it cannot fix the ones it causes by existing, because a
+// floating button always covers the last few points of a scroll. That is what
+// this export is for: a scrollable screen adds CREATE_HUB_CLEARANCE to its
+// bottom content padding, so content can always be scrolled clear of the
+// button rather than trapped under it.
+//
+//   contentContainerStyle={{paddingBottom:24+CREATE_HUB_CLEARANCE}}
+//
+// FAB_SIZE plus a gap the same order as the screen gutter.
+export const CREATE_HUB_CLEARANCE=FAB_SIZE+24;
 
 export default function CreateHub(){
   const pathname=usePathname();
@@ -106,7 +131,7 @@ export default function CreateHub(){
 
           {/* Floats over whichever view is active -- the same "chip on a
               transparent ground" language components/Header.js uses, so it
-              reads over a live viewfinder as well as a paper-coloured form. */}
+              reads over a live viewfinder as well as a panel-coloured form. */}
           <View style={[styles.topBar,{paddingTop:insets.top+10}]} pointerEvents="box-none">
             <Text style={styles.topLabel}>{view==="camera" ? "Create" : "Review"}</Text>
             <Pressable
@@ -151,8 +176,8 @@ function Chip({label,onPress}){
 function PlusIcon(){
   return (
     <Svg width={26} height={26} viewBox="0 0 16 16">
-      <Path d="M8 2.4v11.2" stroke={INK.card} strokeWidth={2} strokeLinecap="round"/>
-      <Path d="M2.4 8h11.2" stroke={INK.card} strokeWidth={2} strokeLinecap="round"/>
+      <Path d="M8 2.4v11.2" stroke={INK.readout} strokeWidth={1.6} strokeLinecap="round"/>
+      <Path d="M2.4 8h11.2" stroke={INK.readout} strokeWidth={1.6} strokeLinecap="round"/>
     </Svg>
   );
 }
@@ -165,27 +190,28 @@ function normalise(pathname){
 const styles=StyleSheet.create({
   fab:{
     position:"absolute",
-    alignSelf:"center",
-    left:"50%",
-    marginLeft:-FAB_SIZE/2,
+    // Bottom-RIGHT. See the note beside CREATE_HUB_CLEARANCE above for why it
+    // is no longer centred. `bottom` is still set inline from FAB_BOTTOM plus
+    // the safe-area inset, so it clears the tab bar on every device.
+    right:16,
     width:FAB_SIZE,
     height:FAB_SIZE,
     borderRadius:FAB_SIZE/2,
-    backgroundColor:INK.ink,
-    borderWidth:2,
-    borderColor:INK.ink,
+    // A raised control on the housing: one surface step up, a hairline edge and
+    // the 1px bevel highlight. The state inks are not spent on chrome.
+    backgroundColor:INK.panelRaised,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
     alignItems:"center",
     justifyContent:"center",
-    // Hard offset shadow, never a blur -- design-system.md's elevation rule.
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:6,
+    // Soft ambient shadow, not the old hard print offset. The design system
+    // reserves this for genuinely floating things and names the Create action
+    // as one of them.
+    ...SHAPE.shadow.floating,
     zIndex:30
   },
-  hub:{flex:1,backgroundColor:INK.ink},
-  reviewWrap:{flex:1,backgroundColor:INK.paper},
+  hub:{flex:1,backgroundColor:INK.inset},
+  reviewWrap:{flex:1,backgroundColor:INK.ground},
   topBar:{
     position:"absolute",
     left:0,
@@ -197,13 +223,14 @@ const styles=StyleSheet.create({
     paddingHorizontal:14
   },
   topLabel:{
-    color:INK.card,
-    fontWeight:"800",
-    fontSize:13,
-    letterSpacing:0.6,
+    color:INK.readout,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.lg,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.lg,
     textTransform:"uppercase",
-    backgroundColor:"rgba(22,24,28,0.55)",
-    borderRadius:99,
+    // Over a live viewfinder, so a smoked-glass ground rather than a panel.
+    backgroundColor:"rgba(15,18,22,0.62)",
+    borderRadius:SHAPE.radius.pill,
     paddingHorizontal:12,
     paddingVertical:6,
     overflow:"hidden"
@@ -214,11 +241,11 @@ const styles=StyleSheet.create({
     borderRadius:20,
     alignItems:"center",
     justifyContent:"center",
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong
   },
-  closeText:{fontSize:22,fontWeight:"900",color:INK.ink,lineHeight:24},
+  closeText:{fontSize:22,fontWeight:"700",color:INK.readout,lineHeight:24},
   tray:{
     position:"absolute",
     left:0,
@@ -230,14 +257,14 @@ const styles=StyleSheet.create({
     paddingHorizontal:14
   },
   chip:{
-    borderWidth:2,
-    borderColor:INK.card,
-    borderRadius:99,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    borderRadius:SHAPE.radius.pill,
     paddingHorizontal:14,
     paddingVertical:8,
     minHeight:36,
     justifyContent:"center",
-    backgroundColor:"rgba(22,24,28,0.55)"
+    backgroundColor:"rgba(15,18,22,0.62)"
   },
-  chipText:{color:INK.card,fontWeight:"800",fontSize:12.5}
+  chipText:{color:INK.readout,fontSize:TYPE.body.sizes.sm,fontWeight:"600"}
 });
