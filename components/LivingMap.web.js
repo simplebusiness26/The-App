@@ -260,6 +260,26 @@ export default function LivingMap({
   const drawn=useRef([]);
   const config=mapConfiguration();
 
+  // THE STYLE IS AN OBJECT NOW, NOT A URL.
+  //
+  // utils/mapProvider.js's DEFAULT_STYLE is assets/map/instrument-dark.json --
+  // a full MapLibre style spec, because the provider publishes only light
+  // styles and the Field Instrument system needs a dark map. maplibre-gl's
+  // `style` option takes a StyleSpecification as happily as a URL, so the
+  // constructor call below is unchanged.
+  //
+  // The EFFECT DEPENDENCY is the part that had to change. It was
+  // `[config.styleUrl]`, and the effect's cleanup calls map.remove() -- so the
+  // moment that value stops being referentially stable, the whole MapLibre
+  // instance is destroyed and rebuilt on every render. It happens to be stable
+  // today (the JSON is a module import, so it is the same object each time),
+  // which means the bug would not appear now and would appear the first time
+  // anyone built the style rather than importing it. So the dependency is a
+  // primitive derived from it instead, and cannot churn.
+  const styleKey=typeof config.styleUrl==="string"
+    ? config.styleUrl
+    : `style:${config.styleUrl?.name || "inline"}`;
+
   // THE CALLBACKS ARE HELD IN A REF, AND THE MAP IS BUILT ONCE.
   //
   // They used to be in the setup effect's dependency list. Every one of them
@@ -358,12 +378,13 @@ export default function LivingMap({
       map.current?.remove();
       map.current=null;
     };
-    // The style URL only. `centre` and `zoom` are the STARTING position and
-    // re-reading them would drag the map back to Brighton on every change --
-    // the same reason the native renderer uses initialViewState rather than a
-    // controlled camera.
+    // The style identity only, as a primitive -- see the note beside styleKey.
+    // `centre` and `zoom` are the STARTING position and re-reading them would
+    // drag the map back to Brighton on every change, which is the same reason
+    // the native renderer uses initialViewState rather than a controlled
+    // camera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[config.styleUrl]);
+  },[styleKey]);
 
   // The route is a STYLE LAYER, not a marker -- a line of a thousand points
   // cannot be a DOM element the way a pin can. Source and layers are created

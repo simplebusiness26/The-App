@@ -8,6 +8,7 @@ import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM} from "../utils/mapZoom";
 import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
 import {heatmapPaint} from "../utils/markers";
+import {SHAPE} from "../utils/tokens";
 
 // The native renderer: MapLibre on Android and iOS.
 //
@@ -103,6 +104,20 @@ function MapLibreMap({
   return(
     <Map
       style={[styles.map,style]}
+      /*
+        AN OBJECT, NOT A URL. utils/mapProvider.js's DEFAULT_STYLE is now
+        assets/map/instrument-dark.json -- a full MapLibre style spec, because
+        the provider publishes only light styles and the Field Instrument
+        system needs a dark map.
+
+        Checked against the installed package rather than assumed: v11's Map
+        declares `mapStyle: string | StyleSpecification` and its own
+        nativeProps memo does `typeof mapStyle === "object" ?
+        JSON.stringify(mapStyle) : mapStyle` before handing it to the native
+        view (node_modules/@maplibre/maplibre-react-native/src/components/map/
+        Map.tsx). So an object is a first-class input here and this call is
+        unchanged.
+      */
       mapStyle={config.styleUrl}
       /*
         WHERE THE MAP IS LOOKING, REPORTED UP.
@@ -385,7 +400,8 @@ const styles=StyleSheet.create({
   // Shape only. The colour comes from the cell, which utils/markers.js decided
   // -- this file is not allowed to know what yellow means, for the same reason
   // it is not allowed to know what a pin's ink means.
-  heat:{borderWidth:1},
-  cluster:{borderWidth:2,alignItems:"center",justifyContent:"center"},
-  clusterCount:{fontWeight:"900",fontSize:13}
+  heat:{borderWidth:SHAPE.border},
+  // 1px, with the rest of the system. The 2px print register is gone.
+  cluster:{borderWidth:SHAPE.border,alignItems:"center",justifyContent:"center"},
+  clusterCount:{fontWeight:"700",fontSize:13}
 });

@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useMemo,useState} from "react";
-import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
+import {Platform,View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
 import {router,useLocalSearchParams} from "expo-router";
 import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
@@ -27,7 +27,7 @@ import {markerForMemory} from "../utils/markers";
 import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {useHeaderClearance} from "./Header";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
 
 // The map screen, once and for both platforms.
 //
@@ -584,53 +584,148 @@ function PinPeekPreview({place}){
   );
 }
 
+// Native matches a single family name, not a CSS stack -- see the same note in
+// components/HappeningSegments.js.
+const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
+
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},
+  // The housing. The map is the only lit thing on this screen, which is the
+  // whole point of the Field Instrument system -- so every panel that floats
+  // over it stays quiet and hairline-edged, and none of them borrows a state
+  // ink. Those belong to the pins.
+  container:{flex:1,backgroundColor:INK.ground},
   // Above the card sheet, out of the way of the search box.
   directions:{position:"absolute",left:12,right:12,bottom:12,zIndex:15},
   timeline:{position:"absolute",left:12,right:12,bottom:12,zIndex:14},
-  reveal:{position:"absolute",left:12,right:12,bottom:12,zIndex:16,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:12},
+
+  // Panels that genuinely float over the map get the soft ambient shadow; the
+  // hard 3px print offset is gone with the rest of the riso system.
+  reveal:{
+    position:"absolute",
+    left:12,
+    right:12,
+    bottom:12,
+    zIndex:16,
+    backgroundColor:INK.panel,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.sheet,
+    padding:12,
+    ...SHAPE.shadow.floating
+  },
   revealHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  revealTitle:{color:INK.ink,fontWeight:"900",fontSize:15},
-  revealClose:{color:INK.ink,fontWeight:"900",fontSize:18},
-  revealEmpty:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:8},
+  revealTitle:{color:INK.readout,fontWeight:"700",fontSize:15},
+  revealClose:{color:INK.readoutSoft,fontWeight:"700",fontSize:18},
+  revealEmpty:{color:INK.readoutSoft,fontSize:12,lineHeight:18,marginTop:8},
   revealRow:{gap:8,paddingTop:10,paddingRight:4},
-  revealCard:{width:150,minHeight:56,justifyContent:"center",backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:11,padding:10},
-  revealCardTitle:{color:INK.ink,fontWeight:"800",fontSize:12,lineHeight:17},
+  revealCard:{
+    width:150,
+    minHeight:56,
+    justifyContent:"center",
+    backgroundColor:INK.panelRaised,
+    borderColor:INK.hairline,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    padding:10
+  },
+  revealCardTitle:{color:INK.readout,fontWeight:"600",fontSize:12,lineHeight:17},
+
   top:{position:"absolute",width:"100%",zIndex:10,padding:10},
+  // An input is a well, not a panel.
   search:{
-    backgroundColor:INK.card,padding:15,borderRadius:10,
-    borderWidth:2,borderColor:INK.ink,color:INK.ink
+    backgroundColor:INK.inset,
+    padding:15,
+    borderRadius:SHAPE.radius.control,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    color:INK.readout
   },
   filters:{marginTop:9,maxHeight:44},
   filterButton:{
-    backgroundColor:INK.card,paddingHorizontal:13,paddingVertical:10,marginRight:7,
-    borderRadius:20,borderWidth:2,borderColor:INK.ink
+    backgroundColor:INK.panel,
+    paddingHorizontal:13,
+    paddingVertical:10,
+    marginRight:7,
+    borderRadius:SHAPE.radius.pill,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline
   },
-  selectedFilter:{backgroundColor:INK.ink,borderColor:INK.ink},
-  dropCard:{position:"absolute",left:14,right:14,bottom:96,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16,padding:16,zIndex:30},
-  dropTitle:{color:INK.ink,fontSize:17,fontWeight:"900"},
-  dropText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:6},
+  // Selection is a surface step and a stronger edge, never a state ink.
+  selectedFilter:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  filterText:{color:INK.readoutSoft,fontWeight:"600"},
+  selectedFilterText:{color:INK.readout,fontWeight:"600"},
+
+  dropCard:{
+    position:"absolute",
+    left:14,
+    right:14,
+    bottom:96,
+    backgroundColor:INK.panel,
+    borderColor:INK.hairlineStrong,
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.sheet,
+    padding:16,
+    zIndex:30,
+    ...SHAPE.shadow.floating
+  },
+  dropTitle:{color:INK.readout,fontSize:17,fontWeight:"700"},
+  dropText:{color:INK.readoutSoft,fontSize:13,lineHeight:19,marginTop:6},
   dropRow:{flexDirection:"row",gap:10,marginTop:14},
-  dropCancel:{flex:1,minHeight:44,borderRadius:12,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
-  dropCancelText:{color:INK.ink,fontWeight:"900"},
-  dropGo:{flex:1,minHeight:44,borderRadius:12,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  dropGoText:{color:INK.card,fontWeight:"900"},
-  filterText:{fontWeight:"600",color:INK.ink},
-  selectedFilterText:{color:INK.card,fontWeight:"bold"},
+  dropCancel:{
+    flex:1,
+    minHeight:44,
+    borderRadius:SHAPE.radius.card,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    alignItems:"center",
+    justifyContent:"center"
+  },
+  dropCancelText:{color:INK.readout,fontWeight:"600"},
+  // The lit control is the readout itself. INK.exists would say "a place
+  // exists here", which is a claim about the map, not about a button.
+  dropGo:{
+    flex:1,
+    minHeight:44,
+    borderRadius:SHAPE.radius.card,
+    backgroundColor:INK.readout,
+    alignItems:"center",
+    justifyContent:"center"
+  },
+  dropGoText:{color:INK.ground,fontWeight:"700"},
+
   switch:{
-    alignSelf:"flex-start",borderWidth:2,borderColor:INK.ink,borderRadius:99,
-    paddingHorizontal:16,paddingVertical:8,backgroundColor:INK.card,marginBottom:10
+    alignSelf:"flex-start",
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    borderRadius:SHAPE.radius.pill,
+    paddingHorizontal:16,
+    paddingVertical:8,
+    backgroundColor:INK.panelRaised,
+    marginBottom:10
   },
-  switchText:{color:INK.ink,fontWeight:"800"},
+  switchText:{color:INK.readout,fontWeight:"600"},
+
   peek:{paddingTop:2},
-  peekName:{color:INK.ink,fontWeight:"900",fontSize:17},
-  peekType:{color:INK.inkSoft,fontWeight:"700",fontSize:12,marginTop:3},
-  peekWhere:{color:INK.inkSoft,fontSize:12,marginTop:8},
-  notice:{
-    backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,
-    padding:14,marginBottom:10
+  peekName:{color:INK.readout,fontWeight:"700",fontSize:17},
+  // What kind of place this is -- a category the app assigned, so it is mono.
+  peekType:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    marginTop:3
   },
-  noticeTitle:{color:INK.ink,fontWeight:"800",fontSize:15},
-  noticeText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:4}
+  peekWhere:{color:INK.readoutSoft,fontSize:12,marginTop:8},
+
+  notice:{
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card,
+    padding:14,
+    marginBottom:10
+  },
+  noticeTitle:{color:INK.readout,fontWeight:"700",fontSize:15},
+  noticeText:{color:INK.readoutSoft,fontSize:13,lineHeight:19,marginTop:4}
 });
