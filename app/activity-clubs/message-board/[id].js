@@ -14,24 +14,6 @@ import {supabase} from "../../../services/supabase";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {INK} from "../../../utils/tokens";
 
-// Seven pastels, one per poster, so a thread is readable at a glance. They
-// were seven colours outside the token table -- a private palette that existed
-// only here, which is exactly what "never introduce a colour outside this list"
-// forbids. The same job is done by alternating the two surfaces the table
-// already has, and who said what is carried by the name above each message
-// rather than by a colour nobody has a key to.
-const MESSAGE_COLOURS=[INK.card,INK.paper];
-
-function colourForUser(userId){
-  const value=String(userId || "member");
-  let hash=0;
-  for(let index=0;index<value.length;index+=1){
-    hash=((hash<<5)-hash)+value.charCodeAt(index);
-    hash|=0;
-  }
-  return MESSAGE_COLOURS[Math.abs(hash)%MESSAGE_COLOURS.length];
-}
-
 export default function ActivityClubMessageBoard(){
   const {id}=useLocalSearchParams();
   const {showFeedback}=useFeedback();
@@ -154,7 +136,7 @@ export default function ActivityClubMessageBoard(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
   }
 
   if(error || !allowed){
@@ -184,19 +166,19 @@ export default function ActivityClubMessageBoard(){
           const ownMessage=item.user_id===user?.id;
 
           return(
-            <View key={item.id} style={[styles.messageCard,{backgroundColor:colourForUser(item.user_id)},ownMessage ? styles.ownMessage : styles.otherMessage]}>
+            <View key={item.id} style={[styles.messageCard,ownMessage ? styles.ownMessage : styles.otherMessage]}>
               <View style={styles.authorRow}>
                 {author?.profile_photo ? (
                   <Image source={{uri:author.profile_photo}} style={styles.avatar}/>
                 ) : (
-                  <View style={styles.avatarFallback}><Text style={styles.avatarInitial}>{authorName.slice(0,1).toUpperCase()}</Text></View>
+                  <View style={[styles.avatarFallback,ownMessage && styles.avatarFallbackOwn]}><Text style={[styles.avatarInitial,ownMessage && styles.avatarInitialOwn]}>{authorName.slice(0,1).toUpperCase()}</Text></View>
                 )}
                 <View style={styles.authorTextWrap}>
-                  <Text style={styles.author}>{authorName}</Text>
-                  <Text style={styles.time}>{new Date(item.created_at).toLocaleString()}</Text>
+                  <Text style={[styles.author,ownMessage && styles.authorOwn]}>{authorName}</Text>
+                  <Text style={[styles.time,ownMessage && styles.timeOwn]}>{new Date(item.created_at).toLocaleString()}</Text>
                 </View>
               </View>
-              <Text style={styles.body}>{item.message}</Text>
+              <Text style={[styles.body,ownMessage && styles.bodyOwn]}>{item.message}</Text>
             </View>
           );
         })}
@@ -212,6 +194,8 @@ export default function ActivityClubMessageBoard(){
   );
 }
 
+// Same visual system as Messages (app/messages/[id].js): a dark ink bubble
+// for what you wrote, a card bubble bordered in ink for everyone else's.
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},header:{padding:20,backgroundColor:INK.card,borderBottomWidth:1,borderColor:INK.hair},title:{fontSize:24,fontWeight:"bold"},subtitle:{color:INK.inkSoft,marginTop:5},messageList:{flex:1},messageContent:{padding:16,paddingBottom:30},emptyBox:{backgroundColor:INK.card,padding:16,borderRadius:12,borderWidth:1,borderColor:INK.hair},messageCard:{padding:14,borderRadius:16,borderWidth:1,borderColor:"rgba(0,0,0,0.08)",marginBottom:12,maxWidth:"88%"},ownMessage:{alignSelf:"flex-end"},otherMessage:{alignSelf:"flex-start"},authorRow:{flexDirection:"row",alignItems:"center"},avatar:{width:36,height:36,borderRadius:18,backgroundColor:INK.hair},avatarFallback:{width:36,height:36,borderRadius:18,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},avatarInitial:{color:INK.card,fontWeight:"bold"},authorTextWrap:{marginLeft:9,flex:1},author:{fontWeight:"bold",fontSize:15},body:{fontSize:16,lineHeight:22,marginTop:10},time:{fontSize:10,color:INK.inkSoft,marginTop:2},composer:{padding:12,backgroundColor:INK.card,borderTopWidth:1,borderColor:INK.hair},input:{borderWidth:1,borderColor:INK.hair,borderRadius:12,padding:12,minHeight:54,maxHeight:120},sendButton:{backgroundColor:INK.blue,padding:14,borderRadius:10,marginTop:8},buttonText:{color:INK.card,fontWeight:"bold",textAlign:"center"},lock:{fontSize:42},errorTitle:{fontSize:24,fontWeight:"bold",marginTop:12},errorText:{textAlign:"center",color:INK.ink,lineHeight:22,marginTop:8},backButton:{backgroundColor:INK.ink,padding:14,borderRadius:10,marginTop:18,width:"100%"}
+  container:{flex:1,backgroundColor:INK.paper},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.paper},header:{padding:20,backgroundColor:INK.card,borderBottomWidth:2,borderColor:INK.ink},title:{fontSize:24,fontWeight:"900",color:INK.ink},subtitle:{color:INK.inkSoft,marginTop:5},messageList:{flex:1},messageContent:{padding:16,paddingBottom:30},emptyBox:{backgroundColor:INK.card,padding:16,borderRadius:12,borderWidth:2,borderColor:INK.ink},messageCard:{padding:14,borderRadius:16,borderWidth:2,borderColor:INK.ink,marginBottom:12,maxWidth:"88%",backgroundColor:INK.card},ownMessage:{alignSelf:"flex-end",backgroundColor:INK.ink},otherMessage:{alignSelf:"flex-start",backgroundColor:INK.card},authorRow:{flexDirection:"row",alignItems:"center"},avatar:{width:36,height:36,borderRadius:18,backgroundColor:INK.hair},avatarFallback:{width:36,height:36,borderRadius:18,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},avatarFallbackOwn:{borderColor:INK.card},avatarInitial:{color:INK.ink,fontWeight:"800"},avatarInitialOwn:{color:INK.card},authorTextWrap:{marginLeft:9,flex:1},author:{fontWeight:"800",fontSize:15,color:INK.ink},authorOwn:{color:INK.card},body:{fontSize:16,lineHeight:22,marginTop:10,color:INK.ink},bodyOwn:{color:INK.card},time:{fontSize:10,color:INK.inkSoft,marginTop:2},timeOwn:{color:INK.card},composer:{padding:12,backgroundColor:INK.card,borderTopWidth:2,borderColor:INK.ink},input:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:12,minHeight:54,maxHeight:120,color:INK.ink,backgroundColor:INK.paper},sendButton:{backgroundColor:INK.ink,padding:14,borderRadius:10,marginTop:8},buttonText:{color:INK.card,fontWeight:"800",textAlign:"center"},lock:{fontSize:42},errorTitle:{fontSize:24,fontWeight:"900",marginTop:12,color:INK.ink},errorText:{textAlign:"center",color:INK.ink,lineHeight:22,marginTop:8},backButton:{backgroundColor:INK.ink,padding:14,borderRadius:10,marginTop:18,width:"100%"}
 });

@@ -144,7 +144,7 @@ export default function EditActivityClub(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large"/></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
   }
 
   if(error){

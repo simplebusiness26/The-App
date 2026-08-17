@@ -110,5 +110,5 @@ export default function AddActivityClub(){
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},title:{fontSize:30,fontWeight:"bold"},subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:INK.card,fontWeight:"bold"}
+  container:{flex:1,backgroundColor:INK.paper},content:{padding:20,paddingBottom:50},title:{fontSize:30,fontWeight:"900",color:INK.ink},subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,color:INK.ink,borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},button:{backgroundColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:INK.card,fontWeight:"800"}
 });

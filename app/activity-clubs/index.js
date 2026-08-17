@@ -91,7 +91,7 @@ export default function ActivityClubs(){
         onChangeText={setQuery}
       />
 
-      {loading && <ActivityIndicator size="large" style={styles.loader}/>} 
+      {loading && <ActivityIndicator size="large" color={INK.ink} style={styles.loader}/>}
 
       {!!error && (
         <View style={styles.notice}>
@@ -138,24 +138,30 @@ export default function ActivityClubs(){
   );
 }
 
+// Riso tokens only. Open/full is a mono status label, not a colour -- see the
+// UI spec's own note: a third pin colour was never on the table, and this
+// list should not invent one behind the map's back either.
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
+  container:{flex:1,backgroundColor:INK.paper},
   content:{padding:20,paddingBottom:50},
-  title:{fontSize:32,fontWeight:"bold"},
-  subtitle:{fontSize:16,color:INK.ink,lineHeight:23,marginTop:8,marginBottom:18},
-  search:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:12,padding:15,marginBottom:18},
+  title:{fontSize:32,fontWeight:"900",color:INK.ink},
+  subtitle:{fontSize:15,color:INK.inkSoft,lineHeight:22,marginTop:8,marginBottom:18},
+  search:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,marginBottom:18,color:INK.ink},
   loader:{marginTop:40},
-  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:1,borderColor:INK.hair},
-  noticeTitle:{fontSize:18,fontWeight:"bold",marginBottom:7},
+  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:2,borderColor:INK.ink},
+  noticeTitle:{fontSize:18,fontWeight:"800",marginBottom:7,color:INK.ink},
   noticeText:{color:INK.ink,lineHeight:21},
-  card:{backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:1,borderColor:INK.ink,marginBottom:16},
+  card:{
+    backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:2,borderColor:INK.ink,marginBottom:16,
+    shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0
+  },
   badgeRow:{flexDirection:"row",justifyContent:"space-between"},
-  category:{backgroundColor:INK.card,color:INK.blue,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
-  status:{backgroundColor:INK.card,paddingHorizontal:10,paddingVertical:6,borderRadius:20,fontWeight:"bold",fontSize:12},
-  clubName:{fontSize:23,fontWeight:"bold",marginTop:14},
-  location:{color:INK.ink,marginTop:6},
+  category:{borderWidth:2,borderColor:INK.ink,color:INK.ink,paddingHorizontal:10,paddingVertical:5,borderRadius:20,fontWeight:"800",fontSize:11},
+  status:{borderWidth:2,borderColor:INK.hair,color:INK.inkSoft,paddingHorizontal:10,paddingVertical:5,borderRadius:20,fontWeight:"800",fontSize:11,textTransform:"uppercase",letterSpacing:0.6},
+  clubName:{fontSize:23,fontWeight:"800",marginTop:14,color:INK.ink},
+  location:{color:INK.inkSoft,marginTop:6},
   description:{color:INK.ink,lineHeight:21,marginTop:12},
   statsRow:{flexDirection:"row",justifyContent:"space-between",marginTop:16},
-  stat:{fontWeight:"600",color:INK.ink,fontSize:13},
-  viewText:{fontWeight:"bold",color:INK.blue,marginTop:16}
+  stat:{fontWeight:"800",color:INK.inkSoft,fontSize:12},
+  viewText:{fontWeight:"800",color:INK.ink,marginTop:16}
 });
