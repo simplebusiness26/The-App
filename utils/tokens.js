@@ -50,7 +50,7 @@ export const INK = {
   // ---- Text: the backlit readout ---------------------------------------
   readout: "#E8EDF2",       // primary text
   readoutSoft: "#97A3B2",   // secondary text, metadata
-  readoutFaint: "#616E7D",  // tertiary, mono captions, disabled
+  readoutFaint: "#8390A0",  // tertiary, mono captions, disabled
 
   // ---- State inks: what a place IS -------------------------------------
   // Cool = static fact, warm = live and temporal. Only these three appear on

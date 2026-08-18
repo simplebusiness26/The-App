@@ -60,7 +60,7 @@ border anywhere is a bug.
 |---|---|---|
 | `readout` | `#E8EDF2` | Primary text |
 | `readoutSoft` | `#97A3B2` | Secondary text, metadata |
-| `readoutFaint` | `#616E7D` | Tertiary, mono captions, disabled |
+| `readoutFaint` | `#8390A0` | Tertiary, mono captions, disabled |
 
 Slightly cool white, never pure `#FFF` — an instrument's readout is lit, not
 blown out.

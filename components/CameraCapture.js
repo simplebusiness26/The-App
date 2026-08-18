@@ -556,15 +556,14 @@ const styles=StyleSheet.create({
   // the aperture rings and progress ring are centred on the same point.
   shutterWell:{width:118,height:118,alignItems:"center",justifyContent:"center"},
   hintWrap:{position:"absolute",left:16,right:16,alignItems:"center"},
+  // Quiet. The readouts above already say what the instrument is set to, so
+  // this is a one-line instruction, not a banner competing with them.
   hint:{
-    color:INK.readout,
-    fontSize:12,
-    fontWeight:"600",
-    backgroundColor:"rgba(15,18,22,0.72)",
-    borderRadius:99,
-    paddingHorizontal:14,
-    paddingVertical:7,
-    overflow:"hidden",
+    color:INK.readoutSoft,
+    fontSize:11.5,
+    fontWeight:"400",
+    paddingHorizontal:12,
+    paddingVertical:5,
     textAlign:"center"
   },
 
@@ -594,8 +593,18 @@ const styles=StyleSheet.create({
     paddingHorizontal:24,
     paddingVertical:20
   },
-  sideButton:{minWidth:88,minHeight:44,alignItems:"center",justifyContent:"center"},
-  sideText:{color:INK.readout,fontWeight:"600",fontSize:13},
+  // Side controls are panel chips, not shouted labels -- the shutter is the one
+  // thing on this face that should draw the eye.
+  sideButton:{
+    minWidth:88,minHeight:44,alignItems:"center",justifyContent:"center",
+    backgroundColor:"rgba(11,14,18,0.62)",
+    borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,paddingHorizontal:10
+  },
+  sideText:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:1
+  },
   shutter:{
     width:74,
     height:74,
