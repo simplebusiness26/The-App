@@ -77,7 +77,7 @@ export default function AddProperty(){
         <ScreenTitle
           eyebrow="NEW STAY"
           title="Add a property"
-          meta="A place people can book. It goes on the map and into your manager dashboard."
+          meta="Somewhere people can book. It goes on the map and into your manager dashboard."
         />
 
         <SectionRule label="The listing"/>

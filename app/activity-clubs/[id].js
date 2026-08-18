@@ -3,6 +3,7 @@ import {View,Text,TextInput,StyleSheet,Alert} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {loadPlaceReviews} from "../../utils/reviews";
+import {shortClock,needsFullDate} from "../../utils/clock";
 import {useFeedback} from "../../context/FeedbackContext";
 import {CLUB_TYPE_LABEL} from "../../utils/markers";
 import {INK,TYPE} from "../../utils/tokens";
@@ -57,30 +58,6 @@ function formatDate(value){
 // stays under it -- the countdown tells you whether to care, the date tells you
 // what to write down.
 //
-// Written here rather than shared because utils/ is not this packet's to edit;
-// app/events/index.js holds the same shape for events. One of the two should
-// move into utils/ next time that file is open.
-function sessionClock(value,now=Date.now()){
-  if(!value) return "";
-  const date=new Date(value);
-  if(Number.isNaN(date.getTime())) return "";
-
-  const ms=date.getTime()-now;
-  const time=date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-
-  if(ms<=0) return "NOW";
-  if(ms<60*60*1000) return `IN ${Math.max(1,Math.round(ms/60000))}M`;
-  if(ms<6*60*60*1000) return `IN ${Math.round(ms/3600000)}H`;
-
-  const today=new Date(now);
-  if(date.toDateString()===today.toDateString()){
-    return `${date.getHours()>=17?"TONIGHT":"TODAY"} ${time}`;
-  }
-
-  const day=date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
-  return `${day.toUpperCase()} ${time}`;
-}
-
 function formatSubmittedDate(value){
   if(!value) return "";
   return new Date(value).toLocaleString([],{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
@@ -411,10 +388,12 @@ export default function ActivityClubProfile(){
               tone="scheduled"
               glyph="clock"
               title={session.title}
-              meta={sessionClock(session.starts_at)}
+              meta={shortClock(session.starts_at)}
               metaSub={session.capacity ? `${session.capacity} PLACES` : null}
             >
-              <Text style={styles.rowWhen}>{formatDate(session.starts_at)}</Text>
+              {needsFullDate(session.starts_at) && (
+                <Text style={styles.rowWhen}>{formatDate(session.starts_at)}</Text>
+              )}
             </Row>
           ))}
 

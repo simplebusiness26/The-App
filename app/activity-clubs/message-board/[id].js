@@ -3,6 +3,7 @@ import {View,Text,StyleSheet,ScrollView,TextInput,ActivityIndicator,Image} from 
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
 import {useFeedback} from "../../../context/FeedbackContext";
+import {formatDateTime} from "../../../utils/linkups";
 import {INK,TYPE,SHAPE} from "../../../utils/tokens";
 import {
   Action,
@@ -214,8 +215,12 @@ export default function ActivityClubMessageBoard(){
                 <View style={styles.authorTextWrap}>
                   <Text style={styles.author} numberOfLines={1}>{authorName}</Text>
                   {/* A timestamp is something the app recorded, never something
-                      a person wrote, so it is the data face. */}
-                  <Text style={styles.time} numberOfLines={1}>{new Date(item.created_at).toLocaleString()}</Text>
+                      a person wrote, so it is the data face -- and it is the
+                      same formatter the Link-up board and Live Nearby use.
+                      toLocaleString() rendered "8/18/2026, 12:44:06 AM" here,
+                      a different date format from the rest of the app and
+                      seconds nobody asked for. */}
+                  <Text style={styles.time} numberOfLines={1}>{formatDateTime(item.created_at)}</Text>
                 </View>
               </View>
               <Text style={styles.body}>{item.message}</Text>

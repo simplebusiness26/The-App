@@ -194,11 +194,15 @@ export default function LinkupDetail(){
             It reads as a Notice because that is what it is: the app saying
             something to the people allowed to hear it. A padlock glyph and a
             mono eyebrow, not a coloured box.
+
+            The edge is `scheduled`, not `offer`: the three state inks say what
+            a thing IS, and violet means "a time-bound offer is running", which
+            a meeting point is not. Amber is what this whole page is.
           */}
           {joined && privateDetails!=="" && (
-            <Notice tone="offer" label="ATTENDEE MEETING DETAILS">
+            <Notice tone="scheduled" label="ATTENDEE MEETING DETAILS">
               <View style={styles.privateRow}>
-                <Glyph name="lock" size={14} colour={INK.offer}/>
+                <Glyph name="lock" size={14} colour={INK.scheduled}/>
                 <Text style={styles.privateText}>{privateDetails}</Text>
               </View>
             </Notice>

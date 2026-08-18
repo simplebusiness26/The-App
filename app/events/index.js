@@ -37,40 +37,11 @@ import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 // is one measured column instead of a stack of cards, so ten events fit where
 // three did.
 
-// What the app measured about WHEN, short enough for the meta column.
-// "IN 40M" / "TONIGHT 19:30" / "SAT 12 SEP 19:30".
-export function eventClock(value,now=Date.now()){
-  if(!value) return "";
-  const date=new Date(value);
-  if(Number.isNaN(date.getTime())) return "";
-
-  const ms=date.getTime()-now;
-  const time=date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-
-  if(ms<=0) return "NOW";
-  if(ms<60*60*1000) return `IN ${Math.max(1,Math.round(ms/60000))}M`;
-  if(ms<6*60*60*1000) return `IN ${Math.round(ms/3600000)}H`;
-
-  const today=new Date(now);
-  if(date.toDateString()===today.toDateString()){
-    return `${date.getHours()>=17?"TONIGHT":"TODAY"} ${time}`;
-  }
-
-  // No weekday out here: the meta column is narrow and "THU, 20 AUG 03:37"
-  // pushed the whole row's text over. The weekday survives in the full date
-  // line under the row.
-  const day=date.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
-  return `${day.toUpperCase()} ${time}`;
-}
-
-// True while the countdown is relative ("IN 2H"), which is when the full date
-// under the row is telling you something the meta column has not. Once the meta
-// is itself a date, printing the date twice is just noise.
-function needsFullDate(value,now=Date.now()){
-  const date=new Date(value);
-  if(Number.isNaN(date.getTime())) return false;
-  return date.getTime()-now<6*60*60*1000;
-}
+// The clock and the full-date rule now live in utils/clock.js -- they were
+// written here and again in app/activity-clubs/[id].js, and had already drifted
+// apart on whether to print a weekday.
+export {shortClock as eventClock} from "../../utils/clock";
+import {shortClock,needsFullDate} from "../../utils/clock";
 
 export default function Events(){
   const [events,setEvents]=useState([]);
@@ -165,7 +136,7 @@ export default function Events(){
               glyph="ticket"
               title={event.name}
               sub={event.description}
-              meta={eventClock(event.starts_at)}
+              meta={shortClock(event.starts_at)}
               metaSub={formatEventPrice(event.price).toUpperCase()}
               onPress={()=>router.push(`/events/${event.id}`)}
             >

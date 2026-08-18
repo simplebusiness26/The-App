@@ -1,6 +1,8 @@
 import React from "react";
-import {View,StyleSheet} from "react-native";
+import {View,Text,StyleSheet} from "react-native";
 import {Stack} from "expo-router";
+import {useFonts} from "expo-font";
+import {installWebFocusStyle} from "../components/webFocus";
 import {SafeAreaProvider} from "react-native-safe-area-context";
 import {usePathname} from "expo-router";
 import Header,{useHeaderClearance} from "../components/Header";
@@ -12,7 +14,7 @@ import {NotificationProvider} from "../context/NotificationContext";
 import ErrorBoundary from "../components/ErrorBoundary";
 import StartupSplash from "../components/StartupSplash";
 import VisibilityWelcome from "../components/VisibilityWelcome";
-import {INK} from "../utils/tokens";
+import {INK,FONT,FONT_FILES} from "../utils/tokens";
 
 export const unstable_settings={initialRouteName:"index"};
 
@@ -49,7 +51,36 @@ function Shell({children}){
   );
 }
 
+// THE BODY FACE, SET ONCE.
+//
+// React Native has no cascade: a <Text> with no fontFamily takes the platform
+// default, not its parent's. Left alone that means every sentence in the app
+// renders in San Francisco or Roboto while its labels render in JetBrains Mono
+// -- and the split between "what a person wrote" and "what the app measured" is
+// the design's whole tell, so half of it silently not shipping is not a detail.
+//
+// Setting it here is the only place it can be done once. Any Text that names
+// its own family (every mono label in the kit, every display title) still wins,
+// because this is a DEFAULT rather than an override.
+let bodyFaceApplied=false;
+function applyBodyFace(){
+  if(bodyFaceApplied) return;
+  bodyFaceApplied=true;
+  const base=Text.defaultProps||{};
+  Text.defaultProps={...base,style:[{fontFamily:FONT.body},base.style]};
+}
+
 export default function Layout(){
+  // The app is drawn either way. A blocking splash while seven faces load would
+  // put a white gap in front of a design whose first rule is that the housing is
+  // dark -- and components/StartupSplash.js is already covering the app for a
+  // hard five seconds, which is far longer than the load takes.
+  const [fontsLoaded]=useFonts(FONT_FILES);
+  if(fontsLoaded) applyBodyFace();
+  // The design system names a focus ring; React Native Web leaves the browser's
+  // default, which on a dark page is a white halo. No-op on native.
+  installWebFocusStyle();
+
   return(
     <SafeAreaProvider>
       {/*

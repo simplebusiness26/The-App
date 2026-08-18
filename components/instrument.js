@@ -14,14 +14,20 @@
 //
 // See docs/design-system.md for the rules these encode.
 
-import React,{useRef,useState} from "react";
-import {View,Text,Pressable,PanResponder,ScrollView,StyleSheet,Platform} from "react-native";
+import React,{useEffect,useRef,useState} from "react";
+import {AccessibilityInfo,Animated,View,Text,Pressable,PanResponder,ScrollView,StyleSheet,Platform} from "react-native";
 import Svg,{Circle,Line,Path,Rect,G} from "react-native-svg";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {INK,TYPE,SHAPE,FONT} from "../utils/tokens";
 
-// The mono face, resolved per platform. TYPE.data.family is a CSS stack --
-// right on web, meaningless to native, which matches one family name only.
-export const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
+// The data face. This used to be Platform.select({ios:"Menlo",android:"monospace"})
+// because nothing was bundled and native matches one real family name only.
+// JetBrains Mono ships with the app now (assets/fonts, loaded in app/_layout.js),
+// so every platform gets the face the design actually names.
+export const MONO=FONT.mono;
+// The same face at medium. On Android a weight is a separate FILE, not a
+// property -- asking for fontWeight:"600" on a regular face gets a synthesised
+// smear or nothing at all, so a bolder mono has to be asked for by name.
+export const MONO_MEDIUM=FONT.monoMedium;
 
 // ---------------------------------------------------------------------------
 // READOUT — a measured value, the way an instrument shows one.
@@ -207,6 +213,53 @@ export function Dial({values,active,onChange,width=232,format=(v)=>String(v)}){
 }
 
 // ---------------------------------------------------------------------------
+// LAMP — the only moving thing in the app.
+// ---------------------------------------------------------------------------
+// docs/design-system.md: "No parallax, no ambient animation, no staggered
+// reveals. The one exception: a slow pulse on a genuinely live reading."
+// Liveness is what this product is FOR, so it gets the one animation -- and
+// having exactly one means it always means the same thing.
+//
+// Only ever put this on something that is happening RIGHT NOW. A pulse on a
+// scheduled session, an unread count or a call to action spends the app's only
+// moving thing on something that is not live, and then nothing is.
+//
+// Honours reduce-motion by simply not starting: the lamp still shows, lit and
+// still, because it is information rather than decoration.
+export function Lamp({tone="scheduled",size=9,style}){
+  const pulse=useRef(new Animated.Value(1)).current;
+  const [reduced,setReduced]=useState(false);
+
+  useEffect(()=>{
+    let alive=true;
+    AccessibilityInfo.isReduceMotionEnabled?.().then((on)=>{if(alive) setReduced(!!on);}).catch(()=>{});
+    return()=>{alive=false;};
+  },[]);
+
+  useEffect(()=>{
+    if(reduced) return undefined;
+    const loop=Animated.loop(Animated.sequence([
+      Animated.timing(pulse,{toValue:0.3,duration:900,useNativeDriver:true}),
+      Animated.timing(pulse,{toValue:1,duration:900,useNativeDriver:true})
+    ]));
+    loop.start();
+    return()=>loop.stop();
+  },[reduced,pulse]);
+
+  const colour=INK[tone]||INK.scheduled;
+  return(
+    <Animated.View
+      style={[
+        {width:size,height:size,borderRadius:size/2,backgroundColor:colour},
+        !reduced&&{opacity:pulse},
+        style
+      ]}
+      pointerEvents="none"
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PANEL — the layered surface.
 // ---------------------------------------------------------------------------
 // Elevation is a surface step plus a 1px top highlight, never a print shadow.
@@ -255,7 +308,7 @@ const styles=StyleSheet.create({
   },
   readoutLabelUnder:{marginBottom:0,marginTop:4},
   readoutValueRow:{flexDirection:"row",alignItems:"baseline",gap:4},
-  readoutValue:{color:INK.readout,fontWeight:"700",letterSpacing:-0.5},
+  readoutValue:{color:INK.readout,fontFamily:FONT.display,letterSpacing:-0.5},
   readoutUnit:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,textTransform:"uppercase"},
 
   dialWrap:{alignItems:"center",gap:6},
@@ -766,9 +819,25 @@ export function Counter({glyph,count,label,acted,onPress,disabled,accessibilityL
 // docs/design-system.md: "Empty states are instructions, not moods." So this
 // takes an instruction, and shows the instrument saying it has no reading
 // rather than a shrug.
-export function Empty({title,instruction,action,glyph="info"}){
+// `compact` is for when several of these sit in one column. Discover has six
+// carousels, and six full-size empties on a brand-new account is about 3000px
+// of "nothing here yet" -- which is a worse answer than the one sentence each
+// of them actually needs to say.
+export function Empty({title,instruction,action,glyph="info",compact,style}){
+  if(compact){
+    return(
+      <View style={[kit.emptyCompact,style]}>
+        <Glyph name={glyph} size={14} colour={INK.readoutFaint}/>
+        <View style={kit.emptyCompactBody}>
+          <Text style={kit.emptyCompactTitle}>{title}</Text>
+          {instruction?<Text style={kit.emptyCompactInstruction}>{instruction}</Text>:null}
+        </View>
+        {action}
+      </View>
+    );
+  }
   return(
-    <View style={kit.empty}>
+    <View style={[kit.empty,style]}>
       <View style={kit.emptyDial}>
         <Glyph name={glyph} size={20} colour={INK.readoutFaint}/>
         <View style={kit.emptyDialRing} pointerEvents="none"/>
@@ -785,9 +854,9 @@ export function Empty({title,instruction,action,glyph="info"}){
 // ---------------------------------------------------------------------------
 // Errors, permission gates, warnings. An edge in the state ink and a mono
 // eyebrow; never a coloured background with text fighting it.
-export function Notice({tone="scheduled",label,children,action,glyph}){
+export function Notice({tone="scheduled",label,children,action,glyph,style}){
   return(
-    <StateEdge tone={tone} style={kit.notice}>
+    <StateEdge tone={tone} style={[kit.notice,style]}>
       {label?(
         <View style={kit.noticeHead}>
           {glyph?<Glyph name={glyph} size={13} colour={INK[tone]||INK.scheduled}/>:null}
@@ -805,14 +874,14 @@ const kit=StyleSheet.create({
 
   titleBlock:{paddingHorizontal:16,paddingTop:14,paddingBottom:2},
   titleEyebrow:{
-    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    color:INK.readoutFaint,fontFamily:MONO_MEDIUM,fontSize:TYPE.data.sizes.sm,
     textTransform:"uppercase",letterSpacing:1,marginBottom:5
   },
   titleRow:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:12},
   titleText:{
-    flex:1,color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700",letterSpacing:-0.5
+    flex:1,color:INK.readout,fontFamily:FONT.display,fontSize:TYPE.display.sizes.lg,letterSpacing:-0.5
   },
-  titleMeta:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,marginTop:5,lineHeight:TYPE.body.sizes.md*1.5},
+  titleMeta:{color:INK.readoutSoft,fontFamily:FONT.body,fontSize:TYPE.body.sizes.md,marginTop:5,lineHeight:TYPE.body.sizes.md*1.5},
   titleRule:{flexDirection:"row",alignItems:"flex-end",marginTop:12,marginBottom:4},
   titleRuleLine:{flex:1,height:1,backgroundColor:INK.hairline,marginBottom:0},
 
@@ -829,7 +898,7 @@ const kit=StyleSheet.create({
     color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
     textTransform:"uppercase",letterSpacing:0.7
   },
-  chipTextSelected:{color:INK.readout},
+  chipTextSelected:{color:INK.readout,fontFamily:MONO_MEDIUM},
   chipTextDisabled:{color:INK.readoutFaint},
 
   segmentBar:{flexDirection:"row",alignItems:"stretch",paddingHorizontal:12,gap:2},
@@ -843,7 +912,7 @@ const kit=StyleSheet.create({
   },
   segmentMeta:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,opacity:0.85},
   segmentMetaActive:{color:INK.readoutSoft,opacity:1},
-  segmentTextActive:{color:INK.readout},
+  segmentTextActive:{color:INK.readout,fontFamily:MONO_MEDIUM},
   segmentDetent:{height:2,alignSelf:"stretch",minWidth:18,backgroundColor:INK.hairline},
   segmentDetentActive:{backgroundColor:INK.hairlineStrong,height:2},
 
@@ -860,7 +929,7 @@ const kit=StyleSheet.create({
   actionQuiet:{backgroundColor:"transparent",borderColor:INK.hairline},
   actionPressed:{opacity:0.78},
   actionDisabled:{opacity:0.45},
-  actionText:{fontFamily:MONO,fontSize:TYPE.data.sizes.lg,textTransform:"uppercase",letterSpacing:1,fontWeight:"600"},
+  actionText:{fontFamily:MONO_MEDIUM,fontSize:TYPE.data.sizes.lg,textTransform:"uppercase",letterSpacing:1},
   actionTextCompact:{fontSize:TYPE.data.sizes.md,letterSpacing:0.8},
 
   rowEdge:{marginBottom:8},
@@ -875,8 +944,8 @@ const kit=StyleSheet.create({
     backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
   },
   rowBody:{flex:1,minWidth:0},
-  rowTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
-  rowSub:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3,lineHeight:TYPE.body.sizes.sm*1.5},
+  rowTitle:{color:INK.readout,fontFamily:FONT.displaySoft,fontSize:TYPE.display.sizes.sm,letterSpacing:-0.2},
+  rowSub:{color:INK.readoutSoft,fontFamily:FONT.body,fontSize:TYPE.body.sizes.sm,marginTop:3,lineHeight:TYPE.body.sizes.sm*1.5},
   rowMeta:{alignItems:"flex-end",gap:2},
   rowMetaText:{color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
   rowMetaSub:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.5},
@@ -912,7 +981,7 @@ const kit=StyleSheet.create({
   kvStackHead:{flexDirection:"row",alignItems:"center",gap:8},
   // Body face, not mono: a wrapped value is prose (an address, a set of hours),
   // and prose set in the data face is unreadable at three lines.
-  kvStackValue:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5},
+  kvStackValue:{color:INK.readout,fontFamily:FONT.body,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5},
 
   strip:{flexDirection:"row",alignItems:"stretch",paddingVertical:12},
   stripCell:{flex:1,alignItems:"center",paddingHorizontal:6},
@@ -936,7 +1005,7 @@ const kit=StyleSheet.create({
     color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
     textTransform:"uppercase",letterSpacing:0.7
   },
-  counterCountActed:{color:INK.readout,fontWeight:"600"},
+  counterCountActed:{color:INK.readout,fontFamily:MONO_MEDIUM},
 
   empty:{alignItems:"center",paddingHorizontal:28,paddingVertical:44,gap:10},
   emptyDial:{
@@ -947,13 +1016,22 @@ const kit=StyleSheet.create({
     position:"absolute",top:6,left:6,right:6,bottom:6,borderRadius:22,
     borderWidth:SHAPE.border,borderColor:INK.hairline,opacity:0.6
   },
-  emptyTitle:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",textAlign:"center",letterSpacing:-0.3},
-  emptyInstruction:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,textAlign:"center",lineHeight:TYPE.body.sizes.md*1.5},
+  emptyTitle:{color:INK.readout,fontFamily:FONT.display,fontSize:TYPE.display.sizes.md,textAlign:"center",letterSpacing:-0.3},
+  emptyInstruction:{color:INK.readoutSoft,fontFamily:FONT.body,fontSize:TYPE.body.sizes.md,textAlign:"center",lineHeight:TYPE.body.sizes.md*1.5},
   emptyAction:{marginTop:8,alignSelf:"stretch"},
+  emptyCompact:{
+    flexDirection:"row",alignItems:"flex-start",gap:10,
+    paddingVertical:14,paddingHorizontal:13,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card,marginBottom:8
+  },
+  emptyCompactBody:{flex:1,gap:3},
+  emptyCompactTitle:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,textTransform:"uppercase",letterSpacing:0.8},
+  emptyCompactInstruction:{color:INK.readoutFaint,fontFamily:FONT.body,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5},
 
   notice:{padding:13,marginBottom:12,gap:6},
   noticeHead:{flexDirection:"row",alignItems:"center",gap:7},
   noticeLabel:{fontFamily:MONO,fontSize:TYPE.data.sizes.md,textTransform:"uppercase",letterSpacing:1},
-  noticeBody:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5},
+  noticeBody:{color:INK.readout,fontFamily:FONT.body,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5},
   noticeAction:{marginTop:4}
 });

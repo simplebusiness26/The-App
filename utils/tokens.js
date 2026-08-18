@@ -107,6 +107,40 @@ export const HEAT_RAMP = [
   { at: 1.0, colour: "#E0543A" }   // the hottest thing on screen
 ];
 
+// THE FACES, BY THE NAME THE APP LOADS THEM UNDER.
+//
+// React Native matches ONE family name -- a CSS stack means nothing to it -- and
+// on Android a weight is a separate file, not a property. So each weight the
+// design actually uses is loaded under its own name in app/_layout.js and named
+// here, and a style picks the face it wants rather than asking for a weight and
+// hoping the platform synthesises one.
+//
+// Before these were bundled, TYPE.*.family was a CSS stack that every platform
+// quietly fell out of: system-ui for display and body, Menlo or the Android
+// monospace default for data. The mono/sans split is the strongest signal that
+// this app is an instrument, and it was shipping as whatever the device had.
+export const FONT={
+  display:"InterTight-Bold",          // screen titles, place names, stat numerals
+  displaySoft:"InterTight-SemiBold",  // row titles, anything display at body size
+  body:"Inter-Regular",               // everything a person wrote
+  bodyMedium:"Inter-Medium",
+  bodyStrong:"Inter-SemiBold",
+  mono:"JetBrainsMono-Regular",       // everything the app measured
+  monoMedium:"JetBrainsMono-Medium"
+};
+
+// What app/_layout.js hands to useFonts(). Kept beside the names so a face can
+// never be referenced under a key that was never loaded.
+export const FONT_FILES={
+  "InterTight-Bold":require("../assets/fonts/InterTight-Bold.ttf"),
+  "InterTight-SemiBold":require("../assets/fonts/InterTight-SemiBold.ttf"),
+  "Inter-Regular":require("../assets/fonts/Inter-Regular.ttf"),
+  "Inter-Medium":require("../assets/fonts/Inter-Medium.ttf"),
+  "Inter-SemiBold":require("../assets/fonts/Inter-SemiBold.ttf"),
+  "JetBrainsMono-Regular":require("../assets/fonts/JetBrainsMono-Regular.ttf"),
+  "JetBrainsMono-Medium":require("../assets/fonts/JetBrainsMono-Medium.ttf")
+};
+
 // TYPE — three faces, three jobs, same discipline as before, new voices.
 //
 // The mono/sans split is the tell that makes the app feel like an instrument:
@@ -114,19 +148,19 @@ export const HEAT_RAMP = [
 // rule survived the redesign because it was the old system's best idea.
 export const TYPE = {
   display: {
-    family: 'InterTight-Bold, "Inter Tight", SF Pro Display, Roboto Condensed, system-ui, sans-serif',
+    family: "InterTight-Bold",
     tracking: -0.02,
     sizes: { xl: 30, lg: 22, md: 17, sm: 15 }
   },
   body: {
-    family: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    family: "Inter-Regular",
     sizes: { lg: 15, md: 13.5, sm: 12.5 },
     lineHeight: 1.5
   },
   // Everything the system measured: distance, time, counts, status, category,
   // coordinates. Uppercase, wide tracking, small.
   data: {
-    family: '"JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Roboto Mono, monospace',
+    family: "JetBrainsMono-Regular",
     tracking: 0.08,
     sizes: { lg: 12, md: 10.5, sm: 9.5 }
   }
