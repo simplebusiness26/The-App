@@ -15,6 +15,7 @@ import {mediaKindFromUri} from "../utils/socialMedia";
 import {createShutter,MAX_RECORDING_SECONDS} from "../utils/shutter";
 import {useHeaderClearance} from "./Header";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Aperture,ProgressRing,CornerFrame,Reticle,Dial,MONO} from "./instrument";
 
 // The camera. One viewfinder, three outcomes.
 //
@@ -77,6 +78,49 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
   const cameraRef=useRef(null);
 
   const [facing,setFacing]=useState("back");
+
+  // ---------------------------------------------------------------------------
+  // APERTURE CONSOLE STATE
+  // ---------------------------------------------------------------------------
+  // The design system's camera is an instrument face, so the controls it draws
+  // have to be backed by real camera capability -- never painted on. All three
+  // of these map onto documented expo-camera props (`zoom` 0-1, `mode`, and the
+  // recording ceiling in utils/shutter.js).
+  //
+  // ZOOM. expo-camera takes 0-1, not a magnification factor, so the dial shows
+  // the presets a person understands and this maps them.
+  const ZOOM_STOPS=[1,2,3,5];
+  const ZOOM_TO_PROP={1:0,2:0.25,3:0.45,5:0.7};
+  const [zoom,setZoom]=useState(1);
+
+  // FOCUS RETICLE. Where the last tap landed, in screen coordinates, so the
+  // brackets can be drawn there and faded out again.
+  const [focusPoint,setFocusPoint]=useState(null);
+  const focusTimer=useRef(null);
+  const showFocus=useCallback((x,y)=>{
+    setFocusPoint({x,y});
+    clearTimeout(focusTimer.current);
+    focusTimer.current=setTimeout(()=>setFocusPoint(null),1100);
+  },[]);
+  useEffect(()=>()=>clearTimeout(focusTimer.current),[]);
+
+  // HOLD PROGRESS. The old shutter gave no answer to "how long have I got?".
+  // This drives the ring around it, keyed to the real recording ceiling.
+  const [holdProgress,setHoldProgress]=useState(0);
+  const holdTimer=useRef(null);
+  const startHoldClock=useCallback(()=>{
+    const startedAt=Date.now();
+    clearInterval(holdTimer.current);
+    holdTimer.current=setInterval(()=>{
+      const elapsed=(Date.now()-startedAt)/1000;
+      setHoldProgress(Math.min(1,elapsed/MAX_RECORDING_SECONDS));
+    },80);
+  },[]);
+  const stopHoldClock=useCallback(()=>{
+    clearInterval(holdTimer.current);
+    setHoldProgress(0);
+  },[]);
+  useEffect(()=>()=>clearInterval(holdTimer.current),[]);
   const [photo,setPhoto]=useState(null);
   const [taking,setTaking]=useState(false);
   const [error,setError]=useState("");
@@ -352,6 +396,9 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
         style={styles.camera}
         facing={facing}
         mode={mode}
+        // expo-camera's zoom is 0-1, not a magnification factor. The dial speaks
+        // in the stops a person recognises; this is the only place that maps.
+        zoom={ZOOM_TO_PROP[zoom] ?? 0}
         // ALWAYS ON, in both modes. A QR code is unambiguous and nobody points
         // a phone at one by accident, so making it a mode would mean guessing
         // wrong half the time. It is switched off only once a code has been
@@ -360,11 +407,56 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
         onBarcodeScanned={handledCode || recording ? undefined : onBarcode}
       />
 
-      <View pointerEvents="none" style={[styles.hintWrap,{top:clearHeader+8}]}>
+      {/*
+        THE APERTURE CONSOLE.
+
+        expo-camera ships zero capture chrome (confirmed in the Capability
+        Research Pack), so every pixel above the feed is ours to author -- and
+        the winning design asked for an instrument face rather than a bare
+        button. What follows is that face: a viewfinder frame, mono readouts of
+        what the camera is actually doing, a focus reticle where you tapped, a
+        zoom dial with real detents, and a shutter that shows how much of the
+        recording ceiling you have used.
+
+        Every control here is backed by a documented expo-camera capability.
+        Nothing is decorative.
+      */}
+
+      {/* Tap anywhere on the feed to focus. Drawn where the finger landed. */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        accessibilityLabel="Tap to focus"
+        onPress={(event)=>{
+          const {locationX,locationY}=event.nativeEvent;
+          showFocus(locationX,locationY);
+        }}
+      />
+
+      <CornerFrame inset={16} length={28} colour={INK.readoutSoft} opacity={0.45}/>
+
+      {focusPoint ? (
+        <View pointerEvents="none" style={{position:"absolute",left:focusPoint.x-36,top:focusPoint.y-36}}>
+          <Reticle size={72} colour={INK.scheduled}/>
+        </View>
+      ) : null}
+
+      {/* Readouts: what the instrument is set to, in the face's own language. */}
+      <View pointerEvents="none" style={[styles.readoutRow,{top:clearHeader+8}]}>
+        <Text style={styles.readoutChip}>{recording ? "REC" : "PHOTO"}</Text>
+        <Text style={styles.readoutChip}>{`${zoom}×`}</Text>
+        <Text style={styles.readoutChip}>{facing==="back" ? "REAR" : "FRONT"}</Text>
+        {recording ? (
+          <Text style={[styles.readoutChip,styles.readoutLive]}>
+            {`${Math.ceil(MAX_RECORDING_SECONDS*(1-holdProgress))}S LEFT`}
+          </Text>
+        ) : null}
+      </View>
+
+      <View pointerEvents="none" style={[styles.hintWrap,{top:clearHeader+44}]}>
         <Text style={styles.hint}>
           {recording
-            ? `Recording — up to ${MAX_RECORDING_SECONDS} seconds. Let go to stop.`
-            : "Point at a Xplorer QR code to open it. Press for a photo, hold to record."}
+            ? "Let go to stop."
+            : "Press for a photo, hold to record. A Xplorer QR code opens itself."}
         </Text>
       </View>
 
@@ -373,6 +465,17 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
+
+      {/* Zoom, as a dial with detents rather than four separate buttons. */}
+      <View style={styles.dialRow}>
+        <Dial
+          values={ZOOM_STOPS}
+          active={zoom}
+          onChange={setZoom}
+          width={224}
+          format={(v)=>`${v}×`}
+        />
+      </View>
 
       <View style={styles.controls}>
         <Pressable
@@ -390,16 +493,25 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
           platforms, so a hold would leave a stray photograph behind every
           recording. utils/shutter.js decides which of the two happened.
         */}
-        <Pressable
-          style={[styles.shutter,taking && styles.shutterBusy,recording && styles.shutterRecording]}
-          accessibilityRole="button"
-          accessibilityLabel="Press for a photo, hold to record a video"
-          disabled={taking}
-          onPressIn={()=>shutter.current.pressIn()}
-          onPressOut={()=>shutter.current.pressOut()}
-        >
-          <View style={[styles.shutterInner,recording && styles.shutterInnerRecording]}/>
-        </Pressable>
+        {/*
+          The shutter, as an aperture. Rings close as a recording runs and the
+          progress ring reports how much of the real 15s ceiling is spent -- the
+          question the old bare circle never answered.
+        */}
+        <View style={styles.shutterWell}>
+          <Aperture size={118} open={recording ? 1-holdProgress*0.55 : 1} colour={INK.hairlineStrong}/>
+          <ProgressRing size={92} stroke={3} progress={recording ? holdProgress : 0} colour={INK.scheduled}/>
+          <Pressable
+            style={[styles.shutter,taking && styles.shutterBusy,recording && styles.shutterRecording]}
+            accessibilityRole="button"
+            accessibilityLabel="Press for a photo, hold to record a video"
+            disabled={taking}
+            onPressIn={()=>{shutter.current.pressIn();startHoldClock();}}
+            onPressOut={()=>{shutter.current.pressOut();stopHoldClock();}}
+          >
+            <View style={[styles.shutterInner,recording && styles.shutterInnerRecording]}/>
+          </Pressable>
+        </View>
 
         <Pressable
           style={styles.sideButton}
@@ -425,6 +537,24 @@ const styles=StyleSheet.create({
   camera:{flex:1},
   preview:{flex:1},
 
+  // Readouts sit along the top of the face. Mono, uppercase, wide-tracked --
+  // the instrument's own language for "what am I set to".
+  readoutRow:{
+    position:"absolute",left:16,right:16,flexDirection:"row",gap:8,alignItems:"center"
+  },
+  readoutChip:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:1,
+    backgroundColor:"rgba(11,14,18,0.62)",
+    borderWidth:SHAPE.border,borderColor:INK.hairline,borderRadius:SHAPE.radius.control,
+    paddingHorizontal:8,paddingVertical:4,overflow:"hidden"
+  },
+  readoutLive:{color:INK.ground,backgroundColor:INK.scheduled,borderColor:INK.scheduled},
+  // The dial sits above the shutter row, clear of the thumb's path to it.
+  dialRow:{position:"absolute",left:0,right:0,bottom:150,alignItems:"center"},
+  // The well is what makes the shutter read as a lens rather than a button:
+  // the aperture rings and progress ring are centred on the same point.
+  shutterWell:{width:118,height:118,alignItems:"center",justifyContent:"center"},
   hintWrap:{position:"absolute",left:16,right:16,alignItems:"center"},
   hint:{
     color:INK.readout,

@@ -214,7 +214,15 @@ describe("the viewfinder records",()=>{
       // and applying it is a re-render -- calling both in one tick is how this
       // fails on a real Android device.
       expect(cameraView(tree).props.mode).toBe("video");
-      expect(textOf(tree.toJSON())).toContain("Recording");
+      // The Aperture Console reports recording through the instrument face
+      // rather than a sentence: the mode readout flips to REC and a countdown
+      // of the real 15s ceiling appears, and the hint below drops to the only
+      // thing left to say. Asserting all three is strictly stronger than the
+      // old single "Recording" substring check.
+      const recordingText=textOf(tree.toJSON());
+      expect(recordingText).toContain("REC");
+      expect(recordingText).toMatch(/\d+S LEFT/);
+      expect(recordingText).toContain("Let go to stop.");
 
       await act(async()=>{shutterOf(tree).props.onPressOut();});
       // recordAsync resolves through a promise chain; a couple of flushes get
