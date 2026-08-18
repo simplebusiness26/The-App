@@ -1,10 +1,10 @@
 import React,{useEffect,useState} from "react";
-import {Pressable,Text,StyleSheet,ActivityIndicator} from "react-native";
+import {StyleSheet} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Glyph,MONO} from "./instrument";
+import {SHAPE} from "../utils/tokens";
+import {Counter} from "./instrument";
 
 // Saving a place to your favourites.
 //
@@ -86,52 +86,35 @@ export default function FavouriteButton({targetType,targetId,targetName,targetIm
     setSaving(false);
   }
 
+  // Still finding out whether this is already a favourite. The control holds
+  // its place at full size so the row does not reflow when the answer lands;
+  // compact renders nothing, because a compact one sits inline in a sentence
+  // where a placeholder would read as a word.
   if(loading){
     return compact ? null : (
-      <Pressable style={[styles.control,styles.full,styles.disabled]} disabled>
-        <ActivityIndicator size="small" color={INK.readoutSoft}/>
-      </Pressable>
+      <Counter busy glyph="bookmark" label="" style={styles.full} accessibilityLabel="Loading favourites"/>
     );
   }
 
   const saved=!!favourite;
 
+  // The kit's Counter -- see components/LikeButton.js.
   return(
-    <Pressable
-      accessibilityRole="button"
+    <Counter
+      glyph="bookmark"
+      label={saved ? "Saved to favourites" : "Add to favourites"}
+      acted={saved}
+      busy={saving}
+      compact={compact}
+      style={compact?styles.compact:styles.full}
       accessibilityLabel={saved ? `Remove ${targetName || "listing"} from favourites` : `Add ${targetName || "listing"} to favourites`}
-      accessibilityState={{selected:saved,disabled:saving}}
-      style={[styles.control,compact ? styles.compact : styles.full,saved && styles.controlOn,saving && styles.disabled]}
       onPress={toggleFavourite}
-      disabled={saving}
-    >
-      {saving
-        ? <ActivityIndicator size="small" color={INK.readoutSoft}/>
-        : (
-          <>
-            <Glyph name="bookmark" size={14} colour={saved?INK.readout:INK.readoutSoft} weight={saved?1.9:1.5}/>
-            <Text style={[styles.label,saved && styles.labelOn]} numberOfLines={1}>
-              {saved ? "Saved to favourites" : "Add to favourites"}
-            </Text>
-          </>
-        )}
-    </Pressable>
+    />
   );
 }
 
 const styles=StyleSheet.create({
-  control:{
-    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:7,
-    borderRadius:SHAPE.radius.control,
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
-  },
-  full:{minHeight:SHAPE.tapTarget,paddingHorizontal:16,paddingVertical:12,marginTop:12},
-  compact:{minHeight:38,paddingHorizontal:12,paddingVertical:8},
-  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  disabled:{opacity:0.55},
-  label:{
-    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
-    textTransform:"uppercase",fontWeight:"600",color:INK.readoutSoft,flexShrink:1
-  },
-  labelOn:{color:INK.readout}
+  // Width floors only; every other property is Counter's.
+  full:{minWidth:160,minHeight:SHAPE.tapTarget,paddingHorizontal:16},
+  compact:{minWidth:120,paddingHorizontal:11}
 });

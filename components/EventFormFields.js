@@ -207,7 +207,12 @@ const styles=StyleSheet.create({
   wellDivider:{height:1,backgroundColor:INK.hairline},
   pair:{flexDirection:"row",alignItems:"stretch"},
   pairDivider:{width:1,backgroundColor:INK.hairline},
-  half:{flex:1},
+  // minWidth:0 is load-bearing, not decoration. On the web a TextInput is an
+  // <input>, whose min-content width is its own default size (~223px), and
+  // flexbox refuses to shrink a child below min-content -- so `flex:1` alone
+  // left the date/time pair 447px wide inside a 380px well and the right-hand
+  // field ran 52px off the screen. Measured at 412x915.
+  half:{flex:1,minWidth:0},
   row:{flexDirection:"row",gap:10},
-  rowField:{flex:1}
+  rowField:{flex:1,minWidth:0}
 });

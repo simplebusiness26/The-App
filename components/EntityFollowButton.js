@@ -1,11 +1,11 @@
 import React,{useCallback,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
+import {StyleSheet} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
 import {entityTypeLabel} from "../utils/places";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Glyph,MONO} from "./instrument";
+import {SHAPE} from "../utils/tokens";
+import {Counter} from "./instrument";
 
 // Packet 8e. components/FollowButton.js follows a person; this follows a place,
 // a club, an event, a public place or a town.
@@ -136,50 +136,25 @@ export default function EntityFollowButton({targetType,targetId,targetName,noun,
   // beside the label rather than glued into it with a middle dot -- the old
   // "Follow the park · 12" ran one sentence and one number together in the same
   // face, and a reader could not tell which half the app had counted.
+  // The kit's Counter -- see components/LikeButton.js. The count rides beside
+  // the label when there is one to show, which is what a follower total is.
   return(
-    <Pressable
-      accessibilityRole="button"
+    <Counter
+      glyph={following?"check":"plus"}
+      label={text}
+      count={count>0?count:null}
+      acted={following}
+      busy={busy}
+      compact={compact}
+      style={compact?styles.compact:styles.full}
       accessibilityLabel={following ? `Unfollow ${noun || `this ${label}`}` : `Follow ${noun || `this ${label}`}`}
-      accessibilityState={{selected:following,disabled:busy}}
-      disabled={busy}
-      style={[
-        styles.control,
-        compact ? styles.compact : styles.full,
-        following && styles.controlOn,
-        busy && styles.disabled
-      ]}
       onPress={toggleFollow}
-    >
-      {busy
-        ? <ActivityIndicator size="small" color={INK.readoutSoft}/>
-        : (
-          <>
-            <Glyph name={following?"check":"plus"} size={14} colour={following?INK.readout:INK.readoutSoft} weight={following?1.9:1.5}/>
-            <Text style={[styles.label,following && styles.labelOn]} numberOfLines={1}>{text}</Text>
-            {count>0 ? <Text style={styles.count}>{count}</Text> : null}
-          </>
-        )}
-    </Pressable>
+    />
   );
 }
 
 const styles=StyleSheet.create({
-  control:{
-    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:7,
-    borderRadius:SHAPE.radius.control,
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
-  },
-  full:{minWidth:118,maxWidth:230,minHeight:SHAPE.tapTarget,paddingHorizontal:16,paddingVertical:11},
-  compact:{minWidth:96,minHeight:38,paddingHorizontal:12,paddingVertical:8},
-  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  disabled:{opacity:0.55},
-  label:{
-    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
-    textTransform:"uppercase",fontWeight:"600",color:INK.readoutSoft,flexShrink:1
-  },
-  labelOn:{color:INK.readout},
-  count:{
-    fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.9,
-    color:INK.readoutFaint,paddingLeft:2
-  }
+  // Width floors only; every other property is Counter's.
+  full:{minWidth:118,minHeight:SHAPE.tapTarget,paddingHorizontal:18},
+  compact:{minWidth:92,paddingHorizontal:12}
 });

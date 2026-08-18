@@ -1,10 +1,8 @@
 import React,{useCallback,useEffect,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Glyph,MONO} from "./instrument";
+import {Counter} from "./instrument";
 
 // viewerId is a PROP, and that is the whole point of this signature.
 //
@@ -96,36 +94,20 @@ export default function LikeButton({targetType,targetId,viewerId=null,initialCou
     if(onChanged) onChanged({liked:!liked,count:liked?Math.max(0,count-1):count+1});
   },[working,targetId,user,liked,targetType,count,onChanged,showFeedback]);
 
+  // The kit's Counter. This file used to carry its own twelve-line copy of the
+  // same shape, and so did the four other controls in this row -- which is how
+  // the buttons under a post drift apart, one tweak at a time.
   return(
-    <Pressable
-      accessibilityRole="button"
+    <Counter
+      glyph="heart"
+      count={count}
+      acted={liked}
+      busy={working}
       accessibilityLabel={liked ? "Remove like" : "Like"}
-      accessibilityState={{selected:liked,disabled:working}}
-      style={[styles.control,liked && styles.controlOn]}
-      disabled={working}
       onPress={toggle}
-    >
-      {working
-        ? <ActivityIndicator size="small" color={liked?INK.readout:INK.readoutSoft}/>
-        : <Glyph name="heart" size={14} colour={liked?INK.readout:INK.readoutSoft} weight={liked?1.9:1.5}/>}
-      <Text style={[styles.count,liked && styles.countOn]}>{count}</Text>
-    </Pressable>
+    />
   );
 }
 
 // The shared shape. Four files carry it because the kit has no "counter"
 // primitive to hold it -- see the note at the top.
-const styles=StyleSheet.create({
-  control:{
-    flexDirection:"row",alignItems:"center",gap:6,
-    minHeight:38,paddingHorizontal:11,paddingVertical:7,
-    borderRadius:SHAPE.radius.control,
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
-  },
-  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  count:{
-    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
-    textTransform:"uppercase",color:INK.readoutSoft
-  },
-  countOn:{color:INK.readout}
-});

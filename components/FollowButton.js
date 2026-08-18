@@ -1,10 +1,10 @@
 import React,{useCallback,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
+import {StyleSheet} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Glyph,MONO} from "./instrument";
+import {SHAPE} from "../utils/tokens";
+import {Counter} from "./instrument";
 
 // Following one Explorer.
 //
@@ -151,48 +151,31 @@ export default function FollowButton({profileId,onChanged,compact=false}){
     ? "Log in to follow"
     : friends ? "Friends" : followId ? "Following" : "Follow";
 
+  // The kit's Counter -- see components/LikeButton.js for why these five
+  // controls stopped each keeping their own copy of this shape. The minWidth
+  // stays: the label swaps between "Follow" and "Following" and without a
+  // floor the whole row jogs sideways when it does.
   return(
-    <Pressable
-      accessibilityRole="button"
+    <Counter
+      glyph={glyph}
+      label={text}
+      acted={!!followId}
+      busy={busy}
+      compact={compact}
+      style={compact?styles.compact:styles.full}
       accessibilityLabel={
         friends
           ? "You are friends. Unfollow this Explorer to end it."
           : followId ? "Unfollow Explorer" : "Follow Explorer"
       }
-      accessibilityState={{selected:!!followId,disabled:busy}}
-      disabled={busy}
-      style={[
-        styles.control,
-        compact ? styles.compact : styles.full,
-        !!followId && styles.controlOn,
-        busy && styles.disabled
-      ]}
       onPress={toggleFollow}
-    >
-      {busy
-        ? <ActivityIndicator size="small" color={INK.readoutSoft}/>
-        : <>
-            <Glyph name={glyph} size={14} colour={followId?INK.readout:INK.readoutSoft} weight={followId?1.9:1.5}/>
-            <Text style={[styles.label,!!followId && styles.labelOn]} numberOfLines={1}>{text}</Text>
-          </>
-      }
-    </Pressable>
+    />
   );
 }
 
 const styles=StyleSheet.create({
-  control:{
-    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:7,
-    borderRadius:SHAPE.radius.control,
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
-  },
-  full:{minWidth:118,minHeight:SHAPE.tapTarget,paddingHorizontal:18,paddingVertical:11},
-  compact:{minWidth:92,minHeight:38,paddingHorizontal:12,paddingVertical:8},
-  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  disabled:{opacity:0.55},
-  label:{
-    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
-    textTransform:"uppercase",fontWeight:"600",color:INK.readoutSoft
-  },
-  labelOn:{color:INK.readout}
+  // Width floors only. Everything else -- surface, edge, radius, the mono
+  // label, the acted state -- is Counter's.
+  full:{minWidth:118,minHeight:SHAPE.tapTarget,paddingHorizontal:18},
+  compact:{minWidth:92,paddingHorizontal:12}
 });

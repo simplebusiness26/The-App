@@ -1,10 +1,8 @@
 import React,{useCallback,useEffect,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Glyph,MONO} from "./instrument";
+import {Counter} from "./instrument";
 
 // Packet 8c: review reputation.
 //
@@ -93,45 +91,21 @@ export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,
   // The count still shows, because the figure belongs to every reader, not
   // just the ones allowed to change it.
   if(viewerId && ownerId && viewerId===ownerId){
-    return(
-      <Pressable disabled accessibilityRole="text" accessibilityLabel={label} style={[styles.control,styles.controlInert]}>
-        <Glyph name="check" size={14} colour={INK.readoutFaint} weight={1.8}/>
-        <Text style={styles.count}>{count} Useful</Text>
-      </Pressable>
-    );
+    return <Counter inert glyph="check" count={count} label="Useful" accessibilityLabel={label}/>;
   }
 
+  // The kit's Counter -- see the note in components/LikeButton.js for why these
+  // five controls stopped each keeping their own copy of this shape.
   return(
-    <Pressable
-      accessibilityRole="button"
+    <Counter
+      glyph="check"
+      count={count}
+      label="Useful"
+      acted={endorsed}
+      busy={working}
       accessibilityLabel={endorsed ? `Remove useful mark. ${label}.` : `Mark as useful. ${label}.`}
-      accessibilityState={{selected:endorsed,disabled:working}}
-      style={[styles.control,endorsed && styles.controlOn]}
-      disabled={working}
       onPress={toggle}
-    >
-      {working
-        ? <ActivityIndicator size="small" color={endorsed ? INK.readout : INK.readoutSoft}/>
-        : <Glyph name="check" size={14} colour={endorsed ? INK.readout : INK.readoutSoft} weight={endorsed ? 2.1 : 1.6}/>
-      }
-      <Text style={[styles.count,endorsed && styles.countOn]}>{count} Useful</Text>
-    </Pressable>
+    />
   );
 }
 
-const styles=StyleSheet.create({
-  control:{
-    flexDirection:"row",alignItems:"center",gap:6,
-    minHeight:38,paddingHorizontal:11,paddingVertical:7,
-    borderRadius:SHAPE.radius.control,
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
-  },
-  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  // The author's own review: a plate that reports, not a control that acts.
-  controlInert:{backgroundColor:"transparent",borderColor:INK.hairline},
-  count:{
-    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
-    textTransform:"uppercase",color:INK.readoutSoft
-  },
-  countOn:{color:INK.readout}
-});

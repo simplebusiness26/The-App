@@ -15,7 +15,7 @@
 // See docs/design-system.md for the rules these encode.
 
 import React,{useEffect,useRef,useState} from "react";
-import {AccessibilityInfo,Animated,View,Text,Pressable,PanResponder,ScrollView,StyleSheet,Platform} from "react-native";
+import {AccessibilityInfo,ActivityIndicator,Animated,View,Text,Pressable,PanResponder,ScrollView,StyleSheet,Platform} from "react-native";
 import Svg,{Circle,Line,Path,Rect,G} from "react-native-svg";
 import {INK,TYPE,SHAPE,FONT} from "../utils/tokens";
 
@@ -796,17 +796,35 @@ export function Frame({children,size,height,ratio=1,round=false,style}){
 // state a PLACE is in, so a pressed counter steps up a surface and strengthens
 // its edge, exactly like a selected chip. The glyph carries the meaning and the
 // count stays in the data face, because the app counted it.
-export function Counter({glyph,count,label,acted,onPress,disabled,accessibilityLabel,style}){
+export function Counter({glyph,count,label,acted,onPress,disabled,accessibilityLabel,style,busy,compact,inert}){
+  // `inert` is a reading rather than a control -- a count somebody else's
+  // endorsements have reached, shown to a person who may not add to it. It
+  // keeps the shape so the row stays even, drops to the faint readout, and
+  // announces itself as text rather than as a button that does nothing.
+  if(inert){
+    return(
+      <View style={[kit.counter,kit.counterInert,compact&&kit.counterCompact,style]}
+        accessibilityRole="text" accessibilityLabel={accessibilityLabel||label}>
+        <Glyph name={glyph} size={14} colour={INK.readoutFaint} weight={1.6}/>
+        {count!=null?<Text style={kit.counterCountInert}>{count}</Text>:null}
+        {label?<Text style={kit.counterCountInert} numberOfLines={1}>{label}</Text>:null}
+      </View>
+    );
+  }
   return(
     <Pressable
-      style={({pressed})=>[kit.counter,acted&&kit.counterActed,pressed&&kit.counterPressed,disabled&&kit.counterDisabled,style]}
-      onPress={disabled?undefined:onPress}
-      disabled={disabled}
+      style={({pressed})=>[kit.counter,compact&&kit.counterCompact,acted&&kit.counterActed,pressed&&kit.counterPressed,(disabled||busy)&&kit.counterDisabled,style]}
+      onPress={(disabled||busy)?undefined:onPress}
+      disabled={disabled||busy}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel||label}
-      accessibilityState={{selected:!!acted,disabled:!!disabled}}
+      accessibilityState={{selected:!!acted,disabled:!!(disabled||busy)}}
     >
-      <Glyph name={glyph} size={14} colour={acted?INK.readout:INK.readoutSoft} weight={acted?1.9:1.5}/>
+      {/* The spinner replaces the GLYPH, not the whole control -- the count
+          stays put, so the row does not reflow while a like is in flight. */}
+      {busy
+        ? <ActivityIndicator size="small" color={acted?INK.readout:INK.readoutSoft}/>
+        : <Glyph name={glyph} size={14} colour={acted?INK.readout:INK.readoutSoft} weight={acted?1.9:1.5}/>}
       {count!=null?<Text style={[kit.counterCount,acted&&kit.counterCountActed]}>{count}</Text>:null}
       {label?<Text style={[kit.counterLabel,acted&&kit.counterCountActed]} numberOfLines={1}>{label}</Text>:null}
     </Pressable>
@@ -998,6 +1016,11 @@ const kit=StyleSheet.create({
     backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
   },
   counterActed:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  // Compact narrows the padding and never the 36px height -- a control small
+  // enough to miss is not a smaller control, it is a broken one.
+  counterCompact:{paddingHorizontal:8,gap:5},
+  counterInert:{opacity:0.75},
+  counterCountInert:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
   counterPressed:{opacity:0.78},
   counterDisabled:{opacity:0.45},
   counterCount:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
