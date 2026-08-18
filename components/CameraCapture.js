@@ -551,7 +551,15 @@ const styles=StyleSheet.create({
   },
   readoutLive:{color:INK.ground,backgroundColor:INK.scheduled,borderColor:INK.scheduled},
   // The dial sits above the shutter row, clear of the thumb's path to it.
-  dialRow:{position:"absolute",left:0,right:0,bottom:150,alignItems:"center"},
+  //
+  // 176, NOT 150. `controls` below is absolutely positioned at bottom:0 and
+  // measures 158px tall, so at 150 the dial's labels landed at y 690-703 and
+  // the controls row started at 695 -- an 8px overlap, and because controls is
+  // later in the tree it painted on top and swallowed a tap on the lower half
+  // of every zoom stop. Found by asking the browser what was actually on top of
+  // each control, not by looking: an 8px overlap is invisible in a screenshot
+  // and perfectly obvious to a finger.
+  dialRow:{position:"absolute",left:0,right:0,bottom:176,alignItems:"center"},
   // The well is what makes the shutter read as a lens rather than a button:
   // the aperture rings and progress ring are centred on the same point.
   shutterWell:{width:118,height:118,alignItems:"center",justifyContent:"center"},

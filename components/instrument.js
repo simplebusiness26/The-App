@@ -201,7 +201,13 @@ export function Dial({values,active,onChange,width=232,format=(v)=>String(v)}){
       </View>
       <View style={[styles.dialLabels,{width}]}>
         {values.map((v)=>(
-          <Pressable key={String(v)} onPress={()=>onChange?.(v)} hitSlop={10}
+          // 44px, not 13. The label itself is a 13px line of mono; without real
+          // padding the tap target was the glyph, which is a third of the
+          // accessibility floor. The padding is vertical so the detents stay at
+          // their measured positions along the scale -- moving them sideways
+          // would make the dial lie about where its stops are.
+          <Pressable key={String(v)} onPress={()=>onChange?.(v)}
+            style={styles.dialHit} hitSlop={{top:6,bottom:6,left:8,right:8}}
             accessibilityRole="button" accessibilityLabel={format(v)}
             accessibilityState={{selected:v===active}}>
             <Text style={[styles.dialLabel,v===active&&styles.dialLabelActive]}>{format(v)}</Text>
@@ -313,6 +319,7 @@ const styles=StyleSheet.create({
 
   dialWrap:{alignItems:"center",gap:6},
   dialLabels:{flexDirection:"row",justifyContent:"space-between"},
+  dialHit:{minHeight:SHAPE.tapTarget,minWidth:32,alignItems:"center",justifyContent:"center"},
   dialLabel:{
     color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
     textTransform:"uppercase",letterSpacing:0.6
