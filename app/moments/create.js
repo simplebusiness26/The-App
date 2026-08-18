@@ -25,7 +25,8 @@ import {
   Panel,
   Screen,
   ScreenTitle,
-  SectionRule
+  SectionRule,
+  Toggle
 } from "../../components/instrument";
 
 // Packet 8e added three things to this screen, each with a boundary in the
@@ -548,7 +549,7 @@ export default function CreateMoment(){
           it, and the Memory it becomes inherits this Moment's audience -- keeping
           something must never widen it.
         */}
-        <SwitchRow
+        <Toggle
           accessibilityLabel="Keep this as a Memory after it expires"
           label="Keep this as a Memory"
           hint={keepAsMemory
@@ -601,27 +602,9 @@ function ChoiceRow({title,hint,selected,onPress,accessibilityLabel}){
     </Pressable>
   );
 }
-
-function SwitchRow({label,hint,value,onPress,accessibilityLabel}){
-  return(
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{checked:value}}
-      accessibilityLabel={accessibilityLabel}
-      onPress={onPress}
-    >
-      <Panel raised={value} style={styles.switchRow}>
-        <View style={[styles.switchBox,value&&styles.switchBoxOn]}>
-          {value ? <Glyph name="check" size={13} colour={INK.readout} weight={1.9}/> : null}
-        </View>
-        <View style={styles.choiceText}>
-          <Text style={styles.choiceTitle}>{label}</Text>
-          <Text style={styles.choiceHint}>{hint}</Text>
-        </View>
-      </Panel>
-    </Pressable>
-  );
-}
+// The switch rows are the kit's Toggle now -- "one claim, on or off, with the
+// sentence that explains it". This file, three other form screens and one
+// detail screen had each grown their own copy of it.
 
 const styles=StyleSheet.create({
   content:{paddingHorizontal:16,paddingBottom:24},
@@ -653,13 +636,6 @@ const styles=StyleSheet.create({
   choiceHint:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:3},
   audienceNote:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5,marginBottom:8},
 
-  switchRow:{flexDirection:"row",alignItems:"center",gap:12,padding:13,marginTop:4,minHeight:SHAPE.tapTarget},
-  switchBox:{
-    width:22,height:22,borderRadius:SHAPE.radius.control,
-    borderWidth:SHAPE.border,borderColor:INK.hairline,backgroundColor:INK.inset,
-    alignItems:"center",justifyContent:"center"
-  },
-  switchBoxOn:{borderColor:INK.hairlineStrong,backgroundColor:INK.panelRaised},
 
   submit:{marginTop:16}
 });

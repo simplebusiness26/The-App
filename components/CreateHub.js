@@ -1,5 +1,5 @@
 import React,{useState} from "react";
-import {Platform,View,Text,Pressable,StyleSheet,Modal} from "react-native";
+import {View,Text,Pressable,StyleSheet,Modal} from "react-native";
 import Svg,{Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {isCreateActionHidden} from "../utils/navigation";
@@ -7,7 +7,7 @@ import {useSafeAreaInsets} from "react-native-safe-area-context";
 import CameraCapture from "./CameraCapture";
 import ReviewComposer from "./ReviewComposer";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Glyph} from "./instrument";
+import {Glyph,MONO} from "./instrument";
 
 // The Create hub. FINAL_PRODUCT_CONTRACT.md: "Global floating action: Create
 // -- reachable identically from any screen, not gesture-dependent, not
@@ -44,7 +44,9 @@ import {Glyph} from "./instrument";
 // Scan a code and Review need no photo, so they get real, immediate chips.
 // Native matches a single family name, not a CSS stack -- see the same note in
 // components/HappeningSegments.js.
-const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
+// MONO comes from the kit now. This file kept its own Platform.select copy
+// from before the faces were bundled, and a second answer to "what is the data
+// face" is exactly how two screens end up in different monospaces.
 
 const FAB_SIZE=58;
 const FAB_BOTTOM=78;   // Clears the 62px tab bar plus its own breathing room.

@@ -16,32 +16,10 @@ import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
 import {CREATE_HUB_CLEARANCE} from "../../../components/CreateHub";
 import {INK,SHAPE,TYPE} from "../../../utils/tokens";
-import {Action,Field,fieldInputStyle,Glyph,Notice,Panel,Screen,ScreenTitle,SectionRule,Segmented} from "../../../components/instrument";
-
-// The same switch app/property/edit/[id].js builds, for the same reason: the kit
-// has no "one claim, on or off, with the sentence that explains it". Panel steps
-// to `panelRaised` when it is on and a bracketed tick box sits on the housing --
-// no state ink, because being switched on is not a state a place is in.
-function SwitchRow({label,hint,value,onPress,accessibilityLabel}){
-  return(
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{checked:value}}
-      accessibilityLabel={accessibilityLabel}
-      onPress={onPress}
-    >
-      <Panel raised={value} style={styles.switchRow}>
-        <View style={[styles.switchBox,value&&styles.switchBoxOn]}>
-          {value ? <Glyph name="check" size={13} colour={INK.readout} weight={1.9}/> : null}
-        </View>
-        <View style={styles.switchText}>
-          <Text style={styles.switchLabel}>{label}</Text>
-          {hint ? <Text style={styles.switchHint}>{hint}</Text> : null}
-        </View>
-      </Panel>
-    </Pressable>
-  );
-}
+import {Action,Field,fieldInputStyle,Glyph,Notice,Panel,Screen,ScreenTitle,SectionRule,Segmented,Toggle} from "../../../components/instrument";
+// The switch rows are the kit's Toggle now -- "one claim, on or off, with the
+// sentence that explains it". This file, three other form screens and one
+// detail screen had each grown their own copy of it.
 
 export default function EditActivityClub(){
   const {id}=useLocalSearchParams();
@@ -271,7 +249,7 @@ export default function EditActivityClub(){
           the pin -- the club stays on the map, searchable and joinable, it just
           does not shout. See utils/liveBubbles.js.
         */}
-        <SwitchRow
+        <Toggle
           accessibilityLabel="Show spaces open on the map"
           label={spacesAvailable ? "On — a small bubble can appear over this club" : "Show “Spaces open” on the map"}
           hint="Off leaves the club on the map, searchable and joinable. It only removes the bubble."
@@ -306,14 +284,5 @@ const styles=StyleSheet.create({
   multiline:{minHeight:110},
   spacedField:{marginTop:12},
 
-  switchRow:{flexDirection:"row",alignItems:"center",gap:12,padding:13,minHeight:SHAPE.tapTarget},
-  switchBox:{
-    width:22,height:22,borderRadius:SHAPE.radius.control,
-    borderWidth:SHAPE.border,borderColor:INK.hairline,backgroundColor:INK.inset,
-    alignItems:"center",justifyContent:"center"
-  },
-  switchBoxOn:{borderColor:INK.hairlineStrong,backgroundColor:INK.panelRaised},
-  switchText:{flex:1,minWidth:0},
-  switchLabel:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.4},
   switchHint:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:4}
 });

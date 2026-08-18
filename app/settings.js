@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
-  Switch,
   ActivityIndicator,
   Alert,
   Linking
@@ -43,6 +42,7 @@ import {
   Screen,
   ScreenTitle,
   SectionRule,
+  Toggle,
   TickScale
 } from "../components/instrument";
 import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
@@ -543,16 +543,26 @@ export default function Settings(){
           </Text>
         </Panel>
 
-        <Row
-          title="Display my area"
-          sub="Shows your chosen town or area on your public profile and local leaderboard."
-          right={<Switch value={showArea} onValueChange={setShowArea} disabled={savingPrivacy}/>}
+        {/* THE KIT'S TOGGLE, NOT THE PLATFORM SWITCH.
+            A platform Switch brings iOS's and Android's own shape, its own
+            green, and a filled track -- three things this design decides for
+            itself. The instrument's answer is a bracketed tick on the housing:
+            the whole row is the target, so the sentence explaining the claim is
+            part of the control rather than a caption beside it. */}
+        <Toggle
+          label="Display my area"
+          hint="Shows your chosen town or area on your public profile and local leaderboard."
+          value={showArea}
+          onChange={setShowArea}
+          disabled={savingPrivacy}
         />
 
-        <Row
-          title="Appear on the leaderboard"
-          sub="Turn this off to keep earning your Explorer Score without appearing in the public ranking."
-          right={<Switch value={leaderboardOptIn} onValueChange={setLeaderboardOptIn} disabled={savingPrivacy}/>}
+        <Toggle
+          label="Appear on the leaderboard"
+          hint="Turn this off to keep earning your Explorer Score without appearing in the public ranking."
+          value={leaderboardOptIn}
+          onChange={setLeaderboardOptIn}
+          disabled={savingPrivacy}
         />
 
         <Action
@@ -589,32 +599,24 @@ export default function Settings(){
           </Text>
         ) : (
           <>
-            <Row
+            <Toggle
               glyph="bell"
-              title="Send me push notifications"
-              sub="Off means off, whatever the switches below say."
-              right={
-                <Switch
-                  value={!!pushes.enabled}
-                  onValueChange={togglePushMaster}
-                  accessibilityLabel="Send me push notifications"
-                />
-              }
+              label="Send me push notifications"
+              hint="Off means off, whatever the switches below say."
+              value={!!pushes.enabled}
+              onChange={togglePushMaster}
+              accessibilityLabel="Send me push notifications"
             />
 
             {PUSH_CATEGORIES.map((category)=>(
-              <Row
+              <Toggle
                 key={category.key}
-                title={category.label}
-                sub={category.help}
-                right={
-                  <Switch
-                    value={!!pushes[category.key]}
-                    disabled={!pushes.enabled}
-                    onValueChange={(next)=>togglePushCategory(category.key,next)}
-                    accessibilityLabel={category.label}
-                  />
-                }
+                label={category.label}
+                hint={category.help}
+                value={!!pushes[category.key]}
+                disabled={!pushes.enabled}
+                onChange={(next)=>togglePushCategory(category.key,next)}
+                accessibilityLabel={category.label}
               />
             ))}
           </>

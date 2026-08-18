@@ -10,7 +10,7 @@ import LikeButton from "../../components/LikeButton";
 import CommentThread from "../../components/CommentThread";
 import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {INK,TYPE,SHAPE} from "../../utils/tokens";
-import {Action,Chip,Empty,Frame,KeyValue,Notice,Panel,Row,Screen,ScreenTitle,SectionRule} from "../../components/instrument";
+import {Action,Chip,Empty,Frame,KeyValue,Notice,Panel,Row,Screen,ScreenTitle,SectionRule,Toggle} from "../../components/instrument";
 
 // Packet 8d: one Memory, and the controls only its owner gets.
 //
@@ -385,22 +385,17 @@ export default function MemoryPage(){
               </>
             )}
 
-            <Panel style={styles.switchRow}>
-              <View style={styles.switchText}>
-                <Text style={styles.switchTitle}>Show on my profile</Text>
-                <Text style={styles.hint}>
-                  Only to people already allowed to see it. It never makes a private Memory public.
-                </Text>
-              </View>
-              <Switch
-                value={!!memory.show_on_profile}
-                onValueChange={toggleProfile}
-                disabled={working}
-                trackColor={{false:INK.hairline,true:INK.exists}}
-                thumbColor={INK.readout}
-                accessibilityLabel="Show this Memory on my profile"
-              />
-            </Panel>
+            {/* The kit's Toggle. This was a Panel with a platform Switch in it,
+                whose track filled with `exists` when on -- and a state ink means
+                what a PLACE is, never that you have turned something on. */}
+            <Toggle
+              label="Show on my profile"
+              hint="Only to people already allowed to see it. It never makes a private Memory public."
+              value={!!memory.show_on_profile}
+              onChange={toggleProfile}
+              disabled={working}
+              accessibilityLabel="Show this Memory on my profile"
+            />
 
             <Notice tone="dispute" label="Permanent">
               Deleting a Memory removes it everywhere, including from your own map. Its map window ending would not have done that.
@@ -456,9 +451,6 @@ const styles=StyleSheet.create({
   // Chosen is a step up the surface and a stronger edge, never a fill.
   optionOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
 
-  switchRow:{padding:13,marginTop:16,flexDirection:"row",alignItems:"center",gap:12},
-  switchText:{flex:1},
-  switchTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
 
   destructive:{marginTop:8,marginBottom:8,borderRadius:SHAPE.radius.control}
 });

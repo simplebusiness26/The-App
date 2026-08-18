@@ -32,9 +32,16 @@ export default function DiscoverCarousel({title,items=[],empty,onSeeOnMap}){
 
       {items.length===0 ? (
         // An empty state is an instruction, not a mood (design-system.md), so
-        // the section's own copy is the instruction and the dial says there is
-        // nothing to read.
-        <Empty title="No reading yet" instruction={empty} glyph="search"/>
+        // the section's own copy is the instruction.
+        //
+        // COMPACT, BECAUSE THERE ARE SIX OF THESE IN ONE COLUMN. Discover
+        // stacks a carousel per section, and on a brand-new account every one
+        // of them is empty -- six full-size dials, each saying "No reading
+        // yet", is about 3000px of the app apologising. Rendered and measured;
+        // the compact row says the same thing in one line. The section's own
+        // name is already directly above in the SectionRule, so the title here
+        // says what is missing rather than repeating the heading.
+        <Empty compact title="Nothing yet" instruction={empty} glyph="search"/>
       ) : (
         <ScrollView
           horizontal

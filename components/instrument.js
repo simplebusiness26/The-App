@@ -797,23 +797,36 @@ export function Frame({children,size,height,ratio=1,round=false,style}){
 // PLACE is in, so on steps up a surface and shows a bracketed tick, exactly
 // like a selected chip. That also keeps the sentence readable, which a filled
 // panel would not.
-export function Toggle({label,sub,value,onChange,disabled,glyph,accessibilityLabel,style}){
+// `hint` and `sub` are the same slot under two names, and `onPress` is accepted
+// beside `onChange` -- the four form screens that grew this row by hand had
+// settled on hint/onPress, and renaming their call sites to satisfy the kit
+// would be the kit serving itself rather than the screens.
+export function Toggle({label,sub,hint,value,onChange,onPress,disabled,glyph,accessibilityLabel,style}){
+  const detail=sub??hint;
+  const fire=()=>{
+    if(onChange) onChange(!value);
+    else onPress?.();
+  };
   return(
     <Pressable
       style={({pressed})=>[kit.toggle,value&&kit.toggleOn,pressed&&kit.togglePressed,disabled&&kit.toggleDisabled,style]}
-      onPress={disabled?undefined:()=>onChange?.(!value)}
+      onPress={disabled?undefined:fire}
       disabled={disabled}
       accessibilityRole="switch"
       accessibilityState={{checked:!!value,disabled:!!disabled}}
       accessibilityLabel={accessibilityLabel||label}
     >
+      {/* The mark sits on the LEFT, beside the claim it affirms, and Choice
+          puts its radio in the same place -- so a form reading "tick these,
+          then pick one of those" has one column of marks rather than two
+          different alignments. */}
+      <View style={[kit.toggleBox,value&&kit.toggleBoxOn]}>
+        {value?<Glyph name="check" size={13} colour={INK.readout} weight={2}/>:null}
+      </View>
       {glyph?<View style={kit.rowGlyph}><Glyph name={glyph} size={17} colour={INK.readoutSoft}/></View>:null}
       <View style={kit.toggleBody}>
         <Text style={kit.rowTitle}>{label}</Text>
-        {sub?<Text style={kit.rowSub}>{sub}</Text>:null}
-      </View>
-      <View style={[kit.toggleBox,value&&kit.toggleBoxOn]}>
-        {value?<Glyph name="check" size={13} colour={INK.readout} weight={2}/>:null}
+        {detail?<Text style={kit.rowSub}>{detail}</Text>:null}
       </View>
     </Pressable>
   );
@@ -1096,7 +1109,7 @@ const kit=StyleSheet.create({
   counterInert:{opacity:0.75},
 
   toggle:{
-    flexDirection:"row",alignItems:"center",gap:11,
+    flexDirection:"row",alignItems:"flex-start",gap:11,
     paddingHorizontal:13,paddingVertical:12,minHeight:56,marginBottom:8,
     backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
     borderRadius:SHAPE.radius.card
@@ -1109,7 +1122,7 @@ const kit=StyleSheet.create({
   // machined, and a tick in a well is the same shape language as everything
   // else on the housing.
   toggleBox:{
-    width:26,height:26,borderRadius:SHAPE.radius.control,
+    width:26,height:26,borderRadius:SHAPE.radius.control,marginTop:1,
     alignItems:"center",justifyContent:"center",
     backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
   },
