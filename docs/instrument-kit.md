@@ -49,7 +49,11 @@ So the rule is blunt:
 | `SectionRule` | Etched divider with a mono eyebrow and a count |
 | `Row` | One line in a list — name, sentence, measured values, chevron |
 | `StateEdge` | State as a 2px left edge, never a fill |
-| `Chip` | Filters, categories, tags, toggles |
+| `Chip` | Filters, categories, tags |
+| `Toggle` | One claim, on or off, with the sentence that explains it |
+| `Choice` | Pick one of several, where each option needs a sentence |
+| `Counter` | A thing you can do, and how many people have done it |
+| `Lamp` | The one moving thing — a slow pulse, live readings only |
 | `Segmented` | Pick one of N, as a detented selector |
 | `Action` | The button. `primary` · `secondary` · `quiet` · `danger` |
 | `Field` + `fieldInputStyle` | A labelled well for an input |
@@ -76,6 +80,17 @@ Reach for these before composing a one-off:
   buttons and is worse for everybody.
 - `KeyValue` takes `wrap`, which puts the value on its own line in the body
   face. Addresses, opening hours and licence lines are genuinely multi-line.
+- `Frame` takes `height` for a fixed-height media well, `size` for a square,
+  `ratio` otherwise.
+- `Field` takes `counter` for a mono figure the app computed about what you are
+  typing (`41/300`), opposite the hint.
+- `Empty` takes `compact` for when several sit in one column.
+- `Action` and `Counter` take `compact`, which narrows the padding and never
+  the tap target.
+- `Counter` takes `busy` (the spinner replaces the glyph, so the row does not
+  reflow) and `inert` (a reading somebody may not add to).
+- `Notice` takes a `glyph` and a `style`.
+- `Readout` and `ReadoutStrip` take `valueFirst`; strip cells take `onPress`.
 
 ## The rules, in order of how often they are broken
 

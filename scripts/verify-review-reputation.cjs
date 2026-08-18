@@ -69,8 +69,26 @@ check(
   /viewerId(?:\s*&&\s*ownerId)?\s*&&\s*ownerId\s*&&\s*viewerId===ownerId|viewerId===ownerId/.test(endorse),
   `${ENDORSE}: does not compare viewerId to ownerId — nothing stops a reviewer's own review reaching the endorse control`
 );
+// HOW "non-actionable" IS SPELLED CHANGED; WHAT IT GUARANTEES DID NOT.
+//
+// This used to be a hand-rolled <Pressable disabled accessibilityRole="text">.
+// The five social controls now share the kit's Counter, and its `inert` mode is
+// that same thing: it renders a View rather than a Pressable, drops to the
+// faint readout, and announces itself as text. So `inert` counts -- but only
+// because the line below goes and checks that Counter's inert branch really
+// does render a non-pressable. Accepting the word on trust would turn this gate
+// into a spell-checker.
+const INSTRUMENT="components/instrument.js";
+const instrument=code(read(INSTRUMENT));
+const inertBranch=(instrument.match(/if\(inert\)\{[\s\S]*?\n  \}/)||[""])[0];
 check(
-  /disabled[\s\S]{0,40}accessibilityLabel/.test(endorse) || /disabled\s+accessibilityRole="text"/.test(endorse),
+  /<View/.test(inertBranch) && !/<Pressable/.test(inertBranch) && /accessibilityRole="text"/.test(inertBranch),
+  `${INSTRUMENT}: Counter's inert branch must render a non-pressable View announced as text — ${ENDORSE} relies on it for the owner's-own-review case`
+);
+check(
+  /disabled[\s\S]{0,40}accessibilityLabel/.test(endorse)
+    || /disabled\s+accessibilityRole="text"/.test(endorse)
+    || /<Counter\s+inert/.test(endorse),
   `${ENDORSE}: the owner's-own-review branch must render a disabled, non-actionable view, not a pressable that would only fail server-side`
 );
 

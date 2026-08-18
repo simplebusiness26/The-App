@@ -786,6 +786,80 @@ export function Frame({children,size,height,ratio=1,round=false,style}){
 }
 
 // ---------------------------------------------------------------------------
+// TOGGLE — one claim, on or off, with the sentence that explains it.
+// ---------------------------------------------------------------------------
+// "Show this on my profile." "Let members post to the board." A switch on its
+// own is a control with no argument; the sentence under it is the argument, and
+// the two belong together or the screen has to keep re-inventing the pairing.
+// This was hand-composed in four form screens before it lived here.
+//
+// ON IS NOT A STATE INK. Whether you have turned something on is not a state a
+// PLACE is in, so on steps up a surface and shows a bracketed tick, exactly
+// like a selected chip. That also keeps the sentence readable, which a filled
+// panel would not.
+export function Toggle({label,sub,value,onChange,disabled,glyph,accessibilityLabel,style}){
+  return(
+    <Pressable
+      style={({pressed})=>[kit.toggle,value&&kit.toggleOn,pressed&&kit.togglePressed,disabled&&kit.toggleDisabled,style]}
+      onPress={disabled?undefined:()=>onChange?.(!value)}
+      disabled={disabled}
+      accessibilityRole="switch"
+      accessibilityState={{checked:!!value,disabled:!!disabled}}
+      accessibilityLabel={accessibilityLabel||label}
+    >
+      {glyph?<View style={kit.rowGlyph}><Glyph name={glyph} size={17} colour={INK.readoutSoft}/></View>:null}
+      <View style={kit.toggleBody}>
+        <Text style={kit.rowTitle}>{label}</Text>
+        {sub?<Text style={kit.rowSub}>{sub}</Text>:null}
+      </View>
+      <View style={[kit.toggleBox,value&&kit.toggleBoxOn]}>
+        {value?<Glyph name="check" size={13} colour={INK.readout} weight={2}/>:null}
+      </View>
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CHOICE — pick one of several, where each option needs a sentence.
+// ---------------------------------------------------------------------------
+// Audience, visibility, duration-with-consequences. Chip and Segmented hold one
+// word each; this is for the choices where the word is not enough and the
+// difference between the options is the sentence under it.
+//
+// Each option keeps whatever accessibilityLabel it is given verbatim, because
+// these are exactly the controls whose spoken labels tests pin down
+// ("Everyone: Any Explorer, while it is live").
+export function Choice({options,value,onChange,disabled,style}){
+  return(
+    <View style={style}>
+      {options.map((option)=>{
+        const key=option.key??option.value;
+        const selected=key===value;
+        return(
+          <Pressable
+            key={String(key)}
+            style={({pressed})=>[kit.choice,selected&&kit.choiceOn,pressed&&kit.togglePressed,disabled&&kit.toggleDisabled]}
+            onPress={disabled?undefined:()=>onChange?.(key)}
+            disabled={disabled}
+            accessibilityRole="radio"
+            accessibilityState={{selected,disabled:!!disabled}}
+            accessibilityLabel={option.accessibilityLabel||[option.label,option.sub].filter(Boolean).join(": ")}
+          >
+            <View style={[kit.choiceMark,selected&&kit.choiceMarkOn]}>
+              {selected?<View style={kit.choiceDot}/>:null}
+            </View>
+            <View style={kit.toggleBody}>
+              <Text style={kit.rowTitle}>{option.label}</Text>
+              {option.sub?<Text style={kit.rowSub}>{option.sub}</Text>:null}
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // COUNTER — a thing you can do, and how many people have done it.
 // ---------------------------------------------------------------------------
 // Like, Useful, Follow, Save, Comment. Five files had each grown their own copy
@@ -1020,6 +1094,41 @@ const kit=StyleSheet.create({
   // enough to miss is not a smaller control, it is a broken one.
   counterCompact:{paddingHorizontal:8,gap:5},
   counterInert:{opacity:0.75},
+
+  toggle:{
+    flexDirection:"row",alignItems:"center",gap:11,
+    paddingHorizontal:13,paddingVertical:12,minHeight:56,marginBottom:8,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card
+  },
+  toggleOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  togglePressed:{opacity:0.8},
+  toggleDisabled:{opacity:0.45},
+  toggleBody:{flex:1,minWidth:0},
+  // A bracketed box rather than a sliding track: the instrument's controls are
+  // machined, and a tick in a well is the same shape language as everything
+  // else on the housing.
+  toggleBox:{
+    width:26,height:26,borderRadius:SHAPE.radius.control,
+    alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  toggleBoxOn:{borderColor:INK.readoutSoft},
+
+  choice:{
+    flexDirection:"row",alignItems:"flex-start",gap:11,
+    paddingHorizontal:13,paddingVertical:12,minHeight:56,marginBottom:8,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card
+  },
+  choiceOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  choiceMark:{
+    width:20,height:20,borderRadius:10,marginTop:2,
+    alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  choiceMarkOn:{borderColor:INK.readoutSoft},
+  choiceDot:{width:8,height:8,borderRadius:4,backgroundColor:INK.readout},
   counterCountInert:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
   counterPressed:{opacity:0.78},
   counterDisabled:{opacity:0.45},
