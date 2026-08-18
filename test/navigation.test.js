@@ -224,7 +224,10 @@ describe("the active tab follows the screen",()=>{
 
   it("lights nothing on a screen that is under no tab",()=>{
     expect(activeTabKey("/settings")).toBeNull();
-    expect(activeTabKey("/")).toBeNull();
+    // "/" is NOT one of those screens -- see the root-path test at the end of
+    // this file. app/index.js renders LivingMapScreen, the same component /map
+    // renders, so the root is the Map tab's screen reached by another path.
+    expect(activeTabKey("/moments/abc")).toBeNull();
   });
 
   it("does not confuse a prefix for a parent",()=>{
@@ -363,3 +366,11 @@ function wrap(element){
     )
   );
 }
+
+// The app opens on "/" and app/index.js renders the same LivingMapScreen that
+// /map does. If that does not resolve to the Map tab, the first screen anybody
+// ever sees has nothing lit in the navigation.
+test("the root path lights the Map tab, because the root IS the map",()=>{
+  expect(activeTabKey("/")).toBe("map");
+  expect(activeTabKey("")).toBe("map");
+});

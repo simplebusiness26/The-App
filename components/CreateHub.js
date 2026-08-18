@@ -6,6 +6,7 @@ import {useSafeAreaInsets} from "react-native-safe-area-context";
 import CameraCapture from "./CameraCapture";
 import ReviewComposer from "./ReviewComposer";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph} from "./instrument";
 
 // The Create hub. FINAL_PRODUCT_CONTRACT.md: "Global floating action: Create
 // -- reachable identically from any screen, not gesture-dependent, not
@@ -105,6 +106,11 @@ export default function CreateHub(){
         accessibilityLabel="Create"
         onPress={openHub}
       >
+        {/* A DIAL, NOT A BUBBLE. The Create action is the one control that
+            floats over every screen, so it takes the instrument's signature
+            geometry rather than a plain circle: an aperture's inner ring
+            around a drawn cross. */}
+        <View style={styles.fabRing} pointerEvents="none"/>
         <PlusIcon/>
       </Pressable>
 
@@ -141,7 +147,7 @@ export default function CreateHub(){
               hitSlop={8}
               onPress={close}
             >
-              <Text style={styles.closeText}>×</Text>
+              <Glyph name="close" size={16} colour={INK.readout} weight={1.7}/>
             </Pressable>
           </View>
 
@@ -210,6 +216,10 @@ const styles=StyleSheet.create({
     ...SHAPE.shadow.floating,
     zIndex:30
   },
+  fabRing:{
+    position:"absolute",top:7,left:7,right:7,bottom:7,
+    borderRadius:FAB_SIZE/2,borderWidth:SHAPE.border,borderColor:INK.hairline,opacity:0.8
+  },
   hub:{flex:1,backgroundColor:INK.inset},
   reviewWrap:{flex:1,backgroundColor:INK.ground},
   topBar:{
@@ -230,22 +240,21 @@ const styles=StyleSheet.create({
     textTransform:"uppercase",
     // Over a live viewfinder, so a smoked-glass ground rather than a panel.
     backgroundColor:"rgba(15,18,22,0.62)",
-    borderRadius:SHAPE.radius.pill,
+    borderRadius:SHAPE.radius.control,
     paddingHorizontal:12,
     paddingVertical:6,
     overflow:"hidden"
   },
   closeButton:{
-    width:40,
-    height:40,
-    borderRadius:20,
+    width:38,
+    height:38,
+    borderRadius:SHAPE.radius.control,
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.panel,
     borderWidth:SHAPE.border,
     borderColor:INK.hairlineStrong
   },
-  closeText:{fontSize:22,fontWeight:"700",color:INK.readout,lineHeight:24},
   tray:{
     position:"absolute",
     left:0,
@@ -259,12 +268,16 @@ const styles=StyleSheet.create({
   chip:{
     borderWidth:SHAPE.border,
     borderColor:INK.hairlineStrong,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:14,
+    borderRadius:SHAPE.radius.control,
+    paddingHorizontal:13,
     paddingVertical:8,
     minHeight:36,
     justifyContent:"center",
-    backgroundColor:"rgba(15,18,22,0.62)"
+    backgroundColor:"rgba(15,18,22,0.68)"
   },
-  chipText:{color:INK.readout,fontSize:TYPE.body.sizes.sm,fontWeight:"600"}
+  // Mono: these name the app's own branches, not a sentence somebody wrote.
+  chipText:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:0.8
+  }
 });

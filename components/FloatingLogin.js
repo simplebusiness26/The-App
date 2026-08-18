@@ -1,8 +1,9 @@
 import React,{useCallback,useState} from "react";
-import {View,Text,Pressable,StyleSheet} from "react-native";
+import {View,StyleSheet} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
-import {INK} from "../utils/tokens";
+import {SHAPE} from "../utils/tokens";
+import {Action} from "./instrument";
 
 // Log in, on the map, for somebody who is not logged in.
 //
@@ -44,23 +45,15 @@ export default function FloatingLogin(){
 
   return(
     <View style={styles.wrap} pointerEvents="box-none">
-      <Pressable
-        style={styles.button}
-        accessibilityRole="button"
-        accessibilityLabel="Log in"
-        onPress={()=>router.push("/auth/login")}
-      >
-        <Text style={styles.text}>Log in</Text>
-      </Pressable>
-
-      <Pressable
-        style={styles.secondary}
-        accessibilityRole="button"
-        accessibilityLabel="Create account"
-        onPress={()=>router.push("/auth/signup")}
-      >
-        <Text style={styles.secondaryText}>Create account</Text>
-      </Pressable>
+      {/* THE KIT'S BUTTON, NOT TWO HAND-ROLLED PILLS.
+          These were a 24px-radius filled pill and a 2px-bordered white one --
+          the print system's shape, which recolouring never touched. Action
+          carries the instrument's control radius, its 1px edge, its mono
+          uppercase label and the dark-text-on-filled-ink contrast rule. */}
+      <Action kind="primary" label="Log in" glyph="person" style={styles.button}
+        onPress={()=>router.push("/auth/login")}/>
+      <Action kind="secondary" label="Create account" style={styles.secondary}
+        onPress={()=>router.push("/auth/signup")}/>
     </View>
   );
 }
@@ -77,26 +70,8 @@ const styles=StyleSheet.create({
     gap:10,
     zIndex:20
   },
-  button:{
-    backgroundColor:INK.blue,
-    borderColor:INK.ink,
-    borderWidth:2,
-    borderRadius:24,
-    paddingHorizontal:26,
-    paddingVertical:13,
-    minHeight:44,
-    justifyContent:"center"
-  },
-  text:{color:INK.card,fontWeight:"900",fontSize:15},
-  secondary:{
-    backgroundColor:INK.card,
-    borderColor:INK.ink,
-    borderWidth:2,
-    borderRadius:24,
-    paddingHorizontal:20,
-    paddingVertical:13,
-    minHeight:44,
-    justifyContent:"center"
-  },
-  secondaryText:{color:INK.ink,fontWeight:"900",fontSize:15}
+  // Both float over a live map, so both take the ambient shadow the design
+  // system reserves for genuinely floating things.
+  button:{...SHAPE.shadow.floating},
+  secondary:{...SHAPE.shadow.floating}
 });

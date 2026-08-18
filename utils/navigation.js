@@ -103,6 +103,12 @@ export function headerFloatsOver(pathname){
 export function activeTabKey(pathname){
   const path=normalise(pathname);
 
+  // "/" IS THE MAP. app/index.js renders the same LivingMapScreen that /map
+  // does -- the app opens on the map rather than a landing page. Without this
+  // the very first screen anybody sees has no tab lit, which reads as the
+  // navigation being broken before they have touched anything.
+  if(path==="" || path==="/") return "map";
+
   const exact=TABS.find((tab)=>tab.route===path);
   if(exact) return exact.key;
 

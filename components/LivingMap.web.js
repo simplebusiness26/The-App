@@ -2,6 +2,9 @@ import React,{useCallback,useEffect,useRef} from "react";
 import {View,Text,StyleSheet} from "react-native";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+// ...and then the instrument's own answer to it. The library stylesheet draws
+// a light-theme zoom control; see components/mapChrome.web.js.
+import {installMapChromeStyle} from "./mapChrome.web";
 import {mapConfiguration} from "../utils/mapProvider";
 import {glyphPrimitives,heatmapPaint} from "../utils/markers";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
@@ -313,6 +316,7 @@ export default function LivingMap({
       attributionControl:false
     });
 
+    installMapChromeStyle();
     map.current.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
 
     // Long press to drop a Link-up. A touch browser fires `contextmenu` on a

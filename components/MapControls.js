@@ -1,6 +1,7 @@
 import React from "react";
 import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph,MONO} from "./instrument";
 
 // The map's controls, out of the way until somebody wants them.
 //
@@ -69,7 +70,7 @@ export default function MapControls({
           hitSlop={8}
           onPress={()=>toggle(PANELS.SEARCH)}
         >
-          <Text style={[styles.icon,open===PANELS.SEARCH && styles.iconOpen]}>⌕</Text>
+          <Glyph name="search" size={17} colour={open===PANELS.SEARCH ? INK.readout : INK.readoutSoft} weight={1.6}/>
         </Pressable>
 
         <Pressable
@@ -80,7 +81,7 @@ export default function MapControls({
           hitSlop={8}
           onPress={()=>toggle(PANELS.FILTERS)}
         >
-          <Text style={[styles.icon,open===PANELS.FILTERS && styles.iconOpen]}>≡</Text>
+          <Glyph name="filter" size={17} colour={open===PANELS.FILTERS ? INK.readout : INK.readoutSoft} weight={1.6}/>
         </Pressable>
 
         {/* Public places, as a flat list. Not a toggle -- there is nothing to
@@ -93,7 +94,7 @@ export default function MapControls({
             hitSlop={8}
             onPress={onOpenList}
           >
-            <Text style={styles.icon}>▤</Text>
+            <Glyph name="map" size={17} colour={INK.readoutSoft} weight={1.6}/>
           </Pressable>
         )}
 
@@ -111,7 +112,7 @@ export default function MapControls({
           <TextInput
             style={styles.search}
             placeholder="Search businesses, stays or clubs..."
-            placeholderTextColor={INK.inkSoft}
+            placeholderTextColor={INK.readoutFaint}
             value={search}
             onChangeText={onSearch}
             accessibilityLabel="Search the map"
@@ -126,7 +127,7 @@ export default function MapControls({
               hitSlop={8}
               onPress={()=>onSearch?.("")}
             >
-              <Text style={styles.clearText}>✕</Text>
+              <Glyph name="close" size={13} colour={INK.readoutSoft} weight={1.7}/>
             </Pressable>
           )}
         </View>
@@ -232,57 +233,85 @@ function activeLabel({typeFilters,typeFilter,historical}){
 const styles=StyleSheet.create({
   wrap:{position:"absolute",left:10,right:10,zIndex:10},
   chips:{flexDirection:"row",alignItems:"center",gap:8},
+  // MACHINED, NOT WHITE CIRCLES.
+  //
+  // These were 40px circles with a 2px INK.ink border -- and after the palette
+  // moved, INK.ink is the near-white READOUT colour, so the map's three
+  // controls rendered as three white rings holding the text characters
+  // U+2315, U+2261 and U+25A4 standing in for icons. Both halves of that are
+  // the print system surviving a recolour. They are now the instrument's own
+  // control: a 6px-radius panel with a 1px hairline and a drawn glyph, which
+  // is the same shape the header chips and every button in the kit take.
   chip:{
-    width:40,
-    height:40,
-    borderRadius:20,
+    width:38,
+    height:38,
+    borderRadius:SHAPE.radius.control,
     alignItems:"center",
     justifyContent:"center",
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    ...SHAPE.shadow.floating
   },
-  chipOpen:{backgroundColor:INK.ink},
-  icon:{color:INK.ink,fontSize:20,fontWeight:"900",lineHeight:24},
-  iconOpen:{color:INK.card},
+  // Open steps a surface and strengthens the edge. It does NOT fill: which
+  // panel is open is not a state a place is in.
+  chipOpen:{backgroundColor:INK.panelRaised,borderColor:INK.readoutSoft},
   badge:{
-    minHeight:28,
+    minHeight:30,
     justifyContent:"center",
-    paddingHorizontal:11,
-    borderRadius:99,
-    backgroundColor:INK.ink
+    paddingHorizontal:10,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline
   },
-  badgeText:{color:INK.card,fontWeight:"800",fontSize:12},
+  // A filter left on is a system state the app is reporting, so it is mono.
+  badgeText:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:0.8
+  },
   panel:{
     marginTop:8,
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:14,
-    padding:10
+    backgroundColor:INK.panel,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card,
+    padding:10,
+    ...SHAPE.shadow.floating
   },
+  // The search box is a well cut into the panel, one surface step down, like
+  // every other input in the instrument.
   search:{
     minHeight:44,
     paddingHorizontal:12,
-    paddingRight:38,
-    color:INK.ink,
-    fontSize:15
+    paddingRight:40,
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.lg,
+    backgroundColor:INK.inset,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control
   },
-  clear:{position:"absolute",right:16,top:18,width:28,height:28,alignItems:"center",justifyContent:"center"},
-  clearText:{color:INK.ink,fontWeight:"900",fontSize:15},
-  heading:{color:INK.inkSoft,fontWeight:"800",fontSize:11,letterSpacing:0.8,textTransform:"uppercase",marginTop:4,marginBottom:6},
+  clear:{position:"absolute",right:18,top:20,width:28,height:28,alignItems:"center",justifyContent:"center"},
+  heading:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:1,
+    textTransform:"uppercase",marginTop:6,marginBottom:7
+  },
   row:{gap:7,paddingRight:4,paddingBottom:8},
   filter:{
-    backgroundColor:INK.paper,
-    paddingHorizontal:13,
-    minHeight:38,
+    backgroundColor:INK.panel,
+    paddingHorizontal:12,
+    minHeight:34,
     justifyContent:"center",
-    borderRadius:20,
-    borderWidth:2,
-    borderColor:INK.ink
+    borderRadius:SHAPE.radius.control,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline
   },
-  filterOn:{backgroundColor:INK.ink,borderColor:INK.ink},
+  filterOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
   filterOff:{opacity:0.45},
-  filterText:{fontWeight:"700",color:INK.ink},
-  filterTextOn:{color:INK.card,fontWeight:"900"}
+  filterText:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:0.7
+  },
+  filterTextOn:{color:INK.readout,fontWeight:"600"}
 });
