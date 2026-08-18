@@ -44,9 +44,9 @@ export const MARKER_STATES={
 };
 
 const MARKER_STATE_INK={
-  [MARKER_STATES.EXISTS]:INK.blue,
-  [MARKER_STATES.SCHEDULED]:INK.pink,
-  [MARKER_STATES.OFFER]:INK.yellow
+  [MARKER_STATES.EXISTS]:INK.exists,
+  [MARKER_STATES.SCHEDULED]:INK.scheduled,
+  [MARKER_STATES.OFFER]:INK.offer
 };
 
 const MARKER_STATE_SENTENCE={
@@ -55,9 +55,15 @@ const MARKER_STATE_SENTENCE={
   [MARKER_STATES.OFFER]:"An offer is running."
 };
 
-// White is only legible on ink-blue and ink (design-system.md, accessibility
-// floor: "Never white on ink-yellow"). Every other fill takes an ink glyph.
-const GLYPH_INK_ON_WHITE_SAFE=[INK.blue,INK.ink];
+// WHICH GLYPH INK, AND WHY IT INVERTED.
+//
+// Under the print system the pins were saturated inks on warm paper, and the
+// question was which of them white was legible on. The instrument inverts that
+// completely: every state ink is now a BRIGHT colour on a near-black housing,
+// so the contrast table in docs/design-system.md gives all three of them dark
+// text -- `ground`, never `readout`. There is no exception, so there is no
+// list any more. An unclaimed pin is the one that goes the other way: its fill
+// is the panel surface, so its glyph is the light readout.
 
 // ---------------------------------------------------------------------------
 // Glyphs
@@ -173,15 +179,20 @@ export function glyphPrimitives(name){
 // inks; the product describes four event states. Words carry the difference the
 // colour cannot, which is the accessibility floor's position anyway.
 function buildMarker({glyph,state,typeSentence,claimed,stateSentence,hosting}){
-  const fill=claimed ? MARKER_STATE_INK[state] : INK.card;
-  const glyphInk=GLYPH_INK_ON_WHITE_SAFE.includes(fill) ? INK.card : INK.ink;
+  const fill=claimed ? MARKER_STATE_INK[state] : INK.panel;
+  const glyphInk=claimed ? INK.ground : INK.readout;
 
   return {
     glyph,
     state,
     fill,
     glyphInk,
-    border:INK.ink,
+    // A HAIRLINE, NOT A PRINT REGISTER. This was INK.ink at 2px -- and INK.ink
+    // is the near-white readout colour now, so every pin on the map wore a
+    // white ring. A claimed pin's edge is the housing itself, which reads as
+    // the pin being cut out of the map; an unclaimed one keeps the dashed
+    // hairline the design system asks for.
+    border:claimed ? INK.ground : INK.hairlineStrong,
     borderStyle:claimed ? "solid" : "dashed",
     // design-system.md's overprint: "a place hosting something". It is a second
     // channel rather than a fourth ink, which is how the map can show "happening
@@ -374,15 +385,16 @@ export function markerForMoment(){
 // (test/living-map-cross-platform.test.js bans INK.blue/pink/yellow in either
 // of them), so the appearance is decided in this file and handed over.
 //
-// INK, not one of the three inks. Blue, pink and yellow say what state a PLACE
-// is in; a route is not a place and borrowing one would make the map lie. A
-// paper-coloured casing underneath keeps the line readable over dark tiles,
-// water and heat alike.
+// THE READOUT, not one of the three state inks. exists/scheduled/offer say what
+// state a PLACE is in; a route is not a place and borrowing one would make the
+// map lie. The casing is the housing colour, which on the dark map style keeps
+// the line readable over land, water and heat alike -- the same job the old
+// paper casing did on the light one, with the ground swapped.
 export function routeAppearance(){
   return {
-    colour:INK.ink,
+    colour:INK.readout,
     width:5,
-    casingColour:INK.paper,
+    casingColour:INK.ground,
     casingWidth:9,
     label:"Your route"
   };
@@ -401,27 +413,27 @@ export function routeAppearance(){
 // only for an Event that is actually happening. It is a decision, not drift.
 export function bubbleAppearance(){
   return {
-    card:INK.card,
-    ink:INK.ink,
-    blank:INK.hair
+    card:INK.panel,
+    ink:INK.readout,
+    blank:INK.hairline
   };
 }
 
 export function celebrationPieces(){
   return [
-    {x:-26,y:-30,spin:"120deg",colour:INK.blue},
-    {x:-9,y:-40,spin:"-90deg",colour:INK.pink},
-    {x:10,y:-38,spin:"200deg",colour:INK.yellow},
-    {x:26,y:-26,spin:"-140deg",colour:INK.blue},
-    {x:-18,y:-16,spin:"70deg",colour:INK.yellow},
-    {x:18,y:-14,spin:"-40deg",colour:INK.pink}
+    {x:-26,y:-30,spin:"120deg",colour:INK.exists},
+    {x:-9,y:-40,spin:"-90deg",colour:INK.scheduled},
+    {x:10,y:-38,spin:"200deg",colour:INK.offer},
+    {x:26,y:-26,spin:"-140deg",colour:INK.exists},
+    {x:-18,y:-16,spin:"70deg",colour:INK.offer},
+    {x:18,y:-14,spin:"-40deg",colour:INK.scheduled}
   ];
 }
 
 // How a cluster of pins is drawn: one circle with a number in it.
 //
-// INK AND CARD, NOT ONE OF THE THREE INKS. Blue, pink and yellow say what state
-// a PLACE is in (MARKER_STATES above). A cluster is not a place -- it is
+// THE HOUSING, NOT ONE OF THE THREE STATE INKS. exists/scheduled/offer say what
+// state a PLACE is in (MARKER_STATES above). A cluster is not a place -- it is
 // "there are nine things here, come closer" -- and borrowing a state colour
 // would make the map claim nine businesses share a state they have not got.
 //
@@ -431,9 +443,9 @@ export function clusterAppearance(count){
   const many=Math.max(0,Number(count) || 0);
 
   return{
-    fill:INK.card,
-    border:INK.ink,
-    ink:INK.ink,
+    fill:INK.panel,
+    border:INK.hairlineStrong,
+    ink:INK.readout,
     // 38px to 60px across. Big enough to read a two-digit number, never big
     // enough to be mistaken for the heat wash underneath it.
     size:Math.min(60,38+Math.min(many,40)*0.6),

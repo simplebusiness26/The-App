@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 // a light-theme zoom control; see components/mapChrome.web.js.
 import {installMapChromeStyle} from "./mapChrome.web";
 import {mapConfiguration} from "../utils/mapProvider";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE} from "../utils/tokens";
 
 // Web twin of ListingPinMap.js. Same draggable-pin job, maplibre-gl's own API
 // instead of the native package's -- the same split components/LivingMap.js/
@@ -37,11 +37,15 @@ export default function ListingPinMap({latitude,longitude,onDragEnd,height=220})
     map.current.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
 
     const element=document.createElement("div");
-    element.style.width="24px";
-    element.style.height="24px";
+    // Matched to the native pin in components/ListingPinMap.js above: the
+    // `exists` ink on a 1px ground-coloured ring, not the old flat blue disc
+    // inside a 2px near-white border.
+    element.style.width="26px";
+    element.style.height="26px";
     element.style.borderRadius="50%";
-    element.style.background=INK.blue;
-    element.style.border=`2px solid ${INK.ink}`;
+    element.style.background=INK.exists;
+    element.style.border=`${SHAPE.border}px solid ${INK.ground}`;
+    element.style.boxShadow="0 2px 8px rgba(0,0,0,.5)";
     element.style.cursor="grab";
 
     marker.current=new maplibregl.Marker({element,draggable:true,anchor:"center"})
@@ -78,5 +82,5 @@ export default function ListingPinMap({latitude,longitude,onDragEnd,height=220})
 }
 
 const styles=StyleSheet.create({
-  wrap:{borderRadius:12,overflow:"hidden",borderWidth:2,borderColor:INK.ink}
+  wrap:{borderRadius:SHAPE.radius.card,overflow:"hidden",borderWidth:SHAPE.border,borderColor:INK.hairline}
 });

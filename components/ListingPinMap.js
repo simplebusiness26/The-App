@@ -2,7 +2,7 @@ import React,{useRef} from "react";
 import {View,StyleSheet} from "react-native";
 import {Map,Camera,ViewAnnotation} from "@maplibre/maplibre-react-native";
 import {mapConfiguration} from "../utils/mapProvider";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE} from "../utils/tokens";
 
 // The draggable-pin map inside ListingLocationPicker.js -- native renderer.
 // Split the same way components/LivingMap.js/.web.js are split, for the same
@@ -55,11 +55,23 @@ export default function ListingPinMap({latitude,longitude,onDragEnd,height=220})
 }
 
 const styles=StyleSheet.create({
-  wrap:{borderRadius:12,overflow:"hidden",borderWidth:2,borderColor:INK.ink},
+  // The 2px INK.ink border here was the print register, and after the palette
+  // moved INK.ink is the near-white readout colour -- so this drew a white
+  // frame around the map and a white ring around the pin. Hairline, on the
+  // housing, like every other edge in the instrument.
+  wrap:{
+    borderRadius:SHAPE.radius.card,overflow:"hidden",
+    borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
   map:{flex:1},
   // 44px minimum tap target even though the visible pin is smaller, per
   // docs/design-system.md's accessibility floor.
   pinTouchArea:{width:44,height:44,alignItems:"center",justifyContent:"center"},
-  pin:{width:24,height:24,borderRadius:12,backgroundColor:INK.blue,borderWidth:2,borderColor:INK.ink},
-  pinPoint:{width:2,height:10,backgroundColor:INK.ink,marginTop:-2}
+  // A place being positioned exists -- that is what this pin says -- so it
+  // takes the `exists` ink over the housing rather than the old flat blue.
+  pin:{
+    width:26,height:26,borderRadius:SHAPE.radius.pin,backgroundColor:INK.exists,
+    borderWidth:SHAPE.border,borderColor:INK.ground
+  },
+  pinPoint:{width:SHAPE.border+1,height:10,backgroundColor:INK.exists,marginTop:-2}
 });
