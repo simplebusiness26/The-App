@@ -60,8 +60,8 @@ const TYPES=[
 
 // What used to be an emoji in a circle at the front of every row, as glyphs off
 // the same 16x16 grid the map pins and the tab bar are drawn on.
-// utils/linkups.js still exports liveItemIcon() for anything that has not been
-// rebuilt yet; this screen no longer asks it for a picture.
+// utils/linkups.js used to export liveItemIcon(), returning an emoji per type.
+// It is gone; the mapping lives here, in drawn glyphs.
 const TYPE_GLYPH={linkup:"people",checkin:"pin",event:"ticket",activity:"live",place:"building"};
 
 // What the app measured about WHEN, for the mono meta column. "IN 2H",

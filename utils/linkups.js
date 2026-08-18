@@ -54,10 +54,8 @@ export function timeUntil(value){
   return `In ${days}d`;
 }
 
-export function liveItemIcon(type){
-  if(type==="linkup") return "🤝";
-  if(type==="checkin") return "📍";
-  if(type==="event") return "🎉";
-  if(type==="activity") return "🏃";
-  return "⭐";
-}
+// liveItemIcon() lived here and returned an emoji per item type. Its last
+// caller went when app/live.js was rebuilt: an emoji carries a colour and a
+// weight the platform chose, which on a dark instrument face reads as a sticker
+// stuck to the housing. Item types map to drawn glyphs at the call site now --
+// see Glyph and GLYPH_NAMES in components/instrument.js.

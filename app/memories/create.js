@@ -13,7 +13,6 @@ import {
   MEMORY_VISIBILITY,
   liveUntilFrom
 } from "../../utils/memories";
-import {PUBLIC_PLACE_TYPES} from "../../utils/places";
 import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,uploadSocialAsset} from "../../utils/socialMedia";
 import AudienceCeiling from "../../components/AudienceCeiling";
 import AddLocation from "../../components/AddLocation";
