@@ -16,6 +16,7 @@ import {
   Empty,
   Frame,
   MONO,
+  Segmented,
   Notice,
   Panel,
   Screen,
@@ -63,48 +64,21 @@ function when(value){
 
 const BOARD_LABEL={linkup:"Link-up",activity_club:"Activity club"};
 
-// THE TAB STRIP, COMPOSED LOCALLY.
-//
-// This is the kit's Segmented in every respect except one: each tab has to
-// speak a different sentence from the one it displays -- "Friends, 2 unread"
-// read aloud, "Friends" on the glass -- and Segmented uses a single `label` for
-// both. So the detented switch is rebuilt here from the same parts (mono label,
-// tick detent, no fill anywhere, because being the tab you are on is not a
-// state a place is in) with an accessibilityLabel of its own and a mono count
-// plate for the unread figure. Noted in the report as a kit gap: Segmented
-// wants a per-item accessibilityLabel and a meta slot.
-function MessageTabs({items,active,onChange,unread}){
-  return(
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.tabScroll}
-      contentContainerStyle={styles.tabScrollContent}
-      accessibilityRole="tablist"
-    >
-      {items.map((tab)=>{
-        const selected=tab.key===active;
-        const count=tab.key==="boards" ? 0 : unread[tab.key];
-
-        return(
-          <Pressable
-            key={tab.key}
-            style={styles.tab}
-            accessibilityRole="tab"
-            accessibilityState={{selected}}
-            accessibilityLabel={count ? `${tab.label}, ${count} unread` : tab.label}
-            onPress={()=>onChange(tab.key)}
-          >
-            <View style={styles.tabRow}>
-              <Text style={[styles.tabText,selected&&styles.tabTextActive]} numberOfLines={1}>{tab.label}</Text>
-              {count>0 && <Text style={[styles.tabCount,selected&&styles.tabCountActive]}>{count}</Text>}
-            </View>
-            <View style={[styles.tabDetent,selected&&styles.tabDetentActive]}/>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
+// The tab strip is the kit's Segmented. It used to be composed here, because
+// each tab has to SPEAK a different sentence from the one it SHOWS -- "Friends,
+// 2 unread" read aloud, "Friends" on the glass -- and Segmented took one label
+// for both. It takes a per-item accessibilityLabel and a meta count now, so the
+// local copy is gone: one selector shape in the app, defined once.
+function messageTabs(unread){
+  return MESSAGE_VIEWS.map((tab)=>{
+    const count=tab.key==="boards" ? 0 : unread[tab.key];
+    return{
+      key:tab.key,
+      label:tab.label,
+      meta:count>0 ? count : null,
+      accessibilityLabel:count ? `${tab.label}, ${count} unread` : tab.label
+    };
+  });
 }
 
 export default function Messages(){
@@ -171,7 +145,7 @@ export default function Messages(){
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenTitle eyebrow="INBOX" title="Messages"/>
 
-        <MessageTabs items={MESSAGE_VIEWS} active={view} onChange={setView} unread={unread}/>
+        <Segmented items={messageTabs(unread)} active={view} onChange={setView} scroll/>
 
         {!showingBoards && !!error && <Notice tone="dispute" label="Not loaded">{error}</Notice>}
         {showingBoards && !!boardError && <Notice tone="dispute" label="Not loaded">{boardError}</Notice>}
@@ -286,25 +260,8 @@ const styles=StyleSheet.create({
   // horizontal ScrollView inside a flex column claims the leftover vertical
   // space and stretches its children to fill it -- measured in this repo at
   // 402px-tall pills. docs/instrument-kit.md, rule nine.
-  tabScroll:{flexGrow:0,flexShrink:0,marginBottom:14},
-  tabScrollContent:{alignItems:"center",gap:2},
-  tab:{paddingHorizontal:12,paddingTop:10,alignItems:"center",minHeight:SHAPE.tapTarget},
-  tabRow:{flexDirection:"row",alignItems:"center",gap:7,marginBottom:8},
-  tabText:{
-    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
-    textTransform:"uppercase",letterSpacing:0.8
-  },
-  tabTextActive:{color:INK.readout},
   // The unread figure is a count the app made, so it is mono on the housing --
   // not a filled dot, which would spend a colour on chrome.
-  tabCount:{
-    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.5,
-    borderWidth:SHAPE.border,borderColor:INK.hairline,borderRadius:SHAPE.radius.control,
-    paddingHorizontal:5,paddingVertical:1,overflow:"hidden"
-  },
-  tabCountActive:{color:INK.readout,borderColor:INK.hairlineStrong},
-  tabDetent:{height:2,alignSelf:"stretch",minWidth:18,backgroundColor:INK.hairline},
-  tabDetentActive:{backgroundColor:INK.hairlineStrong},
 
   row:{flexDirection:"row",alignItems:"center",gap:11,padding:11,marginBottom:9},
   avatar:{backgroundColor:INK.inset},

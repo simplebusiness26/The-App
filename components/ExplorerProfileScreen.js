@@ -33,6 +33,7 @@ import {
   Row,
   Screen,
   ScreenTitle,
+  Segmented,
   SectionRule
 } from "./instrument";
 
@@ -550,38 +551,22 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         visitor is not offered a tab that would be empty for them -- they are
         not offered the tab at all.
 
-        They were filled pills in an unconstrained horizontal ScrollView. This is
-        the kit's Segmented in every respect but one -- each tab speaks "Show
-        Reviews" while displaying "Reviews", and Segmented uses a single `label`
-        for both -- so the detented switch is rebuilt here from the same parts:
-        mono label, tick detent, no fill anywhere, and the flexGrow:0/flexShrink:0
-        and centred content container that stop a sideways ScrollView in a flex
-        column stretching its children to fill it.
+        They were filled pills in an unconstrained horizontal ScrollView, then
+        briefly a local copy of the kit's detented switch -- because each tab
+        speaks "Show Reviews" while displaying "Reviews" and Segmented took one
+        label for both. It takes a per-item accessibilityLabel now, so this is
+        the kit's own selector again: one selector shape in the app.
       */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.scrapbookTabs}
-        contentContainerStyle={styles.scrapbookTabContent}
-        accessibilityRole="tablist"
-      >
-        {SCRAPBOOK_TABS.filter(tab=>!tab.ownerOnly || isOwner).map(tab=>{
-          const selected=scrapbookTab===tab.key;
-          return(
-            <Pressable
-              key={tab.key}
-              style={styles.scrapbookTab}
-              accessibilityRole="button"
-              accessibilityLabel={`Show ${tab.label}`}
-              accessibilityState={{selected}}
-              onPress={()=>setScrapbookTab(tab.key)}
-            >
-              <Text style={[styles.scrapbookTabText,selected&&styles.scrapbookTabTextActive]} numberOfLines={1}>{tab.label}</Text>
-              <View style={[styles.scrapbookDetent,selected&&styles.scrapbookDetentActive]}/>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <Segmented
+        scroll
+        active={scrapbookTab}
+        onChange={setScrapbookTab}
+        items={SCRAPBOOK_TABS.filter(tab=>!tab.ownerOnly || isOwner).map(tab=>({
+          key:tab.key,
+          label:tab.label,
+          accessibilityLabel:`Show ${tab.label}`
+        }))}
+      />
 
       {/*
         Packet 8b. Mounted only for the owner, which is the first of two locks --
@@ -981,20 +966,6 @@ const styles=StyleSheet.create({
     marginTop:11
   },
 
-  scrapbookTabs:{flexGrow:0,flexShrink:0,marginTop:22,marginBottom:2},
-  scrapbookTabContent:{alignItems:"center",gap:2},
-  scrapbookTab:{paddingHorizontal:12,paddingTop:10,alignItems:"center",minHeight:SHAPE.tapTarget},
-  scrapbookTabText:{
-    color:INK.readoutFaint,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    textTransform:"uppercase",
-    letterSpacing:0.8,
-    marginBottom:8
-  },
-  scrapbookTabTextActive:{color:INK.readout},
-  scrapbookDetent:{height:2,alignSelf:"stretch",minWidth:18,backgroundColor:INK.hairline},
-  scrapbookDetentActive:{backgroundColor:INK.hairlineStrong},
 
   // A horizontal ScrollView in a flex column claims the leftover vertical space
   // and stretches its children to fill it unless both of these are set --
