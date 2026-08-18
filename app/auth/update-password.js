@@ -1,16 +1,17 @@
 import React,{useEffect,useRef,useState} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  Platform
-} from "react-native";
+import {View,TextInput,StyleSheet,ActivityIndicator,Text,Platform} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Field,
+  fieldInputStyle,
+  Notice,
+  Screen,
+  ScreenTitle
+} from "../../components/instrument";
 
 const RECOVERY_STORAGE_KEY="guestbook-password-recovery";
 const RECOVERY_MAX_AGE_MS=24*60*60*1000;
@@ -230,105 +231,126 @@ export default function UpdatePassword(){
 
   if(checking){
     return(
-      <View style={[styles.screen,styles.center]}>
-        <ActivityIndicator size="large" color={INK.ink}/>
-        <Text style={styles.checkingText}>Checking your reset link...</Text>
-      </View>
+      <Screen>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={INK.readout}/>
+          <Text style={styles.checkingText}>Checking your reset link...</Text>
+        </View>
+      </Screen>
     );
   }
 
   if(complete){
     return(
-      <View style={[styles.screen,styles.container]}>
-        <View style={styles.successCard}>
-          <Text style={styles.successIcon}>✓</Text>
-          <Text style={styles.title}>Password updated and verified</Text>
-          <Text style={styles.message}>
-            The new password has been tested successfully for {recoveryEmail}. You can now log in with it.
-          </Text>
-        </View>
+      <Screen>
+        <View style={styles.container}>
+          {/*
+            The tick was a text character sized to 38px and coloured by hand.
+            It is a Glyph on the kit's dial plate now, via Empty -- which also
+            makes this read as a reading the instrument took rather than a
+            congratulation.
+          */}
+          <Empty
+            glyph="check"
+            title="Password updated and verified"
+            instruction={`The new password has been tested successfully for ${recoveryEmail}. You can now log in with it.`}
+          />
 
-        <Pressable style={[styles.button,styles.buttonShadow]} onPress={()=>router.replace("/auth/login")}>
-          <Text style={styles.buttonText}>Return to login</Text>
-        </Pressable>
-      </View>
+          <Action
+            kind="primary"
+            glyph="forward"
+            label="Return to login"
+            onPress={()=>router.replace("/auth/login")}
+          />
+        </View>
+      </Screen>
     );
   }
 
   if(!canReset){
     return(
-      <View style={[styles.screen,styles.container]}>
-        <Text style={styles.title}>Reset link unavailable</Text>
-        <Text style={styles.error}>{error}</Text>
+      <Screen>
+        <View style={styles.container}>
+          <ScreenTitle eyebrow="ACCOUNT RECOVERY" title="Reset link unavailable"/>
 
-        <Pressable style={[styles.button,styles.buttonShadow]} onPress={()=>router.replace("/auth/forgot-password")}>
-          <Text style={styles.buttonText}>Request a new link</Text>
-        </Pressable>
-      </View>
+          <Notice tone="dispute" label="Link not accepted">{error}</Notice>
+
+          <Action
+            kind="primary"
+            glyph="refresh"
+            label="Request a new link"
+            onPress={()=>router.replace("/auth/forgot-password")}
+          />
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <View style={[styles.screen,styles.container]}>
-      <Text style={styles.title}>Set a new password</Text>
-      <Text style={styles.message}>
-        Updating password for {recoveryEmail}. Choose at least 8 characters.
-      </Text>
+    <Screen>
+      <View style={styles.container}>
+        <ScreenTitle eyebrow="ACCOUNT RECOVERY" title="Set a new password"/>
+        <Text style={styles.lead}>
+          Updating password for {recoveryEmail}. Choose at least 8 characters.
+        </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="New password"
-        placeholderTextColor={INK.inkSoft}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={password}
-        onChangeText={setPassword}
-      />
+        <Field label="New password" required hint="At least 8 characters.">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="New password"
+            placeholderTextColor={INK.readoutFaint}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={password}
+            onChangeText={setPassword}
+          />
+        </Field>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm new password"
-        placeholderTextColor={INK.inkSoft}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
+        <Field label="Confirm new password" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Confirm new password"
+            placeholderTextColor={INK.readoutFaint}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+        </Field>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+        {!!error && <Notice tone="dispute" label="Not updated">{error}</Notice>}
 
-      <Pressable
-        style={[styles.button,styles.buttonShadow,loading&&styles.disabledButton]}
-        onPress={savePassword}
-        disabled={loading}
-      >
-        {loading
-          ? <ActivityIndicator color={INK.card}/>
-          : <Text style={styles.buttonText}>Update and verify password</Text>
-        }
-      </Pressable>
-    </View>
+        <Action
+          kind="primary"
+          glyph="key"
+          label="Update and verify password"
+          loading={loading}
+          onPress={savePassword}
+        />
+      </View>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  container:{padding:30},
+  container:{flex:1,paddingHorizontal:16,paddingTop:4},
+  // ScreenTitle's meta line is clamped to one line -- right for a place's
+  // "2.4 KM · OPEN NOW", wrong for a sentence, which it silently truncates with
+  // an ellipsis. Anything longer than a readout goes here instead.
+  lead:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:-2,
+    marginBottom:14
+  },
   center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},
-  title:{fontSize:32,fontWeight:"900",color:INK.ink,letterSpacing:-0.6,marginBottom:12},
-  message:{fontSize:15,lineHeight:22,color:INK.inkSoft,marginBottom:22},
-  checkingText:{marginTop:14,color:INK.ink},
-  input:{backgroundColor:INK.card,color:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:15,fontSize:16,marginBottom:15},
-  button:{backgroundColor:INK.blue,borderWidth:2,borderColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
-  // Nested shadowOffset split out -- see app/auth/login.js's note.
-  buttonShadow:{shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
-  disabledButton:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"900"},
-  error:{color:INK.ink,fontWeight:"700",marginBottom:18,lineHeight:21},
-  successCard:{borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
-  // Blue, not green -- green is reserved for a manager's reply to a review
-  // (docs/design-system.md) and this is neither a reply nor a review.
-  successIcon:{fontSize:38,fontWeight:"900",color:INK.blue,marginBottom:8}
+  checkingText:{
+    marginTop:14,
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight
+  }
 });

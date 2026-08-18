@@ -1,9 +1,12 @@
 import React,{useCallback,useMemo,useState} from "react";
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {PUBLIC_PLACE_TYPES,publicPlaceTypeLabel} from "../../utils/places";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import SearchBar from "../../components/SearchBar";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {Chip,Empty,MONO,Notice,Row,Screen,ScreenTitle,SectionRule} from "../../components/instrument";
 
 // Packet 8e: the parks, beaches and viewpoints that had no identity until now.
 //
@@ -64,105 +67,129 @@ export default function PublicPlaces(){
 
   if(loading){
     return(
-      <View style={styles.centre}>
-        <ActivityIndicator size="large" color={INK.ink}/>
+      <Screen style={styles.centre}>
+        <ActivityIndicator size="large" color={INK.readoutSoft}/>
         <Text style={styles.centreText}>Loading public places...</Text>
-      </View>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Public places</Text>
-      <Text style={styles.subtitle}>Parks, beaches, viewpoints and the rest of the map that nobody owns.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* The engraved plate. It was a 28px bold word and a grey sentence --
+            a document's masthead. The eyebrow says what KIND of list this is
+            before the name of it, which is how every page in this app opens. */}
+        <ScreenTitle
+          eyebrow="Public places"
+          title="Parks, beaches and viewpoints"
+          meta="The rest of the map that nobody owns."
+        />
 
-      {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
+        <View style={styles.body}>
+          {!!error && (
+            <View accessibilityRole="alert" style={styles.problem}>
+              <Notice tone="scheduled" label="NOT LOADED">{error}</Notice>
+            </View>
+          )}
 
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search public places"
-        placeholderTextColor={INK.inkSoft}
-        style={styles.input}
-        accessibilityLabel="Search public places"
-      />
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            label="Search public places"
+            placeholder="Search public places"
+          />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <Pressable
-          style={[styles.chip,!type && styles.chipActive]}
-          accessibilityRole="button"
-          accessibilityLabel="Show every type of public place"
-          onPress={()=>setType(null)}
-        >
-          <Text style={styles.chipText}>All</Text>
-        </Pressable>
-        {PUBLIC_PLACE_TYPES.map((item)=>(
-          <Pressable
-            key={item.key}
-            style={[styles.chip,type===item.key && styles.chipActive]}
-            accessibilityRole="button"
-            accessibilityLabel={`Show ${item.label}`}
-            onPress={()=>setType(type===item.key ? null : item.key)}
+          {/*
+            The chips keep their spoken labels. The kit's Chip uses its visible
+            label as its accessible one, and "Show every type of public place"
+            says more than "All" -- so each Chip is drawn inside a Pressable
+            carrying the real sentence, and the Chip itself is left inert.
+
+            flexGrow:0 / flexShrink:0 and a centred content container, because
+            a horizontal ScrollView in a flex column otherwise claims the
+            leftover height and stretches every chip to fill it.
+          */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipScroll}
+            contentContainerStyle={styles.chipRow}
           >
-            <Text style={styles.chipText}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Show every type of public place"
+              accessibilityState={{selected:!type}}
+              onPress={()=>setType(null)}
+            >
+              <Chip label="All" selected={!type}/>
+            </Pressable>
+            {PUBLIC_PLACE_TYPES.map((item)=>(
+              <Pressable
+                key={item.key}
+                accessibilityRole="button"
+                accessibilityLabel={`Show ${item.label}`}
+                accessibilityState={{selected:type===item.key}}
+                onPress={()=>setType(type===item.key ? null : item.key)}
+              >
+                <Chip label={item.label} selected={type===item.key}/>
+              </Pressable>
+            ))}
+          </ScrollView>
 
-      {!filtered.length ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No public places here yet</Text>
-          {/* An empty state is an instruction, not a mood. */}
-          <Text style={styles.muted}>
-            Public places are added by the Xplorer team. Check in at one by name and it can be added
-            as a place everybody shares.
-          </Text>
+          <SectionRule label="Places" meta={String(filtered.length)}/>
+
+          {!filtered.length ? (
+            <Empty
+              glyph="map"
+              title="No public places here yet"
+              /* An empty state is an instruction, not a mood. */
+              instruction="Public places are added by the Xplorer team. Check in at one by name and it can be added as a place everybody shares."
+            />
+          ) : filtered.map((place)=>(
+            <Row
+              key={place.id}
+              glyph="pin"
+              title={place.name}
+              onPress={()=>router.push(`/places/${place.id}`)}
+            >
+              {/* What kind of place and which area it is in are both things the
+                  app looked up, so they are mono. Where to find it is a
+                  sentence somebody wrote, so it is not. */}
+              <Text style={styles.cardKind}>
+                {publicPlaceTypeLabel(place.place_type)}
+                {place.area_id && areas[place.area_id] ? ` · ${areas[place.area_id]}` : ""}
+              </Text>
+              {!!place.location_description && (
+                <Text style={styles.cardDetail} numberOfLines={2}>{place.location_description}</Text>
+              )}
+            </Row>
+          ))}
         </View>
-      ) : filtered.map((place)=>(
-        <Pressable
-          key={place.id}
-          style={styles.card}
-          accessibilityRole="button"
-          accessibilityLabel={place.name}
-          onPress={()=>router.push(`/places/${place.id}`)}
-        >
-          <Text style={styles.cardTitle}>{place.name}</Text>
-          <Text style={styles.cardDetail}>
-            {publicPlaceTypeLabel(place.place_type)}
-            {place.area_id && areas[place.area_id] ? ` · ${areas[place.area_id]}` : ""}
-          </Text>
-          {!!place.location_description && <Text style={styles.cardDetail}>{place.location_description}</Text>}
-        </Pressable>
-      ))}
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
-const card={
-  backgroundColor:INK.card,
-  borderWidth:2,
-  borderColor:INK.ink,
-  borderRadius:12
-};
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:50},
-  centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  centreText:{color:INK.inkSoft,marginTop:10},
-  title:{color:INK.ink,fontSize:28,fontWeight:"800",letterSpacing:-0.6},
-  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6},
-  errorCard:{...card,padding:14,marginTop:14},
-  errorText:{color:INK.ink,fontWeight:"700"},
-  input:{...card,minHeight:48,paddingHorizontal:14,color:INK.ink,marginTop:16},
-  chipRow:{gap:8,paddingVertical:14,paddingRight:4},
-  chip:{borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:13,paddingVertical:8},
-  chipActive:{backgroundColor:INK.hair},
-  chipText:{color:INK.ink,fontWeight:"800",fontSize:12},
-  emptyCard:{...card,padding:18,alignItems:"center",marginTop:6},
-  emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:5},
-  muted:{color:INK.inkSoft,textAlign:"center",lineHeight:20},
-  card:{...card,padding:15,marginBottom:11},
-  cardTitle:{color:INK.ink,fontSize:17,fontWeight:"800"},
-  cardDetail:{color:INK.inkSoft,fontSize:13,marginTop:3}
+  // ScreenTitle carries its own horizontal padding, so the scroll view does
+  // not. CREATE_HUB_CLEARANCE, or the last row sits under the Create action.
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
+
+  centre:{alignItems:"center",justifyContent:"center",padding:28},
+  centreText:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.md,marginTop:12},
+
+  problem:{marginTop:14,marginBottom:2},
+
+  chipScroll:{flexGrow:0,flexShrink:0},
+  chipRow:{alignItems:"center",gap:8,paddingRight:4},
+
+  cardKind:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,letterSpacing:0.8,marginTop:4},
+  cardDetail:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:3
+  }
 });

@@ -3,17 +3,26 @@ import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Text,TextInput,V
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FollowButton from "../components/FollowButton";
-import {INK} from "../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Empty,Field,fieldInputStyle,Frame,Glyph,MONO,Notice,Panel,Screen,ScreenTitle,SectionRule} from "../components/instrument";
+
+// Finding people to follow.
+//
+// Every face on this screen sits in a Frame -- the viewfinder's bracketed well
+// -- rather than in a soft circle on a coloured disc, which is what ties a
+// directory of Explorers back to the camera the app is built around. The area
+// is a reading the app holds about somebody, so it is mono with a pin glyph;
+// the bio is a sentence they wrote, so it stays in the body face. That split is
+// the whole difference between this screen and a contacts list.
 
 function Avatar({profile}){
-  if(profile.profile_photo){
-    return <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>;
-  }
-
   return(
-    <View style={styles.avatarFallback}>
-      <Text style={styles.avatarLetter}>{profile.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>
-    </View>
+    <Frame size={46} round style={styles.avatarFrame}>
+      {profile.profile_photo
+        ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
+        : <Text style={styles.avatarLetter}>{profile.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+    </Frame>
   );
 }
 
@@ -66,70 +75,90 @@ export default function Explorers(){
   },[profiles,query]);
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.heading}>
-        <Text style={styles.eyebrow}>EXPLORER COMMUNITY</Text>
-        <Text style={styles.title}>Find Explorers</Text>
-        <Text style={styles.subtitle}>Follow people whose reviews and Moments you want to see in your feed.</Text>
-      </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScreenTitle
+          eyebrow="EXPLORER COMMUNITY"
+          title="Find Explorers"
+          meta="Follow people whose reviews and Moments you want to see in your feed."
+        />
 
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search by name or area"
-        placeholderTextColor={INK.inkSoft}
-        style={styles.search}
-        maxLength={80}
-        autoCapitalize="none"
-      />
+        <View style={styles.body}>
+        <Field label="Search" style={styles.search}>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search by name or area"
+            placeholderTextColor={INK.readoutFaint}
+            style={fieldInputStyle}
+            maxLength={80}
+            autoCapitalize="none"
+          />
+        </Field>
 
-      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>} 
-      {!loading && !!error && <View style={styles.empty}><Text style={styles.emptyTitle}>Could not load Explorers</Text><Text style={styles.emptyText}>{error}</Text></View>}
-      {!loading && !error && filtered.length===0 && <View style={styles.empty}><Text style={styles.emptyTitle}>No Explorers found</Text><Text style={styles.emptyText}>Try a different name or area.</Text></View>}
+        {loading && <ActivityIndicator size="large" color={INK.readoutSoft} style={styles.loader}/>}
 
-      {!loading && !error && filtered.map(profile=>(
-        <View key={profile.id} style={styles.card}>
-          <Pressable style={styles.profileLink} onPress={()=>router.push(`/profile/${profile.id}`)}>
-            <Avatar profile={profile}/>
-            <View style={styles.profileText}>
-              <Text style={styles.name}>{profile.full_name || "Explorer"}</Text>
-              {!!profile.show_area && !!profile.area?.trim() && <Text style={styles.area}>📍 {profile.area.trim()}</Text>}
-              {!!profile.bio && <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>}
-            </View>
-          </Pressable>
-          <FollowButton profileId={profile.id} compact/>
+        {!loading && !!error && <Notice tone="dispute" label="Not loaded">{error}</Notice>}
+
+        {!loading && !error && filtered.length===0 && (
+          <Empty
+            glyph="search"
+            title="No Explorers found"
+            instruction="Try a different name or area."
+          />
+        )}
+
+        {!loading && !error && filtered.length>0 && (
+          <SectionRule label="Explorers" meta={String(filtered.length)}/>
+        )}
+
+        {!loading && !error && filtered.map(profile=>(
+          <Panel key={profile.id} style={styles.card}>
+            <Pressable
+              style={styles.profileLink}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${profile.full_name || "Explorer"}`}
+              onPress={()=>router.push(`/profile/${profile.id}`)}
+            >
+              <Avatar profile={profile}/>
+              <View style={styles.profileText}>
+                <Text style={styles.name} numberOfLines={1}>{profile.full_name || "Explorer"}</Text>
+                {!!profile.show_area && !!profile.area?.trim() && (
+                  <View style={styles.areaRow}>
+                    <Glyph name="pin" size={11} colour={INK.readoutFaint}/>
+                    <Text style={styles.area} numberOfLines={1}>{profile.area.trim()}</Text>
+                  </View>
+                )}
+                {!!profile.bio && <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>}
+              </View>
+            </Pressable>
+            <FollowButton profileId={profile.id} compact/>
+          </Panel>
+        ))}
         </View>
-      ))}
-
-      {!loading && !error && profiles.length>0 && (
-        <Text style={styles.resultCount}>{filtered.length} Explorer{filtered.length===1 ? "" : "s"}</Text>
-      )}
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
-const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
-
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:60},
-  heading:{marginBottom:18},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
-  title:{color:INK.ink,fontSize:31,fontWeight:"900",marginTop:5},
-  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:7,maxWidth:520},
-  search:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:14,color:INK.ink,fontSize:16,paddingHorizontal:15,paddingVertical:14,marginBottom:16,...shadow},
+  // ScreenTitle carries its own horizontal gutter, so the scroll container does
+  // not -- everything under it gets the gutter from `body` instead.
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
+  search:{marginTop:16},
   loader:{marginTop:45},
-  card:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12,...shadow},
-  profileLink:{flex:1,flexDirection:"row",alignItems:"center"},
-  avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.card},
-  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontSize:21,fontWeight:"900"},
-  profileText:{flex:1,marginLeft:12,paddingRight:8},
-  name:{color:INK.ink,fontSize:17,fontWeight:"900"},
-  area:{color:INK.inkSoft,fontSize:12,marginTop:3},
-  bio:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
-  empty:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:24,alignItems:"center",marginTop:15,...shadow},
-  emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900"},
-  emptyText:{color:INK.inkSoft,textAlign:"center",marginTop:6},
-  resultCount:{color:INK.inkSoft,textAlign:"center",fontSize:12,marginTop:12}
+  card:{padding:12,marginBottom:9,flexDirection:"row",alignItems:"center",gap:10},
+  profileLink:{flex:1,flexDirection:"row",alignItems:"center",minWidth:0},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:46,height:46,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontSize:18,fontWeight:"700"},
+  profileText:{flex:1,marginLeft:11,minWidth:0},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  areaRow:{flexDirection:"row",alignItems:"center",gap:5,marginTop:4},
+  area:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.9,textTransform:"uppercase",flexShrink:1
+  },
+  bio:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,marginTop:5}
 });

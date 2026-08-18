@@ -1,5 +1,7 @@
 import React,{useEffect,useRef} from "react";
 import {View,Text,Image,Pressable,Animated,Easing,StyleSheet,AccessibilityInfo} from "react-native";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {MONO} from "./instrument";
 
 
 // One bubble, on the native map.
@@ -17,6 +19,28 @@ import {View,Text,Image,Pressable,Animated,Easing,StyleSheet,AccessibilityInfo} 
 // Not the photo plus the review text plus the reviewer plus the stars. A
 // compact rounded picture, and tapping it opens the review where all of that
 // already lives. utils/liveBubbles.js refuses a review with no image.
+//
+// GEOMETRY FROM THE KIT, INK FROM utils/markers.js
+// This file used to import no tokens at all, so it was drawing a 2px border and
+// a hard 3px offset shadow -- the print system -- around whatever colours it was
+// handed. Both of those are now the instrument's: a 1px hairline at a radius out
+// of SHAPE.radius, no shadow, and the bubble's own label set in the data face,
+// because "Spaces open" and "Happening now" are readings the app computed rather
+// than sentences a person wrote.
+//
+// The division of labour is unchanged and deliberate: bubbleAppearance() in
+// utils/markers.js still decides what colour a bubble's INK is (a renderer
+// draws; it does not decide what a colour means). What moved here is the
+// geometry, which was never that module's to own -- and the border in
+// particular, which was being drawn in chrome.ink. Under the instrument palette
+// that key is the near-white READOUT colour, so every bubble on the map was
+// outlined in white. Same failure as the feed card outlined in INK.ink.
+//
+// THE CONFETTI STAYS EXACTLY AS IT IS. docs/design-system.md spends the three
+// state inks only on what a place IS, and celebrationPieces() in
+// utils/markers.js breaks that on purpose: the owner was told about the
+// conflict and chose the burst. It is a recorded decision, fired once, only for
+// an Event actually happening. Not drift, and not this packet's to overturn.
 
 const FADE_MS=260;
 
@@ -107,16 +131,19 @@ export default function LiveBubble({bubble,onPress}){
         style={[
           styles.bubble,
           isImage && styles.imageBubble,
-          {backgroundColor:chrome.card,borderColor:chrome.ink,shadowColor:chrome.ink}
+          {backgroundColor:chrome.card || INK.panel}
         ]}
       >
+        {/* The bevel every panel in this app carries, so a bubble reads as a
+            lit plate on the housing rather than a sticker on the map. */}
+        <View style={styles.bubbleEdge} pointerEvents="none"/>
         {isImage
-          ? <Image source={{uri:bubble.imageUrl}} style={[styles.image,{backgroundColor:chrome.blank}]} resizeMode="cover"/>
-          : <Text style={[styles.text,{color:chrome.ink}]} numberOfLines={1}>{bubble.text}</Text>}
+          ? <Image source={{uri:bubble.imageUrl}} style={[styles.image,{backgroundColor:chrome.blank || INK.inset}]} resizeMode="cover"/>
+          : <Text style={[styles.text,{color:chrome.ink || INK.readout}]} numberOfLines={1}>{bubble.text}</Text>}
       </Pressable>
 
       {/* The tail. What makes it point at its pin rather than float near it. */}
-      <View style={[styles.tail,{backgroundColor:chrome.card,borderColor:chrome.ink}]} pointerEvents="none"/>
+      <View style={[styles.tail,{backgroundColor:chrome.card || INK.panel}]} pointerEvents="none"/>
     </Animated.View>
   );
 }
@@ -128,32 +155,42 @@ const styles=StyleSheet.create({
   // top of it. See the anchor note in components/LivingMap.js.
   stack:{marginBottom:PIN_RADIUS},
   bubble:{
-    borderWidth:2,
-    borderRadius:14,
+    // 1px, not 2px. Elevation is the surface step and the bevel below, never
+    // the print system's hard offset.
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.card,
     paddingHorizontal:11,
     paddingVertical:8,
     maxWidth:190,
-    // Hard offset shadow, never a blur -- the same rule the raised tab button
-    // and the place markers follow.
-    shadowOffset:{width:2,height:2},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:0
+    overflow:"hidden"
   },
-  imageBubble:{padding:3,borderRadius:16},
+  bubbleEdge:{
+    position:"absolute",top:0,left:0,right:0,height:1,
+    backgroundColor:SHAPE.edgeHighlight
+  },
+  imageBubble:{padding:3},
   // 64, not 92. The picture bubbles were 92 across against a text bubble
   // that is a small pill, and there are more reviews with photos than of
   // anything else -- so the map read as a slideshow. The owner: they are
   // "too prominent". Still a photograph, no longer the whole map.
-  image:{width:64,height:64,borderRadius:11},
-  text:{fontWeight:"900",fontSize:12},
+  image:{width:64,height:64,borderRadius:SHAPE.radius.control},
+  // What the app worked out about this pin, so: the data face.
+  text:{
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.lg,
+    textTransform:"uppercase",
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.lg
+  },
   tail:{
     alignSelf:"center",
     width:10,
     height:10,
     marginTop:-6,
-    borderRightWidth:2,
-    borderBottomWidth:2,
+    borderRightWidth:SHAPE.border,
+    borderBottomWidth:SHAPE.border,
+    borderRightColor:INK.hairline,
+    borderBottomColor:INK.hairline,
     transform:[{rotate:"45deg"}]
   },
   confettiLayer:{position:"absolute",left:0,right:0,top:0,bottom:0,alignItems:"center",justifyContent:"center"},

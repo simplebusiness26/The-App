@@ -4,7 +4,28 @@ import {router,useFocusEffect} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {useAdminGate} from "../../hooks/useAdminGate";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Glyph,
+  KeyValue,
+  MONO,
+  Notice,
+  Panel,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+
+// Read-only reports on what the data says versus what it should say.
+//
+// Four gauges at the top, then one etched rule per report with its count on the
+// end. Nothing here is a place either, so the "needs attention" gauge steps up
+// a surface rather than filling with INK.water -- which was a MAP TERRAIN
+// colour standing in for a highlight.
 
 const AREA_COLUMNS="id,name,area_type,parent_area_id,slug,status";
 
@@ -33,6 +54,16 @@ function listingRoute(issue){
   if(issue.listing_type==="business") return `/business/${issue.listing_id}`;
   if(issue.listing_type==="property") return `/property/${issue.listing_id}`;
   return null;
+}
+
+// Value first, then what it is. See the note in app/admin/dashboard.js.
+function Gauge({value,label,attention}){
+  return(
+    <Panel raised={attention} style={[styles.gauge,attention && styles.gaugeAttention]}>
+      <Text style={styles.gaugeValue}>{value}</Text>
+      <Text style={styles.gaugeLabel} numberOfLines={2}>{label}</Text>
+    </Panel>
+  );
 }
 
 export default function AdminAreas(){
@@ -113,188 +144,215 @@ export default function AdminAreas(){
 
   if(checking){
     return(
-      <View style={styles.fullState}>
-        <ActivityIndicator size="large" color={INK.ink}/>
+      <Screen style={styles.fullState}>
+        <ActivityIndicator size="large" color={INK.readout}/>
         <Text style={styles.stateText}>Checking admin access…</Text>
-      </View>
+      </Screen>
     );
   }
 
   if(!allowed){
     return(
-      <View style={styles.fullState}>
-        <Text style={styles.deniedTitle}>Admin access required</Text>
-        <Text style={styles.stateText}>
-          {gateError || "An admin account is required to open this screen."}
-        </Text>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Admin" title="Admin access required"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Refused">
+            {gateError || "An admin account is required to open this screen."}
+          </Notice>
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content,{paddingBottom:Math.max(insets.bottom,24)+40}]}
-    >
-      <Text style={styles.eyebrow}>ADMIN DATA QUALITY</Text>
-      <Text style={styles.title}>Areas & data quality</Text>
-      <Text style={styles.intro}>
-        Read-only reports show what needs a human decision. They never guess an area or repair ownership automatically.
-      </Text>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={{paddingBottom:Math.max(insets.bottom,24)+CREATE_HUB_CLEARANCE}}
+      >
+        <ScreenTitle
+          eyebrow="Admin data quality"
+          title="Areas & data quality"
+          meta="Read-only reports show what needs a human decision. They never guess an area or repair ownership automatically."
+        />
 
-      {loading ? (
-        <View style={styles.panel}>
-          <ActivityIndicator size="small" color={INK.ink}/>
-          <Text style={styles.panelText}>Checking canonical data…</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorPanel} accessibilityRole="alert">
-          <Text style={styles.errorTitle}>Data-quality reports could not be loaded</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try loading area and data-quality reports again"
-            onPress={load}
-            style={({pressed})=>[styles.primaryButton,pressed && styles.pressed]}
-          >
-            <Text style={styles.primaryButtonText}>Try again</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <View style={styles.metricGrid}>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricNumber}>{areas.length}</Text>
-              <Text style={styles.metricLabel}>Canonical areas</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricNumber}>{missingAreaRows}</Text>
-              <Text style={styles.metricLabel}>Rows without a canonical area</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricNumber}>{unmatchedPlaces.length}</Text>
-              <Text style={styles.metricLabel}>Unmatched Place values</Text>
-            </View>
-            <View style={[styles.metricCard,ownershipIssues.length>0 && styles.attentionCard]}>
-              <Text style={styles.metricNumber}>{ownershipIssues.length}</Text>
-              <Text style={styles.metricLabel}>Ownership issues</Text>
-            </View>
-          </View>
-
-          <Text style={styles.sectionTitle}>Canonical areas</Text>
-          {areas.length===0 ? (
-            <Text style={styles.emptyText}>No canonical areas exist yet.</Text>
-          ) : areas.map((area)=>(
-            <View key={area.id} style={styles.rowCard}>
-              <Text style={styles.rowTitle}>{area.name}</Text>
-              <Text style={styles.rowMeta}>
-                {`${pretty(area.area_type)} · State: ${pretty(area.status)}`}
-              </Text>
-              {!!area.parent_area_id && (
-                <Text style={styles.rowMeta}>{`Inside ${areaNames.get(area.parent_area_id) || "unknown parent"}`}</Text>
-              )}
-            </View>
-          ))}
-
-          <Text style={styles.sectionTitle}>Canonical-area coverage</Text>
-          {missingAreaCounts.length===0 ? (
-            <Text style={styles.emptyText}>Every supported row has a canonical area.</Text>
-          ) : missingAreaCounts.map((item)=>(
-            <View key={item.source_table} style={styles.compactRow}>
-              <Text style={styles.compactLabel}>{sourceLabel(item.source_table)}</Text>
-              <Text style={styles.compactCount}>{item.row_count}</Text>
-            </View>
-          ))}
-
-          <Text style={styles.sectionTitle}>Unmatched area values</Text>
-          {unmatchedAreas.length===0 ? (
-            <Text style={styles.emptyText}>No unmatched area text remains.</Text>
-          ) : unmatchedAreas.map((item,index)=>(
-            <View key={`${item.source_table}-${item.raw_value}-${index}`} style={styles.rowCard}>
-              <Text style={styles.rowTitle}>{item.raw_value}</Text>
-              <Text style={styles.rowMeta}>
-                {`${sourceLabel(item.source_table)} · ${pretty(item.source_column)} · ${item.row_count} ${Number(item.row_count)===1 ? "row" : "rows"}`}
-              </Text>
-            </View>
-          ))}
-
-          <Text style={styles.sectionTitle}>Unmatched Place values</Text>
-          {unmatchedPlaces.length===0 ? (
-            <Text style={styles.emptyText}>No unmatched park or public-Place text remains.</Text>
-          ) : unmatchedPlaces.map((item,index)=>(
-            <View key={`${item.place_type}-${item.raw_value}-${index}`} style={styles.rowCard}>
-              <Text style={styles.rowTitle}>{item.raw_value}</Text>
-              <Text style={styles.rowMeta}>
-                {`${pretty(item.place_type)} · ${item.row_count} ${Number(item.row_count)===1 ? "check-in" : "check-ins"}`}
-              </Text>
-            </View>
-          ))}
-
-          <Text style={styles.sectionTitle}>Ownership integrity</Text>
-          {ownershipIssues.length===0 ? (
-            <Text style={styles.emptyText}>No listing ownership inconsistencies were found.</Text>
-          ) : ownershipIssues.map((issue)=>{
-            const route=listingRoute(issue);
-            const Card=route ? Pressable : View;
-            return(
-              <Card
-                key={issue.issue_id}
-                accessibilityRole={route ? "button" : undefined}
-                accessibilityLabel={route ? `Open data-quality issue for ${issue.listing_name}` : undefined}
-                onPress={route ? ()=>router.push(route) : undefined}
-                style={route
-                  ? ({pressed})=>[styles.issueCard,pressed && styles.pressed]
-                  : styles.issueCard
+        <View style={styles.body}>
+          {loading ? (
+            <Panel style={styles.panel}>
+              <ActivityIndicator size="small" color={INK.readout}/>
+              <Text style={styles.panelText}>Checking canonical data…</Text>
+            </Panel>
+          ) : error ? (
+            <View accessibilityRole="alert">
+              <Notice
+                tone="exists"
+                label="Data-quality reports could not be loaded"
+                action={
+                  <Action
+                    kind="secondary"
+                    glyph="refresh"
+                    label="Try again"
+                    accessibilityLabel="Try loading area and data-quality reports again"
+                    onPress={load}
+                  />
                 }
               >
-                <View style={styles.issueCopy}>
-                  <Text style={styles.issueType}>{pretty(issue.issue_type).toUpperCase()}</Text>
-                  <Text style={styles.rowTitle}>{issue.listing_name}</Text>
-                  <Text style={styles.issueSummary}>{issue.summary}</Text>
-                </View>
-                {route && <Text style={styles.arrow} accessibilityElementsHidden>›</Text>}
-              </Card>
-            );
-          })}
-        </>
-      )}
-    </ScrollView>
+                {error}
+              </Notice>
+            </View>
+          ) : (
+            <>
+              <View style={styles.gaugeGrid}>
+                <Gauge value={areas.length} label="Canonical areas"/>
+                <Gauge value={missingAreaRows} label="Rows without a canonical area"/>
+                <Gauge value={unmatchedPlaces.length} label="Unmatched Place values"/>
+                <Gauge
+                  value={ownershipIssues.length}
+                  label="Ownership issues"
+                  attention={ownershipIssues.length>0}
+                />
+              </View>
+
+              <SectionRule label="Canonical areas" meta={String(areas.length)}/>
+              {areas.length===0 ? (
+                <Empty
+                  glyph="map"
+                  title="No canonical areas yet"
+                  instruction="No canonical areas exist yet."
+                />
+              ) : areas.map((area)=>(
+                <Row
+                  key={area.id}
+                  glyph="map"
+                  title={area.name}
+                  sub={`${pretty(area.area_type)} · State: ${pretty(area.status)}`}
+                >
+                  {!!area.parent_area_id && (
+                    <Text style={styles.rowExtra}>
+                      {`Inside ${areaNames.get(area.parent_area_id) || "unknown parent"}`}
+                    </Text>
+                  )}
+                </Row>
+              ))}
+
+              <SectionRule label="Canonical-area coverage" meta={String(missingAreaCounts.length)}/>
+              {missingAreaCounts.length===0 ? (
+                <Empty
+                  glyph="check"
+                  title="Every row has an area"
+                  instruction="Every supported row has a canonical area."
+                />
+              ) : (
+                <Panel style={styles.coverage}>
+                  {missingAreaCounts.map((item)=>(
+                    <KeyValue
+                      key={item.source_table}
+                      label={sourceLabel(item.source_table)}
+                      value={String(item.row_count)}
+                    />
+                  ))}
+                </Panel>
+              )}
+
+              <SectionRule label="Unmatched area values" meta={String(unmatchedAreas.length)}/>
+              {unmatchedAreas.length===0 ? (
+                <Empty
+                  glyph="check"
+                  title="Nothing unmatched"
+                  instruction="No unmatched area text remains."
+                />
+              ) : unmatchedAreas.map((item,index)=>(
+                <Row
+                  key={`${item.source_table}-${item.raw_value}-${index}`}
+                  glyph="search"
+                  title={item.raw_value}
+                  sub={`${sourceLabel(item.source_table)} · ${pretty(item.source_column)}`}
+                  meta={String(item.row_count)}
+                  metaSub={Number(item.row_count)===1 ? "row" : "rows"}
+                />
+              ))}
+
+              <SectionRule label="Unmatched Place values" meta={String(unmatchedPlaces.length)}/>
+              {unmatchedPlaces.length===0 ? (
+                <Empty
+                  glyph="check"
+                  title="Nothing unmatched"
+                  instruction="No unmatched park or public-Place text remains."
+                />
+              ) : unmatchedPlaces.map((item,index)=>(
+                <Row
+                  key={`${item.place_type}-${item.raw_value}-${index}`}
+                  glyph="pin"
+                  title={item.raw_value}
+                  sub={pretty(item.place_type)}
+                  meta={String(item.row_count)}
+                  metaSub={Number(item.row_count)===1 ? "check-in" : "check-ins"}
+                />
+              ))}
+
+              <SectionRule label="Ownership integrity" meta={String(ownershipIssues.length)}/>
+              {ownershipIssues.length===0 ? (
+                <Empty
+                  glyph="check"
+                  title="Ownership is consistent"
+                  instruction="No listing ownership inconsistencies were found."
+                />
+              ) : ownershipIssues.map((issue)=>{
+                const route=listingRoute(issue);
+                const row=(
+                  <Row
+                    glyph="warn"
+                    title={issue.listing_name}
+                    sub={issue.summary}
+                    meta={pretty(issue.issue_type)}
+                    right={route ? <Glyph name="forward" size={13} colour={INK.readoutFaint}/> : null}
+                  />
+                );
+
+                if(!route) return <View key={issue.issue_id}>{row}</View>;
+
+                return(
+                  <Pressable
+                    key={issue.issue_id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open data-quality issue for ${issue.listing_name}`}
+                    onPress={()=>router.push(route)}
+                    style={({pressed})=>pressed ? styles.pressed : null}
+                  >
+                    {row}
+                  </Pressable>
+                );
+              })}
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{paddingHorizontal:20,paddingTop:28},
-  fullState:{flex:1,alignItems:"center",justifyContent:"center",gap:12,padding:32,backgroundColor:INK.paper},
-  stateText:{maxWidth:320,color:INK.inkSoft,fontSize:16,lineHeight:23,textAlign:"center"},
-  deniedTitle:{color:INK.ink,fontSize:24,fontWeight:"800"},
-  eyebrow:{color:INK.inkSoft,fontSize:12,fontWeight:"800",letterSpacing:1.4,marginBottom:9},
-  title:{color:INK.ink,fontSize:34,fontWeight:"900",letterSpacing:-1.2,lineHeight:38},
-  intro:{color:INK.inkSoft,fontSize:16,lineHeight:23,marginBottom:22,marginTop:10},
-  panel:{minHeight:150,alignItems:"center",justifyContent:"center",gap:12,borderColor:INK.hair,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:24},
-  panelText:{color:INK.inkSoft,fontSize:15},
-  errorPanel:{borderColor:INK.ink,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:22},
-  errorTitle:{color:INK.ink,fontSize:21,fontWeight:"800"},
-  errorText:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:8},
-  primaryButton:{minHeight:48,alignItems:"center",justifyContent:"center",borderRadius:14,backgroundColor:INK.ink,marginTop:18,paddingHorizontal:18,paddingVertical:12},
-  primaryButtonText:{color:INK.ink,fontSize:16,fontWeight:"800"},
-  metricGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},
-  metricCard:{width:"48%",minHeight:112,justifyContent:"space-between",borderColor:INK.hair,borderRadius:18,borderWidth:1,backgroundColor:INK.card,padding:17},
-  attentionCard:{backgroundColor:INK.water},
-  metricNumber:{color:INK.ink,fontSize:32,fontWeight:"900",letterSpacing:-1},
-  metricLabel:{color:INK.inkSoft,fontSize:13,fontWeight:"700",lineHeight:18},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"900",marginBottom:10,marginTop:28},
-  rowCard:{borderColor:INK.hair,borderRadius:16,borderWidth:1,backgroundColor:INK.card,marginBottom:8,padding:15},
-  rowTitle:{color:INK.ink,fontSize:16,fontWeight:"800"},
-  rowMeta:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:4},
-  emptyText:{color:INK.inkSoft,fontSize:14,lineHeight:21,borderColor:INK.hair,borderRadius:16,borderWidth:1,backgroundColor:INK.card,padding:18},
-  compactRow:{minHeight:48,flexDirection:"row",alignItems:"center",justifyContent:"space-between",borderBottomColor:INK.hair,borderBottomWidth:1,paddingHorizontal:4},
-  compactLabel:{color:INK.ink,fontSize:15,fontWeight:"700"},
-  compactCount:{color:INK.ink,fontSize:18,fontWeight:"900"},
-  issueCard:{minHeight:104,flexDirection:"row",alignItems:"center",borderColor:INK.ink,borderRadius:18,borderWidth:1,backgroundColor:INK.card,marginBottom:9,padding:16},
-  issueCopy:{flex:1,paddingRight:10},
-  issueType:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1,marginBottom:5},
-  issueSummary:{color:INK.inkSoft,fontSize:14,lineHeight:20,marginTop:5},
-  arrow:{color:INK.ink,fontSize:32,fontWeight:"300"},
-  pressed:{opacity:0.72}
+  body:{paddingHorizontal:16},
+  fullState:{alignItems:"center",justifyContent:"center",gap:12,padding:32},
+  stateText:{
+    maxWidth:320,color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,textAlign:"center"
+  },
+
+  panel:{minHeight:140,alignItems:"center",justifyContent:"center",gap:12,padding:24},
+  panelText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md},
+
+  gaugeGrid:{flexDirection:"row",flexWrap:"wrap",gap:9},
+  gauge:{width:"48%",minHeight:92,justifyContent:"space-between",padding:13},
+  gaugeAttention:{borderColor:INK.hairlineStrong},
+  gaugeValue:{color:INK.readout,fontSize:28,fontWeight:"700",letterSpacing:-1},
+  gaugeLabel:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:6},
+
+  coverage:{paddingHorizontal:13,paddingVertical:4},
+  rowExtra:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:3
+  },
+  pressed:{opacity:0.78}
 });

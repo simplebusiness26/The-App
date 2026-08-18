@@ -15,7 +15,35 @@ import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {useFeedback} from "../../context/FeedbackContext";
 import {useAdminGate} from "../../hooks/useAdminGate";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Empty,
+  Field,
+  fieldInputStyle,
+  KeyValue,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+
+// The moderation queue.
+//
+// TWO DECISIONS, AND NEITHER IS RED. Actioning a report is the affirmative
+// control, so it takes `exists` and the dark text that goes on it; dismissing
+// is an outline. `dispute` is the manager's answer to a review and belongs
+// nowhere near an administrator -- docs/design-system.md is explicit, and a red
+// "Remove content" button next to a person's name is exactly the kind of
+// pressure a moderation queue should not apply.
+//
+// Everything the report carries is a reading: who reported it, what state the
+// target is in, when. The only prose on the card is the reporter's own details
+// and the reason an administrator types, so those two are the only body text.
 
 const PAGE_SIZE=25;
 const QUEUES={
@@ -171,260 +199,237 @@ export default function AdminModeration(){
 
   if(checking){
     return(
-      <View style={styles.fullState}>
-        <ActivityIndicator size="large" color={INK.ink}/>
+      <Screen style={styles.fullState}>
+        <ActivityIndicator size="large" color={INK.readout}/>
         <Text style={styles.stateText}>Checking admin access…</Text>
-      </View>
+      </Screen>
     );
   }
 
   if(!allowed){
     return(
-      <View style={styles.fullState}>
-        <Text style={styles.deniedTitle}>Admin access required</Text>
-        <Text style={styles.stateText}>
-          {gateError || "An admin account is required to open this screen."}
-        </Text>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Admin" title="Admin access required"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Refused">
+            {gateError || "An admin account is required to open this screen."}
+          </Notice>
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView
-      style={styles.screen}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[
-        styles.content,
-        {paddingBottom:(Platform.OS==="web" ? 34 : Math.max(insets.bottom,24))+40}
-      ]}
-    >
-      <Text style={styles.eyebrow}>ADMIN MODERATION</Text>
-      <Text style={styles.title}>Review reports</Text>
-      <Text style={styles.intro}>
-        Review only the reported item and safe identity context. Private meeting points and attendee lists are never loaded here.
-      </Text>
+    <Screen>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          paddingBottom:(Platform.OS==="web" ? 34 : Math.max(insets.bottom,24))+CREATE_HUB_CLEARANCE
+        }}
+      >
+        <ScreenTitle
+          eyebrow="Admin moderation"
+          title="Review reports"
+          meta="Review only the reported item and safe identity context. Private meeting points and attendee lists are never loaded here."
+        />
 
-      <View style={styles.queueTabs}>
-        {Object.entries(QUEUES).map(([key,item])=>{
-          const selected=key===queue;
-          return(
-            <Pressable
-              key={key}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${item.label}`}
-              accessibilityState={{selected}}
-              onPress={()=>chooseQueue(key)}
-              style={({pressed})=>[
-                styles.queueTab,
-                selected && styles.queueTabSelected,
-                pressed && styles.pressed
-              ]}
-            >
-              <Text style={[styles.queueTabText,selected && styles.queueTabTextSelected]}>{item.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {loading ? (
-        <View style={styles.panel}>
-          <ActivityIndicator size="small" color={INK.ink}/>
-          <Text style={styles.panelText}>Loading {QUEUES[queue].label.toLowerCase()}…</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorPanel} accessibilityRole="alert">
-          <Text style={styles.errorTitle}>Moderation reports could not be loaded</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try loading moderation reports again"
-            onPress={load}
-            style={({pressed})=>[styles.primaryButton,pressed && styles.pressed]}
-          >
-            <Text style={styles.primaryButtonText}>Try again</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <Text style={styles.resultCount}>
-            {`${total} open · Page ${page+1} of ${pageCount}`}
-          </Text>
-
-          {reports.length===0 ? (
-            <View style={styles.emptyPanel}>
-              <Text style={styles.emptyTitle}>{QUEUES[queue].empty}</Text>
-              <Text style={styles.emptyText}>New reports will appear here automatically.</Text>
-            </View>
-          ) : reports.map((report)=>{
-            const working=workingId===report.report_id;
-            const anotherWorking=workingId!==null && !working;
-            const action=actionLabel(report);
-
-            return(
-              <View key={report.report_id} style={styles.card}>
-                <View style={styles.cardTop}>
-                  <View style={styles.cardCopy}>
-                    <Text style={styles.typeLabel}>{pretty(report.target_type).toUpperCase()} REPORT</Text>
-                    <Text style={styles.reasonTitle}>{pretty(report.reason)}</Text>
-                    <Text style={styles.reportDate}>Reported {dateLabel(report.created_at)}</Text>
-                  </View>
-                  <Text style={styles.statePill}>{pretty(report.report_state)}</Text>
-                </View>
-
-                <Text style={styles.label}>REPORTED ITEM</Text>
-                <Text style={styles.summary}>{report.target_summary}</Text>
-                <Text style={styles.meta}>Current state: {pretty(report.target_state)}</Text>
-
-                <Text style={styles.label}>PEOPLE</Text>
-                <Text style={styles.meta}>Reported by {report.reporter_name}</Text>
-                <Text style={styles.meta}>Content owner {report.target_owner_name}</Text>
-
-                {!!report.details && (
-                  <>
-                    <Text style={styles.label}>REPORT DETAILS</Text>
-                    <Text style={styles.summary}>{report.details}</Text>
-                  </>
-                )}
-
-                <Text style={styles.label}>DECISION REASON</Text>
-                <TextInput
-                  accessibilityLabel={`Moderation reason for report ${report.report_id}`}
-                  editable={!working && !anotherWorking}
-                  maxLength={500}
-                  multiline
-                  onChangeText={(value)=>setReasons((current)=>({...current,[report.report_id]:value}))}
-                  placeholder="Record the evidence and reason for this decision"
-                  placeholderTextColor={INK.inkSoft}
-                  style={styles.reasonInput}
-                  textAlignVertical="top"
-                  value={reasons[report.report_id] || ""}
-                />
-                <Text style={styles.reasonHelp}>
-                  Required · 3–500 characters · {(reasons[report.report_id] || "").length}/500
-                </Text>
-
-                <View style={styles.actions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${action} for report ${report.report_id}`}
-                    disabled={working || anotherWorking}
-                    onPress={()=>confirmDecision(report,"actioned")}
-                    style={({pressed})=>[
-                      styles.darkButton,
-                      pressed && styles.pressed,
-                      (working || anotherWorking) && styles.disabled
-                    ]}
-                  >
-                    {working ? (
-                      <ActivityIndicator size="small" color={INK.paper}/>
-                    ) : (
-                      <Text style={styles.darkButtonText}>{action}</Text>
-                    )}
-                  </Pressable>
-
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Dismiss report ${report.report_id}`}
-                    disabled={working || anotherWorking}
-                    onPress={()=>confirmDecision(report,"dismissed")}
-                    style={({pressed})=>[
-                      styles.outlineButton,
-                      pressed && styles.pressed,
-                      (working || anotherWorking) && styles.disabled
-                    ]}
-                  >
-                    <Text style={styles.outlineButtonText}>Dismiss</Text>
-                  </Pressable>
-                </View>
-              </View>
-            );
-          })}
-
-          <View style={styles.pagination}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Previous moderation page"
-              disabled={page===0}
-              onPress={()=>setPage((current)=>Math.max(0,current-1))}
-              style={({pressed})=>[styles.pageButton,pressed && styles.pressed,page===0 && styles.disabled]}
-            >
-              <Text style={styles.pageButtonText}>Previous</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Next moderation page"
-              disabled={page+1>=pageCount}
-              onPress={()=>setPage((current)=>current+1)}
-              style={({pressed})=>[
-                styles.pageButton,
-                pressed && styles.pressed,
-                page+1>=pageCount && styles.disabled
-              ]}
-            >
-              <Text style={styles.pageButtonText}>Next</Text>
-            </Pressable>
+        <View style={styles.body}>
+          <View style={styles.queueTabs}>
+            {Object.entries(QUEUES).map(([key,item])=>(
+              <Pressable
+                key={key}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${item.label}`}
+                accessibilityState={{selected:key===queue}}
+                onPress={()=>chooseQueue(key)}
+              >
+                <Chip label={item.label} selected={key===queue}/>
+              </Pressable>
+            ))}
           </View>
-        </>
-      )}
-    </ScrollView>
+
+          {loading ? (
+            <Panel style={styles.panel}>
+              <ActivityIndicator size="small" color={INK.readout}/>
+              <Text style={styles.panelText}>Loading {QUEUES[queue].label.toLowerCase()}…</Text>
+            </Panel>
+          ) : error ? (
+            <View accessibilityRole="alert">
+              <Notice
+                tone="exists"
+                label="Moderation reports could not be loaded"
+                action={
+                  <Action
+                    kind="secondary"
+                    glyph="refresh"
+                    label="Try again"
+                    accessibilityLabel="Try loading moderation reports again"
+                    onPress={load}
+                  />
+                }
+              >
+                {error}
+              </Notice>
+            </View>
+          ) : (
+            <>
+              <SectionRule label={QUEUES[queue].label} meta={String(total)}/>
+
+              <Text style={styles.resultCount}>
+                {`${total} open · Page ${page+1} of ${pageCount}`}
+              </Text>
+
+              {reports.length===0 ? (
+                <Empty
+                  glyph="shield"
+                  title={QUEUES[queue].empty}
+                  instruction="New reports will appear here automatically."
+                />
+              ) : reports.map((report)=>{
+                const working=workingId===report.report_id;
+                const anotherWorking=workingId!==null && !working;
+                const action=actionLabel(report);
+
+                return(
+                  <Panel key={report.report_id} style={styles.card}>
+                    <View style={styles.head}>
+                      <Text style={styles.headKind}>{`${pretty(report.target_type)} report`}</Text>
+                      <View style={styles.headLine}/>
+                      <Text style={styles.headState}>{pretty(report.report_state)}</Text>
+                    </View>
+
+                    <Text style={styles.reasonTitle}>{pretty(report.reason)}</Text>
+
+                    <KeyValue label="Reported" value={dateLabel(report.created_at)}/>
+                    <KeyValue label="Target state" value={pretty(report.target_state)}/>
+
+                    <Text style={styles.label}>Reported item</Text>
+                    <Text style={styles.summary}>{report.target_summary}</Text>
+
+                    <Text style={styles.label}>People</Text>
+                    <Text style={styles.summary}>Reported by {report.reporter_name}</Text>
+                    <Text style={styles.summary}>Content owner {report.target_owner_name}</Text>
+
+                    {!!report.details && (
+                      <>
+                        <Text style={styles.label}>Report details</Text>
+                        <Text style={styles.summary}>{report.details}</Text>
+                      </>
+                    )}
+
+                    <Field
+                      label="Decision reason"
+                      hint={`Required · 3–500 characters · ${(reasons[report.report_id] || "").length}/500`}
+                      style={styles.reasonField}
+                    >
+                      <TextInput
+                        accessibilityLabel={`Moderation reason for report ${report.report_id}`}
+                        editable={!working && !anotherWorking}
+                        maxLength={500}
+                        multiline
+                        onChangeText={(value)=>setReasons((current)=>({...current,[report.report_id]:value}))}
+                        placeholder="Record the evidence and reason for this decision"
+                        placeholderTextColor={INK.readoutFaint}
+                        style={[fieldInputStyle,styles.reasonInput]}
+                        textAlignVertical="top"
+                        value={reasons[report.report_id] || ""}
+                      />
+                    </Field>
+
+                    <View style={styles.actions}>
+                      <Action
+                        kind="primary"
+                        glyph="check"
+                        label={action}
+                        accessibilityLabel={`${action} for report ${report.report_id}`}
+                        loading={working}
+                        disabled={working || anotherWorking}
+                        onPress={()=>confirmDecision(report,"actioned")}
+                        style={styles.actionButton}
+                      />
+
+                      <Action
+                        kind="secondary"
+                        glyph="close"
+                        label="Dismiss"
+                        accessibilityLabel={`Dismiss report ${report.report_id}`}
+                        disabled={working || anotherWorking}
+                        onPress={()=>confirmDecision(report,"dismissed")}
+                        style={styles.actionButton}
+                      />
+                    </View>
+                  </Panel>
+                );
+              })}
+
+              <View style={styles.pagination}>
+                <Action
+                  kind="secondary"
+                  glyph="back"
+                  label="Previous"
+                  accessibilityLabel="Previous moderation page"
+                  disabled={page===0}
+                  onPress={()=>setPage((current)=>Math.max(0,current-1))}
+                  style={styles.pageButton}
+                />
+                <Action
+                  kind="secondary"
+                  glyph="forward"
+                  label="Next"
+                  accessibilityLabel="Next moderation page"
+                  disabled={page+1>=pageCount}
+                  onPress={()=>setPage((current)=>current+1)}
+                  style={styles.pageButton}
+                />
+              </View>
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{paddingHorizontal:20,paddingTop:28},
-  fullState:{flex:1,alignItems:"center",justifyContent:"center",gap:12,padding:32,backgroundColor:INK.paper},
-  stateText:{maxWidth:320,color:INK.inkSoft,fontSize:16,lineHeight:23,textAlign:"center"},
-  deniedTitle:{color:INK.ink,fontSize:24,fontWeight:"800"},
-  eyebrow:{color:INK.inkSoft,fontSize:12,fontWeight:"800",letterSpacing:1.4,marginBottom:9},
-  title:{color:INK.ink,fontSize:34,fontWeight:"900",letterSpacing:-1.2,lineHeight:38},
-  intro:{color:INK.inkSoft,fontSize:16,lineHeight:23,marginBottom:20,marginTop:10},
-  queueTabs:{flexDirection:"row",gap:8,marginBottom:18},
-  queueTab:{
-    minHeight:48,
-    flex:1,
-    alignItems:"center",
-    justifyContent:"center",
-    borderColor:INK.ink,
-    borderRadius:14,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    paddingHorizontal:10
+  body:{paddingHorizontal:16},
+  fullState:{alignItems:"center",justifyContent:"center",gap:12,padding:32},
+  stateText:{
+    maxWidth:320,color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,textAlign:"center"
   },
-  queueTabSelected:{backgroundColor:INK.ink},
-  queueTabText:{color:INK.ink,fontSize:14,fontWeight:"800",textAlign:"center"},
-  queueTabTextSelected:{color:INK.paper},
-  panel:{minHeight:150,alignItems:"center",justifyContent:"center",gap:12,borderColor:INK.hair,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:24},
-  panelText:{color:INK.inkSoft,fontSize:15},
-  errorPanel:{borderColor:INK.ink,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:22},
-  errorTitle:{color:INK.ink,fontSize:21,fontWeight:"800"},
-  errorText:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:8},
-  primaryButton:{minHeight:48,alignItems:"center",justifyContent:"center",borderRadius:14,backgroundColor:INK.ink,marginTop:18,paddingHorizontal:18,paddingVertical:12},
-  primaryButtonText:{color:INK.ink,fontSize:16,fontWeight:"800"},
-  resultCount:{color:INK.inkSoft,fontSize:13,fontWeight:"700",marginBottom:10},
-  emptyPanel:{alignItems:"center",borderColor:INK.hair,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:30},
-  emptyTitle:{color:INK.ink,fontSize:20,fontWeight:"800",textAlign:"center"},
-  emptyText:{color:INK.inkSoft,fontSize:14,lineHeight:20,marginTop:6,textAlign:"center"},
-  card:{borderColor:INK.hair,borderRadius:20,borderWidth:1,backgroundColor:INK.card,marginBottom:12,padding:18},
-  cardTop:{gap:10},
-  cardCopy:{gap:4},
-  typeLabel:{color:INK.inkSoft,fontSize:11,fontWeight:"900",letterSpacing:1},
-  reasonTitle:{color:INK.ink,fontSize:21,fontWeight:"900"},
-  reportDate:{color:INK.inkSoft,fontSize:13},
-  statePill:{alignSelf:"flex-start",color:INK.ink,fontSize:12,fontWeight:"800",backgroundColor:INK.water,borderRadius:14,overflow:"hidden",paddingHorizontal:10,paddingVertical:6},
-  label:{color:INK.inkSoft,fontSize:11,fontWeight:"900",letterSpacing:1,marginBottom:5,marginTop:16},
-  summary:{color:INK.ink,fontSize:15,lineHeight:22},
-  meta:{color:INK.inkSoft,fontSize:14,lineHeight:20,marginTop:2},
-  reasonInput:{minHeight:90,borderColor:INK.ink,borderRadius:14,borderWidth:1,backgroundColor:INK.paper,color:INK.ink,fontSize:15,lineHeight:21,paddingHorizontal:14,paddingVertical:12},
-  reasonHelp:{color:INK.inkSoft,fontSize:12,marginTop:6},
-  actions:{flexDirection:"row",gap:9,marginTop:16},
-  darkButton:{minHeight:50,flex:1,alignItems:"center",justifyContent:"center",borderRadius:13,backgroundColor:INK.ink,paddingHorizontal:10,paddingVertical:11},
-  darkButtonText:{color:INK.ink,fontSize:14,fontWeight:"800",textAlign:"center"},
-  outlineButton:{minHeight:50,flex:1,alignItems:"center",justifyContent:"center",borderColor:INK.ink,borderRadius:13,borderWidth:1,backgroundColor:INK.card,paddingHorizontal:10,paddingVertical:11},
-  outlineButtonText:{color:INK.ink,fontSize:14,fontWeight:"800"},
-  pagination:{flexDirection:"row",gap:10,marginTop:8},
-  pageButton:{minHeight:48,flex:1,alignItems:"center",justifyContent:"center",borderColor:INK.ink,borderRadius:14,borderWidth:1,paddingHorizontal:14},
-  pageButtonText:{color:INK.ink,fontSize:14,fontWeight:"800"},
-  pressed:{opacity:0.72},
-  disabled:{opacity:0.4}
+
+  queueTabs:{flexDirection:"row",gap:7,marginBottom:6},
+
+  panel:{minHeight:140,alignItems:"center",justifyContent:"center",gap:12,padding:24},
+  panelText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md},
+
+  resultCount:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginBottom:10},
+
+  card:{padding:14,marginBottom:11},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headState:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+
+  reasonTitle:{
+    color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",
+    letterSpacing:-0.3,marginBottom:4
+  },
+
+  label:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:13,marginBottom:4},
+  summary:{
+    color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
+  },
+
+  reasonField:{marginTop:14,marginBottom:2},
+  reasonInput:{minHeight:86},
+
+  actions:{flexDirection:"row",gap:9,marginTop:12},
+  actionButton:{flex:1},
+
+  pagination:{flexDirection:"row",gap:9,marginTop:6},
+  pageButton:{flex:1}
 });

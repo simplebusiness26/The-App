@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useMemo,useState} from "react";
-import {Platform,View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
+import {View,Text,Pressable,ScrollView,StyleSheet} from "react-native";
 import {router,useLocalSearchParams} from "expo-router";
 import LivingMap from "./LivingMap";
 import PlacesList from "./PlacesList";
@@ -28,7 +28,7 @@ import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {useHeaderClearance} from "./Header";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Glyph} from "./instrument";
+import {Action,Glyph,MONO,Notice} from "./instrument";
 
 // The map screen, once and for both platforms.
 //
@@ -322,22 +322,20 @@ export default function LivingMapScreen(){
           header={
             <>
             {!!mapFailed && (
-              <View style={styles.notice}>
-                <Text style={styles.noticeTitle}>The map could not load</Text>
-                <Text style={styles.noticeText}>
-                  Everything below is the same places the map would show. It is
-                  usually a connection problem — try again in a moment.
-                </Text>
-              </View>
+              // An edge and a mono eyebrow, not a bordered box of grey text.
+              <Notice tone="scheduled" label="MAP DOWN">
+                The map could not load. Everything below is the same places the map
+                would show. It is usually a connection problem — try again in a moment.
+              </Notice>
             )}
-            <Pressable
-              style={styles.switch}
-              accessibilityRole="button"
+            <Action
+              kind="secondary"
+              label={mapFailed ? "Try the map again" : "Show the map"}
+              glyph="map"
               accessibilityLabel="Show the map instead of the list"
+              style={styles.switch}
               onPress={()=>{setMapFailed("");setAsList(false);}}
-            >
-              <Text style={styles.switchText}>{mapFailed ? "Try the map again" : "Show the map"}</Text>
-            </Pressable>
+            />
             </>
           }
         />
@@ -436,31 +434,36 @@ export default function LivingMapScreen(){
       */}
       {!!dropped && (
         <View style={styles.dropCard}>
+          {/* The head strip every panel over this map opens with: what the app
+              is asking about, then the etched rule. */}
+          <View style={styles.headRow}>
+            <Text style={styles.headKind}>DROPPED PIN</Text>
+            <View style={styles.headLine}/>
+          </View>
           <Text style={styles.dropTitle}>Start a Link-up here?</Text>
           <Text style={styles.dropText}>
             The spot is rounded to about a street, not the exact point you held.
           </Text>
           <View style={styles.dropRow}>
-            <Pressable
-              style={styles.dropCancel}
-              accessibilityRole="button"
+            <Action
+              kind="quiet"
+              label="Not here"
               accessibilityLabel="Not here"
+              style={styles.dropButton}
               onPress={()=>setDropped(null)}
-            >
-              <Text style={styles.dropCancelText}>Not here</Text>
-            </Pressable>
-            <Pressable
-              style={styles.dropGo}
-              accessibilityRole="button"
+            />
+            <Action
+              kind="primary"
+              label="Start a Link-up"
+              glyph="plus"
               accessibilityLabel="Start a Link-up here"
+              style={styles.dropButton}
               onPress={()=>{
                 const at=dropped;
                 setDropped(null);
                 router.push(`/linkups/create?lat=${at.latitude}&lng=${at.longitude}`);
               }}
-            >
-              <Text style={styles.dropGoText}>Start a Link-up</Text>
-            </Pressable>
+            />
           </View>
         </View>
       )}
@@ -491,21 +494,29 @@ export default function LivingMapScreen(){
       */}
       {!!revealed && (
         <View style={styles.reveal}>
-          <View style={styles.revealHead}>
-            <Text style={styles.revealTitle}>
-              {revealed.moments.length
-                ? `${revealed.moments.length} Moment${revealed.moments.length===1 ? "" : "s"} ${revealed.widened ? "around here" : "here"}`
-                : "Nothing to open here"}
-            </Text>
+          {/* THE HEAD READOUT. What the app counted under the finger, in mono,
+              with the count on the strip where every count in this app sits.
+              It used to be a bold sentence and a text cross. */}
+          <View style={styles.headRow}>
+            <Text style={styles.headKind}>{revealed.widened ? "AROUND HERE" : "HERE"}</Text>
+            <View style={styles.headLine}/>
+            <Text style={styles.headCount}>{revealed.moments.length}</Text>
             <Pressable
+              style={styles.revealClose}
               accessibilityRole="button"
               accessibilityLabel="Close what is happening here"
               hitSlop={10}
               onPress={()=>setRevealed(null)}
             >
-              <Text style={styles.revealClose}>✕</Text>
+              <Glyph name="close" size={14} colour={INK.readoutSoft}/>
             </Pressable>
           </View>
+
+          <Text style={styles.revealTitle}>
+            {revealed.moments.length
+              ? `${revealed.moments.length} Moment${revealed.moments.length===1 ? "" : "s"} ${revealed.widened ? "around here" : "here"}`
+              : "Nothing to open here"}
+          </Text>
 
           {!revealed.moments.length && (
             <Text style={styles.revealEmpty}>
@@ -514,7 +525,15 @@ export default function LivingMapScreen(){
             </Text>
           )}
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.revealRow}>
+          {/* flexGrow:0 / flexShrink:0 and a centred content container: a
+              horizontal ScrollView in a flex column otherwise claims the
+              leftover height and stretches every card to fill it. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.revealScroll}
+            contentContainerStyle={styles.revealRow}
+          >
             {revealed.moments.map((moment)=>(
               <Pressable
                 key={moment.key || moment.id}
@@ -523,6 +542,7 @@ export default function LivingMapScreen(){
                 accessibilityLabel={`Open ${moment.title || "this Moment"}`}
                 onPress={()=>router.push(moment.route)}
               >
+                <Glyph name="camera" size={14} colour={INK.readoutFaint}/>
                 <Text style={styles.revealCardTitle} numberOfLines={2}>
                   {moment.title || "A Moment"}
                 </Text>
@@ -544,7 +564,7 @@ export default function LivingMapScreen(){
         does not duplicate the hero image, the review score, the summary or
         Directions -- they live in exactly one place, same as before.
 
-        No `onOpenFullPage` is supplied: the "View full page ▸" button snaps
+        No `onOpenFullPage` is supplied: the sheet's own "view full page" button snaps
         to Full instead of leaving the map, and Full is the SAME PlacePanel
         content, only with more of the sheet to show it in. "Open profile",
         inside that content, is what leaves the map for the place's own routed
@@ -575,7 +595,7 @@ export default function LivingMapScreen(){
 // A ONE-LINE GLANCE, NOT THE WHOLE PANEL.
 //
 // Peek is 16% of the window -- room for a name and what it is, not a hero
-// image and a route. Dragging up (or the sheet's own "View full page ▸")
+// image and a route. Dragging up (or the sheet's own "view full page" control)
 // is what reaches the same content components/PlacePanel.js has always shown.
 function PinPeekPreview({place}){
   const card=place.card || {};
@@ -601,9 +621,7 @@ function PinPeekPreview({place}){
   );
 }
 
-// Native matches a single family name, not a CSS stack -- see the same note in
-// components/HappeningSegments.js.
-const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
 
 const styles=StyleSheet.create({
   // The housing. The map is the only lit thing on this screen, which is the
@@ -611,9 +629,14 @@ const styles=StyleSheet.create({
   // over it stays quiet and hairline-edged, and none of them borrows a state
   // ink. Those belong to the pins.
   container:{flex:1,backgroundColor:INK.ground},
-  // Above the card sheet, out of the way of the search box.
-  directions:{position:"absolute",left:12,right:12,bottom:12,zIndex:15},
   timeline:{position:"absolute",left:12,right:12,bottom:12,zIndex:14},
+
+  // The head strip shared by the panels that float over the map, so a dropped
+  // pin, a warm patch and the sheet all open the same way.
+  headRow:{flexDirection:"row",alignItems:"center",gap:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headCount:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md},
 
   // Panels that genuinely float over the map get the soft ambient shadow; the
   // hard 3px print offset is gone with the rest of the riso system.
@@ -624,53 +647,37 @@ const styles=StyleSheet.create({
     bottom:12,
     zIndex:16,
     backgroundColor:INK.panel,
-    borderColor:INK.hairlineStrong,
+    borderColor:INK.hairline,
     borderWidth:SHAPE.border,
     borderRadius:SHAPE.radius.sheet,
     padding:12,
     ...SHAPE.shadow.floating
   },
-  revealHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  revealTitle:{color:INK.readout,fontWeight:"700",fontSize:15},
-  revealClose:{color:INK.readoutSoft,fontWeight:"700",fontSize:18},
-  revealEmpty:{color:INK.readoutSoft,fontSize:12,lineHeight:18,marginTop:8},
-  revealRow:{gap:8,paddingTop:10,paddingRight:4},
+  revealClose:{
+    width:30,height:30,alignItems:"center",justifyContent:"center",
+    borderRadius:SHAPE.radius.control,backgroundColor:INK.panelRaised,
+    borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  revealTitle:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3,marginTop:10},
+  revealEmpty:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:7},
+  revealScroll:{flexGrow:0,flexShrink:0},
+  revealRow:{alignItems:"center",gap:8,paddingTop:11,paddingRight:4},
   revealCard:{
     width:150,
     minHeight:56,
     justifyContent:"center",
+    gap:6,
     backgroundColor:INK.panelRaised,
     borderColor:INK.hairline,
     borderWidth:SHAPE.border,
     borderRadius:SHAPE.radius.card,
     padding:10
   },
-  revealCardTitle:{color:INK.readout,fontWeight:"600",fontSize:12,lineHeight:17},
+  revealCardTitle:{color:INK.readout,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,fontWeight:"600"},
 
+  // The controls float over the map; components/MapControls.js draws them and
+  // this only positions them clear of the header.
   top:{position:"absolute",width:"100%",zIndex:10,padding:10},
-  // An input is a well, not a panel.
-  search:{
-    backgroundColor:INK.inset,
-    padding:15,
-    borderRadius:SHAPE.radius.control,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairline,
-    color:INK.readout
-  },
-  filters:{marginTop:9,maxHeight:44},
-  filterButton:{
-    backgroundColor:INK.panel,
-    paddingHorizontal:13,
-    paddingVertical:10,
-    marginRight:7,
-    borderRadius:SHAPE.radius.pill,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairline
-  },
-  // Selection is a surface step and a stronger edge, never a state ink.
-  selectedFilter:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  filterText:{color:INK.readoutSoft,fontWeight:"600"},
-  selectedFilterText:{color:INK.readout,fontWeight:"600"},
 
   dropCard:{
     position:"absolute",
@@ -678,63 +685,22 @@ const styles=StyleSheet.create({
     right:14,
     bottom:96,
     backgroundColor:INK.panel,
-    borderColor:INK.hairlineStrong,
+    borderColor:INK.hairline,
     borderWidth:SHAPE.border,
     borderRadius:SHAPE.radius.sheet,
     padding:16,
     zIndex:30,
     ...SHAPE.shadow.floating
   },
-  dropTitle:{color:INK.readout,fontSize:17,fontWeight:"700"},
-  dropText:{color:INK.readoutSoft,fontSize:13,lineHeight:19,marginTop:6},
+  dropTitle:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3,marginTop:11},
+  dropText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:6},
   dropRow:{flexDirection:"row",gap:10,marginTop:14},
-  dropCancel:{
-    flex:1,
-    minHeight:44,
-    borderRadius:SHAPE.radius.card,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairlineStrong,
-    alignItems:"center",
-    justifyContent:"center"
-  },
-  dropCancelText:{color:INK.readout,fontWeight:"600"},
-  // The lit control is the readout itself. INK.exists would say "a place
-  // exists here", which is a claim about the map, not about a button.
-  dropGo:{
-    flex:1,
-    minHeight:44,
-    borderRadius:SHAPE.radius.card,
-    backgroundColor:INK.readout,
-    alignItems:"center",
-    justifyContent:"center"
-  },
-  dropGoText:{color:INK.ground,fontWeight:"700"},
+  dropButton:{flex:1},
 
-  switch:{
-    alignSelf:"flex-start",
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairlineStrong,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:16,
-    paddingVertical:8,
-    backgroundColor:INK.panelRaised,
-    marginBottom:10
-  },
-  switchText:{color:INK.readout,fontWeight:"600"},
+  switch:{alignSelf:"flex-start",paddingHorizontal:16,marginBottom:10},
 
   peek:{paddingTop:2},
   peekName:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
   peekWhereRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:7},
-  peekWhere:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,flexShrink:1},
-
-  notice:{
-    backgroundColor:INK.panel,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.card,
-    padding:14,
-    marginBottom:10
-  },
-  noticeTitle:{color:INK.readout,fontWeight:"700",fontSize:15},
-  noticeText:{color:INK.readoutSoft,fontSize:13,lineHeight:19,marginTop:4}
+  peekWhere:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,flexShrink:1}
 });

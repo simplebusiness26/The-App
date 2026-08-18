@@ -3,17 +3,34 @@ import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Text,View} from 
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import FollowButton from "../../components/FollowButton";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Frame,
+  Glyph,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule,
+  Segmented
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+
+// Followers and Following.
+//
+// The two tabs were a pair of pills that filled with a state ink when chosen.
+// exists/scheduled/offer say what a PLACE is -- being the tab you are looking at
+// is not one of those -- so they are a Segmented selector now: a detented switch
+// with a bright tick under the active label and no fill anywhere.
 
 function Avatar({profile}){
-  if(profile?.profile_photo){
-    return <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>;
-  }
-
   return(
-    <View style={styles.avatarFallback}>
-      <Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>
-    </View>
+    <Frame size={48} round style={styles.avatar}>
+      {profile?.profile_photo
+        ? <Image source={{uri:profile.profile_photo}} style={styles.avatarImage}/>
+        : <Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+    </Frame>
   );
 }
 
@@ -102,83 +119,87 @@ export default function Connections(){
   useFocusEffect(useCallback(()=>{load();},[load]));
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.heading}>
-        <Text style={styles.eyebrow}>EXPLORER CONNECTIONS</Text>
-        <Text style={styles.title}>{owner?.full_name || "Explorer"}</Text>
-      </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <ScreenTitle eyebrow="EXPLORER CONNECTIONS" title={owner?.full_name || "Explorer"}/>
 
-      <View style={styles.tabs}>
-        <Pressable style={[styles.tab,activeTab==="followers" && styles.activeTab]} onPress={()=>setActiveTab("followers")}>
-          <Text style={[styles.tabText,activeTab==="followers" && styles.activeTabText]}>Followers</Text>
-        </Pressable>
-        <Pressable style={[styles.tab,activeTab==="following" && styles.activeTab]} onPress={()=>setActiveTab("following")}>
-          <Text style={[styles.tabText,activeTab==="following" && styles.activeTabText]}>Following</Text>
-        </Pressable>
-      </View>
+        <Segmented
+          items={[{key:"followers",label:"Followers"},{key:"following",label:"Following"}]}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
 
-      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>} 
+        {loading && <ActivityIndicator size="large" color={INK.readout} style={styles.loader}/>}
 
-      {!loading && !!error && (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Connections unavailable</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-        </View>
-      )}
+        {!loading && !!error && (
+          <Empty glyph="warn" title="Connections unavailable" instruction={error}/>
+        )}
 
-      {!loading && !error && people.length===0 && (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>{activeTab==="followers" ? "No followers yet" : "Not following anyone yet"}</Text>
-          <Text style={styles.emptyText}>{activeTab==="followers" ? "Followers will appear here." : "Use Find Explorers to build a personal feed."}</Text>
-          {activeTab==="following" && <Pressable style={styles.findButton} onPress={()=>router.push("/explorers")}><Text style={styles.findText}>Find Explorers</Text></Pressable>}
-        </View>
-      )}
+        {!loading && !error && people.length===0 && (
+          <Empty
+            glyph="people"
+            title={activeTab==="followers" ? "No followers yet" : "Not following anyone yet"}
+            instruction={activeTab==="followers" ? "Followers will appear here." : "Use Find Explorers to build a personal feed."}
+            action={activeTab==="following"
+              ? <Action kind="primary" glyph="search" label="Find Explorers" onPress={()=>router.push("/explorers")}/>
+              : null}
+          />
+        )}
 
-      {!loading && !error && people.map(profile=>(
-        <View key={profile.id} style={styles.card}>
-          <Pressable style={styles.profileLink} onPress={()=>router.push(`/profile/${profile.id}`)}>
-            <Avatar profile={profile}/>
-            <View style={styles.profileText}>
-              <Text style={styles.name}>{profile.full_name || "Explorer"}</Text>
-              {!!profile.show_area && !!profile.area?.trim() && <Text style={styles.area}>📍 {profile.area.trim()}</Text>}
-              {!!profile.bio && <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>}
-            </View>
-          </Pressable>
-          <FollowButton profileId={profile.id} compact onChanged={load}/>
-        </View>
-      ))}
-    </ScrollView>
+        {!loading && !error && people.length>0 && (
+          <SectionRule
+            label={activeTab==="followers" ? "Followers" : "Following"}
+            meta={String(people.length)}
+          />
+        )}
+
+        {!loading && !error && people.map(profile=>(
+          <Panel key={profile.id} style={styles.line}>
+            <Pressable
+              style={styles.lineProfile}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${profile.full_name || "this Explorer"}'s profile`}
+              onPress={()=>router.push(`/profile/${profile.id}`)}
+            >
+              <Avatar profile={profile}/>
+              <View style={styles.lineText}>
+                <Text style={styles.name} numberOfLines={1}>{profile.full_name || "Explorer"}</Text>
+                {!!profile.show_area && !!profile.area?.trim() && (
+                  <View style={styles.areaRow}>
+                    <Glyph name="pin" size={12} colour={INK.readoutFaint}/>
+                    <Text style={styles.area} numberOfLines={1}>{profile.area.trim()}</Text>
+                  </View>
+                )}
+                {!!profile.bio && <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>}
+              </View>
+            </Pressable>
+            <FollowButton profileId={profile.id} compact onChanged={load}/>
+          </Panel>
+        ))}
+      </ScrollView>
+    </Screen>
   );
 }
 
-const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
-
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:60},
-  heading:{marginBottom:15},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
-  title:{color:INK.ink,fontSize:28,fontWeight:"900",marginTop:5},
-  tabs:{flexDirection:"row",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:4,marginBottom:16},
-  tab:{flex:1,paddingVertical:11,borderRadius:10,alignItems:"center",backgroundColor:INK.card},
-  activeTab:{backgroundColor:INK.blue},
-  // Ink on card (not card on card) -- design-system.md's accessibility floor:
-  // "ink on card" is 16:1, "card on card" is 1.0:1 and unreadable.
-  tabText:{color:INK.ink,fontWeight:"900"},
-  activeTabText:{color:INK.card},
+  content:{paddingHorizontal:16,paddingBottom:24+CREATE_HUB_CLEARANCE},
   loader:{marginTop:45},
-  card:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:13,marginBottom:11,flexDirection:"row",alignItems:"center",gap:12,...shadow},
-  profileLink:{flex:1,flexDirection:"row",alignItems:"center"},
-  avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.card},
-  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontSize:21,fontWeight:"900"},
-  profileText:{flex:1,marginLeft:12,paddingRight:8},
-  name:{color:INK.ink,fontSize:17,fontWeight:"900"},
-  area:{color:INK.inkSoft,fontSize:12,marginTop:3},
-  bio:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginTop:4},
-  empty:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:25,alignItems:"center",marginTop:10,...shadow},
-  emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900",textAlign:"center"},
-  emptyText:{color:INK.inkSoft,textAlign:"center",marginTop:7,lineHeight:20},
-  findButton:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:15,...shadow},
-  findText:{color:INK.card,fontWeight:"900"}
+
+  line:{flexDirection:"row",alignItems:"center",gap:11,padding:12,marginBottom:9},
+  lineProfile:{flex:1,flexDirection:"row",alignItems:"center",gap:11,minWidth:0},
+  lineText:{flex:1,minWidth:0},
+  avatar:{backgroundColor:INK.inset},
+  avatarImage:{width:48,height:48,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontSize:19,fontWeight:"700"},
+
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  // The pin was an emoji. It is the same 16x16 stroked marker the map uses now.
+  areaRow:{flexDirection:"row",alignItems:"center",gap:5,marginTop:3},
+  area:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,flexShrink:1},
+  bio:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,
+    marginTop:4
+  }
 });

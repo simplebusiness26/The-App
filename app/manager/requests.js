@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Pressable,
   ActivityIndicator,
   Image
 } from "react-native";
@@ -12,8 +11,42 @@ import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import GateNotice from "../../components/GateNotice";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {useManagerGate} from "../../hooks/useManagerGate";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Frame,
+  Glyph,
+  Meter,
+  MONO,
+  Notice,
+  Panel,
+  ReadoutStrip,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+
+// The Action Centre: everything waiting on a manager's decision, and nothing
+// else. Listing management lives on the dashboard.
+//
+// WHY APPROVE IS NOT GREEN AND REJECT IS NOT RED
+//
+// docs/design-system.md spends `agree` and `dispute` on exactly one thing: a
+// manager answering a review, and a manager disputing one. Deciding a
+// membership application is not that act -- it is an approval, the same kind of
+// decision an administrator makes on a claim -- so it takes the same treatment:
+// `exists` on the affirmative control, an outline on the other. A green button
+// and a red button side by side is the shape of a warning, and a person
+// applying to a running club is not a hazard.
+//
+// Capacity is the other thing this screen got wrong. "12 of 20 members
+// approved" is a sentence about a number with a ceiling, which is exactly what
+// a Meter draws, and the ceiling is the part that decides whether Approve is
+// even pressable.
 
 function firstParam(value){
   return Array.isArray(value) ? value[0] : value || null;
@@ -36,32 +69,27 @@ function MemberIdentity({membership,profiles}){
 
   return(
     <View style={styles.memberIdentity}>
-      {profile?.profile_photo ? (
-        <Image source={{uri:profile.profile_photo}} style={styles.memberAvatar}/>
-      ) : (
-        <View style={styles.memberAvatarFallback}>
-          <Text style={styles.memberInitial}>{name.slice(0,1).toUpperCase()}</Text>
-        </View>
-      )}
+      <Frame size={44} round style={styles.avatarFrame}>
+        {profile?.profile_photo
+          ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
+          : <Text style={styles.avatarLetter}>{name.slice(0,1).toUpperCase()}</Text>}
+      </Frame>
 
       <View style={styles.memberNameWrap}>
-        <Text style={styles.applicantName}>{name}</Text>
-        <Text style={styles.memberMeta}>
-          Applied {formatAppliedAt(membership.applied_at)}
-        </Text>
+        <Text style={styles.memberName} numberOfLines={1}>{name}</Text>
+        <Text style={styles.memberMeta}>Applied {formatAppliedAt(membership.applied_at)}</Text>
       </View>
     </View>
   );
 }
 
-function NextStep({icon,text,tone="success"}){
+// One line of "what happens next". A stroked glyph on the housing rather than a
+// coloured disc: none of these are states a place is in.
+function NextStep({glyph,text}){
   return(
     <View style={styles.nextStepRow}>
-      <View style={[
-        styles.nextStepIcon,
-        tone==="info" ? styles.infoIcon : styles.successIcon
-      ]}>
-        <Text style={styles.nextStepIconText}>{icon}</Text>
+      <View style={styles.nextStepGlyph}>
+        <Glyph name={glyph} size={13} colour={INK.readoutSoft}/>
       </View>
       <Text style={styles.nextStepText}>{text}</Text>
     </View>
@@ -274,48 +302,45 @@ export default function ManagerRequests(){
     const full=approvedCount>=limit;
 
     return(
-      <View
-        key={membership.id}
-        style={[styles.requestCard,isFocused && styles.focusedRequestCard]}
-      >
+      <Panel key={membership.id} raised={isFocused} style={styles.requestCard}>
         {isFocused && (
-          <Text style={styles.focusLabel}>OPENED FROM NOTIFICATION</Text>
+          <View style={styles.head}>
+            <Text style={styles.headKind}>Opened from notification</Text>
+            <View style={styles.headLine}/>
+          </View>
         )}
 
         <MemberIdentity membership={membership} profiles={memberProfiles}/>
 
         {!!membership.application_note && (
-          <View style={styles.noteCard}>
-            <Text style={styles.noteLabel}>APPLICATION MESSAGE</Text>
+          <View style={styles.note}>
+            <Text style={styles.noteLabel}>Application message</Text>
             <Text style={styles.noteText}>{membership.application_note}</Text>
           </View>
         )}
 
-        <View style={styles.buttonRow}>
-          <Pressable
-            style={[styles.approveButton,full && styles.disabledButton]}
+        <View style={styles.buttons}>
+          <Action
+            kind="primary"
+            glyph="check"
+            label={workingId===membership.id ? "Updating…" : full ? "Club full" : "Approve"}
+            accessibilityLabel={`Approve ${membershipName(membership)} for ${club.name}`}
             disabled={workingId===membership.id || full}
             onPress={()=>decideMembership(membership,"approved",club)}
-          >
-            <Text style={styles.buttonText}>
-              {workingId===membership.id
-                ? "Updating..."
-                : full
-                  ? "Club full"
-                  : "Approve"
-              }
-            </Text>
-          </Pressable>
+            style={styles.button}
+          />
 
-          <Pressable
-            style={styles.rejectButton}
+          <Action
+            kind="secondary"
+            glyph="close"
+            label="Reject"
+            accessibilityLabel={`Reject ${membershipName(membership)} for ${club.name}`}
             disabled={workingId===membership.id}
             onPress={()=>decideMembership(membership,"rejected",club)}
-          >
-            <Text style={styles.buttonText}>Reject</Text>
-          </Pressable>
+            style={styles.button}
+          />
         </View>
-      </View>
+      </Panel>
     );
   }
 
@@ -328,99 +353,80 @@ export default function ManagerRequests(){
 
     return(
       <>
-        <View style={[
-          styles.resultCard,
-          approved ? styles.approvedResultCard : styles.rejectedResultCard
-        ]}>
-          <View style={[
-            styles.resultIconCircle,
-            approved ? styles.approvedIconCircle : styles.rejectedIconCircle
-          ]}>
-            <Text style={styles.resultIcon}>{approved ? "✓" : "×"}</Text>
-          </View>
+        <Notice
+          tone="exists"
+          label={approved ? "Membership approved" : "Application rejected"}
+        >
+          <View>
+            <Text style={styles.resultText}>
+              {approved
+                ? `${memberLabel} is now a member of ${action.clubName} and has access to the private message board.`
+                : `${memberLabel}'s membership request was not approved. They have been notified.`
+              }
+            </Text>
 
-          <Text style={styles.resultTitle}>
-            {approved ? "Membership approved" : "Application rejected"}
-          </Text>
-
-          <Text style={styles.resultText}>
-            {approved
-              ? `${memberLabel} is now a member of ${action.clubName} and has access to the private message board.`
-              : `${memberLabel}'s membership request was not approved. They have been notified.`
-            }
-          </Text>
-
-          <View style={[
-            styles.resultCapacityCard,
-            approved ? styles.approvedCapacityCard : styles.rejectedCapacityCard
-          ]}>
-            <Text style={styles.resultCapacityIcon}>👥</Text>
-            <View style={styles.resultCapacityTextWrap}>
-              <Text style={styles.resultCapacityLabel}>Club capacity</Text>
-              <Text style={styles.resultCapacityValue}>
-                {currentApprovedCount} of {action.memberLimit} members approved
-              </Text>
+            <View style={styles.meterRow}>
+              <Meter
+                value={currentApprovedCount}
+                max={action.memberLimit}
+                width={140}
+                tone="exists"
+                label="Capacity"
+                valueLabel={`${currentApprovedCount}/${action.memberLimit}`}
+              />
             </View>
+
+            <Action
+              kind="primary"
+              glyph="forward"
+              label={approved ? "View approved member" : "Back to pending requests"}
+              accessibilityLabel={approved ? "View the approved member" : "Back to pending requests"}
+              onPress={()=>{
+                if(approved){
+                  router.push(`/manager/dashboard?club=${action.clubId}&member=${action.userId}&view=members`);
+                }else{
+                  router.replace(`/manager/requests?club=${action.clubId}&view=requests`);
+                }
+              }}
+              style={styles.wide}
+            />
+
+            <Action
+              kind="quiet"
+              glyph="list"
+              label={approved ? "View all club members" : "View all requests for this club"}
+              accessibilityLabel={approved ? "View all club members" : "View all requests for this club"}
+              onPress={()=>{
+                if(approved){
+                  router.push(`/manager/dashboard?club=${action.clubId}&view=members`);
+                }else{
+                  router.replace(`/manager/requests?club=${action.clubId}&view=requests`);
+                }
+              }}
+              style={styles.wide}
+            />
           </View>
+        </Notice>
 
-          <Pressable
-            style={styles.primaryButton}
-            onPress={()=>{
-              if(approved){
-                router.push(`/manager/dashboard?club=${action.clubId}&member=${action.userId}&view=members`);
-              }else{
-                router.replace(`/manager/requests?club=${action.clubId}&view=requests`);
-              }
-            }}
-          >
-            <Text style={styles.buttonText}>
-              {approved ? "View approved member" : "Back to pending requests"}
-            </Text>
-          </Pressable>
+        <SectionRule label="What happens next"/>
 
-          <Pressable
-            style={styles.inlineLinkButton}
-            onPress={()=>{
-              if(approved){
-                router.push(`/manager/dashboard?club=${action.clubId}&view=members`);
-              }else{
-                router.replace(`/manager/requests?club=${action.clubId}&view=requests`);
-              }
-            }}
-          >
-            <Text style={styles.inlineLinkIcon}>▣</Text>
-            <Text style={styles.inlineLinkText}>
-              {approved ? "View all club members" : "View all requests for this club"}
-            </Text>
-            <Text style={styles.inlineLinkArrow}>›</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.nextCard}>
-          <Text style={styles.nextCardTitle}>What happens next?</Text>
-
+        <Panel style={styles.nextCard}>
+          <NextStep glyph="check" text={`${memberLabel} has been notified`}/>
           <NextStep
-            icon="✓"
-            text={`${memberLabel} has been notified`}
-          />
-
-          <NextStep
-            icon="✓"
+            glyph="check"
             text={approved
               ? "They can now access the private message board"
               : "They can apply again at any time"
             }
           />
-
           <NextStep
-            icon="i"
-            tone="info"
+            glyph="info"
             text={approved
               ? "You can remove members at any time from the Manager Dashboard"
               : "You can continue managing members from the Manager Dashboard"
             }
           />
-        </View>
+        </Panel>
       </>
     );
   }
@@ -431,19 +437,21 @@ export default function ManagerRequests(){
 
   if(loading){
     return(
-      <View style={styles.center}>
-        <ActivityIndicator size="large"/>
-        <Text style={styles.loadingText}>Loading pending actions...</Text>
-      </View>
+      <Screen style={styles.centre}>
+        <ActivityIndicator size="large" color={INK.readout}/>
+        <Text style={styles.centreText}>Loading pending actions…</Text>
+      </Screen>
     );
   }
 
   if(error){
     return(
-      <View style={styles.center}>
-        <Text style={styles.errorTitle}>Action Centre unavailable</Text>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Manager" title="Action Centre"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Not loaded">{error}</Notice>
+        </View>
+      </Screen>
     );
   }
 
@@ -471,198 +479,186 @@ export default function ManagerRequests(){
   const focusedRequestMissing=!!targetMembershipId && !focusedRequest;
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headingRow}>
-        <View style={styles.headingText}>
-          <Text style={styles.title}>Manager Action Centre</Text>
-          <Text style={styles.subtitle}>
-            Review approvals and decisions without searching through your listings.
-          </Text>
-        </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenTitle
+          eyebrow="Manager"
+          title="Action Centre"
+          meta="Review approvals and decisions without searching through your listings."
+        />
 
-        <View style={styles.countBadge}>
-          <Text style={styles.countNumber}>{pendingMemberships.length}</Text>
-          <Text style={styles.countLabel}>pending</Text>
-        </View>
-      </View>
+        <View style={styles.body}>
+          <ReadoutStrip
+            items={[
+              {label:"Pending",value:String(pendingMemberships.length)},
+              {label:"Clubs",value:String(clubs.length)}
+            ]}
+          />
 
-      <View style={styles.topButtons}>
-        <Pressable style={styles.secondaryButton} onPress={()=>router.push("/notifications")}>
-          <Text style={styles.secondaryButtonText}>Notifications</Text>
-        </Pressable>
-
-        <Pressable style={styles.secondaryButton} onPress={()=>router.push("/manager/dashboard")}>
-          <Text style={styles.secondaryButtonText}>Manager Dashboard</Text>
-        </Pressable>
-      </View>
-
-      {targetMembershipId && focusedRequest && focusedClub && (
-        <View style={styles.focusSection}>
-          <Text style={styles.sectionEyebrow}>MEMBERSHIP REQUEST</Text>
-          <Text style={styles.sectionTitle}>{focusedClub.name}</Text>
-          <Text style={styles.sectionSub}>
-            Review this exact application. Approving immediately unlocks the private message board.
-          </Text>
-
-          <View style={styles.capacityCard}>
-            <Text style={styles.capacityText}>
-              {(approvedByClub[focusedClub.id] || []).length} of {focusedClub.member_limit || 20} members approved
-            </Text>
+          <View style={styles.navRow}>
+            <Action
+              kind="secondary" glyph="bell" label="Notifications"
+              accessibilityLabel="Open notifications"
+              onPress={()=>router.push("/notifications")}
+              style={styles.button}
+            />
+            <Action
+              kind="secondary" glyph="grid" label="Dashboard"
+              accessibilityLabel="Open the Manager Dashboard"
+              onPress={()=>router.push("/manager/dashboard")}
+              style={styles.button}
+            />
           </View>
 
-          {renderRequest(focusedRequest,focusedClub,true)}
+          {targetMembershipId && focusedRequest && focusedClub && (
+            <>
+              <SectionRule label="Membership request" meta={focusedClub.name}/>
 
-          {pendingMemberships.filter(item=>item.club_id===focusedClub.id && item.id!==focusedRequest.id).length>0 && (
-            <Pressable
-              style={styles.viewGroupButton}
-              onPress={()=>router.replace(`/manager/requests?club=${focusedClub.id}&view=requests`)}
-            >
-              <Text style={styles.viewGroupText}>
-                View all requests for {focusedClub.name}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-
-      {focusedRequestMissing && completionToShow && renderCompletion(completionToShow)}
-
-      {focusedRequestMissing && !completionToShow && (
-        <View style={styles.completedCard}>
-          <Text style={styles.completedIcon}>✓</Text>
-          <Text style={styles.completedTitle}>This request is no longer pending</Text>
-          <Text style={styles.completedText}>
-            Its current status is no longer an approval decision.
-          </Text>
-
-          {focusedClub && (
-            <Pressable
-              style={styles.primaryButton}
-              onPress={()=>router.replace(`/manager/requests?club=${focusedClub.id}&view=requests`)}
-            >
-              <Text style={styles.buttonText}>View this club's pending requests</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-
-      {!targetMembershipId && clubsWithRequests.map(club=>(
-        <View key={club.id} style={styles.clubSection}>
-          <View style={styles.clubHeader}>
-            <View style={styles.clubHeaderText}>
-              <Text style={styles.sectionTitle}>{club.name}</Text>
               <Text style={styles.sectionSub}>
-                {club.requests.length} pending request{club.requests.length===1 ? "" : "s"}
+                Review this exact application. Approving immediately unlocks the private message board.
               </Text>
+
+              <View style={styles.meterRow}>
+                <Meter
+                  value={(approvedByClub[focusedClub.id] || []).length}
+                  max={focusedClub.member_limit || 20}
+                  width={140}
+                  tone="exists"
+                  label="Approved"
+                  valueLabel={`${(approvedByClub[focusedClub.id] || []).length}/${focusedClub.member_limit || 20}`}
+                />
+              </View>
+
+              {renderRequest(focusedRequest,focusedClub,true)}
+
+              {pendingMemberships.filter(item=>item.club_id===focusedClub.id && item.id!==focusedRequest.id).length>0 && (
+                <Action
+                  kind="secondary"
+                  glyph="list"
+                  label={`View all requests for ${focusedClub.name}`}
+                  accessibilityLabel={`View all requests for ${focusedClub.name}`}
+                  onPress={()=>router.replace(`/manager/requests?club=${focusedClub.id}&view=requests`)}
+                  style={styles.wide}
+                />
+              )}
+            </>
+          )}
+
+          {focusedRequestMissing && completionToShow && renderCompletion(completionToShow)}
+
+          {focusedRequestMissing && !completionToShow && (
+            <Empty
+              glyph="check"
+              title="This request is no longer pending"
+              instruction="Its current status is no longer an approval decision."
+              action={focusedClub ? (
+                <Action
+                  kind="primary"
+                  glyph="list"
+                  label="View this club's pending requests"
+                  accessibilityLabel="View this club's pending requests"
+                  onPress={()=>router.replace(`/manager/requests?club=${focusedClub.id}&view=requests`)}
+                />
+              ) : null}
+            />
+          )}
+
+          {!targetMembershipId && clubsWithRequests.map(club=>(
+            <View key={club.id}>
+              <SectionRule label={club.name} meta={String(club.requests.length)}/>
+
+              <Row
+                glyph="people"
+                title={`${club.requests.length} pending request${club.requests.length===1 ? "" : "s"}`}
+                sub={club.category ? `${club.category} · ${club.location || ""}`.trim() : club.location}
+                meta={`${(approvedByClub[club.id] || []).length}/${club.member_limit || 20}`}
+                metaSub="approved"
+              />
+
+              {club.requests.map(request=>renderRequest(request,club,false))}
             </View>
+          ))}
 
-            <Text style={styles.clubCapacity}>
-              {(approvedByClub[club.id] || []).length}/{club.member_limit || 20}
-            </Text>
-          </View>
-
-          {club.requests.map(request=>renderRequest(request,club,false))}
+          {!targetMembershipId && clubsWithRequests.length===0 && (
+            <Empty
+              glyph="check"
+              title="All caught up"
+              instruction="There are no Activity Club membership requests waiting for a decision."
+              action={
+                <Action
+                  kind="secondary"
+                  glyph="grid"
+                  label="Return to Manager Dashboard"
+                  accessibilityLabel="Return to the Manager Dashboard"
+                  onPress={()=>router.push("/manager/dashboard")}
+                />
+              }
+            />
+          )}
         </View>
-      ))}
-
-      {!targetMembershipId && clubsWithRequests.length===0 && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>✓</Text>
-          <Text style={styles.emptyTitle}>All caught up</Text>
-          <Text style={styles.emptyText}>
-            There are no Activity Club membership requests waiting for a decision.
-          </Text>
-          <Pressable style={styles.primaryButton} onPress={()=>router.push("/manager/dashboard")}>
-            <Text style={styles.buttonText}>Return to Manager Dashboard</Text>
-          </Pressable>
-        </View>
-      )}
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:70},
-  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.card},
-  loadingText:{marginTop:14,color:INK.inkSoft},
-  errorTitle:{fontSize:22,fontWeight:"bold",textAlign:"center"},
-  errorText:{color:INK.inkSoft,textAlign:"center",marginTop:10,lineHeight:21},
-  headingRow:{flexDirection:"row",alignItems:"flex-start",gap:14},
-  headingText:{flex:1},
-  title:{fontSize:30,fontWeight:"bold"},
-  subtitle:{fontSize:15,color:INK.inkSoft,lineHeight:22,marginTop:6},
-  countBadge:{minWidth:72,backgroundColor:INK.card,borderWidth:1,borderColor:INK.yellow,borderRadius:14,paddingVertical:10,paddingHorizontal:12,alignItems:"center"},
-  countNumber:{fontSize:23,fontWeight:"bold",color:INK.red},
-  countLabel:{fontSize:11,color:INK.red,fontWeight:"bold",textTransform:"uppercase"},
-  topButtons:{flexDirection:"row",gap:10,marginTop:18,marginBottom:24},
-  secondaryButton:{flex:1,borderWidth:1,borderColor:INK.ink,backgroundColor:INK.card,padding:12,borderRadius:10},
-  secondaryButtonText:{textAlign:"center",fontWeight:"bold",color:INK.blue},
-  focusSection:{backgroundColor:INK.card,borderRadius:16,padding:18,borderWidth:2,borderColor:INK.blue},
-  clubSection:{backgroundColor:INK.card,borderRadius:16,padding:18,borderWidth:1,borderColor:INK.ink,marginBottom:18},
-  sectionEyebrow:{fontSize:11,fontWeight:"bold",color:INK.blue,letterSpacing:0.6,marginBottom:6},
-  sectionTitle:{fontSize:22,fontWeight:"bold"},
-  sectionSub:{fontSize:14,color:INK.inkSoft,lineHeight:20,marginTop:4},
-  clubHeader:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:14},
-  clubHeaderText:{flex:1},
-  clubCapacity:{backgroundColor:INK.card,color:INK.blue,fontWeight:"bold",paddingHorizontal:11,paddingVertical:7,borderRadius:18,overflow:"hidden"},
-  capacityCard:{backgroundColor:INK.card,borderRadius:10,padding:12,marginTop:14},
-  capacityText:{color:INK.blue,fontWeight:"bold"},
-  requestCard:{backgroundColor:INK.card,borderRadius:13,padding:15,borderWidth:1,borderColor:INK.ink,marginTop:12},
-  focusedRequestCard:{backgroundColor:INK.card,borderColor:INK.yellow,borderWidth:2},
-  focusLabel:{fontSize:11,fontWeight:"bold",color:INK.red,marginBottom:11},
-  memberIdentity:{flexDirection:"row",alignItems:"center"},
-  memberAvatar:{width:50,height:50,borderRadius:25,backgroundColor:INK.hair},
-  memberAvatarFallback:{width:50,height:50,borderRadius:25,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  memberInitial:{color:INK.card,fontWeight:"bold",fontSize:20},
-  memberNameWrap:{marginLeft:12,flex:1},
-  applicantName:{fontSize:18,fontWeight:"bold",color:INK.ink},
-  memberMeta:{fontSize:12,color:INK.inkSoft,marginTop:4},
-  noteCard:{backgroundColor:INK.card,borderRadius:10,padding:12,marginTop:13,borderWidth:1,borderColor:INK.ink},
-  noteLabel:{fontSize:10,fontWeight:"bold",color:INK.inkSoft,letterSpacing:0.4},
-  noteText:{fontSize:15,color:INK.ink,lineHeight:21,marginTop:6},
-  buttonRow:{flexDirection:"row",gap:10,marginTop:14},
-  approveButton:{flex:1,backgroundColor:INK.green,padding:14,borderRadius:10},
-  rejectButton:{flex:1,backgroundColor:INK.red,padding:14,borderRadius:10},
-  disabledButton:{opacity:0.5},
-  buttonText:{color:INK.card,fontWeight:"bold",textAlign:"center"},
-  viewGroupButton:{borderWidth:1,borderColor:INK.blue,padding:13,borderRadius:10,marginTop:14},
-  viewGroupText:{color:INK.blue,fontWeight:"bold",textAlign:"center"},
-  completedCard:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:24,alignItems:"center"},
-  completedIcon:{fontSize:36,color:INK.green,fontWeight:"bold"},
-  completedTitle:{fontSize:21,fontWeight:"bold",marginTop:8},
-  completedText:{color:INK.ink,textAlign:"center",lineHeight:20,marginTop:7},
-  resultCard:{borderRadius:16,padding:22,alignItems:"center",borderWidth:1},
-  approvedResultCard:{backgroundColor:INK.card,borderColor:INK.green},
-  rejectedResultCard:{backgroundColor:INK.card,borderColor:INK.red},
-  resultIconCircle:{width:70,height:70,borderRadius:35,alignItems:"center",justifyContent:"center"},
-  approvedIconCircle:{backgroundColor:INK.green},
-  rejectedIconCircle:{backgroundColor:INK.red},
-  resultIcon:{color:INK.card,fontSize:40,fontWeight:"bold",lineHeight:44},
-  resultTitle:{fontSize:24,fontWeight:"bold",marginTop:16,textAlign:"center"},
-  resultText:{fontSize:16,color:INK.ink,lineHeight:23,textAlign:"center",marginTop:10},
-  resultCapacityCard:{alignSelf:"stretch",borderRadius:12,padding:14,marginTop:18,flexDirection:"row",alignItems:"center"},
-  approvedCapacityCard:{backgroundColor:INK.card},
-  rejectedCapacityCard:{backgroundColor:INK.card},
-  resultCapacityIcon:{fontSize:27,marginRight:12},
-  resultCapacityTextWrap:{flex:1},
-  resultCapacityLabel:{fontWeight:"bold",fontSize:15},
-  resultCapacityValue:{fontSize:13,color:INK.ink,marginTop:3},
-  inlineLinkButton:{alignSelf:"stretch",borderTopWidth:1,borderColor:"rgba(80,90,85,0.25)",marginTop:18,paddingTop:15,flexDirection:"row",alignItems:"center"},
-  inlineLinkIcon:{fontSize:19,marginRight:9},
-  inlineLinkText:{fontWeight:"600",flex:1},
-  inlineLinkArrow:{fontSize:26,color:INK.ink},
-  nextCard:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:20,marginTop:16},
-  nextCardTitle:{fontSize:19,fontWeight:"bold",marginBottom:14},
-  nextStepRow:{flexDirection:"row",alignItems:"flex-start",marginBottom:13},
-  nextStepIcon:{width:25,height:25,borderRadius:13,alignItems:"center",justifyContent:"center",marginRight:11},
-  successIcon:{backgroundColor:INK.green},
-  infoIcon:{backgroundColor:INK.blue},
-  nextStepIconText:{color:INK.card,fontWeight:"bold",fontSize:13},
-  nextStepText:{flex:1,fontSize:15,lineHeight:21,color:INK.ink},
-  emptyCard:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:28,alignItems:"center"},
-  emptyIcon:{fontSize:38,color:INK.green,fontWeight:"bold"},
-  emptyTitle:{fontSize:21,fontWeight:"bold",marginTop:8},
-  emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:21,marginTop:7},
-  primaryButton:{backgroundColor:INK.blue,paddingHorizontal:18,paddingVertical:14,borderRadius:10,marginTop:18,alignSelf:"stretch"}
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+  centre:{alignItems:"center",justifyContent:"center",gap:12,padding:28},
+  centreText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,textAlign:"center"},
+
+  navRow:{flexDirection:"row",gap:9,marginTop:12},
+  button:{flex:1},
+  wide:{marginTop:9,alignSelf:"stretch"},
+
+  sectionSub:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,marginBottom:4
+  },
+  meterRow:{marginTop:10,marginBottom:10},
+
+  requestCard:{padding:14,marginBottom:10},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:10},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.sm},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+
+  memberIdentity:{flexDirection:"row",alignItems:"center",gap:12},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:44,height:44,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:17},
+  memberNameWrap:{flex:1,minWidth:0},
+  memberName:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  memberMeta:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3},
+
+  note:{
+    marginTop:12,padding:11,
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control
+  },
+  noteLabel:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+  noteText:{
+    color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,marginTop:5
+  },
+
+  buttons:{flexDirection:"row",gap:9,marginTop:13},
+
+  resultText:{
+    color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
+  },
+
+  nextCard:{padding:13},
+  nextStepRow:{flexDirection:"row",alignItems:"flex-start",gap:10,paddingVertical:7},
+  nextStepGlyph:{
+    width:26,height:26,borderRadius:SHAPE.radius.control,
+    alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  nextStepText:{
+    flex:1,color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
+  }
 });

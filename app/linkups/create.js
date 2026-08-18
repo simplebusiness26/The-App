@@ -1,10 +1,12 @@
 import React,{useEffect,useState} from "react";
-import {ActivityIndicator,ScrollView,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,ScrollView,StyleSheet,View} from "react-native";
 import {router,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import LinkupForm from "../../components/LinkupForm";
 import {useFeedback} from "../../context/FeedbackContext";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {INK} from "../../utils/tokens";
+import {Chip,Notice,Screen,ScreenTitle} from "../../components/instrument";
 
 export default function CreateLinkup(){
   const {showFeedback}=useFeedback();
@@ -38,35 +40,42 @@ export default function CreateLinkup(){
     router.replace(`/linkups/${data}`);
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
+  if(loading) return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>MAKE A PLAN</Text>
-      <Text style={styles.title}>Create Link-up</Text>
-      <Text style={styles.subtitle}>Invite local Explorers to something simple, public and easy to join.</Text>
-      {/* The map's long-press already rounds the spot before it gets here --
-          see components/LivingMapScreen.js's own drop card. This says so in
-          words, so the drop is visible rather than something LinkupForm's own
-          "Approximate location added" line has to be found to notice. */}
-      {!!dropped && (
-        <View style={styles.pinnedBadge}>
-          <Text style={styles.pinnedBadgeText}>📍 Pinned from the map</Text>
-        </View>
-      )}
-      {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
-      {allowed && <LinkupForm onSubmit={create} working={working} titleOnly initial={dropped}/>}
-    </ScrollView>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenTitle
+          eyebrow="MAKE A PLAN"
+          title="Create a Link-up"
+          meta="Invite local Explorers to something simple, public and easy to join."
+        />
+        {/* The map's long-press already rounds the spot before it gets here --
+            see components/LivingMapScreen.js's own drop card. This says so in
+            words, so the drop is visible rather than something LinkupForm's own
+            "Approximate location added" line has to be found to notice.
+
+            It used to be a filled blue pill with a map-pin emoji on it. A dropped point is
+            not a state a place is in, so it carries no state ink now: it is a
+            quiet mono chip with the kit's own pin glyph, on the same 16x16 grid
+            as every marker on the map it came from. */}
+        {!!dropped && (
+          <View style={styles.pinnedRow}>
+            <Chip glyph="pin" label="Pinned from the map"/>
+          </View>
+        )}
+        {!!error && <Notice tone="dispute" label="Not posted">{error}</Notice>}
+        {allowed && <LinkupForm onSubmit={create} working={working} titleOnly initial={dropped}/>}
+      </ScrollView>
+    </Screen>
   );
 }
 
-// pinnedBadge stays ink-blue on purpose (UI spec: "shows a blue 'Pinned'
-// badge instead of a location field") -- a dropped point is a place that now
-// exists for this Link-up, which is exactly what ink-blue means everywhere
-// else. Nothing else on this screen gets a state colour.
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  eyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.ink},
-  pinnedBadge:{alignSelf:"flex-start",backgroundColor:INK.blue,borderRadius:99,paddingHorizontal:13,paddingVertical:8,marginTop:14},
-  pinnedBadgeText:{color:INK.card,fontWeight:"800",fontSize:12}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"},
+  pinnedRow:{flexDirection:"row",marginTop:12,marginBottom:4}
 });

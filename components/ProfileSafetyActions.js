@@ -1,8 +1,8 @@
 import React,{useEffect,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
+import {StyleSheet,View} from "react-native";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {Action,Chip,Panel,SectionRule} from "./instrument";
 
 const REASONS=["spam","harassment","unsafe","inappropriate","false_information","other"];
 
@@ -48,18 +48,64 @@ export default function ProfileSafetyActions({profileId}){
 
   return(
     <View style={styles.wrap}>
-      <Pressable style={styles.menuButton} onPress={()=>setShowMenu(current=>!current)}><Text style={styles.menuText}>Safety options</Text></Pressable>
-      {showMenu&&<View style={styles.panel}>
-        <Pressable style={styles.blockButton} disabled={working} onPress={toggleBlock}>{working?<ActivityIndicator color={INK.ink} size="small"/>:<Text style={styles.blockText}>{blocked?"Unblock Explorer":"Block Explorer"}</Text>}</Pressable>
-        {!blocked&&<><Text style={styles.label}>Report reason</Text><View style={styles.reasons}>{REASONS.map(item=><Pressable key={item} style={[styles.reason,reason===item&&styles.reasonActive]} onPress={()=>setReason(item)}><Text style={[styles.reasonText,reason===item&&styles.reasonTextActive]}>{item.replace("_"," ")}</Text></Pressable>)}</View><Pressable style={styles.reportButton} disabled={working} onPress={report}><Text style={styles.reportText}>Submit report</Text></Pressable></>}
-      </View>}
+      <Action
+        kind="quiet"
+        glyph="shield"
+        label="Safety options"
+        style={styles.menuButton}
+        onPress={()=>setShowMenu(current=>!current)}
+      />
+
+      {showMenu && (
+        <Panel style={styles.panel}>
+          <Action
+            kind="danger"
+            glyph={blocked?"check":"block"}
+            label={blocked?"Unblock Explorer":"Block Explorer"}
+            loading={working}
+            onPress={toggleBlock}
+          />
+
+          {!blocked && (
+            <>
+              <SectionRule label="Report reason"/>
+              {/*
+                Chips, and the chosen one steps a surface rather than filling
+                with a state ink. exists/scheduled/offer say what a PLACE is; a
+                report reason is not a place, and a fill here was what made the
+                unselected labels a contrast problem in the first place.
+              */}
+              <View style={styles.reasons}>
+                {REASONS.map(item=>(
+                  <Chip
+                    key={item}
+                    label={item.replace("_"," ")}
+                    selected={reason===item}
+                    onPress={()=>setReason(item)}
+                  />
+                ))}
+              </View>
+
+              <Action
+                kind="danger"
+                glyph="flag"
+                label="Submit report"
+                loading={working}
+                onPress={report}
+                style={styles.report}
+              />
+            </>
+          )}
+        </Panel>
+      )}
     </View>
   );
 }
 
-const styles=StyleSheet.create({wrap:{paddingHorizontal:18,paddingTop:8},menuButton:{alignSelf:"flex-end",paddingHorizontal:12,paddingVertical:8},menuText:{color:INK.inkSoft,fontWeight:"900",fontSize:11},panel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:12,marginBottom:8},blockButton:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:2,borderRadius:10,padding:11,alignItems:"center"},blockText:{color:INK.card,fontWeight:"900"},label:{color:INK.ink,fontWeight:"900",fontSize:12,marginTop:13,marginBottom:8},reasons:{flexDirection:"row",flexWrap:"wrap",gap:6},reason:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1.5,borderRadius:17,paddingHorizontal:9,paddingVertical:6},reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-// docs/design-system.md's own contrast table: card text on a card ground is
-// 1.0:1 -- unreadable. The unselected chip has no fill (the panel's own card
-// background shows through), so its label needs ink, not card; only the
-// active chip -- filled blue -- gets the light text.
-reasonText:{color:INK.ink,fontSize:9,fontWeight:"800",textTransform:"capitalize"},reasonTextActive:{color:INK.card},reportButton:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:2,borderRadius:10,padding:11,alignItems:"center",marginTop:11},reportText:{color:INK.card,fontWeight:"900"}});
+const styles=StyleSheet.create({
+  wrap:{paddingHorizontal:18,paddingTop:8},
+  menuButton:{alignSelf:"flex-end",paddingHorizontal:12},
+  panel:{padding:13,marginTop:8,marginBottom:8,gap:2},
+  reasons:{flexDirection:"row",flexWrap:"wrap",gap:6,marginBottom:12},
+  report:{marginTop:2}
+});

@@ -75,6 +75,43 @@ export function isTabBarHidden(pathname){
 }
 
 // ---------------------------------------------------------------------------
+// Where the Create action does not belong
+// ---------------------------------------------------------------------------
+//
+// components/CreateHub.js floats one Create button over every route, which is
+// the whole point of it: the same action, in the same place, everywhere. There
+// are two kinds of screen where that is wrong, and both are wrong for the same
+// reason -- the screen ALREADY has a compose control pinned to its bottom edge.
+//
+//   /camera                          is a viewfinder end to end. Its shutter IS
+//                                    the create action, and the hub opens the
+//                                    same component.
+//   a message thread or board        has a composer at the bottom. A floating
+//                                    button there offers an unrelated second
+//                                    compose action and physically covers the
+//                                    send control.
+//
+// So this is not a styling nicety: on a conversation screen the Create action
+// sat on top of Send. Found by scripts/verify-instrument.cjs, which asks every
+// scrolling route whether it reserves the button's clearance -- these three
+// could not, because reserving space would have pushed their composer up for a
+// button that should not have been there.
+const CREATE_HIDDEN_EXACT=["/camera"];
+const CREATE_HIDDEN_PREFIX=[
+  "/messages/",
+  "/activity-clubs/message-board/",
+  "/linkups/board/"
+];
+
+export function isCreateActionHidden(pathname){
+  const path=normalise(pathname);
+  if(CREATE_HIDDEN_EXACT.includes(path)) return true;
+  // "/messages" itself is a list of conversations and keeps the button; only a
+  // thread inside it loses it.
+  return CREATE_HIDDEN_PREFIX.some((prefix)=>path.startsWith(prefix)&&path.length>prefix.length);
+}
+
+// ---------------------------------------------------------------------------
 // The header
 // ---------------------------------------------------------------------------
 

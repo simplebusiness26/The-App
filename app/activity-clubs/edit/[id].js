@@ -14,7 +14,34 @@ import {supabase} from "../../../services/supabase";
 import LocationPicker from "../../../components/LocationPicker";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
-import {INK} from "../../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../../components/CreateHub";
+import {INK,SHAPE,TYPE} from "../../../utils/tokens";
+import {Action,Field,fieldInputStyle,Glyph,Notice,Panel,Screen,ScreenTitle,SectionRule,Segmented} from "../../../components/instrument";
+
+// The same switch app/property/edit/[id].js builds, for the same reason: the kit
+// has no "one claim, on or off, with the sentence that explains it". Panel steps
+// to `panelRaised` when it is on and a bracketed tick box sits on the housing --
+// no state ink, because being switched on is not a state a place is in.
+function SwitchRow({label,hint,value,onPress,accessibilityLabel}){
+  return(
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{checked:value}}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+    >
+      <Panel raised={value} style={styles.switchRow}>
+        <View style={[styles.switchBox,value&&styles.switchBoxOn]}>
+          {value ? <Glyph name="check" size={13} colour={INK.readout} weight={1.9}/> : null}
+        </View>
+        <View style={styles.switchText}>
+          <Text style={styles.switchLabel}>{label}</Text>
+          {hint ? <Text style={styles.switchHint}>{hint}</Text> : null}
+        </View>
+      </Panel>
+    </Pressable>
+  );
+}
 
 export default function EditActivityClub(){
   const {id}=useLocalSearchParams();
@@ -144,63 +171,149 @@ export default function EditActivityClub(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
+    return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
   }
 
   if(error){
-    return <View style={styles.center}><Text style={styles.error}>{error}</Text></View>;
+    return(
+      <Screen>
+        <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+          <ScreenTitle eyebrow="EDIT CLUB" title="Club unavailable"/>
+          <Notice tone="dispute" label="Not loaded">{error}</Notice>
+        </ScrollView>
+      </Screen>
+    );
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Edit Activity Club</Text>
-      <Text style={styles.subtitle}>Update the public listing, location and membership capacity.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="EDIT CLUB"
+          title={name.trim() || "Edit activity club"}
+          meta="Update the public listing, location and membership capacity."
+        />
 
-      <TextInput style={styles.input} placeholder="Club name *" value={name} onChangeText={setName}/>
-      <TextInput style={styles.input} placeholder="Category *" value={category} onChangeText={setCategory}/>
-      <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
+        <SectionRule label="The club"/>
 
-      <LocationPicker initialAddress={address} initialLocation={location} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+        <Field label="Club name" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Tuesday sea swimmers"
+            placeholderTextColor={INK.readoutFaint}
+            value={name}
+            onChangeText={setName}
+          />
+        </Field>
 
-      <TextInput style={styles.input} placeholder="Price per session" value={price} onChangeText={setPrice} keyboardType="decimal-pad"/>
-      <TextInput style={styles.input} placeholder="Maximum approved members" value={memberLimit} onChangeText={setMemberLimit} keyboardType="number-pad"/>
+        <Field label="Category" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Swimming"
+            placeholderTextColor={INK.readoutFaint}
+            value={category}
+            onChangeText={setCategory}
+          />
+        </Field>
 
-      {/*
-        SPACES OPEN, ON THE MAP.
-        A claim about a club only its Manager can know is true, so only its
-        Manager can make it. Off is the default and off removes the BUBBLE, not
-        the pin -- the club stays on the map, searchable and joinable, it just
-        does not shout. See utils/liveBubbles.js.
-      */}
-      <Text style={styles.label}>Show &quot;Spaces open&quot; on the map</Text>
-      <Pressable
-        accessibilityRole="switch"
-        accessibilityState={{checked:spacesAvailable}}
-        accessibilityLabel="Show spaces open on the map"
-        style={[styles.statusButton,spacesAvailable && styles.selectedStatus,{marginBottom:20,alignSelf:"flex-start"}]}
-        onPress={()=>setSpacesAvailable((current)=>!current)}
-      >
-        <Text style={[styles.statusText,spacesAvailable && styles.selectedStatusText]}>
-          {spacesAvailable ? "On — a small bubble can appear over this club" : "Off"}
-        </Text>
-      </Pressable>
+        <Field label="Description">
+          <TextInput
+            style={[fieldInputStyle,styles.multiline]}
+            placeholder="What the sessions are like, and who they are for."
+            placeholderTextColor={INK.readoutFaint}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
+        </Field>
 
-      <Text style={styles.label}>Listing status</Text>
-      <View style={styles.statusRow}>
-        {["open","full","closed","draft"].map(option=>(
-          <Pressable key={option} style={[styles.statusButton,status===option && styles.selectedStatus]} onPress={()=>setStatus(option)}>
-            <Text style={[styles.statusText,status===option && styles.selectedStatusText]}>{option}</Text>
-          </Pressable>
-        ))}
-      </View>
+        <SectionRule label="Where it meets"/>
 
-      <Pressable style={styles.button} onPress={saveClub} disabled={saving}>
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </Pressable>
-    </ScrollView>
+        <LocationPicker
+          initialAddress={address}
+          initialLocation={location}
+          initialLatitude={latitude}
+          initialLongitude={longitude}
+          onChange={chooseLocation}
+        />
+
+        <SectionRule label="Membership"/>
+
+        <Field label="Price per session" hint="Enter 0 for a free club.">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="0"
+            placeholderTextColor={INK.readoutFaint}
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="decimal-pad"
+          />
+        </Field>
+
+        <Field label="Maximum approved members" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="20"
+            placeholderTextColor={INK.readoutFaint}
+            value={memberLimit}
+            onChangeText={setMemberLimit}
+            keyboardType="number-pad"
+          />
+        </Field>
+
+        <SectionRule label="On the map"/>
+
+        {/*
+          SPACES OPEN, ON THE MAP.
+          A claim about a club only its Manager can know is true, so only its
+          Manager can make it. Off is the default and off removes the BUBBLE, not
+          the pin -- the club stays on the map, searchable and joinable, it just
+          does not shout. See utils/liveBubbles.js.
+        */}
+        <SwitchRow
+          accessibilityLabel="Show spaces open on the map"
+          label={spacesAvailable ? "On — a small bubble can appear over this club" : "Show “Spaces open” on the map"}
+          hint="Off leaves the club on the map, searchable and joinable. It only removes the bubble."
+          value={spacesAvailable}
+          onPress={()=>setSpacesAvailable((current)=>!current)}
+        />
+
+        <Field label="Listing status" style={styles.spacedField}>
+          <Segmented
+            items={["open","full","closed","draft"]}
+            active={status}
+            onChange={setStatus}
+          />
+        </Field>
+
+        <Action
+          kind="primary"
+          glyph="check"
+          label="Save this club"
+          accessibilityLabel="Save this club"
+          loading={saving}
+          onPress={saveClub}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30},error:{fontSize:17,textAlign:"center"},title:{fontSize:30,fontWeight:"bold"},subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},label:{fontWeight:"bold",fontSize:16,marginBottom:10},statusRow:{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:20},statusButton:{paddingHorizontal:14,paddingVertical:10,borderRadius:20,borderWidth:1,borderColor:INK.hair,backgroundColor:INK.card},selectedStatus:{borderColor:INK.blue,borderWidth:2},statusText:{textTransform:"capitalize",fontWeight:"600"},selectedStatusText:{color:INK.ink},button:{backgroundColor:INK.blue,padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:INK.card,fontWeight:"bold"}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"},
+  multiline:{minHeight:110},
+  spacedField:{marginTop:12},
+
+  switchRow:{flexDirection:"row",alignItems:"center",gap:12,padding:13,minHeight:SHAPE.tapTarget},
+  switchBox:{
+    width:22,height:22,borderRadius:SHAPE.radius.control,
+    borderWidth:SHAPE.border,borderColor:INK.hairline,backgroundColor:INK.inset,
+    alignItems:"center",justifyContent:"center"
+  },
+  switchBoxOn:{borderColor:INK.hairlineStrong,backgroundColor:INK.panelRaised},
+  switchText:{flex:1,minWidth:0},
+  switchLabel:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.4},
+  switchHint:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:4}
 });

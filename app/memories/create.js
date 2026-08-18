@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useMemo,useState} from "react";
-import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {router,useLocalSearchParams} from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../../services/supabase";
@@ -17,7 +17,23 @@ import {PUBLIC_PLACE_TYPES} from "../../utils/places";
 import {assetFromCameraUri,prepareSocialAsset,releaseSocialAsset,uploadSocialAsset} from "../../utils/socialMedia";
 import AudienceCeiling from "../../components/AudienceCeiling";
 import AddLocation from "../../components/AddLocation";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,SHAPE,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Empty,
+  Field,
+  fieldInputStyle,
+  Frame,
+  Glyph,
+  Notice,
+  Panel,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
 
 // Packet 8d: keeping something on purpose.
 //
@@ -255,252 +271,296 @@ export default function CreateMemory(){
   }
 
   if(loading){
-    return(
-      <View style={styles.centre}>
-        <ActivityIndicator size="large" color={INK.ink}/>
-      </View>
-    );
+    return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Keep a Memory</Text>
-      <Text style={styles.subtitle}>
-        Somewhere you were, kept because you chose to. A check-in disappears; this does not.
-      </Text>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenTitle
+          eyebrow="NEW MEMORY"
+          title="Keep a Memory"
+          meta="Somewhere you were, kept because you chose to. A check-in disappears; this does not."
+        />
 
-      {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
+        {!!error && <Notice tone="dispute" label="Not saved">{error}</Notice>}
 
-      <Text style={styles.label}>TITLE</Text>
-      <TextInput
-        value={title}
-        onChangeText={setTitle}
-        placeholder="First swim of the year"
-        placeholderTextColor={INK.inkSoft}
-        style={styles.input}
-        maxLength={120}
-        accessibilityLabel="Memory title"
-      />
-
-      <Text style={styles.label}>NOTE</Text>
-      <TextInput
-        value={note}
-        onChangeText={setNote}
-        placeholder="What you want to remember about it."
-        placeholderTextColor={INK.inkSoft}
-        style={[styles.input,styles.textarea]}
-        multiline
-        textAlignVertical="top"
-        maxLength={1000}
-        accessibilityLabel="Memory note"
-      />
-
-      <Text style={styles.label}>PHOTO</Text>
-      {asset ? (
-        <View>
-          <Image source={{uri:asset.previewUri}} style={styles.preview}/>
-          <Pressable
-            style={styles.secondary}
-            accessibilityRole="button"
-            accessibilityLabel="Remove the photo"
-            onPress={()=>{releaseSocialAsset(asset);setAsset(null);}}
-          >
-            <Text style={styles.secondaryText}>Remove photo</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <Pressable style={styles.secondary} accessibilityRole="button" accessibilityLabel="Choose a photo" onPress={pickPhoto}>
-          <Text style={styles.secondaryText}>Choose a photo</Text>
-        </Pressable>
-      )}
-
-      <Text style={styles.label}>WHERE <Text style={styles.optional}>(optional)</Text></Text>
-      <View style={styles.wrap}>
-        <Pressable
-          style={[styles.chip,!placeType && styles.chipActive]}
-          accessibilityRole="button"
-          accessibilityLabel="No place"
-          onPress={()=>choosePlaceType(null)}
-        >
-          <Text style={styles.chipText}>Nowhere in particular</Text>
-        </Pressable>
-        {Object.entries(PLACE_TYPES).map(([key,config])=>(
-          <Pressable
-            key={key}
-            style={[styles.chip,placeType===key && styles.chipActive]}
-            accessibilityRole="button"
-            accessibilityLabel={config.label}
-            onPress={()=>choosePlaceType(key)}
-          >
-            <Text style={styles.chipText}>{config.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {!!placeType && (
-        <View style={styles.placeCard}>
+        <Field label="TITLE">
           <TextInput
-            value={placeQuery}
-            onChangeText={setPlaceQuery}
-            placeholder="Search places"
-            placeholderTextColor={INK.inkSoft}
-            style={styles.input}
-            accessibilityLabel="Search places"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="First swim of the year"
+            placeholderTextColor={INK.readoutFaint}
+            style={fieldInputStyle}
+            maxLength={120}
+            accessibilityLabel="Memory title"
           />
-          {loadingPlaces && <ActivityIndicator color={INK.ink} style={styles.loader}/>}
-          {!loadingPlaces && filteredPlaces.slice(0,20).map((place)=>(
-            <Pressable
-              key={place.id}
-              style={[styles.placeRow,selectedPlace?.id===place.id && styles.placeRowActive]}
-              accessibilityRole="button"
-              accessibilityLabel={place.name}
-              onPress={()=>setSelectedPlace(place)}
-            >
-              <Text style={styles.placeName}>{place.name}</Text>
-              <Text style={styles.placeCheck}>{selectedPlace?.id===place.id ? "✓" : ""}</Text>
-            </Pressable>
-          ))}
-          {!loadingPlaces && !filteredPlaces.length && <Text style={styles.muted}>No matching places.</Text>}
-        </View>
-      )}
+        </Field>
 
-      {/*
-        Only when it is not attached to a place. An attached Memory takes that
-        place's coordinates on insert, so offering a second answer here would
-        let the screen and the database disagree about where it happened.
-      */}
-      {!selectedPlace && <AddLocation value={coordinates} onChange={setCoordinates} thing="Memory"/>}
+        <Field label="NOTE">
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            placeholder="What you want to remember about it."
+            placeholderTextColor={INK.readoutFaint}
+            style={[fieldInputStyle,styles.textarea]}
+            multiline
+            textAlignVertical="top"
+            maxLength={1000}
+            accessibilityLabel="Memory note"
+          />
+        </Field>
 
-      <Text style={styles.label}>WHO CAN SEE IT WHILE IT IS LIVE</Text>
-      {MEMORY_VISIBILITY.map((option)=>(
-        <Pressable
-          key={option.key}
-          style={[styles.option,visibility===option.key && styles.optionActive]}
-          accessibilityRole="button"
-          accessibilityLabel={`${option.label}: ${option.hint}`}
-          onPress={()=>setVisibility(option.key)}
-        >
-          <Text style={styles.optionTitle}>{option.label}</Text>
-          <Text style={styles.optionHint}>{option.hint}</Text>
-        </Pressable>
-      ))}
+        <SectionRule label="PHOTO"/>
+        {asset ? (
+          <View>
+            <Frame ratio={1.6} style={styles.preview}>
+              <Image source={{uri:asset.previewUri}} style={styles.previewImage}/>
+            </Frame>
+            <Action
+              kind="quiet"
+              glyph="close"
+              label="Remove photo"
+              accessibilityLabel="Remove the photo"
+              style={styles.spacedAction}
+              onPress={()=>{releaseSocialAsset(asset);setAsset(null);}}
+            />
+          </View>
+        ) : (
+          <Action
+            kind="secondary"
+            glyph="image"
+            label="Choose a photo"
+            accessibilityLabel="Choose a photo"
+            onPress={pickPhoto}
+          />
+        )}
 
-      {visibility==="selected" && (
-        <Text style={styles.help}>
-          Save it first, then choose the Explorers on the Memory itself.
-        </Text>
-      )}
-
-      {/*
-        profiles.visibility is a ceiling over this choice, and it starts at
-        Nobody. Without this the screen offers four audiences and silently
-        delivers none of them.
-      */}
-      <AudienceCeiling audience={visibility}/>
-
-      {!isPrivate && (
-        <>
-          <Text style={styles.label}>HOW LONG IT STAYS LIVE</Text>
-          <View style={styles.wrap}>
-            {LIVE_DURATIONS.map((option)=>(
-              <Pressable
-                key={option.key}
-                style={[styles.chip,duration===option.key && styles.chipActive]}
-                accessibilityRole="button"
-                accessibilityLabel={`Live for ${option.label}`}
-                onPress={()=>setDuration(option.key)}
-              >
-                <Text style={styles.chipText}>{option.label}</Text>
-              </Pressable>
+        <SectionRule label="WHERE" meta="OPTIONAL"/>
+        <Field label="Kind of place">
+          <View style={styles.chips}>
+            <Chip
+              label="Nowhere in particular"
+              selected={!placeType}
+              accessibilityLabel="No place"
+              onPress={()=>choosePlaceType(null)}
+            />
+            {Object.entries(PLACE_TYPES).map(([key,config])=>(
+              <Chip
+                key={key}
+                label={config.label}
+                selected={placeType===key}
+                onPress={()=>choosePlaceType(key)}
+              />
             ))}
           </View>
+        </Field>
+
+        {!!placeType && (
+          <>
+            <Field label="Search places">
+              <TextInput
+                value={placeQuery}
+                onChangeText={setPlaceQuery}
+                placeholder="Search places"
+                placeholderTextColor={INK.readoutFaint}
+                style={fieldInputStyle}
+                accessibilityLabel="Search places"
+              />
+            </Field>
+
+            {loadingPlaces && <ActivityIndicator color={INK.exists} style={styles.loader}/>}
+
+            {!loadingPlaces && filteredPlaces.slice(0,20).map((place)=>{
+              const selected=selectedPlace?.id===place.id;
+              return(
+                <Row
+                  key={place.id}
+                  glyph="pin"
+                  title={place.name}
+                  onPress={()=>setSelectedPlace(place)}
+                  right={selected ? <Glyph name="check" size={15} colour={INK.exists} weight={1.9}/> : null}
+                  style={selected?styles.placeRowSelected:null}
+                />
+              );
+            })}
+
+            {!loadingPlaces && !filteredPlaces.length && (
+              <Empty glyph="search" title="No matching places" instruction="Try a shorter search, or keep it without a place."/>
+            )}
+          </>
+        )}
+
+        {/*
+          Only when it is not attached to a place. An attached Memory takes that
+          place's coordinates on insert, so offering a second answer here would
+          let the screen and the database disagree about where it happened.
+        */}
+        {!selectedPlace && <AddLocation value={coordinates} onChange={setCoordinates} thing="Memory"/>}
+
+        <SectionRule label="WHO CAN SEE IT WHILE IT IS LIVE"/>
+        {MEMORY_VISIBILITY.map((option)=>(
+          <ChoiceRow
+            key={option.key}
+            accessibilityLabel={`${option.label}: ${option.hint}`}
+            title={option.label}
+            hint={option.hint}
+            selected={visibility===option.key}
+            onPress={()=>setVisibility(option.key)}
+          />
+        ))}
+
+        {visibility==="selected" && (
           <Text style={styles.help}>
-            After that it leaves the live map and discovery for good. Changing the archive setting later never puts it back.
+            Save it first, then choose the Explorers on the Memory itself.
           </Text>
-        </>
-      )}
+        )}
 
-      <Text style={styles.label}>AFTERWARDS</Text>
-      {ARCHIVE_VISIBILITY.map((option)=>(
-        <Pressable
-          key={option.key}
-          style={[styles.option,archiveVisibility===option.key && styles.optionActive]}
-          accessibilityRole="button"
-          accessibilityLabel={`Afterwards, ${option.label}: ${option.hint}`}
-          onPress={()=>setArchiveVisibility(option.key)}
-        >
-          <Text style={styles.optionTitle}>{option.label}</Text>
-          <Text style={styles.optionHint}>{option.hint}</Text>
-        </Pressable>
-      ))}
-      <Text style={styles.help}>
-        This starts at "Only me" whatever you chose above. It is yours to keep either way — the archive stays available to
-        you even when nobody else can see it.
-      </Text>
+        {/*
+          profiles.visibility is a ceiling over this choice, and it starts at
+          Nobody. Without this the screen offers four audiences and silently
+          delivers none of them.
+        */}
+        <AudienceCeiling audience={visibility}/>
 
-      <View style={styles.switchRow}>
-        <View style={styles.switchText}>
-          <Text style={styles.optionTitle}>Show on my profile</Text>
-          <Text style={styles.optionHint}>
-            Only to people already allowed to see it. It does not make a private Memory public.
-          </Text>
-        </View>
-        <Switch
-          value={showOnProfile}
-          onValueChange={setShowOnProfile}
+        {!isPrivate && (
+          <>
+            <SectionRule label="HOW LONG IT STAYS LIVE"/>
+            <View style={styles.chips}>
+              {LIVE_DURATIONS.map((option)=>(
+                <Chip
+                  key={option.key}
+                  label={option.label}
+                  selected={duration===option.key}
+                  accessibilityLabel={`Live for ${option.label}`}
+                  onPress={()=>setDuration(option.key)}
+                />
+              ))}
+            </View>
+            <Text style={styles.help}>
+              After that it leaves the live map and discovery for good. Changing the archive setting later never puts it back.
+            </Text>
+          </>
+        )}
+
+        <SectionRule label="AFTERWARDS"/>
+        {ARCHIVE_VISIBILITY.map((option)=>(
+          <ChoiceRow
+            key={option.key}
+            accessibilityLabel={`Afterwards, ${option.label}: ${option.hint}`}
+            title={option.label}
+            hint={option.hint}
+            selected={archiveVisibility===option.key}
+            onPress={()=>setArchiveVisibility(option.key)}
+          />
+        ))}
+        <Text style={styles.help}>
+          This starts at &quot;Only me&quot; whatever you chose above. It is yours to keep either way — the archive stays available to
+          you even when nobody else can see it.
+        </Text>
+
+        <SwitchRow
           accessibilityLabel="Show this Memory on my profile"
+          label="Show on my profile"
+          hint="Only to people already allowed to see it. It does not make a private Memory public."
+          value={showOnProfile}
+          onPress={()=>setShowOnProfile((on)=>!on)}
         />
-      </View>
 
-      <Pressable
-        style={[styles.primary,saving && styles.disabled]}
-        disabled={saving}
-        accessibilityRole="button"
-        accessibilityLabel="Save this Memory"
-        onPress={save}
-      >
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.primaryText}>Save Memory</Text>}
-      </Pressable>
-    </ScrollView>
+        <Action
+          kind="primary"
+          glyph="bookmark"
+          label="Save this Memory"
+          accessibilityLabel="Save this Memory"
+          loading={saving}
+          style={styles.submit}
+          onPress={save}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
-const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+// ---------------------------------------------------------------------------
+// Two shapes the kit does not have, composed from the parts it does
+// ---------------------------------------------------------------------------
+// A choice that carries a sentence, and a switch. `Chip` and `Segmented` hold a
+// word each, and `Row` builds its own accessibility label from its title and
+// sub, which would throw away the exact label these two are announced by. Both
+// are a `Panel` that steps to `panelRaised` when it is chosen -- selection as a
+// surface step and a stronger edge, never a state ink.
+
+function ChoiceRow({title,hint,selected,onPress,accessibilityLabel}){
+  return(
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{selected}}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+    >
+      <Panel raised={selected} style={[styles.choice,selected&&styles.choiceSelected]}>
+        <View style={styles.choiceText}>
+          <Text style={styles.choiceTitle}>{title}</Text>
+          <Text style={styles.choiceHint}>{hint}</Text>
+        </View>
+        {selected ? <Glyph name="check" size={15} colour={INK.exists} weight={1.9}/> : null}
+      </Panel>
+    </Pressable>
+  );
+}
+
+function SwitchRow({label,hint,value,onPress,accessibilityLabel}){
+  return(
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{checked:value}}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+    >
+      <Panel raised={value} style={styles.switchRow}>
+        <View style={[styles.switchBox,value&&styles.switchBoxOn]}>
+          {value ? <Glyph name="check" size={13} colour={INK.readout} weight={1.9}/> : null}
+        </View>
+        <View style={styles.choiceText}>
+          <Text style={styles.choiceTitle}>{label}</Text>
+          <Text style={styles.choiceHint}>{hint}</Text>
+        </View>
+      </Panel>
+    </Pressable>
+  );
+}
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:60},
-  centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  title:{color:INK.ink,fontSize:28,fontWeight:"800",letterSpacing:-0.6},
-  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6},
-  errorCard:{...card,padding:14,marginTop:14},
-  errorText:{color:INK.ink,fontWeight:"700"},
-  label:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1,marginTop:22},
-  optional:{color:INK.inkSoft,fontWeight:"600"},
-  input:{...card,minHeight:46,paddingHorizontal:12,paddingVertical:10,color:INK.ink,marginTop:7},
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"},
+  loader:{marginVertical:16},
+
   textarea:{minHeight:96},
-  preview:{width:"100%",height:200,borderRadius:12,borderWidth:2,borderColor:INK.ink,marginTop:8},
-  wrap:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:8},
-  chip:{borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:12,paddingVertical:8},
-  chipActive:{backgroundColor:INK.hair},
-  chipText:{color:INK.ink,fontWeight:"800",fontSize:12},
-  placeCard:{...card,padding:11,marginTop:10},
-  placeRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingVertical:10,paddingHorizontal:6},
-  placeRowActive:{backgroundColor:INK.hair,borderRadius:8},
-  placeName:{color:INK.ink,fontWeight:"700",flex:1},
-  placeCheck:{color:INK.ink,fontWeight:"800",fontSize:16},
-  option:{...card,padding:13,marginTop:8},
-  optionActive:{backgroundColor:INK.hair},
-  optionTitle:{color:INK.ink,fontWeight:"800"},
-  optionHint:{color:INK.ink,fontSize:12,lineHeight:17,marginTop:3},
-  help:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:9},
-  switchRow:{...card,padding:13,marginTop:20,flexDirection:"row",alignItems:"center",gap:12},
-  switchText:{flex:1},
-  loader:{marginVertical:14},
-  muted:{color:INK.inkSoft,padding:8},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginTop:24},
-  primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{...card,minHeight:48,justifyContent:"center",alignItems:"center",marginTop:8},
-  secondaryText:{color:INK.ink,fontWeight:"800"},
-  disabled:{opacity:0.6}
+  preview:{width:"100%"},
+  previewImage:{width:"100%",height:"100%"},
+  spacedAction:{marginTop:8},
+
+  chips:{flexDirection:"row",flexWrap:"wrap",gap:8,padding:10},
+  placeRowSelected:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+
+  choice:{flexDirection:"row",alignItems:"center",gap:12,padding:13,marginBottom:8},
+  choiceSelected:{borderColor:INK.hairlineStrong},
+  choiceText:{flex:1,minWidth:0},
+  choiceTitle:{color:INK.readout,fontSize:TYPE.body.sizes.lg,fontWeight:"600"},
+  choiceHint:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:3},
+
+  help:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:8},
+
+  switchRow:{flexDirection:"row",alignItems:"center",gap:12,padding:13,marginTop:14,minHeight:SHAPE.tapTarget},
+  switchBox:{
+    width:22,height:22,borderRadius:SHAPE.radius.control,
+    borderWidth:SHAPE.border,borderColor:INK.hairline,backgroundColor:INK.inset,
+    alignItems:"center",justifyContent:"center"
+  },
+  switchBoxOn:{borderColor:INK.hairlineStrong,backgroundColor:INK.panelRaised},
+
+  submit:{marginTop:20}
 });

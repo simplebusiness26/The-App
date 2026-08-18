@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,7 +14,29 @@ import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {useFeedback} from "../../context/FeedbackContext";
 import {useAdminGate} from "../../hooks/useAdminGate";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Field,
+  fieldInputStyle,
+  KeyValue,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+
+// Admin Dashboard Stage 4: listing claims and Manager capability requests.
+//
+// APPROVE IS `exists`, REJECT IS AN OUTLINE. docs/design-system.md reserves
+// agree/dispute for a manager answering a review, and says in as many words
+// that admin approve/reject does not get them: approving a claim is not the
+// same act as a business replying to a customer. So the affirmative control is
+// the app's one lit button and the other is a machined outline, on both queues.
 
 const CLAIM_COLUMNS="id,user_id,business_id,property_id,note,created_at,status";
 const CAPABILITY_REQUEST_COLUMNS="id,user_id,capability,status,request_note,requested_at";
@@ -59,7 +80,6 @@ function decisionKey(kind,id){
   return `${kind}:${id}`;
 }
 
-// Admin Dashboard Stage 4: listing claims and Manager capability requests.
 // Reads are batched across both queues. Each decision uses its database RPC so
 // the capability/listing change, request state and audit record commit as one
 // PostgreSQL transaction.
@@ -314,502 +334,282 @@ export default function AdminClaimsScreen(){
 
   if(checking){
     return(
-      <View style={styles.fullState}>
-        <ActivityIndicator size="large" color={INK.ink}/>
+      <Screen style={styles.fullState}>
+        <ActivityIndicator size="large" color={INK.readout}/>
         <Text style={styles.stateText}>Checking admin access…</Text>
-      </View>
+      </Screen>
     );
   }
 
   if(!allowed){
     return(
-      <View style={styles.fullState}>
-        <Text style={styles.deniedTitle}>Admin access required</Text>
-        <Text style={styles.stateText}>
-          {gateError || "An admin account is required to open this screen."}
-        </Text>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Admin" title="Admin access required"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Refused">
+            {gateError || "An admin account is required to open this screen."}
+          </Notice>
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView
-      style={styles.screen}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[
-        styles.content,
-        {paddingBottom:(Platform.OS==="web" ? 34 : Math.max(insets.bottom,24))+40}
-      ]}
-    >
-      <Text style={styles.eyebrow}>ADMIN ACCESS</Text>
-      <Text style={styles.screenTitle}>Claims & Manager access</Text>
-      <Text style={styles.intro}>
-        Verify every request, record why, then approve or reject it. Every decision is audited.
-      </Text>
+    <Screen>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          paddingBottom:(Platform.OS==="web" ? 34 : Math.max(insets.bottom,24))+CREATE_HUB_CLEARANCE
+        }}
+      >
+        <ScreenTitle
+          eyebrow="Admin access"
+          title="Claims & Manager access"
+          meta="Verify every request, record why, then approve or reject it. Every decision is audited."
+        />
 
-      {loading ? (
-        <View style={styles.panel}>
-          <ActivityIndicator size="small" color={INK.ink}/>
-          <Text style={styles.panelText}>Loading pending access requests…</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorPanel} accessibilityRole="alert">
-          <Text style={styles.errorTitle}>Access requests could not be loaded</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try loading pending access requests again"
-            onPress={load}
-            style={({pressed})=>[styles.primaryButton,pressed && styles.pressed]}
-          >
-            <Text style={styles.primaryButtonText}>Try again</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <Text style={styles.sectionHeading}>Listing claims</Text>
-          <Text style={styles.sectionIntro}>
-            Claims assign one business or property listing to an Explorer.
-          </Text>
-
-          <Text style={styles.queueCount}>
-            {`${claims.length} ${claims.length===1 ? "claim" : "claims"} waiting`}
-          </Text>
-
-          {claims.length===0 ? (
-            <View style={styles.emptyPanel}>
-              <Text style={styles.emptyTitle}>No pending listing claims</Text>
-              <Text style={styles.emptyText}>New business and property claims will appear here.</Text>
-            </View>
-          ) : claims.map((claim)=>{
-              const key=decisionKey("claim",claim.id);
-              const reason=reasons[key] || "";
-              const working=workingId===key;
-              const anotherWorking=workingId!==null && !working;
-
-              return(
-                <View key={claim.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderCopy}>
-                      <Text style={styles.typeLabel}>{claim.listingType.toUpperCase()} CLAIM</Text>
-                      <Text style={styles.listingName}>{claim.listingName}</Text>
-                    </View>
-                    <Text style={styles.submitted}>{formatSubmitted(claim.created_at)}</Text>
-                  </View>
-
-                  <View style={styles.divider}/>
-
-                  <Text style={styles.label}>EXPLORER</Text>
-                  <Text style={styles.valueStrong}>{claim.profile.fullName}</Text>
-                  <Text style={styles.value}>{claim.profile.email}</Text>
-                  <Text style={styles.value}>{claim.profile.phone}</Text>
-
-                  <Text style={styles.label}>CLAIM NOTE</Text>
-                  <Text style={styles.note}>{claim.note || "No note supplied"}</Text>
-
-                  <Text style={styles.label}>DECISION REASON</Text>
-                  <TextInput
-                    accessibilityLabel={`Decision reason for ${claim.listingName}`}
-                    editable={!working && !anotherWorking}
-                    maxLength={500}
-                    multiline
-                    onChangeText={(value)=>updateReason(key,value)}
-                    placeholder="Record the evidence or reason for this decision"
-                    placeholderTextColor={INK.inkSoft}
-                    style={styles.reasonInput}
-                    textAlignVertical="top"
-                    value={reason}
+        <View style={styles.body}>
+          {loading ? (
+            <Panel style={styles.panel}>
+              <ActivityIndicator size="small" color={INK.readout}/>
+              <Text style={styles.panelText}>Loading pending access requests…</Text>
+            </Panel>
+          ) : error ? (
+            <View accessibilityRole="alert">
+              <Notice
+                tone="exists"
+                label="Access requests could not be loaded"
+                action={
+                  <Action
+                    kind="secondary"
+                    glyph="refresh"
+                    label="Try again"
+                    accessibilityLabel="Try loading pending access requests again"
+                    onPress={load}
                   />
-                  <Text style={styles.reasonHelp}>Required · 3–500 characters · {reason.length}/500</Text>
-
-                  <View style={styles.buttons}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Approve claim for ${claim.listingName}`}
-                      disabled={working || anotherWorking}
-                      onPress={()=>requestDecision(claim,"approved")}
-                      style={({pressed})=>[
-                        styles.approveButton,
-                        pressed && styles.pressed,
-                        (working || anotherWorking) && styles.disabled
-                      ]}
-                    >
-                      {working ? (
-                        <ActivityIndicator size="small" color={INK.paper}/>
-                      ) : (
-                        <Text style={styles.approveText}>Approve</Text>
-                      )}
-                    </Pressable>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Reject claim for ${claim.listingName}`}
-                      disabled={working || anotherWorking}
-                      onPress={()=>requestDecision(claim,"rejected")}
-                      style={({pressed})=>[
-                        styles.rejectButton,
-                        pressed && styles.pressed,
-                        (working || anotherWorking) && styles.disabled
-                      ]}
-                    >
-                      <Text style={styles.rejectText}>Reject</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            })}
-
-          <Text style={styles.sectionHeading}>Manager capability requests</Text>
-          <Text style={styles.sectionIntro}>
-            Capabilities unlock the Manager tools for businesses, properties, activity clubs or events.
-          </Text>
-          <Text style={styles.queueCount}>
-            {`${capabilityRequests.length} ${capabilityRequests.length===1 ? "request" : "requests"} waiting`}
-          </Text>
-
-          {capabilityRequests.length===0 ? (
-            <View style={styles.emptyPanel}>
-              <Text style={styles.emptyTitle}>No pending capability requests</Text>
-              <Text style={styles.emptyText}>New Manager-access requests will appear here.</Text>
+                }
+              >
+                {error}
+              </Notice>
             </View>
-          ) : capabilityRequests.map((request)=>{
-              const key=decisionKey("capability",request.id);
-              const reason=reasons[key] || "";
-              const working=workingId===key;
-              const anotherWorking=workingId!==null && !working;
+          ) : (
+            <>
+              <SectionRule label="Listing claims" meta={String(claims.length)}/>
 
-              return(
-                <View key={request.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderCopy}>
-                      <Text style={styles.typeLabel}>MANAGER CAPABILITY</Text>
-                      <Text style={styles.listingName}>{request.capabilityLabel}</Text>
-                    </View>
-                    <Text style={styles.submitted}>{formatSubmitted(request.requested_at)}</Text>
-                  </View>
+              <Text style={styles.sectionIntro}>
+                Claims assign one business or property listing to an Explorer.
+              </Text>
 
-                  <View style={styles.divider}/>
+              <Text style={styles.queueCount}>
+                {`${claims.length} ${claims.length===1 ? "claim" : "claims"} waiting`}
+              </Text>
 
-                  <Text style={styles.label}>EXPLORER</Text>
-                  <Text style={styles.valueStrong}>{request.profile.fullName}</Text>
-                  <Text style={styles.value}>{request.profile.email}</Text>
-                  <Text style={styles.value}>{request.profile.phone}</Text>
+              {claims.length===0 ? (
+                <Empty
+                  glyph="key"
+                  title="No pending listing claims"
+                  instruction="New business and property claims will appear here."
+                />
+              ) : claims.map((claim)=>{
+                  const key=decisionKey("claim",claim.id);
+                  const reason=reasons[key] || "";
+                  const working=workingId===key;
+                  const anotherWorking=workingId!==null && !working;
 
-                  <Text style={styles.label}>REQUEST NOTE</Text>
-                  <Text style={styles.note}>{request.request_note || "No note supplied"}</Text>
+                  return(
+                    <Panel key={claim.id} style={styles.card}>
+                      <View style={styles.head}>
+                        <Text style={styles.headKind}>{`${claim.listingType} claim`}</Text>
+                        <View style={styles.headLine}/>
+                        <Text style={styles.headTime} numberOfLines={1}>{formatSubmitted(claim.created_at)}</Text>
+                      </View>
 
-                  <Text style={styles.label}>DECISION REASON</Text>
-                  <TextInput
-                    accessibilityLabel={`Decision reason for ${request.capabilityLabel} access requested by ${request.profile.fullName}`}
-                    editable={!working && !anotherWorking}
-                    maxLength={500}
-                    multiline
-                    onChangeText={(value)=>updateReason(key,value)}
-                    placeholder="Record the evidence or reason for this decision"
-                    placeholderTextColor={INK.inkSoft}
-                    style={styles.reasonInput}
-                    textAlignVertical="top"
-                    value={reason}
-                  />
-                  <Text style={styles.reasonHelp}>Required · 3–500 characters · {reason.length}/500</Text>
+                      <Text style={styles.listingName} numberOfLines={2}>{claim.listingName}</Text>
 
-                  <View style={styles.buttons}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Approve ${request.capabilityLabel} access for ${request.profile.fullName}`}
-                      disabled={working || anotherWorking}
-                      onPress={()=>requestCapabilityDecision(request,"approved")}
-                      style={({pressed})=>[
-                        styles.approveButton,
-                        pressed && styles.pressed,
-                        (working || anotherWorking) && styles.disabled
-                      ]}
-                    >
-                      {working ? (
-                        <ActivityIndicator size="small" color={INK.paper}/>
-                      ) : (
-                        <Text style={styles.approveText}>Approve access</Text>
-                      )}
-                    </Pressable>
+                      <Text style={styles.label}>Explorer</Text>
+                      <Text style={styles.valueStrong}>{claim.profile.fullName}</Text>
+                      <KeyValue label="Email" value={claim.profile.email}/>
+                      <KeyValue label="Phone" value={claim.profile.phone}/>
 
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Reject ${request.capabilityLabel} access for ${request.profile.fullName}`}
-                      disabled={working || anotherWorking}
-                      onPress={()=>requestCapabilityDecision(request,"rejected")}
-                      style={({pressed})=>[
-                        styles.rejectButton,
-                        pressed && styles.pressed,
-                        (working || anotherWorking) && styles.disabled
-                      ]}
-                    >
-                      <Text style={styles.rejectText}>Reject</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            })}
-        </>
-      )}
-    </ScrollView>
+                      <Text style={styles.label}>Claim note</Text>
+                      <Text style={styles.note}>{claim.note || "No note supplied"}</Text>
+
+                      <Field
+                        label="Decision reason"
+                        hint={`Required · 3–500 characters · ${reason.length}/500`}
+                        style={styles.reasonField}
+                      >
+                        <TextInput
+                          accessibilityLabel={`Decision reason for ${claim.listingName}`}
+                          editable={!working && !anotherWorking}
+                          maxLength={500}
+                          multiline
+                          onChangeText={(value)=>updateReason(key,value)}
+                          placeholder="Record the evidence or reason for this decision"
+                          placeholderTextColor={INK.readoutFaint}
+                          style={[fieldInputStyle,styles.reasonInput]}
+                          textAlignVertical="top"
+                          value={reason}
+                        />
+                      </Field>
+
+                      <View style={styles.buttons}>
+                        <Action
+                          kind="primary"
+                          glyph="check"
+                          label="Approve"
+                          accessibilityLabel={`Approve claim for ${claim.listingName}`}
+                          loading={working}
+                          disabled={working || anotherWorking}
+                          onPress={()=>requestDecision(claim,"approved")}
+                          style={styles.button}
+                        />
+                        <Action
+                          kind="secondary"
+                          glyph="close"
+                          label="Reject"
+                          accessibilityLabel={`Reject claim for ${claim.listingName}`}
+                          disabled={working || anotherWorking}
+                          onPress={()=>requestDecision(claim,"rejected")}
+                          style={styles.button}
+                        />
+                      </View>
+                    </Panel>
+                  );
+                })}
+
+              <SectionRule label="Manager capability requests" meta={String(capabilityRequests.length)}/>
+
+              <Text style={styles.sectionIntro}>
+                Capabilities unlock the Manager tools for businesses, properties, activity clubs or events.
+              </Text>
+
+              <Text style={styles.queueCount}>
+                {`${capabilityRequests.length} ${capabilityRequests.length===1 ? "request" : "requests"} waiting`}
+              </Text>
+
+              {capabilityRequests.length===0 ? (
+                <Empty
+                  glyph="key"
+                  title="No pending capability requests"
+                  instruction="New Manager-access requests will appear here."
+                />
+              ) : capabilityRequests.map((request)=>{
+                  const key=decisionKey("capability",request.id);
+                  const reason=reasons[key] || "";
+                  const working=workingId===key;
+                  const anotherWorking=workingId!==null && !working;
+
+                  return(
+                    <Panel key={request.id} style={styles.card}>
+                      <View style={styles.head}>
+                        <Text style={styles.headKind}>Manager capability</Text>
+                        <View style={styles.headLine}/>
+                        <Text style={styles.headTime} numberOfLines={1}>{formatSubmitted(request.requested_at)}</Text>
+                      </View>
+
+                      <Text style={styles.listingName} numberOfLines={2}>{request.capabilityLabel}</Text>
+
+                      <Text style={styles.label}>Explorer</Text>
+                      <Text style={styles.valueStrong}>{request.profile.fullName}</Text>
+                      <KeyValue label="Email" value={request.profile.email}/>
+                      <KeyValue label="Phone" value={request.profile.phone}/>
+
+                      <Text style={styles.label}>Request note</Text>
+                      <Text style={styles.note}>{request.request_note || "No note supplied"}</Text>
+
+                      <Field
+                        label="Decision reason"
+                        hint={`Required · 3–500 characters · ${reason.length}/500`}
+                        style={styles.reasonField}
+                      >
+                        <TextInput
+                          accessibilityLabel={`Decision reason for ${request.capabilityLabel} access requested by ${request.profile.fullName}`}
+                          editable={!working && !anotherWorking}
+                          maxLength={500}
+                          multiline
+                          onChangeText={(value)=>updateReason(key,value)}
+                          placeholder="Record the evidence or reason for this decision"
+                          placeholderTextColor={INK.readoutFaint}
+                          style={[fieldInputStyle,styles.reasonInput]}
+                          textAlignVertical="top"
+                          value={reason}
+                        />
+                      </Field>
+
+                      <View style={styles.buttons}>
+                        <Action
+                          kind="primary"
+                          glyph="check"
+                          label="Approve access"
+                          accessibilityLabel={`Approve ${request.capabilityLabel} access for ${request.profile.fullName}`}
+                          loading={working}
+                          disabled={working || anotherWorking}
+                          onPress={()=>requestCapabilityDecision(request,"approved")}
+                          style={styles.button}
+                        />
+                        <Action
+                          kind="secondary"
+                          glyph="close"
+                          label="Reject"
+                          accessibilityLabel={`Reject ${request.capabilityLabel} access for ${request.profile.fullName}`}
+                          disabled={working || anotherWorking}
+                          onPress={()=>requestCapabilityDecision(request,"rejected")}
+                          style={styles.button}
+                        />
+                      </View>
+                    </Panel>
+                  );
+                })}
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  screen:{
-    flex:1,
-    backgroundColor:INK.paper
-  },
-  content:{
-    paddingHorizontal:20,
-    paddingTop:28
-  },
-  fullState:{
-    flex:1,
-    alignItems:"center",
-    justifyContent:"center",
-    gap:12,
-    padding:32,
-    backgroundColor:INK.paper
-  },
+  body:{paddingHorizontal:16},
+  fullState:{alignItems:"center",justifyContent:"center",gap:12,padding:32},
   stateText:{
-    maxWidth:320,
-    color:INK.inkSoft,
-    fontSize:16,
-    lineHeight:23,
-    textAlign:"center"
+    maxWidth:320,color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,textAlign:"center"
   },
-  deniedTitle:{
-    color:INK.ink,
-    fontSize:24,
-    fontWeight:"800"
-  },
-  eyebrow:{
-    color:INK.inkSoft,
-    fontSize:12,
-    fontWeight:"800",
-    letterSpacing:1.4,
-    marginBottom:9
-  },
-  screenTitle:{
-    color:INK.ink,
-    fontSize:34,
-    fontWeight:"900",
-    letterSpacing:-1.2,
-    lineHeight:38
-  },
-  intro:{
-    color:INK.inkSoft,
-    fontSize:16,
-    lineHeight:23,
-    marginBottom:24,
-    marginTop:10
-  },
-  sectionHeading:{
-    color:INK.ink,
-    fontSize:24,
-    fontWeight:"900",
-    letterSpacing:-0.4,
-    marginTop:8
-  },
+
+  panel:{minHeight:140,alignItems:"center",justifyContent:"center",gap:12,padding:24},
+  panelText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md},
+
   sectionIntro:{
-    color:INK.inkSoft,
-    fontSize:14,
-    lineHeight:20,
-    marginBottom:9,
-    marginTop:5
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,marginBottom:6
   },
-  panel:{
-    minHeight:150,
-    alignItems:"center",
-    justifyContent:"center",
-    gap:12,
-    borderColor:INK.hair,
-    borderRadius:20,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    padding:24
-  },
-  panelText:{
-    color:INK.inkSoft,
-    fontSize:15
-  },
-  errorPanel:{
-    borderColor:INK.ink,
-    borderRadius:20,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    padding:22
-  },
-  errorTitle:{
-    color:INK.ink,
-    fontSize:21,
-    fontWeight:"800"
-  },
-  errorText:{
-    color:INK.inkSoft,
-    fontSize:15,
-    lineHeight:22,
-    marginTop:8
-  },
-  primaryButton:{
-    minHeight:48,
-    alignItems:"center",
-    justifyContent:"center",
-    borderRadius:14,
-    backgroundColor:INK.ink,
-    marginTop:18,
-    paddingHorizontal:18,
-    paddingVertical:12
-  },
-  primaryButtonText:{
-    color:INK.ink,
-    fontSize:16,
-    fontWeight:"800"
-  },
-  emptyPanel:{
-    alignItems:"center",
-    borderColor:INK.hair,
-    borderRadius:20,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    padding:32
-  },
-  emptyTitle:{
-    color:INK.ink,
-    fontSize:21,
-    fontWeight:"800"
-  },
-  emptyText:{
-    color:INK.inkSoft,
-    fontSize:15,
-    lineHeight:21,
-    marginTop:7,
-    textAlign:"center"
-  },
-  queueCount:{
-    color:INK.inkSoft,
-    fontSize:14,
-    fontWeight:"700",
-    marginBottom:10
-  },
-  card:{
-    borderColor:INK.hair,
-    borderRadius:20,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    marginBottom:14,
-    padding:18
-  },
-  cardHeader:{
-    gap:8
-  },
-  cardHeaderCopy:{
-    gap:5
-  },
-  typeLabel:{
-    color:INK.inkSoft,
-    fontSize:11,
-    fontWeight:"900",
-    letterSpacing:1.1
-  },
+  queueCount:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginBottom:10},
+
+  card:{padding:14,marginBottom:11},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headTime:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,flexShrink:1,maxWidth:150},
+
   listingName:{
-    color:INK.ink,
-    fontSize:22,
-    fontWeight:"900",
-    lineHeight:27
+    color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3
   },
-  submitted:{
-    color:INK.inkSoft,
-    fontSize:13
-  },
-  divider:{
-    height:1,
-    backgroundColor:INK.hair,
-    marginVertical:17
-  },
-  label:{
-    color:INK.inkSoft,
-    fontSize:11,
-    fontWeight:"900",
-    letterSpacing:1,
-    marginBottom:5,
-    marginTop:16
-  },
+
+  label:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:13,marginBottom:4},
   valueStrong:{
-    color:INK.ink,
-    fontSize:17,
-    fontWeight:"800"
-  },
-  value:{
-    color:INK.inkSoft,
-    fontSize:14,
-    lineHeight:20,
-    marginTop:2
+    color:INK.readout,fontSize:TYPE.body.sizes.lg,fontWeight:"600"
   },
   note:{
-    color:INK.ink,
-    fontSize:15,
-    lineHeight:22
+    color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
   },
-  reasonInput:{
-    minHeight:96,
-    borderColor:INK.ink,
-    borderRadius:14,
-    borderWidth:1,
-    backgroundColor:INK.paper,
-    color:INK.ink,
-    fontSize:15,
-    lineHeight:21,
-    paddingHorizontal:14,
-    paddingVertical:12
-  },
-  reasonHelp:{
-    color:INK.inkSoft,
-    fontSize:12,
-    marginTop:6
-  },
-  buttons:{
-    flexDirection:"row",
-    gap:10,
-    marginTop:18
-  },
-  approveButton:{
-    minHeight:50,
-    flex:1,
-    alignItems:"center",
-    justifyContent:"center",
-    borderRadius:14,
-    backgroundColor:INK.ink,
-    paddingHorizontal:14,
-    paddingVertical:12
-  },
-  approveText:{
-    color:INK.ink,
-    fontSize:15,
-    fontWeight:"800"
-  },
-  rejectButton:{
-    minHeight:50,
-    flex:1,
-    alignItems:"center",
-    justifyContent:"center",
-    borderColor:INK.ink,
-    borderRadius:14,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    paddingHorizontal:14,
-    paddingVertical:12
-  },
-  rejectText:{
-    color:INK.ink,
-    fontSize:15,
-    fontWeight:"800"
-  },
-  pressed:{
-    opacity:0.72
-  },
-  disabled:{
-    opacity:0.45
-  }
+
+  reasonField:{marginTop:14,marginBottom:2},
+  reasonInput:{minHeight:92},
+
+  buttons:{flexDirection:"row",gap:9,marginTop:12},
+  button:{flex:1}
 });

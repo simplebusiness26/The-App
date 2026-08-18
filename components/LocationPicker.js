@@ -1,15 +1,18 @@
 import React,{useEffect,useState} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator
-} from "react-native";
+import {View,Text,TextInput,StyleSheet} from "react-native";
 import {supabase} from "../services/supabase";
 import {coordinate} from "../utils/coordinates";
-import {INK} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
+import {Action,Field,fieldInputStyle,Glyph,MONO,Notice,Row,SectionRule} from "./instrument";
+
+// The address-search location control.
+//
+// REBUILT ON THE KIT, NOT RECOLOURED. It was a bold 17px heading, a bordered
+// input, a filled blue button, a stack of hand-drawn result cards and a green
+// "location selected" line -- `agree` green, which docs/design-system.md
+// reserves for a manager answering a review and forbids as a generic success
+// colour. The input is a Field well now, the button is an Action, each result
+// is a Row, and the confirmation is a readout of what was actually saved.
 
 export default function LocationPicker({
   initialAddress="",
@@ -94,51 +97,62 @@ export default function LocationPicker({
 
   return(
     <View style={styles.container}>
-      <Text style={styles.label}>Location</Text>
-      <Text style={styles.help}>
-        Enter an address or postcode, then choose the correct result. Coordinates are saved automatically.
-      </Text>
+      <Field
+        label="Location"
+        hint="Enter an address or postcode, then choose the correct result. Coordinates are saved automatically."
+      >
+        <TextInput
+          style={fieldInputStyle}
+          placeholder="Address or postcode"
+          placeholderTextColor={INK.readoutFaint}
+          value={query}
+          accessibilityLabel="Address or postcode"
+          onChangeText={text=>{
+            setQuery(text);
+            setSelected(null);
+            setResults([]);
+            setError("");
+          }}
+          autoCapitalize="words"
+        />
+      </Field>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Address or postcode"
-        value={query}
-        onChangeText={text=>{
-          setQuery(text);
-          setSelected(null);
-          setResults([]);
-          setError("");
-        }}
-        autoCapitalize="words"
+      <Action
+        kind="primary"
+        label="Find address"
+        glyph="search"
+        accessibilityLabel="Find address"
+        loading={searching}
+        disabled={searching || query.trim().length<4}
+        onPress={searchAddress}
       />
 
-      <Pressable
-        style={[styles.searchButton,searching && styles.disabled]}
-        onPress={searchAddress}
-        disabled={searching || query.trim().length<4}
-      >
-        {searching
-          ? <ActivityIndicator color={INK.card}/>
-          : <Text style={styles.searchButtonText}>Find address</Text>
-        }
-      </Pressable>
+      {!!error && (
+        <View accessibilityRole="alert" style={styles.problem}>
+          <Notice tone="scheduled" label="NO MATCH">{error}</Notice>
+        </View>
+      )}
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!results.length && <SectionRule label="Matches" meta={String(results.length)}/>}
 
       {results.map(item=>(
-        <Pressable
+        <Row
           key={item.id}
-          style={styles.result}
+          glyph="pin"
+          title={item.town || item.postcode || "UK location"}
+          sub={item.label}
           onPress={()=>chooseLocation(item)}
-        >
-          <Text style={styles.resultTitle}>{item.town || item.postcode || "UK location"}</Text>
-          <Text style={styles.resultAddress}>{item.label}</Text>
-        </Pressable>
+        />
       ))}
 
+      {/* What was actually saved, read back. A tick and the word "selected"
+          said the act happened; this says what the act recorded. */}
       {!!selected && (
         <View style={styles.selected}>
-          <Text style={styles.selectedTitle}>✓ Location selected</Text>
+          <View style={styles.selectedHead}>
+            <Glyph name="check" size={13} colour={INK.readoutSoft} weight={1.8}/>
+            <Text style={styles.selectedLabel}>LOCATION SET</Text>
+          </View>
           <Text style={styles.selectedText}>{selected.address}</Text>
         </View>
       )}
@@ -148,20 +162,20 @@ export default function LocationPicker({
   );
 }
 
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
+
 const styles=StyleSheet.create({
   container:{marginBottom:18},
-  label:{fontSize:17,fontWeight:"bold",marginBottom:5},
-  help:{color:INK.inkSoft,lineHeight:20,marginBottom:10},
-  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:11,padding:14},
-  searchButton:{backgroundColor:INK.blue,padding:14,borderRadius:10,marginTop:9},
-  disabled:{opacity:0.55},
-  searchButtonText:{color:INK.card,fontWeight:"bold",textAlign:"center"},
-  error:{color:INK.red,marginTop:9},
-  result:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:13,marginTop:9},
-  resultTitle:{fontWeight:"bold",marginBottom:4},
-  resultAddress:{color:INK.ink,lineHeight:19},
-  selected:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:10,padding:13,marginTop:10},
-  selectedTitle:{fontWeight:"bold",color:INK.green},
-  selectedText:{marginTop:5,color:INK.ink},
-  attribution:{fontSize:11,color:INK.inkSoft,marginTop:8}
+  problem:{marginTop:12},
+  selected:{marginTop:12,gap:5},
+  selectedHead:{flexDirection:"row",alignItems:"center",gap:6},
+  selectedLabel:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  selectedText:{
+    color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
+  },
+  attribution:{
+    ...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.6,marginTop:12
+  }
 });

@@ -1,18 +1,38 @@
 import React,{useCallback,useState} from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-  Image
-} from "react-native";
+import {View,Text,StyleSheet,ScrollView,TextInput,ActivityIndicator,Image} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
 import {useFeedback} from "../../../context/FeedbackContext";
-import {INK} from "../../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Frame,
+  Glyph,
+  MONO,
+  Panel,
+  Screen,
+  ScreenTitle,
+  fieldInputStyle
+} from "../../../components/instrument";
+
+// The club's private members' board.
+//
+// WHY THE BUBBLES CHANGED SHAPE
+//
+// Your own messages used to be a solid block of ink with light text on it, and
+// everyone else's a card bordered in the same ink at 2px -- the print system's
+// answer to "which of these did I write". Under the instrument palette that
+// solid block is the near-white READOUT colour, so a member's own board was a
+// column of white slabs.
+//
+// The instrument says the same thing with a surface step: yours sits a step up
+// on `panelRaised` behind a `hairlineStrong` edge, everyone else's stays on
+// `panel` behind a hairline, and the alignment does the rest. No fill, so every
+// label inside stays readable -- which is the whole reason the design system
+// forbids marking things by filling them.
+//
+// The lock screen is a Notice, not a padlock emoji at 42px.
 
 export default function ActivityClubMessageBoard(){
   const {id}=useLocalSearchParams();
@@ -136,29 +156,43 @@ export default function ActivityClubMessageBoard(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
+    return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></Screen>;
   }
 
   if(error || !allowed){
     return(
-      <View style={styles.center}>
-        <Text style={styles.lock}>🔒</Text>
+      <Screen style={styles.center}>
+        <View style={styles.lockDial}>
+          <Glyph name="lock" size={22} colour={INK.readoutFaint}/>
+        </View>
         <Text style={styles.errorTitle}>Members only</Text>
         <Text style={styles.errorText}>{error}</Text>
-        {!!club && <Pressable style={styles.backButton} onPress={()=>router.replace(`/activity-clubs/${club.id}`)}><Text style={styles.buttonText}>Return to Public Profile</Text></Pressable>}
-      </View>
+        {!!club && (
+          <Action
+            kind="secondary"
+            label="Return to Public Profile"
+            glyph="back"
+            style={styles.backButton}
+            accessibilityLabel="Return to the public club profile"
+            onPress={()=>router.replace(`/activity-clubs/${club.id}`)}
+          />
+        )}
+      </Screen>
     );
   }
 
   return(
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{club?.name}</Text>
-        <Text style={styles.subtitle}>Private members’ message board</Text>
-      </View>
+    <Screen>
+      <ScreenTitle eyebrow="PRIVATE MEMBERS' BOARD" title={club?.name} meta="Only approved members and the manager can read this."/>
 
       <ScrollView style={styles.messageList} contentContainerStyle={styles.messageContent}>
-        {messages.length===0 && <View style={styles.emptyBox}><Text>No messages yet. Start the conversation.</Text></View>}
+        {messages.length===0 && (
+          <Empty
+            title="No messages yet"
+            instruction="Start the conversation. Everything posted here stays inside the club."
+            glyph="comment"
+          />
+        )}
 
         {messages.map(item=>{
           const author=messageProfiles[item.user_id];
@@ -166,36 +200,105 @@ export default function ActivityClubMessageBoard(){
           const ownMessage=item.user_id===user?.id;
 
           return(
-            <View key={item.id} style={[styles.messageCard,ownMessage ? styles.ownMessage : styles.otherMessage]}>
+            <Panel
+              key={item.id}
+              raised={ownMessage}
+              style={[styles.messageCard,ownMessage ? styles.ownMessage : styles.otherMessage]}
+            >
               <View style={styles.authorRow}>
-                {author?.profile_photo ? (
-                  <Image source={{uri:author.profile_photo}} style={styles.avatar}/>
-                ) : (
-                  <View style={[styles.avatarFallback,ownMessage && styles.avatarFallbackOwn]}><Text style={[styles.avatarInitial,ownMessage && styles.avatarInitialOwn]}>{authorName.slice(0,1).toUpperCase()}</Text></View>
-                )}
+                <Frame size={34} round style={styles.avatarFrame}>
+                  {author?.profile_photo
+                    ? <Image source={{uri:author.profile_photo}} style={styles.avatar}/>
+                    : <Text style={styles.avatarInitial}>{authorName.slice(0,1).toUpperCase()}</Text>}
+                </Frame>
                 <View style={styles.authorTextWrap}>
-                  <Text style={[styles.author,ownMessage && styles.authorOwn]}>{authorName}</Text>
-                  <Text style={[styles.time,ownMessage && styles.timeOwn]}>{new Date(item.created_at).toLocaleString()}</Text>
+                  <Text style={styles.author} numberOfLines={1}>{authorName}</Text>
+                  {/* A timestamp is something the app recorded, never something
+                      a person wrote, so it is the data face. */}
+                  <Text style={styles.time} numberOfLines={1}>{new Date(item.created_at).toLocaleString()}</Text>
                 </View>
               </View>
-              <Text style={[styles.body,ownMessage && styles.bodyOwn]}>{item.message}</Text>
-            </View>
+              <Text style={styles.body}>{item.message}</Text>
+            </Panel>
           );
         })}
       </ScrollView>
 
       <View style={styles.composer}>
-        <TextInput style={styles.input} placeholder={`Write as ${profile?.full_name || "Member"}`} value={message} onChangeText={setMessage} multiline maxLength={1000}/>
-        <Pressable style={styles.sendButton} onPress={postMessage} disabled={sending}>
-          <Text style={styles.buttonText}>{sending ? "Sending..." : "Send"}</Text>
-        </Pressable>
+        <View style={styles.composerWell}>
+          <TextInput
+            style={[fieldInputStyle,styles.input]}
+            placeholder={`Write as ${profile?.full_name || "Member"}`}
+            placeholderTextColor={INK.readoutFaint}
+            accessibilityLabel="Write a message to the board"
+            value={message}
+            onChangeText={setMessage}
+            multiline
+            maxLength={1000}
+          />
+        </View>
+        <Action
+          kind="primary"
+          label={sending ? "Sending..." : "Send"}
+          glyph="send"
+          style={styles.sendButton}
+          accessibilityLabel="Send this message to the board"
+          disabled={sending}
+          onPress={postMessage}
+        />
       </View>
-    </View>
+    </Screen>
   );
 }
 
-// Same visual system as Messages (app/messages/[id].js): a dark ink bubble
-// for what you wrote, a card bubble bordered in ink for everyone else's.
+// Yours steps UP a surface; everybody else's stays on the panel. No fill, so
+// nothing inside either has to be restyled to stay readable.
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.paper},header:{padding:20,backgroundColor:INK.card,borderBottomWidth:2,borderColor:INK.ink},title:{fontSize:24,fontWeight:"900",color:INK.ink},subtitle:{color:INK.inkSoft,marginTop:5},messageList:{flex:1},messageContent:{padding:16,paddingBottom:30},emptyBox:{backgroundColor:INK.card,padding:16,borderRadius:12,borderWidth:2,borderColor:INK.ink},messageCard:{padding:14,borderRadius:16,borderWidth:2,borderColor:INK.ink,marginBottom:12,maxWidth:"88%",backgroundColor:INK.card},ownMessage:{alignSelf:"flex-end",backgroundColor:INK.ink},otherMessage:{alignSelf:"flex-start",backgroundColor:INK.card},authorRow:{flexDirection:"row",alignItems:"center"},avatar:{width:36,height:36,borderRadius:18,backgroundColor:INK.hair},avatarFallback:{width:36,height:36,borderRadius:18,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},avatarFallbackOwn:{borderColor:INK.card},avatarInitial:{color:INK.ink,fontWeight:"800"},avatarInitialOwn:{color:INK.card},authorTextWrap:{marginLeft:9,flex:1},author:{fontWeight:"800",fontSize:15,color:INK.ink},authorOwn:{color:INK.card},body:{fontSize:16,lineHeight:22,marginTop:10,color:INK.ink},bodyOwn:{color:INK.card},time:{fontSize:10,color:INK.inkSoft,marginTop:2},timeOwn:{color:INK.card},composer:{padding:12,backgroundColor:INK.card,borderTopWidth:2,borderColor:INK.ink},input:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:12,minHeight:54,maxHeight:120,color:INK.ink,backgroundColor:INK.paper},sendButton:{backgroundColor:INK.ink,padding:14,borderRadius:10,marginTop:8},buttonText:{color:INK.card,fontWeight:"800",textAlign:"center"},lock:{fontSize:42},errorTitle:{fontSize:24,fontWeight:"900",marginTop:12,color:INK.ink},errorText:{textAlign:"center",color:INK.ink,lineHeight:22,marginTop:8},backButton:{backgroundColor:INK.ink,padding:14,borderRadius:10,marginTop:18,width:"100%"}
+  center:{alignItems:"center",justifyContent:"center",padding:30},
+  lockDial:{
+    width:56,height:56,borderRadius:SHAPE.radius.pill,alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  errorTitle:{
+    color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700",
+    letterSpacing:-0.3,marginTop:14,textAlign:"center"
+  },
+  errorText:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,textAlign:"center",
+    lineHeight:TYPE.body.sizes.md*1.5,marginTop:8
+  },
+  backButton:{marginTop:20,alignSelf:"stretch"},
+
+  messageList:{flex:1},
+  messageContent:{paddingHorizontal:16,paddingBottom:28},
+  messageCard:{padding:13,marginBottom:10,maxWidth:"88%"},
+  ownMessage:{alignSelf:"flex-end",borderColor:INK.hairlineStrong},
+  otherMessage:{alignSelf:"flex-start"},
+
+  authorRow:{flexDirection:"row",alignItems:"center"},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:34,height:34,borderRadius:SHAPE.radius.pill},
+  avatarInitial:{color:INK.readoutSoft,fontWeight:"700",fontSize:15},
+  authorTextWrap:{marginLeft:10,flex:1,minWidth:0},
+  author:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  time:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.7,marginTop:3
+  },
+  body:{
+    color:INK.readout,fontSize:TYPE.body.sizes.lg,
+    lineHeight:TYPE.body.sizes.lg*1.5,marginTop:10
+  },
+
+  composer:{
+    paddingHorizontal:16,paddingTop:12,paddingBottom:18,
+    borderTopWidth:SHAPE.border,borderTopColor:INK.hairline,backgroundColor:INK.panel
+  },
+  // An input is a well, cut into the housing rather than stuck on it.
+  composerWell:{
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,overflow:"hidden"
+  },
+  input:{minHeight:54,maxHeight:120,textAlignVertical:"top",paddingTop:11},
+  sendButton:{marginTop:9}
 });

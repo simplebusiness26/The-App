@@ -1,5 +1,5 @@
 import React,{useCallback,useState} from "react";
-import {ActivityIndicator,Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,View} from "react-native";
+import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Switch,Text,View} from "react-native";
 import SocialImage from "../../components/SocialImage";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
@@ -8,7 +8,9 @@ import {ARCHIVE_VISIBILITY,currentAudience,isLive,phaseLabel,visibilityLabel,MEM
 import {entityRoute,entityTypeLabel} from "../../utils/places";
 import LikeButton from "../../components/LikeButton";
 import CommentThread from "../../components/CommentThread";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {Action,Chip,Empty,Frame,KeyValue,Notice,Panel,Row,Screen,ScreenTitle,SectionRule} from "../../components/instrument";
 
 // Packet 8d: one Memory, and the controls only its owner gets.
 //
@@ -17,6 +19,14 @@ import {INK} from "../../utils/tokens";
 // so a friend who could read it yesterday genuinely cannot today if the
 // creator left the archive closed -- there is no client-side branch doing that
 // work, and removing this screen would not change who can read the row.
+//
+// WHAT THE REBUILD CHANGED
+//
+// Nothing about who can see what. The photograph moved into a Frame, the two
+// audience answers became KeyValue readouts, and the archive settings became
+// Rows that mark their choice by stepping up a surface rather than filling with
+// a colour -- because who can see a Memory is not a state a PLACE is in, and
+// spending the map's inks on it made a privacy control look like a pin.
 
 export default function MemoryPage(){
   const params=useLocalSearchParams();
@@ -211,18 +221,14 @@ export default function MemoryPage(){
   }
 
   if(loading){
-    return(
-      <View style={styles.centre}>
-        <ActivityIndicator size="large" color={INK.ink}/>
-      </View>
-    );
+    return <Screen style={styles.centre}><ActivityIndicator size="large" color={INK.readoutSoft}/></Screen>;
   }
 
   if(error || !memory){
     return(
-      <View style={styles.centre}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
+      <Screen style={styles.centre}>
+        <Empty glyph="warn" title="Memory unavailable" instruction={error}/>
+      </Screen>
     );
   }
 
@@ -230,176 +236,223 @@ export default function MemoryPage(){
   const route=entityRoute(memory.target_type,memory.target_id);
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {!!memory.media_url && <SocialImage uri={memory.media_url} style={styles.photo}/>}
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.body}>
+        {!!memory.media_url && (
+          <Frame style={styles.photoFrame}>
+            <SocialImage uri={memory.media_url} style={styles.photo} resizeMode="cover"/>
+          </Frame>
+        )}
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.phase}>{phaseLabel(memory)}</Text>
-        {!!memory.title && <Text style={styles.title}>{memory.title}</Text>}
+        <ScreenTitle
+          eyebrow="MEMORY"
+          title={memory.title || "A Memory"}
+          right={<Chip label={phaseLabel(memory)}/>}
+        />
+
+        <View style={styles.body}>
         {!!memory.note && <Text style={styles.note}>{memory.note}</Text>}
 
         {!!memory.target_name && (
-          <Pressable
-            style={styles.placeRow}
-            disabled={!route}
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${memory.target_name}`}
-            onPress={()=>route && router.push(route)}
-          >
-            <Text style={styles.placeLabel}>{entityTypeLabel(memory.target_type).toUpperCase()}</Text>
-            <Text style={styles.placeName}>{memory.target_name}</Text>
-          </Pressable>
+          <View style={styles.placeRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${memory.target_name}`}
+              disabled={!route}
+              onPress={()=>route && router.push(route)}
+            >
+              <Row
+                glyph="pin"
+                title={memory.target_name}
+                meta={entityTypeLabel(memory.target_type).toUpperCase()}
+              />
+            </Pressable>
+          </View>
         )}
 
-        <View style={styles.audienceRow}>
-          <Text style={styles.audienceLabel}>WHO CAN SEE IT NOW</Text>
-          <Text style={styles.audienceValue}>{currentAudience(memory)}</Text>
+        <Panel style={styles.audiencePlate}>
+          <KeyValue label="WHO CAN SEE IT NOW" value={currentAudience(memory)}/>
+        </Panel>
+
+        {/*
+          LIKE, not an endorsement. An endorsement belongs to a review -- it says
+          "this helped me decide" and it pays the reviewer a point. A Memory is
+          somebody's day out; liking it says you liked seeing it and means nothing
+          else. Same table, two words, because they are two different acts.
+
+          Anybody who can read this screen can respond on it. Who that is was
+          decided before this screen ran, by the read policy and by
+          can_see_content -- there is no client-side branch here deciding who may
+          speak, and the database refuses a like or a comment on a Memory the
+          viewer was never shown.
+        */}
+        <View style={styles.respond}>
+          <LikeButton
+            targetType="memory"
+            targetId={memory.id}
+            viewerId={viewer?.id || null}
+            initialCount={likes.count}
+            initialLiked={likes.liked}
+            onChanged={(next)=>setLikes({count:next.count,liked:next.liked})}
+          />
         </View>
-      </View>
 
-      {/*
-        LIKE, not Useful. Useful is an endorsement of a review -- it says "this
-        helped me decide" and it pays the reviewer a point. A Memory is
-        somebody's day out; liking it says you liked seeing it and means nothing
-        else. Same table, two words, because they are two different acts.
-
-        Anybody who can read this screen can respond on it. Who that is was
-        decided before this screen ran, by the read policy and by
-        can_see_content -- there is no client-side branch here deciding who may
-        speak, and the database refuses a like or a comment on a Memory the
-        viewer was never shown.
-      */}
-      <View style={styles.respond}>
-        <LikeButton
+        <CommentThread
           targetType="memory"
           targetId={memory.id}
-          viewerId={viewer?.id || null}
-          initialCount={likes.count}
-          initialLiked={likes.liked}
-          onChanged={(next)=>setLikes({count:next.count,liked:next.liked})}
+          ownerId={memory.user_id}
         />
-      </View>
 
-      <CommentThread
-        targetType="memory"
-        targetId={memory.id}
-        ownerId={memory.user_id}
-      />
-
-      {isOwner && (
-        <>
-          <Text style={styles.sectionTitle}>While it is live</Text>
-          <View style={styles.card}>
-            <Text style={styles.settingValue}>{visibilityLabel(MEMORY_VISIBILITY,memory.visibility)}</Text>
-            <Text style={styles.settingHint}>
+        {isOwner && (
+          <>
+            <SectionRule label="While it is live"/>
+            <Panel style={styles.settingPlate}>
+              <KeyValue label="Audience" value={visibilityLabel(MEMORY_VISIBILITY,memory.visibility)}/>
+            </Panel>
+            <Text style={styles.hint}>
               {live
                 ? "This is the setting in force right now."
                 : "The live period has ended, so this no longer decides anything."}
             </Text>
-          </View>
 
-          <Text style={styles.sectionTitle}>Afterwards</Text>
-          <Text style={styles.settingHint}>
-            Changing this never puts the Memory back on the live map. It only decides who can still open it in your archive.
-          </Text>
-          {ARCHIVE_VISIBILITY.map((option)=>(
-            <Pressable
-              key={option.key}
-              style={[styles.option,memory.archive_visibility===option.key && styles.optionActive]}
-              disabled={working}
-              accessibilityRole="button"
-              accessibilityLabel={`Afterwards, ${option.label}`}
-              onPress={()=>setArchiveVisibility(option.key)}
-            >
-              <Text style={styles.optionTitle}>{option.label}</Text>
-              <Text style={styles.optionHint}>{option.hint}</Text>
-            </Pressable>
-          ))}
-
-          {(memory.visibility==="selected" || memory.archive_visibility==="selected") && (
-            <>
-              <Text style={styles.sectionTitle}>Chosen Explorers</Text>
-              {!candidates.length ? (
-                <View style={styles.card}>
-                  <Text style={styles.settingHint}>Follow some Explorers and they can be chosen here.</Text>
-                </View>
-              ) : candidates.map((person)=>{
-                const shared=shares.includes(person.id);
+            <SectionRule label="Afterwards"/>
+            <Text style={styles.hint}>
+              Changing this never puts the Memory back on the live map. It only decides who can still open it in your archive.
+            </Text>
+            <View style={styles.optionList}>
+              {ARCHIVE_VISIBILITY.map((option)=>{
+                const chosen=memory.archive_visibility===option.key;
                 return(
                   <Pressable
-                    key={person.id}
-                    style={[styles.option,shared && styles.optionActive]}
+                    key={option.key}
                     disabled={working}
                     accessibilityRole="button"
-                    accessibilityLabel={`${shared ? "Stop sharing with" : "Share with"} ${person.full_name || "Explorer"}`}
-                    onPress={()=>toggleShare(person.id,shared)}
+                    accessibilityState={{selected:chosen}}
+                    accessibilityLabel={`Afterwards, ${option.label}`}
+                    onPress={()=>setArchiveVisibility(option.key)}
                   >
-                    <Text style={styles.optionTitle}>{person.full_name || "Explorer"}</Text>
-                    <Text style={styles.optionHint}>{shared ? "Can see this Memory" : "Cannot see it"}</Text>
+                    <Row
+                      title={option.label}
+                      sub={option.hint}
+                      style={chosen && styles.optionOn}
+                      right={chosen ? <Chip label="Chosen"/> : null}
+                    />
                   </Pressable>
                 );
               })}
-            </>
-          )}
-
-          <View style={styles.switchRow}>
-            <View style={styles.switchText}>
-              <Text style={styles.optionTitle}>Show on my profile</Text>
-              <Text style={styles.optionHint}>
-                Only to people already allowed to see it. It never makes a private Memory public.
-              </Text>
             </View>
-            <Switch
-              value={!!memory.show_on_profile}
-              onValueChange={toggleProfile}
-              disabled={working}
-              accessibilityLabel="Show this Memory on my profile"
-            />
-          </View>
 
-          <Pressable
-            style={styles.destructive}
-            disabled={working}
-            accessibilityRole="button"
-            accessibilityLabel="Delete this Memory"
-            onPress={confirmDelete}
-          >
-            <Text style={styles.destructiveText}>Delete this Memory</Text>
-          </Pressable>
-        </>
-      )}
-    </ScrollView>
+            {(memory.visibility==="selected" || memory.archive_visibility==="selected") && (
+              <>
+                <SectionRule label="Chosen Explorers" meta={String(shares.length)}/>
+                {!candidates.length ? (
+                  <Empty
+                    glyph="people"
+                    title="Nobody to choose yet"
+                    instruction="Follow some Explorers and they can be chosen here."
+                  />
+                ) : (
+                  <View style={styles.optionList}>
+                    {candidates.map((person)=>{
+                      const shared=shares.includes(person.id);
+                      return(
+                        <Pressable
+                          key={person.id}
+                          disabled={working}
+                          accessibilityRole="button"
+                          accessibilityState={{selected:shared}}
+                          accessibilityLabel={`${shared ? "Stop sharing with" : "Share with"} ${person.full_name || "Explorer"}`}
+                          onPress={()=>toggleShare(person.id,shared)}
+                        >
+                          <Row
+                            title={person.full_name || "Explorer"}
+                            sub={shared ? "Can see this Memory" : "Cannot see it"}
+                            style={shared && styles.optionOn}
+                            right={shared ? <Chip label="Shared"/> : null}
+                          />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </>
+            )}
+
+            <Panel style={styles.switchRow}>
+              <View style={styles.switchText}>
+                <Text style={styles.switchTitle}>Show on my profile</Text>
+                <Text style={styles.hint}>
+                  Only to people already allowed to see it. It never makes a private Memory public.
+                </Text>
+              </View>
+              <Switch
+                value={!!memory.show_on_profile}
+                onValueChange={toggleProfile}
+                disabled={working}
+                trackColor={{false:INK.hairline,true:INK.exists}}
+                thumbColor={INK.readout}
+                accessibilityLabel="Show this Memory on my profile"
+              />
+            </Panel>
+
+            <Notice tone="dispute" label="Permanent">
+              Deleting a Memory removes it everywhere, including from your own map. Its map window ending would not have done that.
+            </Notice>
+
+            <Action
+              kind="danger"
+              glyph="trash"
+              label="Delete this Memory"
+              accessibilityLabel="Delete this Memory"
+              disabled={working}
+              style={styles.destructive}
+              onPress={confirmDelete}
+            />
+          </>
+        )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
-const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
-
 const styles=StyleSheet.create({
-  respond:{marginTop:12,flexDirection:"row"},
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:60},
-  centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  errorText:{color:INK.ink,fontSize:17,textAlign:"center",lineHeight:24},
-  photo:{width:"100%",height:230,borderRadius:12,borderWidth:2,borderColor:INK.ink,marginBottom:14},
-  card:{...card,padding:16,marginBottom:12},
-  phase:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1},
-  title:{color:INK.ink,fontSize:25,fontWeight:"800",marginTop:7,letterSpacing:-0.4},
-  note:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:10},
-  placeRow:{borderTopWidth:1,borderTopColor:INK.hair,paddingTop:12,marginTop:14},
-  placeLabel:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1},
-  placeName:{color:INK.ink,fontSize:16,fontWeight:"800",marginTop:4},
-  audienceRow:{borderTopWidth:1,borderTopColor:INK.hair,paddingTop:12,marginTop:14},
-  audienceLabel:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1},
-  audienceValue:{color:INK.ink,fontSize:16,fontWeight:"800",marginTop:4},
-  sectionTitle:{color:INK.ink,fontSize:20,fontWeight:"800",marginTop:20,marginBottom:8},
-  settingValue:{color:INK.ink,fontSize:16,fontWeight:"800"},
-  settingHint:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:5},
-  option:{...card,padding:13,marginBottom:8},
-  optionActive:{backgroundColor:INK.hair},
-  optionTitle:{color:INK.ink,fontWeight:"800"},
-  optionHint:{color:INK.ink,fontSize:12,lineHeight:17,marginTop:3},
-  switchRow:{...card,padding:13,marginTop:16,flexDirection:"row",alignItems:"center",gap:12},
+  // ScreenTitle carries its own horizontal gutter, so the scroll container does
+  // not -- everything around it gets the gutter from `body` instead.
+  content:{paddingTop:14,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
+  centre:{alignItems:"center",justifyContent:"center",paddingHorizontal:24},
+
+  // aspectRatio is Frame's own default sizing; a fixed height needs it out of
+  // the way, and a key set to undefined is dropped by StyleSheet.flatten.
+  photoFrame:{height:240,alignSelf:"stretch",aspectRatio:undefined},
+  photo:{width:"100%",height:"100%"},
+
+  note:{
+    color:INK.readout,fontSize:TYPE.body.sizes.lg,
+    lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,marginTop:12
+  },
+
+  placeRow:{marginTop:14},
+  audiencePlate:{paddingHorizontal:13,paddingVertical:2,marginTop:6},
+  settingPlate:{paddingHorizontal:13,paddingVertical:2},
+
+  respond:{marginTop:14,marginBottom:6,flexDirection:"row"},
+
+  hint:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,marginTop:7
+  },
+
+  optionList:{marginTop:10},
+  // Chosen is a step up the surface and a stronger edge, never a fill.
+  optionOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+
+  switchRow:{padding:13,marginTop:16,flexDirection:"row",alignItems:"center",gap:12},
   switchText:{flex:1},
-  destructive:{minHeight:50,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,marginTop:22},
-  destructiveText:{color:INK.ink,fontWeight:"800"}
+  switchTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+
+  destructive:{marginTop:8,marginBottom:8,borderRadius:SHAPE.radius.control}
 });

@@ -29,7 +29,23 @@ import {
   pushIsSupported,
   savePushPreferences
 } from "../utils/push";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {
+  Action,
+  Chip,
+  Field,
+  fieldInputStyle,
+  KeyValue,
+  MONO,
+  Notice,
+  Panel,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule,
+  TickScale
+} from "../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
 
 const CAPABILITIES=[
   {key:"businesses",label:"Businesses"},
@@ -40,15 +56,37 @@ const CAPABILITIES=[
 
 const ENABLED_STATUSES=["active","trial"];
 
+// A capability's status is a stated fact about this account, so it is a mono
+// definition line -- label, etched leader, value -- rather than a coloured pill.
+// The old green pill spent `agree` on it, and `agree` is a manager replying to a
+// review and nothing else (docs/design-system.md). An inactive one simply reads
+// fainter; it is not an error and does not get an error's colour.
 function CapabilityRow({label,status}){
   const enabled=ENABLED_STATUSES.includes(status);
 
   return(
-    <View style={styles.capabilityRow}>
-      <Text style={styles.capabilityLabel}>{label}</Text>
-      <Text style={[styles.capabilityPill,enabled ? styles.pillOn : styles.pillOff]}>
-        {status || "inactive"}
-      </Text>
+    <KeyValue
+      label={label}
+      value={status || "inactive"}
+      tone={enabled ? undefined : "readoutFaint"}
+    />
+  );
+}
+
+// THE FIVE TIERS.
+//
+// SectionRule marks a section; a tier is a whole zone of them, so it needs to
+// read heavier without becoming a second heading style. It is the same ticked
+// rule ScreenTitle draws under a page title -- the instrument's own divider,
+// reused, rather than a 2px black bar borrowed from the print system.
+function TierRule({label}){
+  return(
+    <View style={styles.tier}>
+      <Text style={styles.tierLabel}>{label}</Text>
+      <View style={styles.tierRule}>
+        <TickScale width={64} height={9} count={9} majorEvery={4} colour={INK.hairlineStrong}/>
+        <View style={styles.tierLine}/>
+      </View>
     </View>
   );
 }
@@ -401,528 +439,570 @@ export default function Settings(){
     : "You have nothing listed, so there is nothing to decide about — the tools just switch off.";
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+    return(
+      <Screen>
+        <View style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></View>
+      </Screen>
+    );
   }
 
   if(error){
-    return <View style={styles.center}><Text style={styles.errorText}>{error}</Text></View>;
+    return(
+      <Screen>
+        <View style={styles.center}>
+          <Notice tone="dispute" label="Not loaded">{error}</Notice>
+        </View>
+      </Screen>
+    );
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Account &amp; Safety</Text>
-      <Text style={styles.subtitle}>Your account, what you share, and how you sign in.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScreenTitle eyebrow="YOUR ACCOUNT" title="Account & Safety"/>
+        <Text style={styles.lead}>Your account, what you share, and how you sign in.</Text>
 
-      {/*
-        FIVE TIERS, PER FINAL_PRODUCT_CONTRACT.md's Me -> Account & Safety
-        entry: Profile / Notifications / Safety / Legal / Account. This used
-        to be a flat run of section headers with no grouping above them --
-        the tier eyebrow is the only thing that changed about the structure
-        here; every field, toggle and handler below is the same one that was
-        already on this screen.
-      */}
-      <Text style={styles.tierEyebrow}>PROFILE</Text>
+        {/*
+          FIVE TIERS, PER FINAL_PRODUCT_CONTRACT.md's Me -> Account & Safety
+          entry: Profile / Notifications / Safety / Legal / Account. Every field,
+          toggle and handler below is the one that was already on this screen;
+          what changed is that they are kit parts now -- a Row per line, a
+          SectionRule per group, a KeyValue for anything that is a stated fact.
+        */}
+        <TierRule label="Profile"/>
+        <View style={styles.tierGap}/>
 
-      <Text style={styles.sectionTitle}>Profile</Text>
-      <Pressable style={styles.linkCard} onPress={()=>router.push("/profile/edit")}>
-        <View style={styles.linkTextWrap}>
-          <Text style={styles.linkTitle}>Edit profile</Text>
-          <Text style={styles.linkText}>Your name, photo, bio and phone number.</Text>
-        </View>
-        <Text style={styles.chevron}>›</Text>
-      </Pressable>
+        <Row
+          glyph="person"
+          title="Edit profile"
+          sub="Your name, photo, bio and phone number."
+          onPress={()=>router.push("/profile/edit")}
+        />
 
-      <Text style={styles.sectionTitle}>Privacy</Text>
-      <Text style={styles.helpText}>Use a town or broad area only. Xplorer does not need your exact address.</Text>
+        <SectionRule label="Privacy"/>
+        <Text style={styles.helpText}>Use a town or broad area only. Xplorer does not need your exact address.</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Town or area, e.g. Hastings"
-        placeholderTextColor={INK.inkSoft}
-        value={area}
-        onChangeText={setArea}
-        maxLength={100}
-        editable={!savingPrivacy}
-      />
+        <Field label="Town or area" hint="A town or broad area, e.g. Hastings.">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Town or area, e.g. Hastings"
+            placeholderTextColor={INK.readoutFaint}
+            value={area}
+            onChangeText={setArea}
+            maxLength={100}
+            editable={!savingPrivacy}
+          />
+        </Field>
 
-      {/*
-        The one audience control. It is not a location setting and is not named
-        like one -- a setting called "location sharing" invites a second one
-        called "post sharing" beside it, and then there is no single answer any
-        more.
-      */}
-      <View style={styles.settingBlock}>
-        <Text style={styles.settingTitle}>Your visibility</Text>
-        <Text style={styles.settingText}>
-          Who can see what you share, across the whole app. It starts at nobody and only you
-          can change it.
-        </Text>
-        <View style={styles.choiceRow}>
-          {VISIBILITY_CHOICES.map((choice)=>(
-            <Pressable
-              key={choice.key}
-              accessibilityRole="radio"
-              accessibilityState={{checked:visibility===choice.key}}
-              accessibilityLabel={choice.sentence}
-              style={[styles.choice,visibility===choice.key && styles.choiceActive]}
-              onPress={()=>setVisibility(choice.key)}
-              disabled={savingPrivacy}
-            >
-              <Text style={[styles.choiceTitle,visibility===choice.key && styles.choiceTitleActive]}>{choice.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.settingText}>
-          {VISIBILITY_CHOICES.find((choice)=>choice.key===visibility)?.sentence}
-        </Text>
-      </View>
+        {/*
+          The one audience control. It is not a location setting and is not named
+          like one -- a setting called "location sharing" invites a second one
+          called "post sharing" beside it, and then there is no single answer any
+          more.
 
-      <View style={styles.settingRow}>
-        <View style={styles.settingTextWrap}>
-          <Text style={styles.settingTitle}>Display my area</Text>
-          <Text style={styles.settingText}>Shows your chosen town or area on your public profile and local leaderboard.</Text>
-        </View>
-        <Switch value={showArea} onValueChange={setShowArea} disabled={savingPrivacy}/>
-      </View>
-
-      <View style={styles.settingRow}>
-        <View style={styles.settingTextWrap}>
-          <Text style={styles.settingTitle}>Appear on the leaderboard</Text>
-          <Text style={styles.settingText}>Turn this off to keep earning your Explorer Score without appearing in the public ranking.</Text>
-        </View>
-        <Switch value={leaderboardOptIn} onValueChange={setLeaderboardOptIn} disabled={savingPrivacy}/>
-      </View>
-
-      <Pressable
-        style={[styles.primaryButton,savingPrivacy && styles.disabled]}
-        onPress={savePrivacy}
-        disabled={savingPrivacy}
-      >
-        <Text style={styles.primaryText}>{savingPrivacy ? "Saving..." : "Save privacy settings"}</Text>
-      </Pressable>
-
-      {/*
-        NOTIFICATIONS TIER.
-
-        PUSH NOTIFICATIONS, EVERY ONE OFF UNTIL SOMEBODY TURNS IT ON.
-
-        The permission is asked for HERE, when a switch goes on -- never on
-        launch. A push prompt on first open, before anybody knows what the app
-        is, is how notifications get turned off for ever.
-
-        Categories mirror the notifications that already exist rather than
-        inventing a second vocabulary; utils/pushCategories.js is the list and
-        scripts/verify-push.cjs checks it against the database. No quick-
-        action toggle lives here -- that is fc-01, deferred pending a product
-        decision, and this tier is push categories only, same as before.
-      */}
-      <Text style={styles.tierEyebrow}>NOTIFICATIONS</Text>
-      <Text style={styles.sectionTitle}>Notifications on your phone</Text>
-      {!pushIsSupported() ? (
-        <Text style={styles.helpText}>
-          Push notifications only work on a phone. Everything still appears in
-          the app.
-        </Text>
-      ) : (
-        <>
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextWrap}>
-              <Text style={styles.settingTitle}>Send me push notifications</Text>
-              <Text style={styles.settingText}>
-                Off means off, whatever the switches below say.
-              </Text>
-            </View>
-            <Switch
-              value={!!pushes.enabled}
-              onValueChange={togglePushMaster}
-              accessibilityLabel="Send me push notifications"
-            />
+          The four choices were pills that filled with a state ink when chosen.
+          exists/scheduled/offer say what a PLACE is; which audience you picked is
+          not one of those, so a chosen choice steps a surface and strengthens its
+          edge instead. The spoken label is still the whole sentence, and the
+          radio role and checked state are unchanged -- the Chip draws the shape,
+          the Pressable around it says what choosing it means.
+        */}
+        <Panel style={styles.visibility}>
+          <Text style={styles.settingTitle}>Your visibility</Text>
+          <Text style={styles.settingText}>
+            Who can see what you share, across the whole app. It starts at nobody and only you
+            can change it.
+          </Text>
+          <View style={styles.choiceRow}>
+            {VISIBILITY_CHOICES.map((choice)=>(
+              <Pressable
+                key={choice.key}
+                accessibilityRole="radio"
+                accessibilityState={{checked:visibility===choice.key}}
+                accessibilityLabel={choice.sentence}
+                style={styles.choice}
+                onPress={()=>setVisibility(choice.key)}
+                disabled={savingPrivacy}
+              >
+                <Chip label={choice.label} selected={visibility===choice.key} style={styles.choiceChip}/>
+              </Pressable>
+            ))}
           </View>
+          <Text style={styles.settingSentence}>
+            {VISIBILITY_CHOICES.find((choice)=>choice.key===visibility)?.sentence}
+          </Text>
+        </Panel>
 
-          {PUSH_CATEGORIES.map((category)=>(
-            <View key={category.key} style={styles.settingRow}>
-              <View style={styles.settingTextWrap}>
-                <Text style={styles.settingTitle}>{category.label}</Text>
-                <Text style={styles.settingText}>{category.help}</Text>
-              </View>
-              <Switch
-                value={!!pushes[category.key]}
-                disabled={!pushes.enabled}
-                onValueChange={(next)=>togglePushCategory(category.key,next)}
-                accessibilityLabel={category.label}
+        <Row
+          title="Display my area"
+          sub="Shows your chosen town or area on your public profile and local leaderboard."
+          right={<Switch value={showArea} onValueChange={setShowArea} disabled={savingPrivacy}/>}
+        />
+
+        <Row
+          title="Appear on the leaderboard"
+          sub="Turn this off to keep earning your Explorer Score without appearing in the public ranking."
+          right={<Switch value={leaderboardOptIn} onValueChange={setLeaderboardOptIn} disabled={savingPrivacy}/>}
+        />
+
+        <Action
+          kind="primary"
+          glyph="check"
+          label={savingPrivacy ? "Saving..." : "Save privacy settings"}
+          accessibilityLabel="Save privacy settings"
+          disabled={savingPrivacy}
+          onPress={savePrivacy}
+          style={styles.savePrivacy}
+        />
+
+        {/*
+          NOTIFICATIONS TIER.
+
+          PUSH NOTIFICATIONS, EVERY ONE OFF UNTIL SOMEBODY TURNS IT ON.
+
+          The permission is asked for HERE, when a switch goes on -- never on
+          launch. A push prompt on first open, before anybody knows what the app
+          is, is how notifications get turned off for ever.
+
+          Categories mirror the notifications that already exist rather than
+          inventing a second vocabulary; utils/pushCategories.js is the list and
+          scripts/verify-push.cjs checks it against the database. No quick-
+          action toggle lives here -- that is fc-01, deferred pending a product
+          decision, and this tier is push categories only, same as before.
+        */}
+        <TierRule label="Notifications"/>
+        <SectionRule label="Notifications on your phone"/>
+        {!pushIsSupported() ? (
+          <Text style={styles.helpText}>
+            Push notifications only work on a phone. Everything still appears in
+            the app.
+          </Text>
+        ) : (
+          <>
+            <Row
+              glyph="bell"
+              title="Send me push notifications"
+              sub="Off means off, whatever the switches below say."
+              right={
+                <Switch
+                  value={!!pushes.enabled}
+                  onValueChange={togglePushMaster}
+                  accessibilityLabel="Send me push notifications"
+                />
+              }
+            />
+
+            {PUSH_CATEGORIES.map((category)=>(
+              <Row
+                key={category.key}
+                title={category.label}
+                sub={category.help}
+                right={
+                  <Switch
+                    value={!!pushes[category.key]}
+                    disabled={!pushes.enabled}
+                    onValueChange={(next)=>togglePushCategory(category.key,next)}
+                    accessibilityLabel={category.label}
+                  />
+                }
+              />
+            ))}
+          </>
+        )}
+
+        {/* SAFETY TIER. */}
+        <TierRule label="Safety"/>
+        <View style={styles.tierGap}/>
+        <Row
+          glyph="shield"
+          title="Blocked Explorers"
+          sub="People you have blocked, and where to unblock them."
+          onPress={()=>router.push("/safety/blocked")}
+        />
+
+        {/*
+          LEGAL TIER.
+
+          Reachable from here and from sign-up, because a policy nobody can find
+          is not a policy. Both are marked as drafts on the screen itself -- see
+          the note in utils/legal.js.
+
+          THE PERMANENT HOME OF THE MAP CREDIT.
+
+          The map itself carries no attribution control any more -- both of
+          MapLibre's are turned off in components/LivingMap.js and
+          LivingMap.web.js. That is only defensible because the credit is still in
+          the app, in two places that cannot be missed: the startup screen shows
+          it for five seconds on every launch, and this section states it
+          permanently with a link to the licence. If this section is ever
+          deleted, the map has to get its credit back --
+          test/map-attribution.test.js is what enforces that.
+        */}
+        <TierRule label="Legal"/>
+        <SectionRule label="Privacy and terms"/>
+        <Row
+          glyph="lock"
+          title="Privacy policy"
+          sub="What Xplorer stores, who can see it, and how to get rid of it."
+          onPress={()=>router.push("/legal/privacy")}
+        />
+        <Row
+          glyph="clipboard"
+          title="Terms"
+          sub="What Xplorer is, and what is expected of everybody using it."
+          onPress={()=>router.push("/legal/terms")}
+        />
+
+        <SectionRule label="About and licences"/>
+        {/*
+          NOT FINE PRINT. The whole justification for a clean map is that the
+          credit is legible somewhere a person will actually meet it, so this
+          stays at reading size on a panel of its own with the licence link as a
+          real 44px control rather than an underlined scrap.
+        */}
+        <Panel style={styles.licence}>
+          <Text style={styles.licenceLabel}>MAP DATA</Text>
+          <Text style={styles.licenceText}>{ATTRIBUTION}</Text>
+          <Text style={styles.licenceText}>{ATTRIBUTION_COPYRIGHT}</Text>
+          <Text style={styles.licenceSmall}>
+            Xplorer&apos;s maps are built from OpenStreetMap, a free map of the
+            world made by volunteers. The data is available under the Open
+            Database Licence.
+          </Text>
+          <Pressable
+            style={styles.licenceLink}
+            accessibilityRole="link"
+            accessibilityLabel="Open the OpenStreetMap copyright and licence page"
+            onPress={()=>Linking.openURL(ATTRIBUTION_URL)}
+          >
+            <Text style={styles.licenceLinkText}>{ATTRIBUTION_URL}</Text>
+          </Pressable>
+        </Panel>
+
+        {/*
+          ACCOUNT TIER: whether you have manager tools switched on at all,
+          signing in, and the account itself. Managing individual businesses,
+          properties, clubs and events lives at Me -> My Places now -- this is
+          the account-level switch that turns the capability on and off, which
+          is a different question from what any one listing looks like.
+        */}
+        <TierRule label="Account"/>
+        <SectionRule label="Managing places"/>
+        <Text style={styles.helpText}>
+          There is no separate manager account. A manager is an Explorer with the
+          tools switched on, and you can switch them on and off yourself.
+        </Text>
+
+        <Panel style={styles.capabilityCard}>
+          {CAPABILITIES.map(({key,label})=>(
+            <CapabilityRow
+              key={key}
+              label={label}
+              status={capabilities?.[`${key}_status`]}
+            />
+          ))}
+        </Panel>
+
+        {/*
+          The confirmations are drawn here, in the page, rather than as system
+          dialogs. Not because Alert is broken -- FeedbackProvider swaps in a
+          working one on web -- but because the downgrade is not a yes/no: it is a
+          choice between two outcomes that each need a sentence of explanation,
+          and neither fits on a system button.
+        */}
+        {!isManager && confirming!=="become" && (
+          <Action
+            kind="secondary"
+            glyph="key"
+            label="Become a manager"
+            onPress={()=>setConfirming("become")}
+            style={styles.spaced}
+          />
+        )}
+
+        {!isManager && confirming==="become" && (
+          <Panel raised style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Are you sure?</Text>
+            <Text style={styles.confirmText}>
+              You will be able to list a business or a property, and start an
+              activity club or an event. Your account does not change and nothing
+              about your profile changes — it is the same Explorer with more tools.
+            </Text>
+            <Text style={styles.confirmText}>
+              This does not give you anybody else&apos;s business. Taking over a
+              place that is already listed is a claim, and an administrator decides
+              those.
+            </Text>
+            <Text style={styles.confirmText}>You can switch it off again here whenever you want.</Text>
+
+            <View style={styles.confirmRow}>
+              <Action
+                kind="primary"
+                glyph="check"
+                label={workingManager ? "Working..." : "Yes, switch them on"}
+                accessibilityLabel="Yes, switch the manager tools on"
+                disabled={workingManager}
+                onPress={becomeManager}
+                style={styles.confirmButton}
+              />
+              <Action
+                kind="quiet"
+                label="Cancel"
+                accessibilityLabel="Cancel"
+                disabled={workingManager}
+                onPress={()=>setConfirming(null)}
+                style={styles.confirmButton}
               />
             </View>
-          ))}
-        </>
-      )}
+          </Panel>
+        )}
 
-      {/* SAFETY TIER. */}
-      <Text style={styles.tierEyebrow}>SAFETY</Text>
-      <Text style={styles.sectionTitle}>Safety</Text>
-      <Pressable style={styles.linkCard} onPress={()=>router.push("/safety/blocked")}>
-        <View style={styles.linkTextWrap}>
-          <Text style={styles.linkTitle}>Blocked Explorers</Text>
-          <Text style={styles.linkText}>People you have blocked, and where to unblock them.</Text>
-        </View>
-        <Text style={styles.chevron}>›</Text>
-      </Pressable>
-
-      {/*
-        LEGAL TIER.
-
-        Reachable from here and from sign-up, because a policy nobody can find
-        is not a policy. Both are marked as drafts on the screen itself -- see
-        the note in utils/legal.js.
-
-        THE PERMANENT HOME OF THE MAP CREDIT.
-
-        The map itself carries no attribution control any more -- both of
-        MapLibre's are turned off in components/LivingMap.js and
-        LivingMap.web.js. That is only defensible because the credit is still in
-        the app, in two places that cannot be missed: the startup screen shows
-        it for five seconds on every launch, and this section states it
-        permanently with a link to the licence. If this section is ever
-        deleted, the map has to get its credit back --
-        test/map-attribution.test.js is what enforces that.
-      */}
-      <Text style={styles.tierEyebrow}>LEGAL</Text>
-      <Text style={styles.sectionTitle}>Privacy and terms</Text>
-      <Pressable
-        style={styles.secondaryButton}
-        accessibilityRole="button"
-        accessibilityLabel="Read the privacy policy"
-        onPress={()=>router.push("/legal/privacy")}
-      >
-        <Text style={styles.secondaryText}>Privacy policy</Text>
-      </Pressable>
-      <Pressable
-        style={[styles.secondaryButton,styles.secondaryButtonSpaced]}
-        accessibilityRole="button"
-        accessibilityLabel="Read the terms"
-        onPress={()=>router.push("/legal/terms")}
-      >
-        <Text style={styles.secondaryText}>Terms</Text>
-      </Pressable>
-
-      <Text style={styles.sectionTitle}>About and licences</Text>
-      <View style={styles.licenceCard}>
-        <Text style={styles.licenceTitle}>Map data</Text>
-        <Text style={styles.licenceText}>{ATTRIBUTION}</Text>
-        <Text style={styles.licenceText}>{ATTRIBUTION_COPYRIGHT}</Text>
-        <Text style={styles.licenceSmall}>
-          Xplorer&apos;s maps are built from OpenStreetMap, a free map of the
-          world made by volunteers. The data is available under the Open
-          Database Licence.
-        </Text>
-        <Pressable
-          style={styles.licenceLink}
-          accessibilityRole="link"
-          accessibilityLabel="Open the OpenStreetMap copyright and licence page"
-          onPress={()=>Linking.openURL(ATTRIBUTION_URL)}
-        >
-          <Text style={styles.licenceLinkText}>{ATTRIBUTION_URL}</Text>
-        </Pressable>
-      </View>
-
-      {/*
-        ACCOUNT TIER: whether you have manager tools switched on at all,
-        signing in, and the account itself. Managing individual businesses,
-        properties, clubs and events lives at Me -> My Places now -- this is
-        the account-level switch that turns the capability on and off, which
-        is a different question from what any one listing looks like.
-      */}
-      <Text style={styles.tierEyebrow}>ACCOUNT</Text>
-      <Text style={styles.sectionTitle}>Managing places</Text>
-      <Text style={styles.helpText}>
-        There is no separate manager account. A manager is an Explorer with the
-        tools switched on, and you can switch them on and off yourself.
-      </Text>
-
-      <View style={styles.capabilityCard}>
-        {CAPABILITIES.map(({key,label})=>(
-          <CapabilityRow
-            key={key}
-            label={label}
-            status={capabilities?.[`${key}_status`]}
+        {isManager && (
+          <Row
+            glyph="building"
+            title="Open My Places"
+            sub="Your listings, and everything you manage."
+            onPress={()=>router.push("/manager/dashboard")}
           />
-        ))}
-      </View>
+        )}
 
-      {/*
-        The confirmations are drawn here, in the page, rather than as system
-        dialogs. Not because Alert is broken -- FeedbackProvider swaps in a
-        working one on web -- but because the downgrade is not a yes/no: it is a
-        choice between two outcomes that each need a sentence of explanation,
-        and neither fits on a system button.
-      */}
-      {!isManager && confirming!=="become" && (
-        <Pressable
-          style={styles.primaryButton}
-          accessibilityRole="button"
-          accessibilityLabel="Become a manager"
-          onPress={()=>setConfirming("become")}
-        >
-          <Text style={styles.primaryText}>Become a manager</Text>
-        </Pressable>
-      )}
+        {isManager && confirming!=="stop" && (
+          <Action
+            kind="secondary"
+            glyph="minus"
+            label="Stop being a manager"
+            onPress={()=>setConfirming("stop")}
+            style={styles.spaced}
+          />
+        )}
 
-      {!isManager && confirming==="become" && (
-        <View style={styles.confirmCard}>
-          <Text style={styles.confirmTitle}>Are you sure?</Text>
-          <Text style={styles.confirmText}>
-            You will be able to list a business or a property, and start an
-            activity club or an event. Your account does not change and nothing
-            about your profile changes — it is the same Explorer with more tools.
-          </Text>
-          <Text style={styles.confirmText}>
-            This does not give you anybody else&apos;s business. Taking over a
-            place that is already listed is a claim, and an administrator decides
-            those.
-          </Text>
-          <Text style={styles.confirmText}>You can switch it off again here whenever you want.</Text>
+        {isManager && confirming==="stop" && (
+          <Panel raised style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>What happens to what you manage?</Text>
+            <Text style={styles.confirmText}>{managedSentence}</Text>
 
-          <View style={styles.confirmRow}>
+            {(listings.activity_clubs>0 || listings.events>0) && (
+              <Notice tone="scheduled" label="This cannot be avoided">
+                A club or an event always belongs to somebody, so there is no way to
+                leave one behind without an owner. Either way you choose, your
+                {listings.activity_clubs>0 ? ` ${listings.activity_clubs} club${listings.activity_clubs===1 ? "" : "s"}` : ""}
+                {listings.activity_clubs>0 && listings.events>0 ? " and" : ""}
+                {listings.events>0 ? ` ${listings.events} event${listings.events===1 ? "" : "s"}` : ""}
+                {" "}will be removed.
+              </Notice>
+            )}
+
             <Pressable
-              style={[styles.confirmYes,workingManager && styles.disabled]}
               accessibilityRole="button"
-              accessibilityLabel="Yes, switch the manager tools on"
+              accessibilityLabel="Leave my businesses and properties on the map with no owner"
               disabled={workingManager}
-              onPress={becomeManager}
+              onPress={()=>stopManaging("unclaim")}
+              style={workingManager && styles.disabled}
             >
-              <Text style={styles.confirmYesText}>{workingManager ? "Working..." : "Yes, switch them on"}</Text>
+              <Row
+                glyph="flag"
+                title="Leave them unclaimed"
+                sub="Your businesses and properties stay on the map with nobody managing them, exactly like every place nobody has claimed yet. Their reviews and photos stay. Somebody else can claim them later — including you."
+              />
             </Pressable>
+
             <Pressable
-              style={styles.confirmNo}
               accessibilityRole="button"
+              accessibilityLabel="Delete everything I manage"
+              disabled={workingManager}
+              onPress={()=>stopManaging("delete")}
+              style={workingManager && styles.disabled}
+            >
+              {/* No state ink on it. exists/scheduled/offer say what a PLACE
+                  is and agree/dispute are a manager's two answers to a review;
+                  a destructive choice is neither, and the danger here is carried
+                  by the words, which say exactly what goes. */}
+              <Row
+                glyph="trash"
+                title="Delete them"
+                sub="Everything you manage comes off the map, along with its reviews. This cannot be undone. Moments and Memories other Explorers took there are theirs and are kept — they just stop being attached to a place."
+              />
+            </Pressable>
+
+            <Action
+              kind="quiet"
+              label={workingManager ? "Working..." : "Cancel, keep managing"}
               accessibilityLabel="Cancel"
               disabled={workingManager}
               onPress={()=>setConfirming(null)}
-            >
-              <Text style={styles.confirmNoText}>Cancel</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
+            />
+          </Panel>
+        )}
 
-      {isManager && (
-        <Pressable style={styles.linkCard} onPress={()=>router.push("/manager/dashboard")}>
-          <View style={styles.linkTextWrap}>
-            <Text style={styles.linkTitle}>Open My Places</Text>
-            <Text style={styles.linkText}>Your listings, and everything you manage.</Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-      )}
-
-      {isManager && confirming!=="stop" && (
-        <Pressable
-          style={styles.stopManagingButton}
-          accessibilityRole="button"
-          accessibilityLabel="Stop being a manager"
-          onPress={()=>setConfirming("stop")}
-        >
-          <Text style={styles.stopManagingText}>Stop being a manager</Text>
-        </Pressable>
-      )}
-
-      {isManager && confirming==="stop" && (
-        <View style={styles.confirmCard}>
-          <Text style={styles.confirmTitle}>What happens to what you manage?</Text>
-          <Text style={styles.confirmText}>{managedSentence}</Text>
-
-          {(listings.activity_clubs>0 || listings.events>0) && (
-            <Text style={styles.confirmWarning}>
-              A club or an event always belongs to somebody, so there is no way to
-              leave one behind without an owner. Either way you choose, your
-              {listings.activity_clubs>0 ? ` ${listings.activity_clubs} club${listings.activity_clubs===1 ? "" : "s"}` : ""}
-              {listings.activity_clubs>0 && listings.events>0 ? " and" : ""}
-              {listings.events>0 ? ` ${listings.events} event${listings.events===1 ? "" : "s"}` : ""}
-              {" "}will be removed.
-            </Text>
-          )}
-
-          <Pressable
-            style={[styles.choiceCard,workingManager && styles.disabled]}
-            accessibilityRole="button"
-            accessibilityLabel="Leave my businesses and properties on the map with no owner"
-            disabled={workingManager}
-            onPress={()=>stopManaging("unclaim")}
-          >
-            <Text style={styles.choiceTitle}>Leave them unclaimed</Text>
-            <Text style={styles.choiceText}>
-              Your businesses and properties stay on the map with nobody managing
-              them, exactly like every place nobody has claimed yet. Their reviews
-              and photos stay. Somebody else can claim them later — including you.
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.choiceCard,styles.choiceDanger,workingManager && styles.disabled]}
-            accessibilityRole="button"
-            accessibilityLabel="Delete everything I manage"
-            disabled={workingManager}
-            onPress={()=>stopManaging("delete")}
-          >
-            <Text style={styles.choiceTitle}>Delete them</Text>
-            <Text style={styles.choiceText}>
-              Everything you manage comes off the map, along with its reviews. This
-              cannot be undone. Moments and Memories other Explorers took there are
-              theirs and are kept — they just stop being attached to a place.
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.confirmNo}
-            accessibilityRole="button"
-            accessibilityLabel="Cancel"
-            disabled={workingManager}
-            onPress={()=>setConfirming(null)}
-          >
-            <Text style={styles.confirmNoText}>{workingManager ? "Working..." : "Cancel, keep managing"}</Text>
-          </Pressable>
-        </View>
-      )}
-
-      <Text style={styles.sectionTitle}>Sign in</Text>
-      <Pressable
-        style={[styles.secondaryButton,sendingReset && styles.disabled]}
-        onPress={confirmPasswordReset}
-        disabled={sendingReset}
-      >
-        <Text style={styles.secondaryText}>{sendingReset ? "Sending..." : "Send me a password reset link"}</Text>
-      </Pressable>
-
-      <Text style={styles.sectionTitle}>Account</Text>
-      <Pressable
-        style={styles.dangerButton}
-        accessibilityRole="button"
-        accessibilityLabel="Log out"
-        onPress={confirmLogout}
-      >
-        <Text style={styles.primaryText}>Log out</Text>
-      </Pressable>
-
-      {/*
-        DELETING YOUR ACCOUNT, FROM INSIDE THE APP.
-
-        Apple and Google both require this before you can publish, and there was
-        none. It is behind a typed confirmation rather than a second "are you
-        sure": this is the one action in the app that cannot be undone, and a
-        person tapping through two dialogues has not necessarily read either.
-
-        What it does and what it keeps is decided in the database, not here --
-        delete_my_account() (20260814020000). This screen only says so.
-      */}
-      <View style={styles.deleteCard}>
-        <Text style={styles.deleteTitle}>Delete my account</Text>
-        <Text style={styles.deleteText}>
-          Everything you posted goes: your profile, your Moments, your Memories,
-          your reviews, your photographs and your messages. What other people
-          wrote stays — a review somebody left on a place is theirs, and a
-          Link-up other people came to still happened.
-        </Text>
-        <Text style={styles.deleteText}>
-          This cannot be undone. Type DELETE below to turn the button on.
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          value={deleteConfirm}
-          onChangeText={setDeleteConfirm}
-          placeholder="DELETE"
-          placeholderTextColor={INK.inkSoft}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          accessibilityLabel="Type DELETE to confirm"
+        <SectionRule label="Sign in"/>
+        <Action
+          kind="secondary"
+          glyph="mail"
+          label={sendingReset ? "Sending..." : "Send me a password reset link"}
+          accessibilityLabel="Send me a password reset link"
+          disabled={sendingReset}
+          onPress={confirmPasswordReset}
         />
 
-        <Pressable
-          style={[styles.dangerButton,!canDelete && styles.disabledButton]}
-          accessibilityRole="button"
-          accessibilityState={{disabled:!canDelete}}
-          accessibilityLabel="Delete my account for ever"
-          disabled={!canDelete}
-          onPress={deleteAccount}
-        >
-          <Text style={styles.primaryText}>
-            {deleting ? "Deleting..." : "Delete my account for ever"}
+        <Action
+          kind="secondary"
+          glyph="close"
+          label="Log out"
+          onPress={confirmLogout}
+        />
+
+        {/*
+          DELETING YOUR ACCOUNT, FROM INSIDE THE APP.
+
+          Apple and Google both require this before you can publish, and there was
+          none. It is behind a typed confirmation rather than a second "are you
+          sure": this is the one action in the app that cannot be undone, and a
+          person tapping through two dialogues has not necessarily read either.
+
+          What it does and what it keeps is decided in the database, not here --
+          delete_my_account() (20260814020000). This screen only says so.
+        */}
+        <Panel raised style={styles.deleteCard}>
+          <Text style={styles.confirmTitle}>Delete my account</Text>
+          <Text style={styles.confirmText}>
+            Everything you posted goes: your profile, your Moments, your Memories,
+            your reviews, your photographs and your messages. What other people
+            wrote stays — a review somebody left on a place is theirs, and a
+            Link-up other people came to still happened.
           </Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+          <Text style={styles.confirmText}>
+            This cannot be undone. Type DELETE below to turn the button on.
+          </Text>
+
+          <Field label="Type DELETE to confirm">
+            <TextInput
+              style={fieldInputStyle}
+              value={deleteConfirm}
+              onChangeText={setDeleteConfirm}
+              placeholder="DELETE"
+              placeholderTextColor={INK.readoutFaint}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              accessibilityLabel="Type DELETE to confirm"
+            />
+          </Field>
+
+          <Action
+            kind="danger"
+            glyph="trash"
+            label={deleting ? "Deleting..." : "Delete my account for ever"}
+            disabled={!canDelete}
+            onPress={deleteAccount}
+          />
+        </Panel>
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:22,paddingBottom:70},
-  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:40},
-  title:{color:INK.ink,fontSize:31,fontWeight:"900"},
-  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:6},
-  errorText:{color:INK.ink,fontSize:16,fontWeight:"700",textAlign:"center",lineHeight:22},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"900",marginTop:14,marginBottom:10},
-  // The five tiers -- Profile / Notifications / Safety / Legal / Account --
-  // per FINAL_PRODUCT_CONTRACT.md. A heavier rule than sectionTitle carries
-  // and a top margin big enough to read as a new zone, not just another
-  // heading in the same run.
-  tierEyebrow:{color:INK.inkSoft,fontSize:11,fontWeight:"900",letterSpacing:1.2,marginTop:34,paddingTop:20,borderTopWidth:2,borderTopColor:INK.ink},
-  helpText:{color:INK.inkSoft,lineHeight:20,marginBottom:12},
-  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:13},
-  settingRow:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
-  settingTextWrap:{flex:1,paddingRight:12},
-  deleteCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:16,marginTop:14},
-  deleteTitle:{color:INK.ink,fontWeight:"900",fontSize:17},
-  deleteText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:8,marginBottom:4},
-  disabledButton:{opacity:0.4},
-  settingTitle:{color:INK.ink,fontWeight:"900",fontSize:16},
-  settingText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
-  linkCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:15,flexDirection:"row",alignItems:"center",marginBottom:11},
-  licenceCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:16},
-  licenceTitle:{color:INK.ink,fontWeight:"900",fontSize:16,marginBottom:7},
-  licenceText:{color:INK.ink,fontSize:14,lineHeight:20},
-  licenceSmall:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:9},
-  licenceLink:{marginTop:11,minHeight:44,justifyContent:"center"},
-  licenceLinkText:{color:INK.blue,fontWeight:"800",fontSize:13,textDecorationLine:"underline"},
-  linkTextWrap:{flex:1,paddingRight:12},
-  linkTitle:{color:INK.ink,fontWeight:"900",fontSize:16},
-  linkText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
-  chevron:{color:INK.inkSoft,fontSize:26,fontWeight:"900"},
-  settingBlock:{paddingVertical:14,borderBottomWidth:1,borderBottomColor:INK.hair},
-  choiceRow:{flexDirection:"row",gap:8,marginTop:11,marginBottom:9},
-  choice:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:11,paddingVertical:11,alignItems:"center"},
-  choiceActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  choiceTitle:{color:INK.inkSoft,fontWeight:"800",fontSize:12},
-  choiceTitleActive:{color:INK.card},
-  confirmCard:{backgroundColor:INK.paper,borderColor:INK.hair,borderWidth:1,borderRadius:14,padding:16,marginBottom:11},
-  confirmTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginBottom:8},
-  confirmText:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginBottom:8},
-  confirmWarning:{color:INK.ink,fontSize:13,lineHeight:19,marginBottom:10,fontWeight:"700"},
-  confirmRow:{flexDirection:"row",gap:10,marginTop:4},
-  confirmYes:{flex:1,backgroundColor:INK.blue,borderRadius:12,paddingVertical:13,alignItems:"center"},
-  confirmYesText:{color:INK.card,fontWeight:"900",fontSize:14},
-  confirmNo:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,paddingVertical:13,alignItems:"center"},
-  confirmNoText:{color:INK.ink,fontWeight:"800",fontSize:14},
-  choiceCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,marginBottom:10},
-  choiceDanger:{borderColor:INK.red},
-  choiceTitle:{color:INK.ink,fontSize:15,fontWeight:"900",marginBottom:5},
-  choiceText:{color:INK.inkSoft,fontSize:13,lineHeight:19},
-  // Named for what it is rather than "danger": there is already a dangerButton
-  // further down this same StyleSheet, and a duplicate key in an object literal
-  // silently keeps the LAST one -- so this button would have quietly worn the
-  // wrong style.
-  stopManagingButton:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,paddingVertical:14,alignItems:"center",marginBottom:11},
-  stopManagingText:{color:INK.card,fontWeight:"900",fontSize:14},
-  capabilityCard:{backgroundColor:INK.paper,borderColor:INK.hair,borderWidth:1,borderRadius:14,padding:6,marginBottom:11},
-  capabilityRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingHorizontal:10,paddingVertical:9},
-  capabilityLabel:{color:INK.ink,fontSize:14,fontWeight:"700"},
-  capabilityPill:{fontSize:11,fontWeight:"900",overflow:"hidden",borderRadius:8,paddingHorizontal:9,paddingVertical:4,textTransform:"uppercase"},
-  pillOn:{backgroundColor:INK.green,color:INK.card},
-  pillOff:{backgroundColor:INK.card,color:INK.inkSoft},
-  primaryButton:{backgroundColor:INK.blue,padding:16,borderRadius:13,alignItems:"center",marginTop:8},
-  primaryText:{color:INK.card,fontWeight:"900",fontSize:16},
-  secondaryButton:{borderColor:INK.blue,borderWidth:2,borderRadius:13,padding:16,alignItems:"center"},
-  secondaryButtonSpaced:{marginTop:10},
-  secondaryText:{color:INK.ink,fontWeight:"900",fontSize:16},
-  dangerButton:{backgroundColor:INK.red,padding:16,borderRadius:13,alignItems:"center"},
-  disabled:{opacity:0.55}
+  content:{paddingHorizontal:16,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  center:{flex:1,alignItems:"center",justifyContent:"center",padding:24},
+
+  // A tier is a zone, not another heading: mono label over the same ticked rule
+  // ScreenTitle draws, with enough air above it to read as a new part of the
+  // instrument rather than the next line of the same list.
+  tier:{marginTop:34,marginBottom:4},
+  tierLabel:{
+    color:INK.readout,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.lg,
+    textTransform:"uppercase",
+    letterSpacing:1.4
+  },
+  tierRule:{flexDirection:"row",alignItems:"flex-end",marginTop:8},
+  tierLine:{flex:1,height:1,backgroundColor:INK.hairlineStrong},
+  // A tier whose first child is a Row rather than a SectionRule has no rule
+  // margin to sit under, so it gets the same air explicitly.
+  tierGap:{height:12},
+
+  // ScreenTitle's meta line is clamped to one line -- right for a place's
+  // "2.4 KM · OPEN NOW", wrong for a sentence, which it silently truncates with
+  // an ellipsis. Anything longer than a readout goes here instead.
+  lead:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:-2,
+    marginBottom:14
+  },
+  helpText:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginBottom:12
+  },
+
+  visibility:{padding:14,marginBottom:8},
+  settingTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  settingText:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,
+    marginTop:4
+  },
+  // The sentence a person reads back once they have chosen. It is the answer the
+  // control gives, so it gets the readout rather than the soft metadata grey.
+  settingSentence:{
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:4
+  },
+  choiceRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:12,marginBottom:10},
+  choice:{minHeight:SHAPE.tapTarget,justifyContent:"center"},
+  choiceChip:{minHeight:36,paddingHorizontal:13},
+
+  savePrivacy:{marginTop:6},
+  spaced:{marginTop:8},
+  disabled:{opacity:0.55},
+
+  licence:{padding:15},
+  licenceLabel:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
+    marginBottom:9
+  },
+  licenceText:{
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.lg,
+    lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight
+  },
+  licenceSmall:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:9
+  },
+  licenceLink:{marginTop:11,minHeight:SHAPE.tapTarget,justifyContent:"center"},
+  licenceLinkText:{
+    color:INK.exists,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:0.5,
+    textDecorationLine:"underline"
+  },
+
+  capabilityCard:{paddingHorizontal:14,paddingVertical:4,marginBottom:11},
+
+  confirmCard:{padding:15,marginTop:10,marginBottom:11},
+  confirmTitle:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3,marginBottom:9},
+  confirmText:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginBottom:9
+  },
+  confirmRow:{flexDirection:"row",gap:9,marginTop:4},
+  confirmButton:{flex:1},
+
+  deleteCard:{padding:15,marginTop:14}
 });

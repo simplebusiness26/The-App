@@ -1,24 +1,30 @@
 import React,{useEffect,useState} from "react";
-
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable
-} from "react-native";
-
-import {supabase} from "../../services/supabase";
-
+import {View,Text,StyleSheet,ScrollView} from "react-native";
 import {router} from "expo-router";
 
+import {supabase} from "../../services/supabase";
 import QRCodeGenerator from "../../components/QRCodeGenerator";
 import GateNotice from "../../components/GateNotice";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {useManagerGate} from "../../hooks/useManagerGate";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  KeyValue,
+  MONO,
+  Panel,
+  ReadoutStrip,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
 
 // Reached from Me -> My Places -> "Open Property Dashboard", once at least
 // one property is enabled -- same per-listing-row template as the Business
-// Dashboard, per FINAL_PRODUCT_CONTRACT.md's routeCoverage.
+// Dashboard, per FINAL_PRODUCT_CONTRACT.md's routeCoverage. Built from the same
+// kit parts for the same reason: two dashboards hand-drawing the same plate is
+// how they start disagreeing about what a listing looks like.
 export default function PropertyDashboard(){
   // Packet 4: entitlement is decided by public.manages_any_listing() in the
   // database, not by the drawer having hidden the row that leads here.
@@ -82,90 +88,120 @@ export default function PropertyDashboard(){
   }
 
   return(
-    <View style={styles.container}>
-      <Text style={styles.title}>Property Dashboard</Text>
-      <Text style={styles.subtitle}>{status}</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenTitle
+          eyebrow="Manager"
+          title="Property dashboard"
+          meta={status}
+        />
 
-      {properties.length===0 && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
-            No properties yet. Add your first property listing below.
-          </Text>
+        <View style={styles.body}>
+          <ReadoutStrip
+            items={[
+              {label:"Listings",value:String(properties.length)},
+              {label:"Codes live",value:String(properties.length)}
+            ]}
+          />
+
+          <SectionRule label="Your properties" meta={String(properties.length)}/>
+
+          {properties.length===0 ? (
+            <Empty
+              glyph="bed"
+              title="No properties yet"
+              instruction="Add your first property listing and its guest review QR code is generated with it."
+            />
+          ) : properties.map((property)=>(
+            <Panel key={property.id} style={styles.card}>
+              <View style={styles.head}>
+                <Text style={styles.headKind}>Property</Text>
+                <View style={styles.headLine}/>
+              </View>
+
+              <Text style={styles.name} numberOfLines={2}>{property.name}</Text>
+
+              <KeyValue label="Hosted by" value={property.host || "—"}/>
+
+              <View style={styles.qrRow}>
+                <QRCodeGenerator propertyId={property.id} size={104}/>
+                <View style={styles.qrCopy}>
+                  <Text style={styles.qrLabel}>Guest review QR code</Text>
+                  <Text style={styles.qrHint}>
+                    Guests scan this before they leave, and the review they write counts as a verified visit.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.buttons}>
+                <Action
+                  kind="secondary"
+                  glyph="external"
+                  label="Public profile"
+                  accessibilityLabel={`View ${property.name}'s public profile`}
+                  onPress={()=>router.push(`/property/${property.id}`)}
+                  style={styles.button}
+                />
+                <Action
+                  kind="secondary"
+                  glyph="edit"
+                  label="Edit"
+                  accessibilityLabel={`Edit ${property.name}`}
+                  onPress={()=>router.push(`/property/edit/${property.id}`)}
+                  style={styles.button}
+                />
+              </View>
+
+              <Action
+                kind="secondary"
+                glyph="comment"
+                label="Manage reviews"
+                accessibilityLabel={`Manage reviews for ${property.name}`}
+                onPress={()=>router.push("/property/reviews")}
+                style={styles.wide}
+              />
+            </Panel>
+          ))}
+
+          <Action
+            kind="primary"
+            glyph="plus"
+            label="Add a property listing"
+            accessibilityLabel="Add a property listing"
+            onPress={()=>router.push("/property/add")}
+            style={styles.add}
+          />
         </View>
-      )}
-
-      {properties.map(property=>(
-        <View key={property.id} style={styles.card}>
-          <Text style={styles.name}>{property.name}</Text>
-          <Text style={styles.cardSub}>Hosted by {property.host || "—"}</Text>
-
-          <View style={styles.qrSection}>
-            <View style={styles.qrPreview}>
-              <QRCodeGenerator propertyId={property.id}/>
-            </View>
-            <Text style={styles.qrHint}>Guest review QR code</Text>
-          </View>
-
-          <View style={styles.buttonRow}>
-            <Pressable
-              style={styles.secondaryButton}
-              accessibilityRole="button"
-              accessibilityLabel={`View ${property.name}'s public profile`}
-              onPress={()=>router.push(`/property/${property.id}`)}
-            >
-              <Text style={styles.secondaryButtonText}>Public profile</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.secondaryButton}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit ${property.name}`}
-              onPress={()=>router.push(`/property/edit/${property.id}`)}
-            >
-              <Text style={styles.secondaryButtonText}>Edit</Text>
-            </Pressable>
-          </View>
-
-          <Pressable
-            style={styles.darkButton}
-            accessibilityRole="button"
-            accessibilityLabel={`Manage reviews for ${property.name}`}
-            onPress={()=>router.push("/property/reviews")}
-          >
-            <Text style={styles.buttonText}>Manage Reviews</Text>
-          </Pressable>
-        </View>
-      ))}
-
-      <Pressable
-        style={styles.addButton}
-        accessibilityRole="button"
-        accessibilityLabel="Add a property listing"
-        onPress={()=>router.push("/property/add")}
-      >
-        <Text style={styles.addButtonText}>➕ Add Property Listing</Text>
-      </Pressable>
-    </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper,padding:20,paddingBottom:50},
-  title:{fontSize:28,fontWeight:"900",color:INK.ink},
-  subtitle:{fontSize:14,color:INK.inkSoft,marginTop:6,marginBottom:18},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.hair,borderWidth:1.5,borderRadius:14,padding:18},
-  emptyText:{color:INK.inkSoft,lineHeight:20},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:16,marginTop:16,shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
-  name:{fontSize:19,fontWeight:"900",color:INK.ink},
-  cardSub:{color:INK.inkSoft,fontSize:13,marginTop:4},
-  qrSection:{flexDirection:"row",alignItems:"center",gap:14,marginTop:14,paddingTop:14,borderTopWidth:1.5,borderTopColor:INK.hair},
-  qrPreview:{padding:6,backgroundColor:INK.card,borderRadius:8},
-  qrHint:{color:INK.inkSoft,fontSize:12,flex:1},
-  buttonRow:{flexDirection:"row",gap:10,marginTop:14},
-  darkButton:{backgroundColor:INK.ink,padding:13,borderRadius:10,marginTop:10,alignItems:"center"},
-  secondaryButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,padding:13,borderRadius:10,alignItems:"center"},
-  secondaryButtonText:{color:INK.ink,fontWeight:"800"},
-  addButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:2,padding:16,borderRadius:12,marginTop:22},
-  addButtonText:{color:INK.card,textAlign:"center",fontWeight:"900"},
-  buttonText:{color:INK.card,textAlign:"center",fontWeight:"800"}
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+
+  card:{padding:14,marginBottom:10},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
+
+  qrRow:{
+    flexDirection:"row",alignItems:"center",gap:14,marginTop:12,paddingTop:12,
+    borderTopWidth:SHAPE.border,borderTopColor:INK.hairline
+  },
+  qrCopy:{flex:1,minWidth:0},
+  qrLabel:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md},
+  qrHint:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:5
+  },
+
+  buttons:{flexDirection:"row",gap:9,marginTop:12},
+  button:{flex:1},
+  wide:{marginTop:9},
+  add:{marginTop:14}
 });

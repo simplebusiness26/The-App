@@ -1,18 +1,17 @@
 import React,{useState} from "react";
 import {
-  Text,
   TextInput,
   StyleSheet,
   ScrollView,
-  Pressable,
-  ActivityIndicator,
   Alert
 } from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import LocationPicker from "../../components/LocationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {INK} from "../../utils/tokens";
+import {Action,Field,fieldInputStyle,Screen,ScreenTitle,SectionRule} from "../../components/instrument";
 
 export default function AddActivityClub(){
   const {showFeedback}=useFeedback();
@@ -89,26 +88,90 @@ export default function AddActivityClub(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Add Activity Club</Text>
-      <Text style={styles.subtitle}>Create the public profile explorers will use to apply for membership.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="NEW CLUB"
+          title="Add an activity club"
+          meta="Create the public profile Explorers will use to apply for membership."
+        />
 
-      <TextInput style={styles.input} placeholder="Club name *" value={name} onChangeText={setName}/>
-      <TextInput style={styles.input} placeholder="Category *" value={category} onChangeText={setCategory}/>
-      <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
+        <SectionRule label="The club"/>
 
-      <LocationPicker onChange={setSelectedLocation}/>
+        <Field label="Club name" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Tuesday sea swimmers"
+            placeholderTextColor={INK.readoutFaint}
+            value={name}
+            onChangeText={setName}
+          />
+        </Field>
 
-      <TextInput style={styles.input} placeholder="Price per session" value={price} onChangeText={setPrice} keyboardType="decimal-pad"/>
-      <TextInput style={styles.input} placeholder="Maximum approved members" value={memberLimit} onChangeText={setMemberLimit} keyboardType="number-pad"/>
+        <Field label="Category" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Swimming"
+            placeholderTextColor={INK.readoutFaint}
+            value={category}
+            onChangeText={setCategory}
+          />
+        </Field>
 
-      <Pressable style={styles.button} onPress={createClub} disabled={loading}>
-        {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Create Activity Club</Text>}
-      </Pressable>
-    </ScrollView>
+        <Field label="Description">
+          <TextInput
+            style={[fieldInputStyle,styles.multiline]}
+            placeholder="What the sessions are like, and who they are for."
+            placeholderTextColor={INK.readoutFaint}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
+        </Field>
+
+        <SectionRule label="Where it meets"/>
+
+        <LocationPicker onChange={setSelectedLocation}/>
+
+        <SectionRule label="Membership"/>
+
+        <Field label="Price per session" hint="Enter 0 for a free club.">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="0"
+            placeholderTextColor={INK.readoutFaint}
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="decimal-pad"
+          />
+        </Field>
+
+        <Field label="Maximum approved members" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="20"
+            placeholderTextColor={INK.readoutFaint}
+            value={memberLimit}
+            onChangeText={setMemberLimit}
+            keyboardType="number-pad"
+          />
+        </Field>
+
+        <Action
+          kind="primary"
+          glyph="people"
+          label="Create this club"
+          accessibilityLabel="Create this club"
+          loading={loading}
+          onPress={createClub}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},content:{padding:20,paddingBottom:50},title:{fontSize:30,fontWeight:"900",color:INK.ink},subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},input:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,color:INK.ink,borderRadius:11,padding:14,marginBottom:14},multiline:{minHeight:110,textAlignVertical:"top"},button:{backgroundColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},buttonText:{color:INK.card,fontWeight:"800"}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  multiline:{minHeight:110}
 });

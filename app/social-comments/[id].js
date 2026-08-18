@@ -6,7 +6,17 @@ import {supabase} from "../../services/supabase";
 import EndorseButton from "../../components/EndorseButton";
 import CommentThread from "../../components/CommentThread";
 import {useFeedback} from "../../context/FeedbackContext";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {Action,Chip,Empty,Frame,Glyph,Meter,MONO,Notice,Panel,Row,Screen} from "../../components/instrument";
+
+// A review, and what people said back about it.
+//
+// THE RATING IS A MEASUREMENT, SO IT IS READ OFF A SCALE. Five repeated star
+// characters were a count you had to do yourself, in a shape supplied by
+// whichever font the phone picked. A ticked Meter with the figure beside it is
+// the instrument's answer, and it is legible at a glance at any rating -- the
+// same control components/FeedCard.js draws for the same number.
 
 // The same five the social_reports constraint allows. A review is content, so
 // it is reported the way a Moment is and lands in the same admin queue.
@@ -127,136 +137,180 @@ export default function VideoReviewComments(){
     showFeedback("This review has been sent for review.","success","Report submitted");
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
-  if(error || !review) return <View style={styles.center}><Text style={styles.errorTitle}>Review unavailable</Text><Text style={styles.errorText}>{error}</Text></View>;
+  if(loading){
+    return <Screen style={styles.centre}><ActivityIndicator size="large" color={INK.readoutSoft}/></Screen>;
+  }
+
+  if(error || !review){
+    return(
+      <Screen style={styles.centre}>
+        <Empty glyph="warn" title="Review unavailable" instruction={error}/>
+      </Screen>
+    );
+  }
 
   const route=listingRoute(review);
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable style={styles.profileRow} onPress={()=>router.push(`/profile/${review.user_id}`)}>
-        {profile?.profile_photo
-          ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
-          : <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text></View>
-        }
-        <View style={styles.profileText}>
-          <Text style={styles.name}>{profile?.full_name || "Explorer"}</Text>
-          <Text style={styles.date}>Review · {dateLabel(review.created_at)}</Text>
-        </View>
-      </Pressable>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Panel style={styles.card}>
+          <View style={styles.headRow}>
+            <Text style={styles.headKind}>REVIEW</Text>
+            <View style={styles.headLine}/>
+            <Text style={styles.headTime}>{dateLabel(review.created_at).toUpperCase()}</Text>
+          </View>
 
-      <View style={styles.card}>
-        {!!video && <Pressable style={styles.videoWrap} onPress={()=>Linking.openURL(video.media_url)}>
-          {video.thumbnail_url || review.target_image_url
-            ? <SocialImage uri={video.thumbnail_url || review.target_image_url} style={styles.poster}/>
-            : <View style={styles.videoFallback}/>
-          }
-          <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
-          <Text style={styles.duration}>{Math.ceil(Number(video.duration_seconds || 0)) || "≤30"}s</Text>
-        </Pressable>}
-
-        <Text style={styles.rating}>{"★".repeat(review.rating)}<Text style={styles.emptyStars}>{"★".repeat(5-review.rating)}</Text></Text>
-        {!!review.title && <Text style={styles.title}>{review.title}</Text>}
-        <Text style={styles.comment}>{review.comment}</Text>
-
-        {!!review.verified_qr && <Text style={styles.verified}>✓ Verified on-site review</Text>}
-
-        {!!route && (
-          <Pressable style={styles.placeCard} onPress={()=>router.push(route)}>
-            {review.target_image_url ? <SocialImage uri={review.target_image_url} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
-            <View style={styles.placeText}>
-              <Text style={styles.placeEyebrow}>REVIEWED PLACE</Text>
-              <Text style={styles.placeName}>{review.target_name}</Text>
+          <Pressable
+            style={styles.profileRow}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${profile?.full_name || "Explorer"}`}
+            onPress={()=>router.push(`/profile/${review.user_id}`)}
+          >
+            <Frame size={42} round style={styles.avatarFrame}>
+              {profile?.profile_photo
+                ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
+                : <Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+            </Frame>
+            <View style={styles.profileText}>
+              <Text style={styles.name} numberOfLines={1}>{profile?.full_name || "Explorer"}</Text>
+              {!!review.verified_qr && (
+                <View style={styles.verifiedRow}>
+                  <Glyph name="check" size={12} colour={INK.readoutSoft} weight={1.8}/>
+                  <Text style={styles.verifiedText}>VERIFIED ON-SITE</Text>
+                </View>
+              )}
             </View>
-            <Text style={styles.placeArrow}>›</Text>
           </Pressable>
-        )}
 
-        <View style={styles.actionRow}>
-          <EndorseButton reviewId={review.id} ownerId={review.user_id} viewerId={viewerId} initialCount={likeCount} initialEndorsed={viewerLiked}/>
-          {!!viewerId && viewerId!==review.user_id && (
-            <Pressable style={styles.reportToggle} onPress={()=>setShowReport((current)=>!current)}>
-              <Text style={styles.reportToggleText}>Report</Text>
+          {!!video && (
+            <Pressable
+              style={styles.videoWrap}
+              accessibilityRole="button"
+              accessibilityLabel="Play this video review"
+              onPress={()=>Linking.openURL(video.media_url)}
+            >
+              <Frame style={styles.mediaFrame}>
+                {video.thumbnail_url || review.target_image_url
+                  ? <SocialImage uri={video.thumbnail_url || review.target_image_url} style={styles.poster} resizeMode="cover"/>
+                  : null}
+              </Frame>
+              <View style={styles.playDial}><Glyph name="play" size={22} colour={INK.readout} weight={1.4}/></View>
+              <Text style={styles.duration}>{Math.ceil(Number(video.duration_seconds || 0)) || "≤30"}S</Text>
             </Pressable>
           )}
-        </View>
 
-        {showReport && (
-          <View style={styles.reportPanel}>
-            <Text style={styles.reportTitle}>Why are you reporting this review?</Text>
-            <View style={styles.reasonRow}>
-              {REPORT_REASONS.map((reason)=>(
-                <Pressable
-                  key={reason.key}
-                  style={[styles.reasonButton,reportReason===reason.key && styles.reasonActive]}
-                  onPress={()=>setReportReason(reason.key)}
-                >
-                  <Text style={[styles.reasonText,reportReason===reason.key && styles.reasonActiveText]}>{reason.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.reportActions}>
-              <Pressable style={styles.cancelButton} onPress={()=>setShowReport(false)}><Text style={styles.cancelText}>Cancel</Text></Pressable>
-              <Pressable style={styles.reportButton} disabled={reporting} onPress={reportReview}>
-                <Text style={styles.reportButtonText}>{reporting ? "Sending..." : "Submit report"}</Text>
-              </Pressable>
-            </View>
+          <View style={styles.ratingRow} accessibilityLabel={`Rated ${review.rating} out of 5`}>
+            <Meter value={review.rating} max={5} width={104} tone="exists" label="RATED"/>
+            <Text style={styles.ratingValue}>{review.rating}/5</Text>
           </View>
-        )}
-      </View>
 
-      <CommentThread targetType="review" targetId={review.id} ownerId={review.user_id}/>
-    </ScrollView>
+          {!!review.title && <Text style={styles.title}>{review.title}</Text>}
+          <Text style={styles.comment}>{review.comment}</Text>
+
+          {!!route && (
+            <View style={styles.placeRow}>
+              <Row
+                glyph="pin"
+                title={review.target_name}
+                sub="Reviewed place"
+                onPress={()=>router.push(route)}
+              />
+            </View>
+          )}
+
+          <View style={styles.actionRow}>
+            <EndorseButton reviewId={review.id} ownerId={review.user_id} viewerId={viewerId} initialCount={likeCount} initialEndorsed={viewerLiked}/>
+            {!!viewerId && viewerId!==review.user_id && (
+              <Action
+                kind="quiet"
+                glyph="flag"
+                label="Report"
+                style={styles.trailing}
+                onPress={()=>setShowReport((current)=>!current)}
+              />
+            )}
+          </View>
+
+          {showReport && (
+            <View style={styles.reportPanel}>
+              <Text style={styles.reportTitle}>Why are you reporting this review?</Text>
+              <View style={styles.reasonRow}>
+                {REPORT_REASONS.map((reason)=>(
+                  <Chip
+                    key={reason.key}
+                    label={reason.label}
+                    selected={reportReason===reason.key}
+                    onPress={()=>setReportReason(reason.key)}
+                  />
+                ))}
+              </View>
+              <View style={styles.reportActions}>
+                <Action kind="quiet" label="Cancel" style={styles.reportAction} onPress={()=>setShowReport(false)}/>
+                <Action kind="danger" glyph="flag" label="Submit report" style={styles.reportAction} loading={reporting} disabled={reporting} onPress={reportReview}/>
+              </View>
+            </View>
+          )}
+        </Panel>
+
+        <CommentThread targetType="review" targetId={review.id} ownerId={review.user_id}/>
+      </ScrollView>
+    </Screen>
   );
 }
 
-const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:70},
-  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  errorTitle:{color:INK.ink,fontSize:22,fontWeight:"900"},
-  errorText:{color:INK.inkSoft,textAlign:"center",marginTop:7},
+  content:{paddingHorizontal:16,paddingTop:14,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  centre:{alignItems:"center",justifyContent:"center",paddingHorizontal:24},
+
+  card:{padding:14},
+
+  headRow:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:12},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headTime:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+
   profileRow:{flexDirection:"row",alignItems:"center",marginBottom:13},
-  avatar:{width:48,height:48,borderRadius:24,backgroundColor:INK.card},
-  avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontWeight:"900",fontSize:19},
-  profileText:{marginLeft:11},
-  name:{color:INK.ink,fontSize:16,fontWeight:"900"},
-  date:{color:INK.inkSoft,fontSize:11,marginTop:3},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:17,padding:12,...shadow},
-  reportToggle:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:8},
-  reportToggleText:{color:INK.inkSoft,fontWeight:"800",fontSize:12},
-  reportPanel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:13,marginTop:12,...shadow},
-  reportTitle:{color:INK.ink,fontWeight:"900",marginBottom:9},
-  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
-  reasonButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1.5,borderRadius:16,paddingHorizontal:11,paddingVertical:7},
-  reasonActive:{backgroundColor:INK.blue,borderColor:INK.ink},
-  reasonText:{color:INK.inkSoft,fontWeight:"800",fontSize:11},
-  reasonActiveText:{color:INK.card},
-  reportActions:{flexDirection:"row",gap:9,marginTop:12},
-  cancelButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,borderWidth:2,borderColor:INK.ink},
-  cancelText:{color:INK.inkSoft,fontWeight:"900"},
-  reportButton:{flex:1,alignItems:"center",paddingVertical:11,borderRadius:11,backgroundColor:INK.red,borderColor:INK.ink,borderWidth:1.5},
-  reportButtonText:{color:INK.card,fontWeight:"900"},
-  videoWrap:{height:370,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:42,height:42,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:17},
+  profileText:{flex:1,marginLeft:11,minWidth:0},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  verifiedRow:{flexDirection:"row",alignItems:"center",gap:5,marginTop:4},
+  verifiedText:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.sm},
+
+  // aspectRatio is Frame's own default sizing; a fixed height needs it out of
+  // the way, and a key set to undefined is dropped by StyleSheet.flatten.
+  mediaFrame:{height:360,alignSelf:"stretch",aspectRatio:undefined},
   poster:{width:"100%",height:"100%"},
-  videoFallback:{position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:INK.paper},
-  playCircle:{position:"absolute",width:62,height:62,borderRadius:31,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
-  playIcon:{color:INK.ink,fontSize:25,marginLeft:4},
-  duration:{position:"absolute",right:9,bottom:9,color:INK.ink,backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
-  rating:{color:INK.ink,fontSize:18,letterSpacing:1,marginTop:14},
-  emptyStars:{color:INK.ink},
-  title:{color:INK.ink,fontSize:20,fontWeight:"900",marginTop:9},
-  comment:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:7},
-  verified:{alignSelf:"flex-start",color:INK.card,backgroundColor:INK.green,borderColor:INK.ink,borderWidth:1.5,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
-  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:10,marginTop:14,...shadow},
-  placeImage:{width:50,height:50,borderRadius:10,backgroundColor:INK.card},
-  placeFallback:{width:50,height:50,borderRadius:10,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
-  placeText:{flex:1,marginLeft:10},
-  placeEyebrow:{color:INK.card,fontSize:9,fontWeight:"900",letterSpacing:0.7},
-  placeName:{color:INK.card,fontWeight:"900",marginTop:3},
-  placeArrow:{color:INK.card,fontSize:27},
-  actionRow:{flexDirection:"row",marginTop:14}
+  videoWrap:{alignItems:"center",justifyContent:"center"},
+  playDial:{
+    position:"absolute",width:58,height:58,borderRadius:SHAPE.radius.pill,
+    backgroundColor:"rgba(11,14,18,0.78)",borderWidth:SHAPE.border,borderColor:INK.hairlineStrong,
+    alignItems:"center",justifyContent:"center",paddingLeft:3
+  },
+  duration:{
+    position:"absolute",right:8,bottom:8,...MONO_META,color:INK.readout,
+    backgroundColor:"rgba(11,14,18,0.82)",borderWidth:SHAPE.border,borderColor:INK.hairline,
+    paddingHorizontal:6,paddingVertical:3,borderRadius:SHAPE.radius.control,fontSize:TYPE.data.sizes.sm,overflow:"hidden"
+  },
+
+  ratingRow:{flexDirection:"row",alignItems:"center",gap:10,marginTop:14},
+  ratingValue:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.lg},
+
+  title:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3,marginTop:11},
+  comment:{color:INK.readout,fontSize:TYPE.body.sizes.lg,lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,marginTop:8},
+
+  placeRow:{marginTop:14},
+
+  actionRow:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14,paddingTop:12,borderTopWidth:SHAPE.border,borderTopColor:INK.hairline},
+  trailing:{marginLeft:"auto"},
+
+  reportPanel:{marginTop:14,paddingTop:12,borderTopWidth:SHAPE.border,borderTopColor:INK.hairline},
+  reportTitle:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight},
+  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10},
+  reportActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:13},
+  reportAction:{minWidth:120}
 });

@@ -1,17 +1,18 @@
 import React,{useState} from "react";
-import {
-  ScrollView,
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator
-} from "react-native";
+import {ScrollView,TextInput,StyleSheet} from "react-native";
 import {supabase} from "../../services/supabase";
 import {router,useLocalSearchParams} from "expo-router";
 import DemoLogins from "../../components/DemoLogins";
 import {INK} from "../../utils/tokens";
+import {
+  Action,
+  Field,
+  fieldInputStyle,
+  Notice,
+  Screen,
+  ScreenTitle
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 
 // THE OLD QUICK TEST LOGIN IS GONE, AND IT SHOULD NEVER HAVE SHIPPED.
 //
@@ -78,96 +79,97 @@ export default function Login(){
   }
 
   return(
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* The Login heading is also the way into the demo accounts: five taps.
-          See components/DemoLogins.js. It is wrapped rather than replaced, so
-          the screen looks exactly the same to anybody who is not counting. */}
-      <DemoLogins
-        disabled={loading}
-        onPick={(account)=>{
-          setEmail(account.email);
-          setPassword(account.password);
-          signIn(account.email,account.password);
-        }}
+    <Screen>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Login</Text>
-      </DemoLogins>
+        {/* The Login heading is also the way into the demo accounts: five taps.
+            See components/DemoLogins.js. It is wrapped rather than replaced, so
+            the screen looks exactly the same to anybody who is not counting. */}
+        <DemoLogins
+          disabled={loading}
+          onPick={(account)=>{
+            setEmail(account.email);
+            setPassword(account.password);
+            signIn(account.email,account.password);
+          }}
+        >
+          <ScreenTitle eyebrow="XPLORER" title="Login"/>
+        </DemoLogins>
 
-      {destination!=="/" && (
-        <View style={styles.returnNotice}>
-          <Text style={styles.returnTitle}>Continue your Xplorer action</Text>
-          <Text style={styles.returnText}>After login, you’ll return to the page you opened.</Text>
-        </View>
-      )}
+        {/*
+          Where you were going, kept. It is a fact the app is holding for you, so
+          it reads as an instrument notice with a cyan edge -- `exists` is the
+          ink for "this is still here" -- rather than a filled banner with light
+          text fighting the fill.
+        */}
+        {destination!=="/" && (
+          <Notice tone="exists" label="Continue your Xplorer action">
+            After login, you’ll return to the page you opened.
+          </Notice>
+        )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={INK.inkSoft}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
+        <Field label="Email">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="you@example.com"
+            placeholderTextColor={INK.readoutFaint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </Field>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor={INK.inkSoft}
-        secureTextEntry
-        autoCapitalize="none"
-        value={password}
-        onChangeText={setPassword}
-      />
+        <Field label="Password">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Your password"
+            placeholderTextColor={INK.readoutFaint}
+            secureTextEntry
+            autoCapitalize="none"
+            value={password}
+            onChangeText={setPassword}
+          />
+        </Field>
 
-      <Pressable style={styles.forgotPassword} onPress={()=>router.push("/auth/forgot-password")} disabled={loading}>
-        <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-      </Pressable>
+        <Action
+          kind="quiet"
+          label="Forgot password?"
+          style={styles.forgot}
+          disabled={loading}
+          onPress={()=>router.push("/auth/forgot-password")}
+        />
 
-      {error!=="" && <Text style={styles.error}>{error}</Text>}
+        {/* An error is a reading the instrument took, not red text under a box. */}
+        {error!=="" && <Notice tone="dispute" label="Not signed in">{error}</Notice>}
 
-      <Pressable style={[styles.button,styles.buttonShadow,loading && styles.disabledButton]} onPress={login} disabled={loading}>
-        {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Login</Text>}
-      </Pressable>
+        <Action
+          kind="primary"
+          glyph="key"
+          label="Login"
+          loading={loading}
+          onPress={login}
+        />
 
-      <Pressable style={styles.signup} onPress={()=>router.push("/auth/signup")}>
-        <Text style={styles.signupText}>Don’t have an account? Create one</Text>
-      </Pressable>
-    </ScrollView>
+        <Action
+          kind="quiet"
+          label="Don’t have an account? Create one"
+          style={styles.signup}
+          onPress={()=>router.push("/auth/signup")}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  container:{flexGrow:1,paddingHorizontal:30,paddingTop:56,paddingBottom:52},
-  title:{color:INK.ink,fontSize:46,lineHeight:54,fontWeight:"900",marginBottom:46,letterSpacing:-1},
-  // Blue, not green. Green is reserved for exactly one thing in this app -- a
-  // manager's reply to a review (docs/design-system.md) -- and this banner is
-  // neither a reply nor a review; blue is the ink for "this exists/continues".
-  returnNotice:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:14,marginTop:-26,marginBottom:18},
-  returnTitle:{color:INK.card,fontWeight:"900",fontSize:15},
-  returnText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:3},
-  input:{color:INK.ink,backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,paddingHorizontal:22,paddingVertical:20,minHeight:78,fontSize:19,marginBottom:28},
-  forgotPassword:{alignSelf:"flex-end",paddingVertical:2,marginTop:-4,marginBottom:34},
-  forgotPasswordText:{color:INK.blue,fontSize:19,fontWeight:"800"},
-  // Was fill-less: same colour as the screen behind it and no border at all,
-  // so the primary action was invisible except by its shape.
-  // docs/design-system.md: "every card, chip, pin and button has a 1.5-2px
-  // solid ink border" -- not optional, "the borders are the print register".
-  button:{backgroundColor:INK.blue,borderWidth:2,borderColor:INK.ink,minHeight:78,paddingHorizontal:20,paddingVertical:20,borderRadius:16,alignItems:"center",justifyContent:"center"},
-  // Split from `button` above: a nested shadowOffset object in the same block
-  // as backgroundColor defeats scripts/verify-contrast.cjs's single-level
-  // brace parser, which then cannot find `button`'s own background and
-  // silently checks buttonText against an ancestor instead.
-  buttonShadow:{shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
-  disabledButton:{opacity:0.55},
-  buttonText:{color:INK.card,textAlign:"center",fontWeight:"900",fontSize:20},
-  error:{color:INK.ink,fontSize:16,marginBottom:20,lineHeight:23,fontWeight:"700"},
-  signup:{marginTop:28,alignItems:"center",padding:8},
-  signupText:{color:INK.ink,fontSize:17,fontWeight:"600"}
+  // A smaller sheet than it was: everything that used to be a hand-rolled
+  // 78px-tall bordered box is a Field or an Action now, so the only geometry
+  // left here is the page gutter and two bits of spacing.
+  container:{flexGrow:1,paddingHorizontal:16,paddingBottom:32+CREATE_HUB_CLEARANCE},
+  forgot:{alignSelf:"flex-end",marginTop:-6,marginBottom:18,paddingHorizontal:10},
+  signup:{marginTop:14}
 });

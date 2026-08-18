@@ -1,7 +1,18 @@
 import React,{useEffect,useState} from "react";
 import {Image,Platform,StyleSheet,Text,View} from "react-native";
-import {INK,SHAPE} from "../utils/tokens";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {Frame,Glyph,MONO,Notice} from "./instrument";
 
+// What you are about to post, before you post it.
+//
+// The preview sits in the viewfinder's bracketed well like every other picture
+// in the app -- an `inset` ground, a 1px hairline, four L brackets -- because
+// the thing being previewed came off the camera two screens ago and should
+// still look like it is being looked at through the same instrument.
+//
+// A failed preview is a Notice, not a red box. docs/design-system.md: errors
+// are an edge in a state ink with a mono eyebrow, never a filled panel with
+// text fighting the fill.
 export default function MomentMediaPreview({asset,mediaType,onPreviewError}){
   const previewUri=asset?.previewUri || asset?.uri || null;
   const [failed,setFailed]=useState(false);
@@ -17,11 +28,9 @@ export default function MomentMediaPreview({asset,mediaType,onPreviewError}){
 
   if(!previewUri || failed){
     return(
-      <View style={styles.failed}>
-        <Text style={styles.failedIcon}>!</Text>
-        <Text style={styles.failedTitle}>Preview unavailable</Text>
-        <Text style={styles.failedText}>Choose the photo or video again.</Text>
-      </View>
+      <Notice tone="dispute" label="Preview unavailable">
+        Choose the photo or video again.
+      </Notice>
     );
   }
 
@@ -46,15 +55,19 @@ export default function MomentMediaPreview({asset,mediaType,onPreviewError}){
   }
 
   if(mediaType==="image"){
-    return <Image source={{uri:previewUri}} style={styles.image} resizeMode="cover" onError={handleError}/>;
+    return(
+      <Frame style={styles.frame}>
+        <Image source={{uri:previewUri}} style={styles.image} resizeMode="cover" onError={handleError}/>
+      </Frame>
+    );
   }
 
   return(
-    <View style={styles.videoFallback}>
-      <Text style={styles.playIcon}>▶</Text>
+    <Frame style={styles.videoFrame}>
+      <View style={styles.videoDial}><Glyph name="play" size={22} colour={INK.readout} weight={1.4}/></View>
       <Text style={styles.videoTitle}>Video selected</Text>
-      <Text style={styles.videoMeta}>{Math.ceil(Number(asset?.resolvedDuration || 0))} seconds</Text>
-    </View>
+      <Text style={styles.videoMeta}>{Math.ceil(Number(asset?.resolvedDuration || 0))} SECONDS</Text>
+    </Frame>
   );
 }
 
@@ -64,61 +77,36 @@ const webStyles={
     width:"100%",
     height:"300px",
     objectFit:"cover",
-    borderRadius:"10px",
-    backgroundColor:INK.panel
+    borderRadius:`${SHAPE.radius.control}px`,
+    border:`1px solid ${INK.hairline}`,
+    // A viewfinder ground: the well, not the panel.
+    backgroundColor:INK.inset
   },
   video:{
     display:"block",
     width:"100%",
     height:"300px",
     objectFit:"contain",
-    borderRadius:"10px",
-    // A viewfinder ground: the well, not the panel.
+    borderRadius:`${SHAPE.radius.control}px`,
+    border:`1px solid ${INK.hairline}`,
     backgroundColor:INK.inset
   }
 };
 
 const styles=StyleSheet.create({
-  image:{width:"100%",height:300,borderRadius:SHAPE.radius.card,backgroundColor:INK.panel},
-  videoFallback:{
-    height:230,
-    borderRadius:SHAPE.radius.card,
-    backgroundColor:INK.inset,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairline,
-    alignItems:"center",
-    justifyContent:"center"
+  // aspectRatio is Frame's own default sizing; a fixed height needs it out of
+  // the way, and a key set to undefined is dropped by StyleSheet.flatten.
+  frame:{height:300,alignSelf:"stretch",aspectRatio:undefined},
+  image:{width:"100%",height:"100%"},
+  videoFrame:{height:230,alignSelf:"stretch",aspectRatio:undefined,gap:9},
+  videoDial:{
+    width:54,height:54,borderRadius:SHAPE.radius.pill,
+    alignItems:"center",justifyContent:"center",paddingLeft:3,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairlineStrong
   },
-  playIcon:{color:INK.readout,fontSize:40},
-  videoTitle:{color:INK.readout,fontSize:18,fontWeight:"700",marginTop:9},
-  videoMeta:{color:INK.readoutSoft,marginTop:4},
-
-  // TEXT ON A FILLED STATE COLOUR IS DARK. The instrument's inks are bright
-  // colours on a dark housing, which inverts the old print system's rule --
-  // INK.readout on INK.dispute measured 2.86:1, which is a screen nobody can
-  // read. docs/design-system.md's accessibility table: dark `ground` text on
-  // every filled state colour, and scripts/verify-contrast.cjs enforces it.
-  failed:{
-    height:220,
-    borderRadius:SHAPE.radius.card,
-    backgroundColor:INK.dispute,
-    borderColor:INK.dispute,
-    borderWidth:SHAPE.border,
-    alignItems:"center",
-    justifyContent:"center",
-    padding:22
-  },
-  failedIcon:{
-    width:34,
-    height:34,
-    borderRadius:17,
-    backgroundColor:INK.dispute,
-    color:INK.ground,
-    fontSize:22,
-    fontWeight:"700",
-    textAlign:"center",
-    lineHeight:34
-  },
-  failedTitle:{color:INK.ground,fontSize:18,fontWeight:"700",marginTop:10},
-  failedText:{color:INK.ground,textAlign:"center",marginTop:5}
+  videoTitle:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
+  videoMeta:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    letterSpacing:0.9,textTransform:"uppercase"
+  }
 });

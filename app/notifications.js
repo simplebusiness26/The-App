@@ -1,10 +1,29 @@
 import React,{useCallback,useEffect,useMemo,useState} from "react";
-import {View,Text,StyleSheet,ScrollView,Pressable,ActivityIndicator,RefreshControl} from "react-native";
+import {View,Text,StyleSheet,ScrollView,ActivityIndicator,RefreshControl} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useNotifications} from "../context/NotificationContext";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
+import {INK,TYPE} from "../utils/tokens";
+import {Action,Chip,Empty,MONO,Row,Screen,ScreenTitle,Segmented} from "../components/instrument";
+
+// Everything the app wants to tell you, in one place.
+//
+// A notification is a reading: the app noticed something and is reporting it.
+// So each one is a Row -- glyph well on the left, the sentence in the body
+// face, when it happened in mono down the right -- and an unread one carries a
+// `scheduled` state edge, because unread means "this is still live for you".
+// Read ones drop the edge and keep the panel.
+//
+// THE ICONS WERE EMOJI, AND THAT MATTERED MORE HERE THAN ANYWHERE. This screen
+// drew fourteen different emoji -- a handshake, a door, a speech bubble, an
+// alarm clock, a satellite dish, a sparkle, a heart, a waving hand, a tick, a
+// bell -- each
+// in whichever font the phone happened to supply, each carrying its own colour
+// and weight. On a dark instrument face they read as stickers stuck to the
+// housing. They are all Glyphs off the same 16x16 grid now, so a notification
+// looks like it came from the same machine as the rest of the app.
 
 function isPastUpdate(item){
   return item?.data?.past_update===true || item?.data?.past_update==="true";
@@ -50,26 +69,27 @@ function getDisplayTitle(item){
   return String(item.title || "Update").replace(/^Past update:\s*/i,"");
 }
 
-function notificationIcon(item){
-  if(item.type==="linkup_joined") return "🤝";
-  if(item.type==="linkup_left" || item.type==="linkup_removed") return "🚪";
-  if(item.type==="linkup_full") return "👥";
-  if(item.type==="linkup_message" || item.type==="linkup_announcement") return "💬";
-  if(item.type==="linkup_updated") return "📝";
-  if(item.type==="linkup_cancelled") return "✕";
-  if(item.type==="linkup_reminder") return "⏰";
-  if(item.type==="linkup_follower_created") return "📡";
-  if(item.type==="social_follow") return "👤";
-  if(item.type==="social_moment") return "✨";
-  if(item.type==="social_like") return "♥";
-  if(item.type==="social_comment") return "💬";
+// One glyph per kind of thing that happened, all off the kit's 16x16 grid.
+function notificationGlyph(item){
+  if(item.type==="linkup_joined") return "people";
+  if(item.type==="linkup_left" || item.type==="linkup_removed") return "external";
+  if(item.type==="linkup_full") return "people";
+  if(item.type==="linkup_message" || item.type==="linkup_announcement") return "comment";
+  if(item.type==="linkup_updated") return "edit";
+  if(item.type==="linkup_cancelled") return "close";
+  if(item.type==="linkup_reminder") return "clock";
+  if(item.type==="linkup_follower_created") return "live";
+  if(item.type==="social_follow") return "person";
+  if(item.type==="social_moment") return "camera";
+  if(item.type==="social_like") return "heart";
+  if(item.type==="social_comment") return "comment";
 
   const status=getMembershipStatus(item);
-  if(status==="pending") return "👋";
-  if(status==="approved") return "✅";
-  if(status==="rejected") return "✕";
-  if(status==="removed" || status==="left") return "🚪";
-  return "🔔";
+  if(status==="pending") return "flag";
+  if(status==="approved") return "check";
+  if(status==="rejected") return "close";
+  if(status==="removed" || status==="left") return "external";
+  return "bell";
 }
 
 function formatTime(value){
@@ -83,6 +103,14 @@ function formatTime(value){
   if(hours<24) return `${hours}h ago`;
   return date.toLocaleDateString([],{day:"numeric",month:"short",year:date.getFullYear()===now.getFullYear()?undefined:"numeric"});
 }
+
+const CATEGORIES=[
+  {key:"all",label:"All"},
+  {key:"live",label:"Live"},
+  {key:"social",label:"Social"},
+  {key:"clubs",label:"Clubs"},
+  {key:"account",label:"Account"}
+];
 
 export default function Notifications(){
   const {userId,refreshUnread}=useNotifications();
@@ -155,100 +183,111 @@ export default function Notifications(){
   function refresh(){setRefreshing(true);loadNotifications(false);refreshUnread();}
 
   if(!userId && !loading){
-    return <View style={styles.center}><Text style={styles.emptyIcon}>🔔</Text><Text style={styles.emptyTitle}>Log in to see notifications</Text><Pressable style={styles.primaryButton} onPress={()=>router.push("/auth/login")}><Text style={styles.primaryText}>Log in</Text></Pressable></View>;
+    return(
+      <Screen>
+        <View style={styles.gate}>
+          <Empty
+            glyph="bell"
+            title="Log in to see notifications"
+            instruction="Live plans, social activity, club updates and account alerts all land here once you are signed in."
+            action={<Action kind="primary" glyph="key" label="Log in" onPress={()=>router.push("/auth/login")}/>}
+          />
+        </View>
+      </Screen>
+    );
   }
 
+  const unread=items.some(item=>!item.read_at);
+
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>}> 
-      <View style={styles.headingRow}>
-        <View style={styles.headingText}>
-          <Text style={styles.title}>Notifications</Text>
-          <Text style={styles.subtitle}>Live plans, social activity, club updates and account alerts in one place.</Text>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={INK.readoutSoft}/>}
+      >
+        <ScreenTitle
+          eyebrow="NOTIFICATION CENTRE"
+          title="Notifications"
+          meta="Live plans, social activity, club updates and account alerts in one place."
+          right={unread ? (
+            <Action
+              kind="quiet"
+              glyph="check"
+              label={workingId==="all" ? "Updating" : "Mark all read"}
+              disabled={workingId==="all"}
+              onPress={markAllRead}
+            />
+          ) : null}
+        />
+
+        <View style={styles.tabs}>
+          <Segmented
+            scroll
+            items={CATEGORIES.map(tab=>({key:tab.key,label:`${tab.label} ${counts[tab.key]}`}))}
+            active={activeCategory}
+            onChange={setActiveCategory}
+          />
         </View>
-        {items.some(item=>!item.read_at) && <Pressable style={styles.markAllButton} disabled={workingId==="all"} onPress={markAllRead}><Text style={styles.markAllText}>{workingId==="all"?"Updating...":"Mark all read"}</Text></Pressable>}
-      </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-        {[
-          {key:"all",label:"All"},
-          {key:"live",label:"Live"},
-          {key:"social",label:"Social"},
-          {key:"clubs",label:"Clubs"},
-          {key:"account",label:"Account"}
-        ].map(tab=>(
-          <Pressable key={tab.key} style={[styles.tab,activeCategory===tab.key && styles.activeTab]} onPress={()=>setActiveCategory(tab.key)}>
-            <Text style={[styles.tabText,activeCategory===tab.key && styles.activeTabText]}>{tab.label}</Text>
-            <View style={[styles.tabCount,activeCategory===tab.key && styles.activeTabCount]}><Text style={[styles.tabCountText,activeCategory===tab.key && styles.activeTabCountText]}>{counts[tab.key]}</Text></View>
-          </Pressable>
-        ))}
+        <View style={styles.body}>
+        {loading && <ActivityIndicator size="large" color={INK.readoutSoft} style={styles.loader}/>}
+
+        {!loading && filteredItems.length===0 && (
+          <Empty
+            glyph="bell"
+            title={`No ${activeCategory==="all" ? "notifications" : activeCategory+" notifications"} yet`}
+            instruction="New updates will appear here."
+          />
+        )}
+
+        {!loading && filteredItems.map(item=>{
+          const category=categoryFor(item);
+          const label=getStatusLabel(item);
+          const pastUpdate=isPastUpdate(item);
+          const isUnread=!pastUpdate && !item.read_at;
+          return(
+            <Row
+              key={item.id}
+              // Unread is a live reading, so it gets the edge. Read ones keep
+              // the panel and lose it -- the edge is the whole signal, and a
+              // second one (a coloured card, a coloured border) would just be
+              // the same fact said twice.
+              tone={isUnread ? "scheduled" : undefined}
+              glyph={notificationGlyph(item)}
+              title={getDisplayTitle(item)}
+              sub={item.message}
+              meta={formatTime(item.created_at).toUpperCase()}
+              metaSub={category.toUpperCase()}
+              onPress={()=>openNotification(item)}
+              style={workingId===item.id && styles.working}
+            >
+              {!!label && (
+                <View style={styles.badgeRow}>
+                  <Chip label={label} tone={category==="clubs" ? "exists" : undefined}/>
+                </View>
+              )}
+              {pastUpdate && <Text style={styles.pastNote}>This is a record of something that already happened.</Text>}
+            </Row>
+          );
+        })}
+        </View>
       </ScrollView>
-
-      {loading && <ActivityIndicator size="large" style={styles.loader}/>} 
-      {!loading && filteredItems.length===0 && <View style={styles.emptyCard}><Text style={styles.emptyIcon}>{activeCategory==="social"?"✨":activeCategory==="live"?"🤝":"🔔"}</Text><Text style={styles.emptyTitle}>No {activeCategory==="all"?"notifications":activeCategory+" notifications"} yet</Text><Text style={styles.emptyText}>New updates will appear here.</Text></View>}
-
-      {!loading && filteredItems.map(item=>{
-        const category=categoryFor(item);
-        const status=getMembershipStatus(item);
-        const label=getStatusLabel(item);
-        const pastUpdate=isPastUpdate(item);
-        return(
-          <Pressable
-            key={item.id}
-            style={[
-              styles.card,
-              category==="live"&&styles.liveCard,
-              category==="social"&&styles.socialCard,
-              category==="account"&&styles.accountCard,
-              !pastUpdate&&status==="approved"&&styles.approvedCard,
-              !pastUpdate&&status==="rejected"&&styles.rejectedCard,
-              !pastUpdate&&(status==="removed"||status==="left")&&styles.endedCard,
-              pastUpdate&&status==="approved"&&styles.pastApprovedCard,
-              pastUpdate&&status==="rejected"&&styles.pastRejectedCard,
-              pastUpdate&&(status==="removed"||status==="left")&&styles.pastEndedCard,
-              !pastUpdate&&!item.read_at&&styles.unreadCard,
-              category==="social"&&!item.read_at&&styles.socialUnreadCard,
-              category==="live"&&!item.read_at&&styles.liveUnreadCard
-            ]}
-            disabled={workingId===item.id}
-            onPress={()=>openNotification(item)}
-          >
-            <View style={[styles.iconWrap,category==="social"&&styles.socialIconWrap,category==="live"&&styles.liveIconWrap,!pastUpdate&&!item.read_at&&styles.unreadIconWrap]}><Text style={styles.icon}>{notificationIcon(item)}</Text></View>
-            <View style={styles.cardText}>
-              <View style={styles.cardTop}><Text style={styles.cardTitle}>{getDisplayTitle(item)}</Text>{!pastUpdate&&!item.read_at&&<View style={styles.unreadDot}/>}</View>
-              <Text style={[styles.categoryLabel,category==="social"&&styles.socialCategory,category==="live"&&styles.liveCategory]}>{category}</Text>
-              {!!label && <Text style={[
-                styles.statusBadge,
-                !pastUpdate&&status==="pending"&&styles.pendingBadge,
-                !pastUpdate&&status==="approved"&&styles.approvedBadge,
-                !pastUpdate&&status==="rejected"&&styles.rejectedBadge,
-                !pastUpdate&&(status==="removed"||status==="left")&&styles.endedBadge,
-                pastUpdate&&status==="approved"&&styles.pastApprovedBadge,
-                pastUpdate&&status==="rejected"&&styles.pastRejectedBadge,
-                pastUpdate&&(status==="removed"||status==="left")&&styles.pastEndedBadge
-              ]}>{label}</Text>}
-              <Text style={[styles.message,pastUpdate&&styles.pastMessage]}>{item.message}</Text>
-              <Text style={styles.time}>{formatTime(item.created_at)}</Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+    </Screen>
   );
 }
 
-const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
-
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},content:{padding:20,paddingBottom:60},center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.paper},
-  headingRow:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:14},headingText:{flex:1},title:{fontSize:30,fontWeight:"900",color:INK.ink},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:5},
-  markAllButton:{paddingHorizontal:12,paddingVertical:10,borderRadius:10,borderColor:INK.ink,borderWidth:2,backgroundColor:INK.card},markAllText:{color:INK.blue,fontWeight:"900",fontSize:12},loader:{marginTop:50},
-  tabs:{gap:8,paddingBottom:16},tab:{flexDirection:"row",alignItems:"center",gap:7,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:20,paddingHorizontal:12,paddingVertical:8},activeTab:{backgroundColor:INK.blue,borderColor:INK.ink},tabText:{color:INK.ink,fontWeight:"800",fontSize:12},activeTabText:{color:INK.card},tabCount:{minWidth:22,height:22,borderRadius:11,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},activeTabCount:{backgroundColor:"rgba(255,255,255,0.3)"},tabCountText:{color:INK.ink,fontSize:10,fontWeight:"900"},activeTabCountText:{color:INK.card},
-  card:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:14,padding:14,marginBottom:11,flexDirection:"row",alignItems:"flex-start",...shadow},
-  liveCard:{backgroundColor:INK.card,borderColor:INK.ink},socialCard:{backgroundColor:INK.card,borderColor:INK.ink},accountCard:{backgroundColor:INK.card},
-  unreadCard:{backgroundColor:INK.card,borderColor:INK.ink},socialUnreadCard:{backgroundColor:INK.card,borderColor:INK.blue},liveUnreadCard:{backgroundColor:INK.card,borderColor:INK.blue},
-  approvedCard:{backgroundColor:INK.card,borderColor:INK.ink},rejectedCard:{backgroundColor:INK.card,borderColor:INK.red},endedCard:{backgroundColor:INK.card,borderColor:INK.ink},pastApprovedCard:{backgroundColor:INK.card,borderColor:INK.ink},pastRejectedCard:{backgroundColor:INK.card,borderColor:INK.ink},pastEndedCard:{backgroundColor:INK.card,borderColor:INK.ink},
-  iconWrap:{width:44,height:44,borderRadius:22,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},socialIconWrap:{backgroundColor:INK.card},liveIconWrap:{backgroundColor:INK.card},unreadIconWrap:{backgroundColor:INK.card},icon:{fontSize:21},cardText:{flex:1,marginLeft:12},cardTop:{flexDirection:"row",alignItems:"center"},cardTitle:{fontSize:16,fontWeight:"bold",flex:1,color:INK.blue},unreadDot:{width:9,height:9,borderRadius:5,backgroundColor:INK.blue,marginLeft:8},
-  categoryLabel:{alignSelf:"flex-start",fontSize:9,fontWeight:"900",textTransform:"uppercase",letterSpacing:0.7,color:INK.inkSoft,marginTop:5},socialCategory:{color:INK.blue},liveCategory:{color:INK.blue},
-  statusBadge:{alignSelf:"flex-start",fontSize:10,fontWeight:"bold",textTransform:"uppercase",paddingHorizontal:9,paddingVertical:5,borderRadius:20,overflow:"hidden",marginTop:7},pendingBadge:{backgroundColor:INK.card,color:INK.red},approvedBadge:{backgroundColor:INK.card,color:INK.green},rejectedBadge:{backgroundColor:INK.card,color:INK.red},endedBadge:{backgroundColor:INK.card,color:INK.ink},pastApprovedBadge:{backgroundColor:INK.card,color:INK.green},pastRejectedBadge:{backgroundColor:INK.card,color:INK.red},pastEndedBadge:{backgroundColor:INK.card,color:INK.inkSoft},
-  message:{color:INK.ink,lineHeight:20,marginTop:7},pastMessage:{color:INK.inkSoft},time:{color:INK.inkSoft,fontSize:12,marginTop:8},emptyCard:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:16,padding:28,alignItems:"center",marginTop:20,...shadow},emptyIcon:{fontSize:38},emptyTitle:{fontSize:19,fontWeight:"900",color:INK.ink,marginTop:10,textAlign:"center"},emptyText:{color:INK.inkSoft,marginTop:7,textAlign:"center"},primaryButton:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,paddingHorizontal:24,paddingVertical:14,borderRadius:11,marginTop:18,...shadow},primaryText:{color:INK.card,fontWeight:"900"}
+  // ScreenTitle and Segmented both carry their own horizontal gutter, so the
+  // scroll container does not -- everything else gets it from `body`.
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
+  gate:{flex:1,justifyContent:"center",paddingHorizontal:16},
+  tabs:{marginTop:6,marginBottom:8},
+  loader:{marginTop:50},
+  working:{opacity:0.6},
+  badgeRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:8},
+  pastNote:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.9,textTransform:"uppercase",marginTop:7
+  }
 });

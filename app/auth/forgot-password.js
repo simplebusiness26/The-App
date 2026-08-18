@@ -1,16 +1,19 @@
 import React,{useState} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator
-} from "react-native";
+import {ScrollView,Text,TextInput,StyleSheet} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {sendRecoveryEmail} from "../../utils/passwordRecovery";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Field,
+  fieldInputStyle,
+  Notice,
+  Screen,
+  ScreenTitle
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 
 export default function ForgotPassword(){
   const [email,setEmail]=useState("");
@@ -42,76 +45,97 @@ export default function ForgotPassword(){
 
   if(sent){
     return(
-      <View style={[styles.screen,styles.container]}>
-        <View style={styles.successCard}>
-          <Text style={styles.successIcon}>✉️</Text>
-          <Text style={styles.title}>Check your email</Text>
-          <Text style={styles.message}>
-            If an account exists for {email.trim()}, a password-reset link has been sent. Open the newest link on this device to choose a new password.
-          </Text>
-        </View>
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <ScreenTitle eyebrow="ACCOUNT RECOVERY" title="Check your email"/>
 
-        <Pressable style={styles.button} onPress={()=>setSent(false)}>
-          <Text style={styles.buttonText}>Send another email</Text>
-        </Pressable>
+          {/*
+            The envelope emoji is gone. An emoji carries somebody else's colour
+            and weight, and on a dark instrument face it reads as a sticker --
+            docs/instrument-kit.md, rule one. Empty draws the dial plate and puts
+            the mail glyph in it, which is the same 16x16 grid as every other
+            icon in the app.
+          */}
+          <Empty
+            glyph="mail"
+            title="A reset link is on its way"
+            instruction={`If an account exists for ${email.trim()}, a password-reset link has been sent. Open the newest link on this device to choose a new password.`}
+          />
 
-        <Pressable style={styles.linkButton} onPress={()=>router.replace("/auth/login")}>
-          <Text style={styles.linkText}>Back to login</Text>
-        </Pressable>
-      </View>
+          <Action
+            kind="primary"
+            glyph="refresh"
+            label="Send another email"
+            onPress={()=>setSent(false)}
+          />
+
+          <Action
+            kind="quiet"
+            glyph="back"
+            label="Back to login"
+            style={styles.link}
+            onPress={()=>router.replace("/auth/login")}
+          />
+        </ScrollView>
+      </Screen>
     );
   }
 
   return(
-    <View style={[styles.screen,styles.container]}>
-      <Text style={styles.title}>Forgot password?</Text>
-      <Text style={styles.message}>
-        Enter the email address connected to your Xplorer account. We’ll send you a secure link to set a new password.
-      </Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScreenTitle eyebrow="ACCOUNT RECOVERY" title="Forgot password?"/>
+        <Text style={styles.lead}>
+          Enter the email address connected to your Xplorer account. We’ll send you a
+          secure link to set a new password.
+        </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email address"
-        placeholderTextColor={INK.inkSoft}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
+        <Field label="Email address">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="you@example.com"
+            placeholderTextColor={INK.readoutFaint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </Field>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+        {!!error && <Notice tone="dispute" label="Not sent">{error}</Notice>}
 
-      <Pressable
-        style={[styles.button,loading&&styles.disabledButton]}
-        onPress={sendResetEmail}
-        disabled={loading}
-      >
-        {loading
-          ? <ActivityIndicator color={INK.card}/>
-          : <Text style={styles.buttonText}>Send reset link</Text>
-        }
-      </Pressable>
+        <Action
+          kind="primary"
+          glyph="send"
+          label="Send reset link"
+          loading={loading}
+          onPress={sendResetEmail}
+        />
 
-      <Pressable style={styles.linkButton} onPress={()=>router.replace("/auth/login")}>
-        <Text style={styles.linkText}>Back to login</Text>
-      </Pressable>
-    </View>
+        <Action
+          kind="quiet"
+          glyph="back"
+          label="Back to login"
+          style={styles.link}
+          onPress={()=>router.replace("/auth/login")}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  container:{padding:30},
-  title:{fontSize:32,fontWeight:"900",color:INK.ink,letterSpacing:-0.6,marginBottom:12},
-  message:{fontSize:15,lineHeight:22,color:INK.inkSoft,marginBottom:22},
-  input:{backgroundColor:INK.card,color:INK.ink,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:15,fontSize:16,marginBottom:15},
-  button:{backgroundColor:INK.blue,borderWidth:2,borderColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
-  disabledButton:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"900"},
-  linkButton:{marginTop:20,alignItems:"center",padding:8},
-  linkText:{fontWeight:"800",color:INK.blue},
-  error:{color:INK.ink,fontWeight:"700",marginBottom:15,lineHeight:20},
-  successCard:{borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:14,padding:20,marginBottom:18},
-  successIcon:{fontSize:34,marginBottom:10}
+  content:{paddingHorizontal:16,paddingBottom:32+CREATE_HUB_CLEARANCE},
+  // ScreenTitle's meta line is clamped to one line -- right for a place's
+  // "2.4 KM · OPEN NOW", wrong for a sentence, which it silently truncates with
+  // an ellipsis. Anything longer than a readout goes here instead.
+  lead:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:-2,
+    marginBottom:14
+  },
+  link:{marginTop:12}
 });

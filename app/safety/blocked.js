@@ -1,9 +1,37 @@
 import React,{useCallback,useState} from "react";
-import {ActivityIndicator,Pressable,RefreshControl,ScrollView,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,Image,Pressable,RefreshControl,ScrollView,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Frame,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+
+// Who you have blocked, and the way back.
+//
+// Rebuilt from the kit rather than retinted: each line is a Panel, the face in
+// it sits in the same bracketed Frame every picture in this app uses, and the
+// shield emoji that used to head the empty state is a Glyph on Empty's dial
+// plate. Every Supabase call, permission check and piece of copy is the one
+// that was already here.
+
+function Face({profile}){
+  return(
+    <Frame size={42} round style={styles.face}>
+      {profile?.profile_photo
+        ? <Image source={{uri:profile.profile_photo}} style={styles.faceImage}/>
+        : <Text style={styles.faceLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+    </Frame>
+  );
+}
 
 export default function BlockedExplorers(){
   const {showFeedback}=useFeedback();
@@ -42,16 +70,97 @@ export default function BlockedExplorers(){
 
   function refresh(){setRefreshing(true);load(false);}
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+  if(loading){
+    return(
+      <Screen>
+        <View style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></View>
+      </Screen>
+    );
+  }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>}>
-      <Text style={styles.eyebrow}>SAFETY CONTROLS</Text><Text style={styles.title}>Blocked Explorers</Text>
-      <Text style={styles.subtitle}>Blocked people cannot follow you or see each other's Link-ups and live check-ins.</Text>
-      {items.length===0&&<View style={styles.emptyCard}><Text style={styles.emptyIcon}>🛡️</Text><Text style={styles.emptyTitle}>Nobody blocked</Text><Text style={styles.emptyText}>You can block an organiser from a Link-up or a nearby Explorer from their profile.</Text></View>}
-      {items.map(item=><View key={item.blocked_id} style={styles.card}><Pressable style={styles.profile} onPress={()=>router.push(`/profile/${item.blocked_id}`)}><View style={styles.avatar}><Text style={styles.avatarText}>{item.profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text></View><View style={styles.profileText}><Text style={styles.name}>{item.profile?.full_name || "Explorer"}</Text>{item.profile?.show_area&&item.profile?.area?<Text style={styles.area}>{item.profile.area}</Text>:null}</View></Pressable><Pressable style={styles.unblock} disabled={workingId===item.blocked_id} onPress={()=>unblock(item)}>{workingId===item.blocked_id?<ActivityIndicator color={INK.ink} size="small"/>:<Text style={styles.unblockText}>Unblock</Text>}</Pressable></View>)}
-    </ScrollView>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={INK.readoutSoft}/>}
+      >
+        <ScreenTitle eyebrow="SAFETY CONTROLS" title="Blocked Explorers"/>
+        <Text style={styles.lead}>
+          Blocked people cannot follow you or see each other&apos;s Link-ups and live check-ins.
+        </Text>
+
+        <SectionRule label="Blocked" meta={String(items.length)}/>
+
+        {items.length===0 && (
+          <Empty
+            glyph="shield"
+            title="Nobody blocked"
+            instruction="You can block an organiser from a Link-up or a nearby Explorer from their profile."
+          />
+        )}
+
+        {items.map(item=>(
+          <Panel key={item.blocked_id} style={styles.line}>
+            <Pressable
+              style={styles.lineProfile}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${item.profile?.full_name || "this Explorer"}'s profile`}
+              onPress={()=>router.push(`/profile/${item.blocked_id}`)}
+            >
+              <Face profile={item.profile}/>
+              <View style={styles.lineText}>
+                <Text style={styles.name} numberOfLines={1}>{item.profile?.full_name || "Explorer"}</Text>
+                {!!item.profile?.show_area && !!item.profile?.area && (
+                  <Text style={styles.area} numberOfLines={1}>{item.profile.area}</Text>
+                )}
+              </View>
+            </Pressable>
+
+            <Action
+              kind="secondary"
+              glyph="check"
+              label="Unblock"
+              accessibilityLabel={`Unblock ${item.profile?.full_name || "this Explorer"}`}
+              loading={workingId===item.blocked_id}
+              onPress={()=>unblock(item)}
+              style={styles.unblock}
+            />
+          </Panel>
+        ))}
+      </ScrollView>
+    </Screen>
   );
 }
 
-const styles=StyleSheet.create({screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:31,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:16},emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:28,alignItems:"center"},emptyIcon:{fontSize:38},emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:8},emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:19,marginTop:5},card:{flexDirection:"row",alignItems:"center",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:12,marginBottom:10},profile:{flex:1,flexDirection:"row",alignItems:"center"},avatar:{width:45,height:45,borderRadius:23,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},avatarText:{color:INK.card,fontWeight:"900",fontSize:18},profileText:{marginLeft:10},name:{color:INK.ink,fontWeight:"900"},area:{color:INK.inkSoft,fontSize:11,marginTop:3},unblock:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:10,minWidth:82,paddingVertical:10,alignItems:"center"},unblockText:{color:INK.card,fontWeight:"900",fontSize:11}});
+const styles=StyleSheet.create({
+  content:{paddingHorizontal:16,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  // ScreenTitle's meta line is clamped to one line -- right for a place's
+  // "2.4 KM · OPEN NOW", wrong for a sentence, which it silently truncates with
+  // an ellipsis. Anything longer than a readout goes here instead.
+  lead:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:-2,
+    marginBottom:14
+  },
+  center:{flex:1,alignItems:"center",justifyContent:"center"},
+
+  // The name and the unblock control are siblings inside one Panel, not nested
+  // pressables: a button inside a pressable row is two overlapping targets and
+  // which one a finger gets is a coin toss.
+  line:{flexDirection:"row",alignItems:"center",gap:11,padding:11,marginBottom:8},
+  lineProfile:{flex:1,flexDirection:"row",alignItems:"center",gap:11,minWidth:0},
+  lineText:{flex:1,minWidth:0},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  area:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,
+    marginTop:2
+  },
+  face:{backgroundColor:INK.inset},
+  faceImage:{width:42,height:42,borderRadius:SHAPE.radius.pill},
+  faceLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:17},
+  unblock:{minWidth:118}
+});

@@ -3,7 +3,8 @@ import {ActivityIndicator,Image,Pressable,StyleSheet,Text,TextInput,View} from "
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Action,Chip,Empty,Field,fieldInputStyle,Frame,Glyph,MONO,Notice,Panel,SectionRule} from "./instrument";
 
 const REPORT_REASONS=[
   {key:"spam",label:"Spam"},
@@ -12,6 +13,16 @@ const REPORT_REASONS=[
   {key:"false_information",label:"False information"},
   {key:"other",label:"Other"}
 ];
+
+// What people said back, under the thing they said it about.
+//
+// A comment is the one place in this app where the body face does all the work:
+// somebody wrote it. Everything AROUND it is measured -- how many there are,
+// how long ago, how many characters are left -- and all of that is mono, which
+// is what stops a thread reading as a document.
+//
+// The composer is a Field: an `inset` well cut into the panel, because the
+// thing you type into should look cut into the housing rather than stuck on it.
 
 function timeLabel(value){
   if(!value) return "";
@@ -25,8 +36,13 @@ function timeLabel(value){
 }
 
 function Avatar({profile}){
-  if(profile?.profile_photo) return <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>;
-  return <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text></View>;
+  return(
+    <Frame size={34} round style={styles.avatarFrame}>
+      {profile?.profile_photo
+        ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
+        : <Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+    </Frame>
+  );
 }
 
 export default function CommentThread({targetType,targetId,ownerId,onCountChanged}){
@@ -152,51 +168,87 @@ export default function CommentThread({targetType,targetId,ownerId,onCountChange
 
   return(
     <View style={styles.section}>
-      <View style={styles.headingRow}>
-        <Text style={styles.title}>Comments</Text>
-        <Text style={styles.count}>{comments.length}</Text>
-      </View>
+      <SectionRule label="Comments" meta={String(comments.length)}/>
 
-      <View style={styles.composer}>
-        <TextInput
-          value={body}
-          onChangeText={setBody}
-          placeholder={user ? "Add a comment" : "Log in to comment"}
-          placeholderTextColor={INK.inkSoft}
-          style={styles.input}
-          multiline
-          maxLength={500}
-          editable={!!user && !working}
-          textAlignVertical="top"
+      <Panel style={styles.composer}>
+        <Field label="Add a comment" hint={`${body.length}/500`} style={styles.composerField}>
+          <TextInput
+            value={body}
+            onChangeText={setBody}
+            placeholder={user ? "Add a comment" : "Log in to comment"}
+            placeholderTextColor={INK.readoutFaint}
+            style={[fieldInputStyle,styles.input]}
+            multiline
+            maxLength={500}
+            editable={!!user && !working}
+            textAlignVertical="top"
+          />
+        </Field>
+        <Action
+          kind="primary"
+          glyph="send"
+          label="Post"
+          loading={working}
+          disabled={working}
+          style={styles.post}
+          onPress={addComment}
         />
-        <View style={styles.composerBottom}>
-          <Text style={styles.counter}>{body.length}/500</Text>
-          <Pressable style={[styles.postButton,working && styles.disabled]} disabled={working} onPress={addComment}>
-            {working ? <ActivityIndicator color={INK.ink} size="small"/> : <Text style={styles.postText}>Post</Text>}
-          </Pressable>
-        </View>
-      </View>
+      </Panel>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
-      {loading && <ActivityIndicator color={INK.blue} style={{marginVertical:20}}/>}
-      {!loading && comments.length===0 && <Text style={styles.empty}>No comments yet. Start the conversation.</Text>}
+      {!!error && <Notice tone="dispute" label="Not posted">{error}</Notice>}
+      {loading && <ActivityIndicator color={INK.readoutSoft} style={styles.loader}/>}
+      {!loading && comments.length===0 && (
+        <Empty
+          glyph="comment"
+          title="No comments yet"
+          instruction="Start the conversation. Say what you thought of it."
+        />
+      )}
 
       {!loading && comments.map(comment=>{
         const canDelete=!!user && (user.id===comment.user_id || user.id===ownerId);
         const canReport=!!user && user.id!==comment.user_id;
         return(
-          <View key={comment.id} style={styles.commentCard}>
-            <Pressable style={styles.commentProfile} onPress={()=>router.push(`/profile/${comment.user_id}`)}>
+          <Panel key={comment.id} style={styles.commentCard}>
+            <Pressable
+              style={styles.commentProfile}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${comment.profile?.full_name || "Explorer"}`}
+              onPress={()=>router.push(`/profile/${comment.user_id}`)}
+            >
               <Avatar profile={comment.profile}/>
               <View style={styles.commentTextWrap}>
-                <Text style={styles.name}>{comment.profile?.full_name || "Explorer"}</Text>
-                <Text style={styles.time}>{timeLabel(comment.created_at)}</Text>
+                <Text style={styles.name} numberOfLines={1}>{comment.profile?.full_name || "Explorer"}</Text>
+                <Text style={styles.time}>{timeLabel(comment.created_at).toUpperCase()}</Text>
               </View>
             </Pressable>
+
             <Text style={styles.body}>{comment.body}</Text>
+
             <View style={styles.commentActions}>
-              {canReport && <Pressable onPress={()=>setReportTarget(reportTarget?.id===comment.id ? null : comment)}><Text style={styles.reportLink}>Report</Text></Pressable>}
-              {canDelete && <Pressable disabled={working} onPress={()=>deleteComment(comment)}><Text style={styles.deleteLink}>Delete</Text></Pressable>}
+              {canReport && (
+                <Pressable
+                  style={styles.link}
+                  accessibilityRole="button"
+                  accessibilityLabel="Report this comment"
+                  onPress={()=>setReportTarget(reportTarget?.id===comment.id ? null : comment)}
+                >
+                  <Glyph name="flag" size={12} colour={INK.readoutFaint}/>
+                  <Text style={styles.linkText}>Report</Text>
+                </Pressable>
+              )}
+              {canDelete && (
+                <Pressable
+                  style={styles.link}
+                  disabled={working}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete this comment"
+                  onPress={()=>deleteComment(comment)}
+                >
+                  <Glyph name="trash" size={12} colour={INK.readoutSoft}/>
+                  <Text style={[styles.linkText,styles.deleteText]}>Delete</Text>
+                </Pressable>
+              )}
             </View>
 
             {reportTarget?.id===comment.id && (
@@ -204,18 +256,21 @@ export default function CommentThread({targetType,targetId,ownerId,onCountChange
                 <Text style={styles.reportTitle}>Why are you reporting this comment?</Text>
                 <View style={styles.reasonRow}>
                   {REPORT_REASONS.map(reason=>(
-                    <Pressable key={reason.key} style={[styles.reasonButton,reportReason===reason.key && styles.reasonActive]} onPress={()=>setReportReason(reason.key)}>
-                      <Text style={[styles.reasonText,reportReason===reason.key && styles.reasonActiveText]}>{reason.label}</Text>
-                    </Pressable>
+                    <Chip
+                      key={reason.key}
+                      label={reason.label}
+                      selected={reportReason===reason.key}
+                      onPress={()=>setReportReason(reason.key)}
+                    />
                   ))}
                 </View>
                 <View style={styles.reportActions}>
-                  <Pressable style={styles.cancelButton} onPress={()=>setReportTarget(null)}><Text style={styles.cancelText}>Cancel</Text></Pressable>
-                  <Pressable style={styles.submitReportButton} disabled={working} onPress={submitReport}><Text style={styles.submitReportText}>Submit report</Text></Pressable>
+                  <Action kind="quiet" label="Cancel" style={styles.reportAction} onPress={()=>setReportTarget(null)}/>
+                  <Action kind="danger" glyph="flag" label="Submit report" style={styles.reportAction} disabled={working} onPress={submitReport}/>
                 </View>
               </View>
             )}
-          </View>
+          </Panel>
         );
       })}
     </View>
@@ -223,41 +278,39 @@ export default function CommentThread({targetType,targetId,ownerId,onCountChange
 }
 
 const styles=StyleSheet.create({
-  section:{marginTop:24},
-  headingRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:11},
-  title:{color:INK.ink,fontSize:23,fontWeight:"900"},
-  count:{color:INK.blue,fontWeight:"900"},
-  composer:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:15,padding:11},
-  input:{minHeight:75,color:INK.ink,fontSize:14,lineHeight:20,padding:3},
-  composerBottom:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:7},
-  counter:{color:INK.inkSoft,fontSize:10},
-  postButton:{minWidth:78,backgroundColor:INK.blue,borderRadius:10,paddingHorizontal:15,paddingVertical:10,alignItems:"center"},
-  postText:{color:INK.card,fontWeight:"900"},
-  disabled:{opacity:0.65},
-  error:{color:INK.card,backgroundColor:INK.red,borderRadius:10,padding:10,marginTop:9},
-  empty:{color:INK.inkSoft,textAlign:"center",backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:18,marginTop:10},
-  commentCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:14,padding:13,marginTop:10},
+  section:{marginTop:4},
+
+  composer:{padding:13},
+  composerField:{marginBottom:10},
+  input:{minHeight:78,lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight},
+  post:{alignSelf:"flex-end",minWidth:118},
+
+  loader:{marginVertical:20},
+
+  commentCard:{padding:13,marginTop:9},
   commentProfile:{flexDirection:"row",alignItems:"center"},
-  avatar:{width:36,height:36,borderRadius:18,backgroundColor:INK.card},
-  avatarFallback:{width:36,height:36,borderRadius:18,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontWeight:"900",fontSize:14},
-  commentTextWrap:{marginLeft:9},
-  name:{color:INK.ink,fontWeight:"900",fontSize:13},
-  time:{color:INK.inkSoft,fontSize:10,marginTop:2},
-  body:{color:INK.ink,fontSize:14,lineHeight:20,marginTop:10},
-  commentActions:{flexDirection:"row",gap:15,marginTop:10},
-  reportLink:{color:INK.inkSoft,fontSize:11,fontWeight:"800"},
-  deleteLink:{color:INK.ink,fontSize:11,fontWeight:"800"},
-  reportPanel:{backgroundColor:INK.card,borderRadius:12,padding:12,marginTop:11},
-  reportTitle:{color:INK.ink,fontSize:13,fontWeight:"900"},
-  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:9},
-  reasonButton:{borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:10,paddingVertical:7},
-  reasonActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  reasonText:{color:INK.card,fontSize:10,fontWeight:"800"},
-  reasonActiveText:{color:INK.card},
-  reportActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:12},
-  cancelButton:{paddingHorizontal:12,paddingVertical:9},
-  cancelText:{color:INK.inkSoft,fontWeight:"800"},
-  submitReportButton:{backgroundColor:INK.red,borderRadius:9,paddingHorizontal:13,paddingVertical:9},
-  submitReportText:{color:INK.card,fontWeight:"900",fontSize:12}
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:34,height:34,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:14},
+  commentTextWrap:{marginLeft:10,flex:1,minWidth:0},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  time:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.9,textTransform:"uppercase",marginTop:3
+  },
+  body:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,marginTop:10},
+
+  commentActions:{flexDirection:"row",gap:16,marginTop:11},
+  link:{flexDirection:"row",alignItems:"center",gap:5,minHeight:32},
+  linkText:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.9,textTransform:"uppercase"
+  },
+  deleteText:{color:INK.readoutSoft},
+
+  reportPanel:{marginTop:12,paddingTop:12,borderTopWidth:SHAPE.border,borderTopColor:INK.hairline},
+  reportTitle:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight},
+  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10},
+  reportActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:13},
+  reportAction:{minWidth:110}
 });

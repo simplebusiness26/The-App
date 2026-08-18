@@ -2,7 +2,8 @@ import React,{useState} from "react";
 import {View,Text,Pressable,ActivityIndicator,StyleSheet} from "react-native";
 import * as Location from "expo-location";
 import {LOCATION_DETAIL,roundLocation} from "../utils/places";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {Glyph,MONO,Notice} from "./instrument";
 
 // Where a Moment or a Memory says it happened.
 //
@@ -72,7 +73,14 @@ export default function AddLocation({value,onChange,thing="Moment"}){
 
   return(
     <View>
-      <Text style={styles.label}>Location <Text style={styles.optional}>(optional)</Text></Text>
+      {/* A field label, mono. It names a field; it is not a sentence. The
+          "(optional)" half is a fact about the field, so it stays mono too --
+          it used to be a lighter weight of the same body face, which read as an
+          aside rather than as part of the label. */}
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>LOCATION</Text>
+        <Text style={styles.optional}>OPTIONAL</Text>
+      </View>
 
       <View style={styles.row}>
         {[
@@ -107,12 +115,25 @@ export default function AddLocation({value,onChange,thing="Moment"}){
               }}
             >
               {working===option.detail
-                ? <ActivityIndicator color={active ? INK.card : INK.ink}/>
+                ? <ActivityIndicator color={INK.readoutSoft}/>
                 : (
                   <>
-                    <Text style={[styles.optionTitle,active && styles.optionTitleActive]}>
-                      {active ? `✓ ${option.title}` : option.title}
-                    </Text>
+                    {/*
+                      SELECTION IS A SURFACE STEP, NOT A FILL.
+                      Both options used to fill with the compatibility alias
+                      that is now the near-white readout colour, so the chosen
+                      precision was the brightest thing on the form. A chosen
+                      precision is not a state a place is in, so it takes no
+                      state ink at all:
+                      panel -> panelRaised, a stronger edge, a brighter label
+                      and a drawn tick where the emoji tick used to be.
+                    */}
+                    <View style={styles.optionHead}>
+                      {active ? <Glyph name="check" size={13} colour={INK.readout} weight={1.8}/> : null}
+                      <Text style={[styles.optionTitle,active && styles.optionTitleActive]}>
+                        {option.title.toUpperCase()}
+                      </Text>
+                    </View>
                     <Text style={[styles.optionHint,active && styles.optionHintActive]}>{option.hint}</Text>
                   </>
                 )}
@@ -121,6 +142,8 @@ export default function AddLocation({value,onChange,thing="Moment"}){
         })}
       </View>
 
+      {/* What happens to the coordinate, in words, before and after. This is a
+          privacy control, so it reads as a sentence about people. */}
       <Text style={styles.hint}>
         {chosen===LOCATION_DETAIL.EXACT
           ? `Rounded to about 100 metres before it is sent. Tap again to take it off.`
@@ -129,24 +152,41 @@ export default function AddLocation({value,onChange,thing="Moment"}){
             : `Choose neither and this ${thing} carries no coordinates at all — just your area, which nobody can see on the map.`}
       </Text>
 
-      {!!problem && <Text style={styles.problem} accessibilityRole="alert">{problem}</Text>}
+      {!!problem && (
+        <View accessibilityRole="alert" style={styles.problem}>
+          <Notice tone="scheduled" label="NO LOCATION">{problem}</Notice>
+        </View>
+      )}
     </View>
   );
 }
 
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
+
 const styles=StyleSheet.create({
-  label:{color:INK.ink,fontWeight:"800",fontSize:14,marginTop:18},
-  optional:{color:INK.inkSoft,fontWeight:"600",fontSize:12},
-  row:{flexDirection:"row",gap:10,marginTop:8},
+  labelRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:18,marginBottom:7},
+  label:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  optional:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+
+  row:{flexDirection:"row",gap:10},
   option:{
-    flex:1,minHeight:64,justifyContent:"center",alignItems:"center",padding:10,
-    backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12
+    flex:1,minHeight:64,justifyContent:"center",alignItems:"center",gap:4,padding:10,
+    backgroundColor:INK.panel,borderColor:INK.hairline,borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.control
   },
-  optionActive:{backgroundColor:INK.ink,borderColor:INK.ink},
-  optionTitle:{color:INK.ink,fontWeight:"900",fontSize:13,textAlign:"center"},
-  optionTitleActive:{color:INK.card},
-  optionHint:{color:INK.inkSoft,fontWeight:"600",fontSize:11,marginTop:3,textAlign:"center"},
-  optionHintActive:{color:INK.card},
-  hint:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:8},
-  problem:{color:INK.ink,fontSize:13,lineHeight:19,marginTop:8}
+  optionActive:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  optionHead:{flexDirection:"row",alignItems:"center",gap:6},
+  optionTitle:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md,textAlign:"center"},
+  optionTitleActive:{color:INK.readout},
+  optionHint:{
+    color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.4,textAlign:"center"
+  },
+  optionHintActive:{color:INK.readoutSoft},
+
+  hint:{
+    color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:9
+  },
+  problem:{marginTop:10}
 });

@@ -1,11 +1,22 @@
 import React,{useCallback,useState} from "react";
-import {View,Text,TextInput,StyleSheet,Pressable,Alert} from "react-native";
+import {View,Text,TextInput,StyleSheet,Alert} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {loadPlaceReviews} from "../../utils/reviews";
 import {useFeedback} from "../../context/FeedbackContext";
 import {CLUB_TYPE_LABEL} from "../../utils/markers";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Field,
+  MONO,
+  Notice,
+  Panel,
+  Row,
+  SectionRule,
+  fieldInputStyle
+} from "../../components/instrument";
 import PlaceLayout from "../../components/PlaceLayout";
 import MessageButton from "../../components/MessageButton";
 import FavouriteButton from "../../components/FavouriteButton";
@@ -20,12 +31,54 @@ import EntityFollowButton from "../../components/EntityFollowButton";
 // already in. The membership states are not collapsed into one status card:
 // each says a different thing to a different person, and merging them would
 // lose the difference between "waiting" and "not this time".
+//
+// WHAT CHANGED IN THE REBUILD
+//
+// Every one of those states was the same 2px-bordered box with a hard offset
+// shadow and a pill-shaped badge on top, the join form was a bordered textarea
+// with a filled-ink button under it, and the sessions -- the whole reason a club
+// is in the Happening tab -- were boxes with the date printed as body text.
+//
+// A membership state is the app telling you where you stand, which is what
+// Notice is: an edge in a state ink and a mono eyebrow, never a coloured box.
+// A SESSION is a dated thing, so it is a Row carrying the amber `scheduled`
+// edge with its time in the mono meta column, exactly like an event or a
+// Link-up. That is the point of this tab having one row shape.
 
 function formatDate(value){
   if(!value) return "Date to be confirmed";
   return new Date(value).toLocaleString([],{
     weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"
   });
+}
+
+// What the app measured about WHEN a session is, short enough for a Row's mono
+// meta column: "IN 2H", "TONIGHT 19:30", "SAT 12 SEP 19:30". The long form
+// stays under it -- the countdown tells you whether to care, the date tells you
+// what to write down.
+//
+// Written here rather than shared because utils/ is not this packet's to edit;
+// app/events/index.js holds the same shape for events. One of the two should
+// move into utils/ next time that file is open.
+function sessionClock(value,now=Date.now()){
+  if(!value) return "";
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+
+  const ms=date.getTime()-now;
+  const time=date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+
+  if(ms<=0) return "NOW";
+  if(ms<60*60*1000) return `IN ${Math.max(1,Math.round(ms/60000))}M`;
+  if(ms<6*60*60*1000) return `IN ${Math.round(ms/3600000)}H`;
+
+  const today=new Date(now);
+  if(date.toDateString()===today.toDateString()){
+    return `${date.getHours()>=17?"TONIGHT":"TODAY"} ${time}`;
+  }
+
+  const day=date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  return `${day.toUpperCase()} ${time}`;
 }
 
 function formatSubmittedDate(value){
@@ -184,7 +237,9 @@ export default function ActivityClubProfile(){
       photosEmptyLabel="No club photo yet"
       info={[
         {label:"WHAT",value:club?.category},
-        {label:"WHERE",value:club ? `📍 ${club.location || "Location"}${club.address ? `\n${club.address}` : ""}` : ""},
+        // Nothing welded to the front of the value -- the label already says
+        // which question the row answers.
+        {label:"WHERE",value:club ? `${club.location || "Location"}${club.address ? `\n${club.address}` : ""}` : ""},
         {label:"COST",value:club ? (Number(club.price)>0 ? `£${Number(club.price).toFixed(2)} per session` : "Free to attend") : ""}
       ]}
       stats={club ? [
@@ -222,141 +277,157 @@ export default function ActivityClubProfile(){
           */}
           <MessageButton targetType="activity_club" targetId={club.id}/>
           {isManager && (
-            <Pressable
-              style={styles.primary}
-              accessibilityRole="button"
+            <Action
+              kind="primary"
+              label="Open Manager Dashboard"
+              glyph="chart"
               accessibilityLabel="Open the manager dashboard"
               onPress={()=>router.push("/manager/dashboard")}
-            >
-              <Text style={styles.primaryText}>Open Manager Dashboard</Text>
-            </Pressable>
+            />
           )}
 
           {!isManager && canApply && !clubFull && (
-            <View style={styles.box}>
+            <Panel style={styles.box}>
               <Text style={styles.boxTitle}>{membership ? "Apply again" : "Request to join"}</Text>
               <Text style={styles.boxText}>
                 The manager must approve you before you can see or post on the private message board.
               </Text>
-              <TextInput
-                style={styles.noteInput}
-                placeholder="Optional message to the manager"
-                placeholderTextColor={INK.inkSoft}
-                value={applicationNote}
-                onChangeText={setApplicationNote}
-                multiline
-                maxLength={300}
-              />
-              <Pressable
-                style={styles.primary}
-                accessibilityRole="button"
+              <Field label="Message to the manager" hint="Optional. It is only read by whoever manages this club." style={styles.noteField}>
+                <TextInput
+                  style={[fieldInputStyle,styles.noteInput]}
+                  placeholder="Optional message to the manager"
+                  placeholderTextColor={INK.readoutFaint}
+                  accessibilityLabel="Optional message to the manager"
+                  value={applicationNote}
+                  onChangeText={setApplicationNote}
+                  multiline
+                  maxLength={300}
+                />
+              </Field>
+              <Action
+                kind="primary"
+                label={submitting ? "Sending application..." : "Send Join Request"}
+                glyph="send"
                 accessibilityLabel="Send join request"
                 onPress={applyToJoin}
                 disabled={submitting}
-              >
-                <Text style={styles.primaryText}>{submitting ? "Sending application..." : "Send Join Request"}</Text>
-              </Pressable>
-            </View>
+              />
+            </Panel>
           )}
 
           {!isManager && canApply && clubFull && (
-            <View style={styles.box}>
-              <Text style={styles.boxTitle}>Club currently full</Text>
-              <Text style={styles.boxText}>The manager has reached the approved member limit.</Text>
-            </View>
+            <Notice tone="scheduled" label="CLUB CURRENTLY FULL">
+              The manager has reached the approved member limit.
+            </Notice>
           )}
 
+          {/*
+            Five membership states, five different things to say, and they stay
+            five. Collapsing them into one status card would lose the difference
+            between "waiting" and "not this time", which is the difference a
+            person actually cares about. Each is a Notice: an edge in a state
+            ink and a mono eyebrow, so the state is legible without a coloured
+            box the labels then have to fight.
+          */}
           {!isManager && membership?.status==="pending" && (
-            <View style={styles.box}>
-              <Text style={styles.badge}>PENDING APPROVAL</Text>
+            <Notice tone="scheduled" label="PENDING APPROVAL">
               <Text style={styles.boxTitle}>Application submitted</Text>
               <Text style={styles.boxText}>
                 Waiting for the club manager to approve your request. You’ll get access to the
                 private message board once approved.
               </Text>
               {!!membership.applied_at && (
-                <Text style={styles.boxMeta}>Sent {formatSubmittedDate(membership.applied_at)}</Text>
+                <Text style={styles.boxMeta}>SENT {formatSubmittedDate(membership.applied_at).toUpperCase()}</Text>
               )}
               {!!membership.application_note && (
                 <View style={styles.noteBox}>
-                  <Text style={styles.noteLabel}>Your message</Text>
+                  <Text style={styles.noteLabel}>YOUR MESSAGE</Text>
                   <Text style={styles.boxText}>{membership.application_note}</Text>
                 </View>
               )}
-            </View>
+            </Notice>
           )}
 
           {!isManager && membership?.status==="approved" && (
-            <View style={styles.box}>
-              <Text style={styles.badge}>MEMBERSHIP APPROVED</Text>
+            <Notice tone="exists" label="MEMBERSHIP APPROVED">
               <Text style={styles.boxTitle}>You’re a member</Text>
               <Text style={styles.boxText}>Your private message-board access is now active.</Text>
-            </View>
+            </Notice>
           )}
 
           {!isManager && membership?.status==="rejected" && (
-            <View style={styles.box}>
-              <Text style={styles.boxTitle}>Application not approved</Text>
-              <Text style={styles.boxText}>
-                You can still view the public club profile and submit another request later.
-              </Text>
-            </View>
+            <Notice tone="dispute" label="APPLICATION NOT APPROVED">
+              You can still view the public club profile and submit another request later.
+            </Notice>
           )}
 
           {!isManager && membership?.status==="removed" && (
-            <View style={styles.box}>
-              <Text style={styles.badge}>MEMBERSHIP ENDED</Text>
+            <Notice tone="dispute" label="MEMBERSHIP ENDED">
               <Text style={styles.boxTitle}>Membership ended</Text>
               <Text style={styles.boxText}>
                 The club manager has ended your membership. You no longer have access to the
                 private message board, but you can apply again.
               </Text>
-            </View>
+            </Notice>
           )}
 
           {canOpenBoard && (
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
+            <Action
+              kind="secondary"
+              label="Open Members’ Message Board"
+              glyph="comment"
               accessibilityLabel="Open the members message board"
               onPress={()=>router.push(`/activity-clubs/message-board/${club.id}`)}
-            >
-              <Text style={styles.secondaryText}>Open Members’ Message Board</Text>
-            </Pressable>
+            />
           )}
 
           {canReview && (
-            <Pressable
-              style={styles.primary}
-              accessibilityRole="button"
+            <Action
+              kind="primary"
+              label="Leave an Activity Club Review"
+              glyph="star"
               accessibilityLabel="Leave an activity club review"
               onPress={openReview}
-            >
-              <Text style={styles.primaryText}>⭐ Leave an Activity Club Review</Text>
-            </Pressable>
+            />
           )}
 
-          <Text style={styles.sectionTitle}>Upcoming sessions</Text>
+          {/*
+            A session is a dated thing, so it is the same Row the events list
+            and the Link-ups list use, carrying the same amber `scheduled` edge
+            it carries on the map. This is what a club is FOR, and it used to be
+            three lines of body text in a box.
+          */}
+          <SectionRule label="Upcoming sessions" meta={String(sessions.length)}/>
           {sessions.length===0 && (
-            <Text style={styles.empty}>No sessions are scheduled yet. The manager adds them from the dashboard.</Text>
+            <Empty
+              title="No sessions scheduled"
+              instruction="No sessions are scheduled yet. The manager adds them from the dashboard."
+              glyph="calendar"
+            />
           )}
           {sessions.map((session)=>(
-            <View key={session.id} style={styles.box}>
-              <Text style={styles.boxTitle}>{session.title}</Text>
-              <Text style={styles.boxText}>{formatDate(session.starts_at)}</Text>
-              <Text style={styles.boxMeta}>Session capacity: {session.capacity}</Text>
-            </View>
+            <Row
+              key={session.id}
+              tone="scheduled"
+              glyph="clock"
+              title={session.title}
+              meta={sessionClock(session.starts_at)}
+              metaSub={session.capacity ? `${session.capacity} PLACES` : null}
+            >
+              <Text style={styles.rowWhen}>{formatDate(session.starts_at)}</Text>
+            </Row>
           ))}
 
-          <Text style={styles.sectionTitle}>Club announcements</Text>
+          <SectionRule label="Club announcements" meta={String(announcements.length)}/>
           {announcements.length===0 && (
-            <Text style={styles.empty}>Nothing announced yet. Anything the manager posts publicly appears here.</Text>
+            <Empty
+              title="Nothing announced"
+              instruction="Nothing announced yet. Anything the manager posts publicly appears here."
+              glyph="bell"
+            />
           )}
           {announcements.map((item)=>(
-            <View key={item.id} style={styles.box}>
-              <Text style={styles.boxTitle}>{item.title}</Text>
-              <Text style={styles.boxText}>{item.message}</Text>
-            </View>
+            <Row key={item.id} glyph="bell" title={item.title} sub={item.message}/>
           ))}
         </View>
       ) : null}
@@ -372,52 +443,24 @@ export default function ActivityClubProfile(){
 
 const styles=StyleSheet.create({
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
-  stack:{marginTop:24,gap:11},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginTop:13,letterSpacing:-0.3},
-  empty:{color:INK.inkSoft,lineHeight:20},
-  box:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    padding:14,
-    backgroundColor:INK.card,
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:0
+  stack:{marginTop:16,gap:10},
+  box:{padding:14},
+  boxTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  boxText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5,marginTop:6},
+  // Sent-at is a timestamp the app holds, so it is mono like every other
+  // measurement on this page.
+  boxMeta:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.8,marginTop:8
   },
-  badge:{
-    alignSelf:"flex-start",
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
-    overflow:"hidden",
-    paddingHorizontal:9,
-    paddingVertical:3,
-    fontSize:10,
-    fontWeight:"800",
-    color:INK.ink,
-    marginBottom:9
+  noteField:{marginTop:12,marginBottom:12},
+  noteInput:{minHeight:80,textAlignVertical:"top",paddingTop:11},
+  noteBox:{borderTopWidth:1,borderTopColor:INK.hairline,marginTop:11,paddingTop:9},
+  noteLabel:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:1
   },
-  boxTitle:{color:INK.ink,fontSize:17,fontWeight:"800"},
-  boxText:{color:INK.ink,lineHeight:21,marginTop:5},
-  boxMeta:{color:INK.inkSoft,fontSize:12,marginTop:7},
-  noteBox:{borderTopWidth:1,borderTopColor:INK.hair,marginTop:11,paddingTop:9},
-  noteLabel:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1},
-  noteInput:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:10,
-    padding:12,
-    marginTop:12,
-    minHeight:80,
-    textAlignVertical:"top",
-    color:INK.ink,
-    backgroundColor:INK.paper
-  },
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginTop:12},
-  primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card},
-  secondaryText:{color:INK.ink,fontWeight:"800"}
+  rowWhen:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.8,marginTop:6
+  }
 });

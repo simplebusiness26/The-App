@@ -104,12 +104,27 @@ function geometry(overprint){
   };
 }
 
-export default function PlaceMarker({marker,size=CANVAS}){
+export default function PlaceMarker({marker,size=CANVAS,tapFloor=true}){
   if(!marker) return null;
 
   const primitives=glyphPrimitives(marker.glyph) || [];
   const overprint=marker.overprint===true;
   const box=geometry(overprint);
+
+  // THE 44px FLOOR, WHICH THE PIN DID NOT MEET.
+  //
+  // docs/design-system.md, accessibility floor: "Minimum tap target 44px even
+  // where the visible pin is 34px." This file used to say the floor was the
+  // parent's to meet -- and the parent is a MapLibre <Marker>, which sizes
+  // itself to its child, so the touchable area of every pin on the map was
+  // exactly the 34px disc.
+  //
+  // So the footprint and the drawing are two boxes now: the outer one is the
+  // tap target and is never smaller than SHAPE.tapTarget, the inner one is
+  // still exactly `size` and draws exactly what it drew before. The disc stays
+  // centred in the footprint, so a marker anchored on its centre lands on the
+  // same coordinate it always did.
+  const footprint=tapFloor ? Math.max(size,SHAPE.tapTarget) : size;
 
   // Convert the main disc's position/radius from the Svg's own viewBox units
   // into rendered pixels, so the BlurView disc behind it lands exactly under
@@ -122,11 +137,17 @@ export default function PlaceMarker({marker,size=CANVAS}){
 
   return(
     <View
-      style={{width:size,height:size}}
+      style={{
+        width:footprint,
+        height:footprint,
+        alignItems:"center",
+        justifyContent:"center"
+      }}
       accessible
       accessibilityRole="image"
       accessibilityLabel={marker.label}
     >
+    <View style={{width:size,height:size}}>
       {/* The frosted-glass fill: a real blurred, translucent native view,
           sized and positioned to sit exactly under the Svg's border circle
           below. */}
@@ -201,6 +222,7 @@ export default function PlaceMarker({marker,size=CANVAS}){
           )}
         </G>
       </Svg>
+    </View>
     </View>
   );
 }

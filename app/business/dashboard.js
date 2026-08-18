@@ -1,30 +1,36 @@
 import React,{useState,useCallback} from "react";
-
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView
-} from "react-native";
+import {View,Text,StyleSheet,ScrollView} from "react-native";
+import {router,useFocusEffect} from "expo-router";
 
 import {supabase} from "../../services/supabase";
 import {classificationLabel} from "../../utils/taxonomy";
-
-import {router} from "expo-router";
-
-import {useFocusEffect} from "expo-router";
-
 import QRCodeGenerator from "../../components/QRCodeGenerator";
 import GateNotice from "../../components/GateNotice";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {useManagerGate} from "../../hooks/useManagerGate";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  KeyValue,
+  MONO,
+  Panel,
+  ReadoutStrip,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
 
 // Reached from Me -> My Places -> "Open Business Dashboard", once at least one
 // business is enabled -- per FINAL_PRODUCT_CONTRACT.md's routeCoverage, this
 // is the per-listing-row detail behind that capability card, not a screen
 // with a skin of its own. useManagerGate still refuses a direct visit from
 // somebody who manages nothing (see GateNotice).
+//
+// It is an instrument panel: a readout strip for the totals, an etched rule per
+// group, and one machined plate per listing. The old version drew its own card
+// with a 2px border and a hard offset shadow, which is what a listing looked
+// like under the print system.
 export default function BusinessDashboard(){
   // Packet 4: entitlement is decided by public.manages_any_listing() in the
   // database, not by the drawer having hidden the row that leads here.
@@ -74,82 +80,110 @@ export default function BusinessDashboard(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Business Dashboard</Text>
-      <Text style={styles.subtitle}>{status}</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenTitle
+          eyebrow="Manager"
+          title="Business dashboard"
+          meta={status}
+        />
 
-      {businesses.length===0 && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
-            No businesses yet. Add your first business listing below.
-          </Text>
+        <View style={styles.body}>
+          <ReadoutStrip
+            items={[
+              {label:"Listings",value:String(businesses.length)},
+              {label:"Codes live",value:String(businesses.length)}
+            ]}
+          />
+
+          <SectionRule label="Your businesses" meta={String(businesses.length)}/>
+
+          {businesses.length===0 ? (
+            <Empty
+              glyph="building"
+              title="No businesses yet"
+              instruction="Add your first business listing and its customer QR code is generated with it."
+            />
+          ) : businesses.map((business)=>(
+            <Panel key={business.id} style={styles.card}>
+              <View style={styles.head}>
+                <Text style={styles.headKind}>Business</Text>
+                <View style={styles.headLine}/>
+              </View>
+
+              <Text style={styles.name} numberOfLines={2}>{business.name}</Text>
+
+              <KeyValue label="Classified" value={classificationLabel(business)}/>
+
+              <View style={styles.qrRow}>
+                <QRCodeGenerator businessId={business.id} size={104}/>
+                <View style={styles.qrCopy}>
+                  <Text style={styles.qrLabel}>Customer QR code</Text>
+                  <Text style={styles.qrHint}>
+                    Explorers scan this on site, and the review they leave counts as a verified visit.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.buttons}>
+                <Action
+                  kind="secondary"
+                  glyph="edit"
+                  label="Edit"
+                  accessibilityLabel={`Edit ${business.name}`}
+                  onPress={()=>router.push(`/business/edit/${business.id}`)}
+                  style={styles.button}
+                />
+                <Action
+                  kind="secondary"
+                  glyph="external"
+                  label="Public profile"
+                  accessibilityLabel={`View ${business.name}'s public profile`}
+                  onPress={()=>router.push(`/business/${business.id}`)}
+                  style={styles.button}
+                />
+              </View>
+            </Panel>
+          ))}
+
+          <Action
+            kind="primary"
+            glyph="plus"
+            label="Add a business listing"
+            accessibilityLabel="Add a business listing"
+            onPress={()=>router.push("/business/add")}
+            style={styles.add}
+          />
         </View>
-      )}
-
-      {businesses.map((business)=>(
-        <View key={business.id} style={styles.card}>
-          <Text style={styles.name}>{business.name}</Text>
-          <Text style={styles.cardSub}>{classificationLabel(business)}</Text>
-
-          <View style={styles.qrSection}>
-            <View style={styles.qrPreview}>
-              <QRCodeGenerator businessId={business.id}/>
-            </View>
-            <Text style={styles.qrHint}>Customer QR code</Text>
-          </View>
-
-          <View style={styles.buttonRow}>
-            <Pressable
-              style={styles.secondaryButton}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit ${business.name}`}
-              onPress={()=>router.push(`/business/edit/${business.id}`)}
-            >
-              <Text style={styles.secondaryButtonText}>Edit</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.darkButton}
-              accessibilityRole="button"
-              accessibilityLabel={`View ${business.name}'s public profile`}
-              onPress={()=>router.push(`/business/${business.id}`)}
-            >
-              <Text style={styles.buttonText}>Public profile</Text>
-            </Pressable>
-          </View>
-        </View>
-      ))}
-
-      <Pressable
-        style={styles.addButton}
-        accessibilityRole="button"
-        accessibilityLabel="Add a business listing"
-        onPress={()=>router.push("/business/add")}
-      >
-        <Text style={styles.addButtonText}>➕ Add Business Listing</Text>
-      </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},
-  content:{padding:20,paddingBottom:50},
-  title:{fontSize:28,fontWeight:"900",color:INK.ink},
-  subtitle:{fontSize:14,color:INK.inkSoft,marginTop:6,marginBottom:18},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.hair,borderWidth:1.5,borderRadius:14,padding:18},
-  emptyText:{color:INK.inkSoft,lineHeight:20},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:16,marginTop:16,shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
-  name:{fontSize:19,fontWeight:"900",color:INK.ink},
-  cardSub:{color:INK.inkSoft,fontSize:13,marginTop:4},
-  qrSection:{flexDirection:"row",alignItems:"center",gap:14,marginTop:14,paddingTop:14,borderTopWidth:1.5,borderTopColor:INK.hair},
-  qrPreview:{padding:6,backgroundColor:INK.card,borderRadius:8},
-  qrHint:{color:INK.inkSoft,fontSize:12,flex:1},
-  buttonRow:{flexDirection:"row",gap:10,marginTop:14},
-  darkButton:{flex:1,backgroundColor:INK.ink,padding:13,borderRadius:10,alignItems:"center"},
-  secondaryButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,padding:13,borderRadius:10,alignItems:"center"},
-  secondaryButtonText:{color:INK.ink,fontWeight:"800"},
-  addButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:2,padding:16,borderRadius:12,marginTop:22},
-  addButtonText:{color:INK.card,textAlign:"center",fontWeight:"900"},
-  buttonText:{color:INK.card,textAlign:"center",fontWeight:"800"}
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+
+  card:{padding:14,marginBottom:10},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
+
+  qrRow:{
+    flexDirection:"row",alignItems:"center",gap:14,marginTop:12,paddingTop:12,
+    borderTopWidth:SHAPE.border,borderTopColor:INK.hairline
+  },
+  qrCopy:{flex:1,minWidth:0},
+  qrLabel:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md},
+  qrHint:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:5
+  },
+
+  buttons:{flexDirection:"row",gap:9,marginTop:12},
+  button:{flex:1},
+  add:{marginTop:14}
 });

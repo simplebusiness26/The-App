@@ -1,10 +1,10 @@
 import React,{useCallback,useState} from "react";
-import {Text,Pressable,StyleSheet,Linking,View} from "react-native";
+import {StyleSheet,Linking,View} from "react-native";
 import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {loadPlaceReviews} from "../../utils/reviews";
 import {PROPERTY_TYPE_LABEL} from "../../utils/markers";
-import {INK} from "../../utils/tokens";
+import {Action} from "../../components/instrument";
 import {nearestFirst} from "../../utils/geo";
 import PlaceLayout from "../../components/PlaceLayout";
 import MessageButton from "../../components/MessageButton";
@@ -115,13 +115,18 @@ export default function PropertyDetails(){
       error={error}
       name={property?.name}
       typeLabel={PROPERTY_TYPE_LABEL}
-      verifiedLabel={property?.owner_id ? "✓ VERIFIED PROPERTY" : ""}
+      // The tick is drawn by the layout now -- an emoji tick carried its own
+      // colour and weight onto a two-colour instrument face.
+      verifiedLabel={property?.owner_id ? "VERIFIED PROPERTY" : ""}
       description={property?.description}
       photos={photos}
       photosEmptyLabel="No property photos uploaded yet"
+      // No emoji in front of a value. The label already says which field this
+      // is, and a pin stuck to the front of the answer was saying it a second
+      // time in somebody else's house style.
       info={[
         {label:"HOST",value:property?.host ? `Hosted by ${property.host}` : ""},
-        {label:"ADDRESS",value:property?.address ? `📍 ${property.address}` : ""}
+        {label:"ADDRESS",value:property?.address || ""}
       ]}
       rating={property ? {
         average,
@@ -146,14 +151,14 @@ export default function PropertyDetails(){
         )
       } : null}
       ownerAction={isOwner ? (
-        <Pressable
-          style={styles.editButton}
-          accessibilityRole="button"
+        <Action
+          kind="quiet"
+          label="Edit"
+          glyph="edit"
           accessibilityLabel="Edit this property"
+          style={styles.editButton}
           onPress={()=>router.push(`/property/edit/${propertyId}`)}
-        >
-          <Text style={styles.editText}>Edit</Text>
-        </Pressable>
+        />
       ) : null}
       actions={property ? (
         <>
@@ -166,34 +171,37 @@ export default function PropertyDetails(){
             <MessageButton targetType="property" targetId={property.id}/>
           </View>
           {!!property.booking_url && (
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
+            <Action
+              kind="secondary"
+              label="Open Booking Page"
+              glyph="external"
               accessibilityLabel="Open the booking page"
+              style={styles.secondary}
               onPress={openBookingPage}
-            >
-              <Text style={styles.secondaryText}>Open Booking Page</Text>
-            </Pressable>
+            />
           )}
 
-          <Pressable
-            style={styles.primary}
-            accessibilityRole="button"
+          {/* The one filled control on the page, and the only thing allowed to
+              carry a state ink -- with dark text on it, per the contrast table
+              in docs/design-system.md. */}
+          <Action
+            kind="primary"
+            label="Leave a Property Review"
+            glyph="star"
             accessibilityLabel="Leave a property review"
+            style={styles.primary}
             onPress={()=>router.push(`/property/review/${propertyId}`)}
-          >
-            <Text style={styles.primaryText}>⭐ Leave a Property Review</Text>
-          </Pressable>
+          />
 
           {isOwner && (
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
+            <Action
+              kind="secondary"
+              label="Open Printable Verified-Review QR"
+              glyph="qr"
               accessibilityLabel="Open the printable verified-review QR"
+              style={styles.secondary}
               onPress={()=>router.push(`/manager/qr/property/${propertyId}`)}
-            >
-              <Text style={styles.secondaryText}>Open Printable Verified-Review QR</Text>
-            </Pressable>
+            />
           )}
 
           {canClaim && !property.owner_id && <ClaimButton propertyId={propertyId}/>}
@@ -217,10 +225,7 @@ export default function PropertyDetails(){
 const styles=StyleSheet.create({
   messageManagerRow:{marginBottom:10,alignItems:"flex-start"},
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
-  editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
-  editText:{color:INK.ink,fontWeight:"800"},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginBottom:10},
-  primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card,marginBottom:10},
-  secondaryText:{color:INK.ink,fontWeight:"800"}
+  editButton:{marginLeft:10,paddingHorizontal:12},
+  primary:{marginBottom:10},
+  secondary:{marginBottom:10}
 });

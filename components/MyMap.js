@@ -1,10 +1,11 @@
 import React,{useCallback,useState} from "react";
-import {View,Text,StyleSheet,Pressable,ActivityIndicator} from "react-native";
+import {View,Text,StyleSheet,ActivityIndicator} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import MemoryPins from "./MemoryPins";
-import {INK} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
 import {hasCoordinates} from "../utils/coordinates";
+import {Action,Empty,Notice,SectionRule} from "./instrument";
 
 // Packet 8b: My Map.
 //
@@ -87,36 +88,44 @@ export default function MyMap({ownerId,viewerId}){
 
   return(
     <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My Map</Text>
-        <Text style={styles.count}>{plottable.length}</Text>
-      </View>
+      {/* An etched rule with the reading on it, not a 23px bold heading with a
+          number floating beside it. The count is what the app measured, so it
+          sits on the rule in mono where every other count in this app sits. */}
+      <SectionRule label="My Map" meta={String(plottable.length)}/>
+
+      {/* A privacy control reads as a sentence about people (design-system.md,
+          Copy), so this one stays in the body face rather than becoming a mono
+          status line. */}
       <Text style={styles.subtitle}>Only you can see this map.</Text>
 
-      {loading && <ActivityIndicator color={INK.blue}/>}
+      {loading && <ActivityIndicator color={INK.readoutSoft} style={styles.waiting}/>}
 
-      {!loading && !!error && <View style={styles.card}><Text style={styles.body}>{error}</Text></View>}
+      {/* An edge and a mono eyebrow, never a coloured box with the message
+          fighting it. `agree` and `dispute` are a manager's two answers to a
+          review and are explicitly not generic error colours. */}
+      {!loading && !!error && <Notice tone="scheduled" label="NO READING">{error}</Notice>}
 
       {!loading && !error && !plottable.length && (
-        <View style={styles.card}>
-          <Text style={styles.body}>
-            Take a photo of a place you went, keep it as a Memory, and it will appear here on your own map.
-          </Text>
-          {/*
-            Opens the camera, not an uploader. This button used to go straight
-            to /memories/create -- a second way to make a Memory that never went
-            near the camera. A display surface may offer a SHORTCUT to the
-            camera; it may not become a creation surface of its own.
-          */}
-          <Pressable
-            style={styles.action}
-            accessibilityRole="button"
-            accessibilityLabel="Open the camera"
-            onPress={()=>router.push("/camera")}
-          >
-            <Text style={styles.actionText}>Open the camera</Text>
-          </Pressable>
-        </View>
+        <Empty
+          glyph="camera"
+          title="No Memories on your map yet"
+          instruction="Take a photo of a place you went, keep it as a Memory, and it will appear here on your own map."
+          action={(
+            /*
+              Opens the camera, not an uploader. This button used to go straight
+              to /memories/create -- a second way to make a Memory that never
+              went near the camera. A display surface may offer a SHORTCUT to
+              the camera; it may not become a creation surface of its own.
+            */
+            <Action
+              kind="primary"
+              label="Open the camera"
+              glyph="camera"
+              accessibilityLabel="Open the camera"
+              onPress={()=>router.push("/camera")}
+            />
+          )}
+        />
       )}
 
       {/*
@@ -134,13 +143,13 @@ export default function MyMap({ownerId,viewerId}){
 
 const styles=StyleSheet.create({
   wrap:{marginTop:27},
-  header:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:4},
-  title:{color:INK.card,fontSize:23,fontWeight:"900"},
-  count:{color:INK.blue,fontWeight:"900"},
-  subtitle:{color:INK.inkSoft,fontSize:12,fontWeight:"700",marginBottom:11},
-  card:{backgroundColor:INK.ink,borderColor:INK.inkSoft,borderWidth:1,borderRadius:14,padding:18},
-  body:{color:INK.hair,lineHeight:20},
-  action:{backgroundColor:INK.blue,borderRadius:11,paddingVertical:12,alignItems:"center",marginTop:13},
-  actionText:{color:INK.card,fontWeight:"900"},
-  note:{color:INK.inkSoft,fontSize:12,marginTop:9}
+  subtitle:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginBottom:12
+  },
+  waiting:{marginVertical:18},
+  note:{
+    color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:10
+  }
 });

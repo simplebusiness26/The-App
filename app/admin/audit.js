@@ -1,10 +1,31 @@
 import React,{useCallback,useMemo,useState} from "react";
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {useFocusEffect} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {useAdminGate} from "../../hooks/useAdminGate";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Field,
+  fieldInputStyle,
+  KeyValue,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+
+// The append-only history of admin decisions.
+//
+// Every field on this screen is something the app recorded -- who, what, to
+// what, when -- except the reason, which a person typed. So everything is mono
+// except the reason, and that split is the whole layout: the head strip reads
+// like a log line and the reason reads like a sentence.
 
 const PAGE_SIZE=25;
 const AUDIT_COLUMNS="id,actor_id,action,target_type,target_id,reason,created_at";
@@ -89,156 +110,167 @@ export default function AdminAudit(){
 
   if(checking){
     return(
-      <View style={styles.fullState}>
-        <ActivityIndicator size="large" color={INK.ink}/>
+      <Screen style={styles.fullState}>
+        <ActivityIndicator size="large" color={INK.readout}/>
         <Text style={styles.stateText}>Checking admin access…</Text>
-      </View>
+      </Screen>
     );
   }
 
   if(!allowed){
     return(
-      <View style={styles.fullState}>
-        <Text style={styles.deniedTitle}>Admin access required</Text>
-        <Text style={styles.stateText}>
-          {gateError || "An admin account is required to open this screen."}
-        </Text>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Admin" title="Admin access required"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Refused">
+            {gateError || "An admin account is required to open this screen."}
+          </Notice>
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView
-      style={styles.screen}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[styles.content,{paddingBottom:Math.max(insets.bottom,24)+40}]}
-    >
-      <Text style={styles.eyebrow}>ADMIN AUDIT</Text>
-      <Text style={styles.title}>Audit history</Text>
-      <Text style={styles.intro}>
-        An append-only history of admin decisions. This screen cannot create, edit or delete audit records.
-      </Text>
+    <Screen>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{paddingBottom:Math.max(insets.bottom,24)+CREATE_HUB_CLEARANCE}}
+      >
+        <ScreenTitle
+          eyebrow="Admin audit"
+          title="Audit history"
+          meta="An append-only history of admin decisions. This screen cannot create, edit or delete audit records."
+        />
 
-      {loading ? (
-        <View style={styles.panel}>
-          <ActivityIndicator size="small" color={INK.ink}/>
-          <Text style={styles.panelText}>Loading audit history…</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorPanel} accessibilityRole="alert">
-          <Text style={styles.errorTitle}>Audit history could not be loaded</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try loading audit history again"
-            onPress={load}
-            style={({pressed})=>[styles.primaryButton,pressed && styles.pressed]}
-          >
-            <Text style={styles.primaryButtonText}>Try again</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <TextInput
-            accessibilityLabel="Search audit history"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={setSearch}
-            placeholder="Search this page"
-            placeholderTextColor={INK.inkSoft}
-            style={styles.searchInput}
-            value={search}
-          />
-
-          <Text style={styles.resultCount}>
-            {`${visible.length} shown · ${total} records · Page ${page+1} of ${pageCount}`}
-          </Text>
-
-          {visible.length===0 ? (
-            <View style={styles.emptyPanel}>
-              <Text style={styles.emptyTitle}>{entries.length ? "No audit records match" : "No audit records yet"}</Text>
-              <Text style={styles.emptyText}>
-                {entries.length ? "Try another search on this page." : "Audited admin decisions will appear here."}
-              </Text>
+        <View style={styles.body}>
+          {loading ? (
+            <Panel style={styles.panel}>
+              <ActivityIndicator size="small" color={INK.readout}/>
+              <Text style={styles.panelText}>Loading audit history…</Text>
+            </Panel>
+          ) : error ? (
+            <View accessibilityRole="alert">
+              <Notice
+                tone="exists"
+                label="Audit history could not be loaded"
+                action={
+                  <Action
+                    kind="secondary"
+                    glyph="refresh"
+                    label="Try again"
+                    accessibilityLabel="Try loading audit history again"
+                    onPress={load}
+                  />
+                }
+              >
+                {error}
+              </Notice>
             </View>
-          ) : visible.map((entry)=>(
-            <View key={entry.id} style={styles.card}>
-              <View style={styles.cardTop}>
-                <View style={styles.cardCopy}>
+          ) : (
+            <>
+              <Field label="Search this page">
+                <TextInput
+                  accessibilityLabel="Search audit history"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onChangeText={setSearch}
+                  placeholder="Search this page"
+                  placeholderTextColor={INK.readoutFaint}
+                  style={fieldInputStyle}
+                  value={search}
+                />
+              </Field>
+
+              <SectionRule label="Records" meta={String(visible.length)}/>
+
+              <Text style={styles.resultCount}>
+                {`${visible.length} shown · ${total} records · Page ${page+1} of ${pageCount}`}
+              </Text>
+
+              {visible.length===0 ? (
+                <Empty
+                  glyph="clipboard"
+                  title={entries.length ? "No audit records match" : "No audit records yet"}
+                  instruction={entries.length
+                    ? "Try another search on this page."
+                    : "Audited admin decisions will appear here."}
+                />
+              ) : visible.map((entry)=>(
+                <Panel key={entry.id} style={styles.card}>
+                  <View style={styles.head}>
+                    <Text style={styles.headKind}>Audit</Text>
+                    <View style={styles.headLine}/>
+                    <Text style={styles.headTime} numberOfLines={1}>{dateLabel(entry.created_at)}</Text>
+                  </View>
+
                   <Text style={styles.action}>{pretty(entry.action)}</Text>
                   <Text style={styles.actor}>{entry.actor_name}</Text>
-                </View>
-                <Text style={styles.date}>{dateLabel(entry.created_at)}</Text>
-              </View>
-              <Text style={styles.target}>{`${pretty(entry.target_type)} · ${entry.target_id}`}</Text>
-              <Text style={styles.label}>RECORDED REASON</Text>
-              <Text style={styles.reason}>{entry.reason}</Text>
-            </View>
-          ))}
 
-          <View style={styles.pagination}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Previous audit page"
-              disabled={page===0}
-              onPress={()=>setPage((current)=>Math.max(0,current-1))}
-              style={({pressed})=>[styles.pageButton,pressed && styles.pressed,page===0 && styles.disabled]}
-            >
-              <Text style={styles.pageButtonText}>Previous</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Next audit page"
-              disabled={page+1>=pageCount}
-              onPress={()=>setPage((current)=>current+1)}
-              style={({pressed})=>[
-                styles.pageButton,
-                pressed && styles.pressed,
-                page+1>=pageCount && styles.disabled
-              ]}
-            >
-              <Text style={styles.pageButtonText}>Next</Text>
-            </Pressable>
-          </View>
-        </>
-      )}
-    </ScrollView>
+                  <KeyValue label={pretty(entry.target_type)} value={String(entry.target_id)}/>
+
+                  <Text style={styles.label}>Recorded reason</Text>
+                  <Text style={styles.reason}>{entry.reason}</Text>
+                </Panel>
+              ))}
+
+              <View style={styles.pagination}>
+                <Action
+                  kind="secondary"
+                  glyph="back"
+                  label="Previous"
+                  accessibilityLabel="Previous audit page"
+                  disabled={page===0}
+                  onPress={()=>setPage((current)=>Math.max(0,current-1))}
+                  style={styles.pageButton}
+                />
+                <Action
+                  kind="secondary"
+                  glyph="forward"
+                  label="Next"
+                  accessibilityLabel="Next audit page"
+                  disabled={page+1>=pageCount}
+                  onPress={()=>setPage((current)=>current+1)}
+                  style={styles.pageButton}
+                />
+              </View>
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{paddingHorizontal:20,paddingTop:28},
-  fullState:{flex:1,alignItems:"center",justifyContent:"center",gap:12,padding:32,backgroundColor:INK.paper},
-  stateText:{maxWidth:320,color:INK.inkSoft,fontSize:16,lineHeight:23,textAlign:"center"},
-  deniedTitle:{color:INK.ink,fontSize:24,fontWeight:"800"},
-  eyebrow:{color:INK.inkSoft,fontSize:12,fontWeight:"800",letterSpacing:1.4,marginBottom:9},
-  title:{color:INK.ink,fontSize:34,fontWeight:"900",letterSpacing:-1.2,lineHeight:38},
-  intro:{color:INK.inkSoft,fontSize:16,lineHeight:23,marginBottom:20,marginTop:10},
-  panel:{minHeight:150,alignItems:"center",justifyContent:"center",gap:12,borderColor:INK.hair,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:24},
-  panelText:{color:INK.inkSoft,fontSize:15},
-  errorPanel:{borderColor:INK.ink,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:22},
-  errorTitle:{color:INK.ink,fontSize:21,fontWeight:"800"},
-  errorText:{color:INK.inkSoft,fontSize:15,lineHeight:22,marginTop:8},
-  primaryButton:{minHeight:48,alignItems:"center",justifyContent:"center",borderRadius:14,backgroundColor:INK.ink,marginTop:18,paddingHorizontal:18,paddingVertical:12},
-  primaryButtonText:{color:INK.ink,fontSize:16,fontWeight:"800"},
-  searchInput:{minHeight:52,borderColor:INK.ink,borderRadius:16,borderWidth:1,backgroundColor:INK.card,color:INK.ink,fontSize:16,paddingHorizontal:16,paddingVertical:12},
-  resultCount:{color:INK.inkSoft,fontSize:13,fontWeight:"700",marginBottom:10,marginTop:13},
-  emptyPanel:{alignItems:"center",borderColor:INK.hair,borderRadius:20,borderWidth:1,backgroundColor:INK.card,padding:30},
-  emptyTitle:{color:INK.ink,fontSize:20,fontWeight:"800"},
-  emptyText:{color:INK.inkSoft,fontSize:14,lineHeight:20,marginTop:6,textAlign:"center"},
-  card:{borderColor:INK.hair,borderRadius:18,borderWidth:1,backgroundColor:INK.card,marginBottom:10,padding:17},
-  cardTop:{flexDirection:"row",alignItems:"flex-start",gap:10},
-  cardCopy:{flex:1},
-  action:{color:INK.ink,fontSize:18,fontWeight:"900"},
-  actor:{color:INK.inkSoft,fontSize:14,fontWeight:"700",marginTop:4},
-  date:{maxWidth:116,color:INK.inkSoft,fontSize:12,lineHeight:17,textAlign:"right"},
-  target:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:12},
-  label:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1,marginTop:14},
-  reason:{color:INK.ink,fontSize:14,lineHeight:21,marginTop:5},
-  pagination:{flexDirection:"row",gap:10,marginTop:8},
-  pageButton:{minHeight:48,flex:1,alignItems:"center",justifyContent:"center",borderColor:INK.ink,borderRadius:14,borderWidth:1,paddingHorizontal:14},
-  pageButtonText:{color:INK.ink,fontSize:14,fontWeight:"800"},
-  pressed:{opacity:0.72},
-  disabled:{opacity:0.4}
+  body:{paddingHorizontal:16},
+  fullState:{alignItems:"center",justifyContent:"center",gap:12,padding:32},
+  stateText:{
+    maxWidth:320,color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,textAlign:"center"
+  },
+
+  panel:{minHeight:140,alignItems:"center",justifyContent:"center",gap:12,padding:24},
+  panelText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md},
+
+  resultCount:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginBottom:10},
+
+  card:{padding:14,marginBottom:9},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headTime:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,flexShrink:1,maxWidth:140},
+
+  action:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
+  actor:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,marginTop:3},
+
+  label:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:11},
+  reason:{
+    color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,marginTop:5
+  },
+
+  pagination:{flexDirection:"row",gap:9,marginTop:6},
+  pageButton:{flex:1}
 });

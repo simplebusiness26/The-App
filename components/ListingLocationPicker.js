@@ -1,18 +1,12 @@
 import React,{useEffect,useState} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator
-} from "react-native";
+import {View,Text,TextInput,StyleSheet} from "react-native";
 import * as Location from "expo-location";
 import {supabase} from "../services/supabase";
 import {coordinate} from "../utils/coordinates";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
 import ListingPinMap from "./ListingPinMap";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {Action,Field,fieldInputStyle,Glyph,MONO,Notice,Row,SectionRule} from "./instrument";
 
 // The manager-form location control: FINAL_PRODUCT_CONTRACT.md's "device-
 // location-prefilled draggable pin instead of typed coordinates", used
@@ -168,92 +162,118 @@ export default function ListingLocationPicker({
 
   return(
     <View style={styles.container}>
-      <Text style={styles.label}>Location</Text>
-      <Text style={styles.help}>
-        Search for the address, use your current position, or drag the pin to the
-        exact spot. The pin is what gets saved.
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Address or postcode"
-        placeholderTextColor={INK.inkSoft}
-        value={query}
-        onChangeText={(text)=>{
-          setQuery(text);
-          setAddress(text);
-          setResults([]);
-          if(pin) emit(pin);
-        }}
-        autoCapitalize="words"
-      />
+      <Field
+        label="Location"
+        hint="Search for the address, use your current position, or drag the pin to the exact spot. The pin is what gets saved."
+      >
+        <TextInput
+          style={fieldInputStyle}
+          placeholder="Address or postcode"
+          placeholderTextColor={INK.readoutFaint}
+          value={query}
+          accessibilityLabel="Address or postcode"
+          onChangeText={(text)=>{
+            setQuery(text);
+            setAddress(text);
+            setResults([]);
+            if(pin) emit(pin);
+          }}
+          autoCapitalize="words"
+        />
+      </Field>
 
       <View style={styles.actionsRow}>
-        <Pressable
-          style={[styles.searchButton,searching && styles.disabled]}
-          accessibilityRole="button"
+        <Action
+          kind="primary"
+          label="Find address"
+          glyph="search"
           accessibilityLabel="Find address"
-          onPress={searchAddress}
+          style={styles.action}
+          loading={searching}
           disabled={searching || query.trim().length<4}
-        >
-          {searching ? <ActivityIndicator color={INK.card}/> : <Text style={styles.searchButtonText}>Find address</Text>}
-        </Pressable>
+          onPress={searchAddress}
+        />
 
-        <Pressable
-          style={[styles.locateButton,locating && styles.disabled]}
-          accessibilityRole="button"
+        {/* The emoji pin that opened this button carried its own colour and
+            weight onto the housing. It is the drawn glyph every other control
+            in the app uses now. */}
+        <Action
+          kind="secondary"
+          label="Use my location"
+          glyph="target"
           accessibilityLabel="Use my current location"
-          onPress={useMyLocation}
+          style={styles.action}
+          loading={locating}
           disabled={locating}
-        >
-          {locating ? <ActivityIndicator color={INK.ink}/> : <Text style={styles.locateButtonText}>📍 Use my location</Text>}
-        </Pressable>
+          onPress={useMyLocation}
+        />
       </View>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && (
+        <View accessibilityRole="alert" style={styles.problem}>
+          <Notice tone="scheduled" label="ADDRESS">{error}</Notice>
+        </View>
+      )}
+
+      {!!results.length && <SectionRule label="Matches" meta={String(results.length)}/>}
 
       {results.map((item)=>(
-        <Pressable key={item.id} style={styles.result} onPress={()=>chooseResult(item)}>
-          <Text style={styles.resultTitle}>{item.town || item.postcode || "UK location"}</Text>
-          <Text style={styles.resultAddress}>{item.label}</Text>
-        </Pressable>
+        <Row
+          key={item.id}
+          glyph="pin"
+          title={item.town || item.postcode || "UK location"}
+          sub={item.label}
+          onPress={()=>chooseResult(item)}
+        />
       ))}
 
+      {/* The map is a live image, so it sits behind viewfinder brackets like
+          every other live image in this app. */}
       <View style={styles.mapWrap}>
         <ListingPinMap latitude={mapCentre.latitude} longitude={mapCentre.longitude} onDragEnd={dragPin}/>
       </View>
 
-      {pin ? (
-        <Text style={styles.selectedText}>
-          ✓ Pin set — drag it to fine-tune the exact spot.
+      <View style={styles.pinState}>
+        {pin ? <Glyph name="check" size={13} colour={INK.readoutSoft} weight={1.8}/> : <Glyph name="info" size={13} colour={INK.readoutFaint}/>}
+        <Text style={styles.pinStateText}>
+          {pin
+            ? "Pin set — drag it to fine-tune the exact spot."
+            : "No pin yet. Search, use your location, or drag the map above once it moves."}
         </Text>
-      ) : (
-        <Text style={styles.selectedText}>
-          No pin yet. Search, use your location, or drag the map above once it moves.
-        </Text>
-      )}
+      </View>
 
       <Text style={styles.attribution}>Address search data © OpenStreetMap contributors</Text>
     </View>
   );
 }
 
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
+
 const styles=StyleSheet.create({
   container:{marginBottom:18},
-  label:{fontSize:17,fontWeight:"900",color:INK.ink,marginBottom:5},
-  help:{color:INK.inkSoft,lineHeight:20,marginBottom:10,fontSize:13},
-  input:{backgroundColor:INK.card,borderWidth:1.5,borderColor:INK.hair,borderRadius:11,padding:14,color:INK.ink},
-  actionsRow:{flexDirection:"row",gap:8,marginTop:9},
-  searchButton:{flex:1,backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:2,padding:13,borderRadius:10,alignItems:"center"},
-  locateButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,padding:13,borderRadius:10,alignItems:"center"},
-  disabled:{opacity:0.55},
-  searchButtonText:{color:INK.card,fontWeight:"800"},
-  locateButtonText:{color:INK.ink,fontWeight:"800"},
-  error:{color:INK.ink,marginTop:9,fontSize:12,lineHeight:18},
-  result:{backgroundColor:INK.card,borderWidth:1.5,borderColor:INK.ink,borderRadius:10,padding:13,marginTop:9},
-  resultTitle:{fontWeight:"900",marginBottom:4,color:INK.ink},
-  resultAddress:{color:INK.ink,lineHeight:19,fontSize:13},
-  mapWrap:{marginTop:12},
-  selectedText:{marginTop:9,color:INK.inkSoft,fontSize:12,lineHeight:18},
-  attribution:{fontSize:11,color:INK.inkSoft,marginTop:8}
+
+  actionsRow:{flexDirection:"row",gap:8},
+  action:{flex:1},
+
+  problem:{marginTop:12},
+
+  mapWrap:{
+    marginTop:14,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,
+    overflow:"hidden",
+    backgroundColor:INK.inset
+  },
+
+  pinState:{flexDirection:"row",alignItems:"flex-start",gap:7,marginTop:10},
+  pinStateText:{
+    flex:1,color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5
+  },
+
+  attribution:{
+    ...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.6,marginTop:12
+  }
 });

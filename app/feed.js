@@ -1,11 +1,13 @@
 import React,{useCallback,useRef,useState} from "react";
-import {ActivityIndicator,FlatList,Pressable,RefreshControl,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,FlatList,RefreshControl,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FeedCard,{listingRoute} from "../components/FeedCard";
 import Explorers from "./explorers";
 import Leaderboards from "./leaderboards";
-import {INK} from "../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
+import {INK,TYPE} from "../utils/tokens";
+import {Action,Empty,MONO,Notice,Screen,ScreenTitle,Segmented} from "../components/instrument";
 
 // The Community tab's container. FINAL_PRODUCT_CONTRACT.md's architecture
 // section folds Feed, Explorers and Leaderboard into ONE destination --
@@ -33,6 +35,12 @@ import {INK} from "../utils/tokens";
 // wrong, only less immediate than a segment switch would be. Tapping the
 // Community tab a second time, or the segmented control itself, is the
 // one-tap in-place path the contract actually asks for.
+//
+// THE SELECTOR IS A DETENTED SWITCH, NOT THREE PILLS. Three filled pills with
+// hard offset shadows said "the segment you are on is a state a place is in",
+// which is the one thing the state inks are for. The kit's Segmented marks the
+// active detent with a bright tick and a brightened label instead -- selection
+// as a step up, never as a fill. See docs/design-system.md, rule 5.
 const SEGMENTS=[
   {key:"feed",label:"Feed"},
   {key:"explorers",label:"Explorers"},
@@ -55,23 +63,9 @@ export default function Community(){
   }
 
   return(
-    <View style={communityStyles.root}>
-      <View style={communityStyles.segmentBar} accessibilityRole="tablist">
-        {SEGMENTS.map((item)=>{
-          const active=item.key===segment;
-          return(
-            <Pressable
-              key={item.key}
-              style={[communityStyles.segment,active && communityStyles.segmentActive]}
-              accessibilityRole="tab"
-              accessibilityState={{selected:active}}
-              accessibilityLabel={item.label}
-              onPress={()=>selectSegment(item.key)}
-            >
-              <Text style={[communityStyles.segmentText,active && communityStyles.segmentTextActive]}>{item.label}</Text>
-            </Pressable>
-          );
-        })}
+    <Screen>
+      <View style={communityStyles.selector}>
+        <Segmented items={SEGMENTS} active={segment} onChange={selectSegment}/>
       </View>
 
       <View style={[communityStyles.segmentPane,segment!=="feed" && communityStyles.segmentPaneHidden]}>
@@ -87,42 +81,14 @@ export default function Community(){
           <Leaderboards/>
         </View>
       )}
-    </View>
+    </Screen>
   );
 }
 
 const communityStyles=StyleSheet.create({
-  root:{flex:1,backgroundColor:INK.paper},
-  segmentBar:{
-    flexDirection:"row",
-    gap:8,
-    paddingHorizontal:18,
-    paddingTop:14,
-    paddingBottom:12,
-    backgroundColor:INK.paper,
-    borderBottomWidth:2,
-    borderBottomColor:INK.ink
-  },
-  segment:{
-    flex:1,
-    minHeight:44,
-    alignItems:"center",
-    justifyContent:"center",
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
-    backgroundColor:INK.card,
-    shadowColor:INK.ink,
-    shadowOffset:{width:2,height:2},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:2
-  },
-  segmentActive:{backgroundColor:INK.ink,shadowOffset:{width:0,height:0},elevation:0},
+  selector:{borderBottomWidth:1,borderBottomColor:INK.hairline,paddingBottom:2},
   segmentPane:{flex:1},
-  segmentPaneHidden:{display:"none"},
-  segmentText:{color:INK.ink,fontWeight:"900",fontSize:13},
-  segmentTextActive:{color:INK.card}
+  segmentPaneHidden:{display:"none"}
 });
 
 // The feed itself, paginated and virtualised.
@@ -293,70 +259,80 @@ function Feed(){
   const keyExtractor=useCallback((item)=>`${item.item_type}-${item.item_id}`,[]);
 
   const renderItem=useCallback(({item})=>(
-    <FeedCard item={item} viewerId={viewerId} onOpen={openItem} onComments={openComments}/>
+    <View style={styles.body}>
+      <FeedCard item={item} viewerId={viewerId} onOpen={openItem} onComments={openComments}/>
+    </View>
   ),[viewerId,openItem,openComments]);
 
   const header=(
     <>
-      <View style={styles.headingRow}>
-        <View style={styles.headingText}>
-          <Text style={styles.eyebrow}>YOUR EXPLORER COMMUNITY</Text>
-          <Text style={styles.title}>Feed</Text>
-          <Text style={styles.subtitle}>Reviews, favourites and Moments from the Explorers you follow.</Text>
-        </View>
-      </View>
+      <ScreenTitle
+        eyebrow="YOUR EXPLORER COMMUNITY"
+        title="Feed"
+        meta="Reviews, favourites and Moments from the Explorers you follow."
+      />
 
+      <View style={styles.body}>
       <View style={styles.quickActions}>
         {/* The camera, not the uploader. A Moment is made by taking a photo. */}
-        <Pressable style={styles.createButton} onPress={()=>router.push("/camera")}>
-          <Text style={styles.createText}>＋ New Moment</Text>
-        </Pressable>
-        <Pressable style={styles.findButton} onPress={()=>router.push("/explorers")}>
-          <Text style={styles.findText}>Find Explorers</Text>
-        </Pressable>
+        <Action
+          kind="primary"
+          glyph="camera"
+          label="New Moment"
+          style={styles.quickAction}
+          onPress={()=>router.push("/camera")}
+        />
+        <Action
+          kind="secondary"
+          glyph="search"
+          label="Find Explorers"
+          style={styles.quickAction}
+          onPress={()=>router.push("/explorers")}
+        />
       </View>
 
-      {loading && <ActivityIndicator size="large" color={INK.blue} style={styles.loader}/>}
+      {loading && <ActivityIndicator size="large" color={INK.readoutSoft} style={styles.loader}/>}
 
       {!loading && !!error && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>⚠️</Text>
-          <Text style={styles.emptyTitle}>Feed unavailable</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-        </View>
+        <Notice tone="dispute" label="Feed unavailable">{error}</Notice>
       )}
 
       {!loading && !error && items.length===0 && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>🧭</Text>
-          <Text style={styles.emptyTitle}>Build your Explorer feed</Text>
-          <Text style={styles.emptyText}>Follow Explorers to see their reviews, Moments, Memories and favourite places here.</Text>
-          <Pressable style={styles.emptyButton} onPress={()=>router.push("/explorers")}><Text style={styles.emptyButtonText}>Find Explorers</Text></Pressable>
-        </View>
+        <Empty
+          glyph="people"
+          title="Build your Explorer feed"
+          instruction="Follow Explorers to see their reviews, Moments, Memories and favourite places here."
+          action={<Action kind="primary" glyph="search" label="Find Explorers" onPress={()=>router.push("/explorers")}/>}
+        />
       )}
+      </View>
     </>
   );
 
   const footer=(
-    <View style={styles.footer}>
-      {loadingMore && <ActivityIndicator color={INK.blue}/>}
+    <View style={[styles.body,styles.footer]}>
+      {loadingMore && <ActivityIndicator color={INK.readoutSoft}/>}
 
       {!!pageError && (
-        <View style={styles.pageErrorCard}>
-          <Text style={styles.pageErrorText}>{pageError}</Text>
-          <Pressable
-            style={styles.retryButton}
-            accessibilityRole="button"
-            accessibilityLabel="Try loading more posts again"
-            onPress={loadMore}
-          >
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
-        </View>
+        <Notice
+          tone="scheduled"
+          label="Page not loaded"
+          action={
+            <Action
+              kind="secondary"
+              glyph="refresh"
+              label="Try again"
+              accessibilityLabel="Try loading more posts again"
+              onPress={loadMore}
+            />
+          }
+        >
+          {pageError}
+        </Notice>
       )}
 
       {reachedEnd && items.length>0 && !pageError && (
-        <Text style={styles.endText}>That is everything for now.</Text>
+        <Text style={styles.endText}>That is everything for now</Text>
       )}
     </View>
   );
@@ -370,7 +346,7 @@ function Feed(){
       renderItem={renderItem}
       ListHeaderComponent={header}
       ListFooterComponent={footer}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={INK.blue}/>}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={INK.readoutSoft}/>}
       onEndReached={loadMore}
       // Half a screen from the bottom. Far enough that the next page is usually
       // there before it is needed, near enough that it is not fetching pages
@@ -384,32 +360,21 @@ function Feed(){
   );
 }
 
-const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
-
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:70},
-  headingRow:{marginBottom:16},
-  headingText:{flex:1},
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
-  title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},
-  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:6,maxWidth:540},
-  quickActions:{flexDirection:"row",gap:10,marginBottom:17},
-  createButton:{flex:1,backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:13,paddingVertical:13,alignItems:"center",...shadow},
-  createText:{color:INK.card,fontWeight:"900"},
-  findButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,paddingVertical:13,alignItems:"center",...shadow},
-  findText:{color:INK.ink,fontWeight:"900"},
+  screen:{flex:1,backgroundColor:INK.ground},
+  // The Create action floats over every screen; without its clearance the last
+  // feed row sits underneath it. See CREATE_HUB_CLEARANCE in components/CreateHub.js.
+  //
+  // ScreenTitle carries its own horizontal gutter, so the list container does
+  // not -- every row, the header's actions and the footer take it from `body`.
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
+  quickActions:{flexDirection:"row",gap:9,marginTop:14,marginBottom:16},
+  quickAction:{flex:1},
   loader:{marginTop:45},
-  footer:{paddingTop:4,paddingBottom:8,alignItems:"center"},
-  endText:{color:INK.inkSoft,fontSize:12,paddingVertical:14},
-  pageErrorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:14,alignItems:"center",alignSelf:"stretch"},
-  pageErrorText:{color:INK.ink,fontSize:13,lineHeight:19,textAlign:"center"},
-  retryButton:{marginTop:11,backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:99,paddingHorizontal:18,paddingVertical:10,minHeight:44,justifyContent:"center"},
-  retryText:{color:INK.ink,fontWeight:"900",fontSize:13},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:17,padding:27,alignItems:"center",marginTop:18,...shadow},
-  emptyIcon:{fontSize:36},
-  emptyTitle:{color:INK.ink,fontSize:20,fontWeight:"900",textAlign:"center",marginTop:9},
-  emptyText:{color:INK.inkSoft,lineHeight:21,textAlign:"center",marginTop:7},
-  emptyButton:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:11,paddingHorizontal:18,paddingVertical:11,marginTop:16,...shadow},
-  emptyButtonText:{color:INK.card,fontWeight:"900"}
+  footer:{paddingTop:8,paddingBottom:8},
+  endText:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:1,textTransform:"uppercase",textAlign:"center",paddingVertical:16
+  }
 });

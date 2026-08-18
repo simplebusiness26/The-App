@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   ActivityIndicator,
   Platform,
   ScrollView
@@ -11,7 +10,27 @@ import {
 import {useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../../services/supabase";
 import QRCodeGenerator from "../../../../components/QRCodeGenerator";
-import {INK} from "../../../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../../../components/CreateHub";
+import {INK,TYPE} from "../../../../utils/tokens";
+import {
+  Action,
+  Glyph,
+  KeyValue,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../../../components/instrument";
+
+// The code a manager prints and sticks on a wall.
+//
+// Everything on this page is housing except the code itself, which keeps its
+// own white quiet zone because a scanner needs one -- see
+// components/QRCodeGenerator.js. The scoring line underneath used to be one
+// run-on sentence with middots in it; it is four measured facts, so it is four
+// KeyValue lines.
 
 const LISTING_CONFIG={
   business:{table:"businesses",ownerColumn:"owner_id",nameColumn:"name",label:"Business",targetType:"business"},
@@ -90,60 +109,107 @@ export default function PrintableListingQR(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+    return(
+      <Screen style={styles.centre}>
+        <ActivityIndicator size="large" color={INK.readout}/>
+      </Screen>
+    );
   }
 
   if(error || !listing || !reviewCode){
-    return <View style={styles.center}><Text style={styles.error}>{error || "Listing not found"}</Text></View>;
+    return(
+      <Screen>
+        <ScreenTitle eyebrow="Printable code" title="Code unavailable"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Not loaded">{error || "Listing not found"}</Notice>
+        </View>
+      </Screen>
+    );
   }
 
   const qrUrl=`${publicAppBase()}/qr/${encodeURIComponent(reviewCode)}`;
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.printCard}>
-        <Text style={styles.brand}>Xplorer</Text>
-        <Text style={styles.title}>{listing._name}</Text>
-        <Text style={styles.subtitle}>Scan while you’re here to leave a verified review.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenTitle
+          eyebrow={`${listing._label} · printable code`}
+          title={listing._name}
+          meta="Scan while you’re here to leave a verified review."
+        />
 
-        <View style={styles.qrWrap}>
-          <QRCodeGenerator value={qrUrl} size={260}/>
+        <View style={styles.body}>
+          <Panel style={styles.sheet}>
+            <View style={styles.head}>
+              <Text style={styles.brand}>Xplorer</Text>
+              <View style={styles.headLine}/>
+              <Text style={styles.headCode}>{reviewCode}</Text>
+            </View>
+
+            <View style={styles.qrWrap}>
+              <QRCodeGenerator value={qrUrl} size={232}/>
+            </View>
+
+            <View style={styles.bonusRow}>
+              <Glyph name="check" size={15} colour={INK.readoutSoft} weight={1.8}/>
+              <Text style={styles.bonusLabel}>Verified visit</Text>
+            </View>
+            <Text style={styles.bonusText}>
+              A valid on-site scan adds 3 points to an eligible Explorer review.
+            </Text>
+          </Panel>
+
+          <SectionRule label="What a review scores"/>
+
+          <Panel style={styles.scores}>
+            <KeyValue label="Text" value="1"/>
+            <KeyValue label="Images" value="3"/>
+            <KeyValue label="Video" value="6"/>
+            <KeyValue label="Verified scan" value="+3"/>
+          </Panel>
+
+          {Platform.OS==="web" ? (
+            <Action
+              kind="primary"
+              glyph="download"
+              label="Print verified review QR"
+              accessibilityLabel="Print the verified review QR code"
+              onPress={printPage}
+              style={styles.print}
+            />
+          ) : (
+            <Notice tone="exists" label="Printing">
+              Open this page in the web preview to use your browser’s print option.
+            </Notice>
+          )}
         </View>
-
-        <View style={styles.bonusBox}>
-          <Text style={styles.bonusTitle}>✓ VERIFIED VISIT</Text>
-          <Text style={styles.bonusText}>A valid on-site scan adds 3 points to an eligible Explorer review.</Text>
-        </View>
-
-        <Text style={styles.footer}>Text 1 point · Images 3 · Video 6 · Verified scan +3</Text>
-      </View>
-
-      {Platform.OS==="web" ? (
-        <Pressable style={styles.printButton} onPress={printPage}>
-          <Text style={styles.printButtonText}>Print Verified Review QR</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.notice}><Text>Open this page in the web preview to use your browser’s print option.</Text></View>
-      )}
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:50,alignItems:"center"},
-  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.card},
-  error:{fontSize:17,textAlign:"center"},
-  printCard:{width:"100%",maxWidth:520,backgroundColor:INK.card,padding:28,borderRadius:18,alignItems:"center",borderWidth:1,borderColor:INK.hair},
-  brand:{fontSize:22,fontWeight:"900",color:INK.blue},
-  title:{fontSize:28,fontWeight:"900",textAlign:"center",marginTop:12},
-  subtitle:{fontSize:16,color:INK.ink,textAlign:"center",lineHeight:22,marginTop:8},
-  qrWrap:{padding:22,backgroundColor:INK.card,marginTop:20},
-  bonusBox:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,width:"100%",marginTop:8},
-  bonusTitle:{color:INK.green,fontWeight:"900",textAlign:"center"},
-  bonusText:{color:INK.green,textAlign:"center",lineHeight:20,marginTop:5},
-  footer:{fontSize:13,color:INK.inkSoft,textAlign:"center",marginTop:15},
-  printButton:{width:"100%",maxWidth:520,backgroundColor:INK.ink,padding:16,borderRadius:12,marginTop:16},
-  printButtonText:{color:INK.card,fontWeight:"900",textAlign:"center"},
-  notice:{width:"100%",maxWidth:520,backgroundColor:INK.card,padding:16,borderRadius:12,marginTop:16}
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+  centre:{alignItems:"center",justifyContent:"center"},
+
+  sheet:{padding:16,alignItems:"center",marginTop:4},
+  head:{flexDirection:"row",alignItems:"center",gap:9,alignSelf:"stretch",marginBottom:14},
+  brand:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.4},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headCode:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,flexShrink:1},
+
+  qrWrap:{marginBottom:16},
+
+  bonusRow:{flexDirection:"row",alignItems:"center",gap:7},
+  bonusLabel:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md},
+  bonusText:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,textAlign:"center",marginTop:6
+  },
+
+  scores:{paddingHorizontal:13,paddingVertical:4},
+  print:{marginTop:16}
 });

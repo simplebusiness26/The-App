@@ -1,15 +1,110 @@
-import React,{useCallback,useMemo,useState} from "react";
-import {ActivityIndicator,Pressable,RefreshControl,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import React,{useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {AccessibilityInfo,ActivityIndicator,Animated,Easing,RefreshControl,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Location from "expo-location";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {formatDateTime,liveItemIcon} from "../utils/linkups";
-import {INK} from "../utils/tokens";
+import {formatDateTime,timeUntil} from "../utils/linkups";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {
+  Action,
+  Dial,
+  Empty,
+  Field,
+  Glyph,
+  MONO,
+  Notice,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule,
+  Segmented,
+  fieldInputStyle
+} from "../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
+
+// Live Nearby: the one screen in this app that is entirely about NOW.
+//
+// WHAT IT WAS, AND WHY THAT WAS WRONG
+//
+// A stack of 2px-bordered cards with hard offset shadows, an emoji in a circle
+// at the front of every row -- a handshake, a map pin, a party popper, a runner,
+// a star -- a satellite dish over the empty state, filled-ink pills for the
+// filters, and another map pin welded in front of every area name. Recoloured
+// dark it was still all of that, which is the exact failure
+// docs/instrument-kit.md opens by naming.
+//
+// WHAT IT IS NOW
+//
+// Every reading on this screen is amber. `scheduled` is the design system's
+// warm ink and it means "something is happening here"; a screen that is nothing
+// but things happening is where that ink earns its keep, and it arrives as a
+// StateEdge down the left of each Row rather than as a fill, so every label
+// inside stays on the readout greys.
+//
+// The two range filters are DIALS. Distance and time window are a handful of
+// stops each, which is exactly what a detented dial is for -- one drag to
+// compare 5km against 50km instead of four separate taps at four separate
+// pills, and every stop still individually tappable so the gesture is never the
+// only route.
+//
+// THE ONE MOVING THING IN THE APP LIVES HERE. docs/design-system.md: "no
+// ambient animation... the one exception: a slow pulse on a genuinely live
+// reading (an active check-in, a session happening now)." Your own live
+// check-in is precisely that, so it gets the lamp. Nothing else on this screen
+// moves, and reduce-motion turns it off.
 
 const TYPES=[
   {key:"all",label:"All"},{key:"linkup",label:"Link-ups"},{key:"checkin",label:"People"},{key:"event",label:"Events"},{key:"activity",label:"Activities"},{key:"place",label:"Places"}
 ];
+
+// What used to be an emoji in a circle at the front of every row, as glyphs off
+// the same 16x16 grid the map pins and the tab bar are drawn on.
+// utils/linkups.js still exports liveItemIcon() for anything that has not been
+// rebuilt yet; this screen no longer asks it for a picture.
+const TYPE_GLYPH={linkup:"people",checkin:"pin",event:"ticket",activity:"live",place:"building"};
+
+// What the app measured about WHEN, for the mono meta column. "IN 2H",
+// "TONIGHT 19:30", "NOW" -- short enough to sit beside a title and precise
+// enough to act on, which a full "Mon, 4 Aug 2026, 19:30" is not.
+function clockLabel(value){
+  if(!value) return "";
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+  return String(timeUntil(value) || "").toUpperCase();
+}
+
+// A slow pulse on a genuinely live reading. The design system's single
+// exception to "an instrument responds; it does not perform", and it is spent
+// on the one thing this app exists to say.
+function LiveLamp({size=9,colour=INK.scheduled}){
+  const pulse=useRef(new Animated.Value(1)).current;
+
+  useEffect(()=>{
+    let alive=true;
+    let loop=null;
+
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((reduced)=>{
+        if(!alive || reduced) return;
+        loop=Animated.loop(Animated.sequence([
+          Animated.timing(pulse,{toValue:0.25,duration:900,easing:Easing.inOut(Easing.quad),useNativeDriver:true}),
+          Animated.timing(pulse,{toValue:1,duration:900,easing:Easing.inOut(Easing.quad),useNativeDriver:true})
+        ]));
+        loop.start();
+      })
+      .catch(()=>{});
+
+    return()=>{alive=false;loop?.stop();};
+  },[pulse]);
+
+  return(
+    <Animated.View
+      pointerEvents="none"
+      style={{width:size,height:size,borderRadius:SHAPE.radius.pill,backgroundColor:colour,opacity:pulse}}
+    />
+  );
+}
 
 export default function LiveDiscovery(){
   const {showFeedback}=useFeedback();
@@ -103,48 +198,182 @@ export default function LiveDiscovery(){
 
   function refresh(){setRefreshing(true);load(false);}
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
+  if(loading) return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></Screen>;
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>} keyboardShouldPersistTaps="handled">
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>HAPPENING NEARBY</Text><Text style={styles.title}>Live Nearby</Text>
-        <Text style={styles.subtitle}>Link-ups, public check-ins, events, active clubs and popular places in one view.</Text>
-        <View style={styles.heroActions}><Pressable style={styles.primaryButton} onPress={()=>router.push("/linkups/create")}><Text style={styles.primaryText}>Create Link-up</Text></Pressable><Pressable style={styles.checkinButton} onPress={()=>router.push("/checkins/create")}><Text style={styles.checkinText}>Check in</Text></Pressable></View>
-      </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>} keyboardShouldPersistTaps="handled">
+        <ScreenTitle
+          eyebrow="HAPPENING NEARBY"
+          title="Live Nearby"
+          meta="Link-ups, public check-ins, events, active clubs and popular places in one view."
+        />
 
-      {!!error&&<View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
+        <View style={styles.body}>
+          <View style={styles.heroActions}>
+            <Action kind="primary" label="Create Link-up" glyph="plus" style={styles.heroAction} onPress={()=>router.push("/linkups/create")}/>
+            <Action kind="secondary" label="Check in" glyph="pin" style={styles.heroAction} onPress={()=>router.push("/checkins/create")}/>
+          </View>
 
-      {currentCheckin&&<View style={styles.currentCard}><View style={styles.currentText}><Text style={styles.currentLabel}>YOU ARE CHECKED IN</Text><Text style={styles.currentTitle}>{currentCheckin.place_name}</Text><Text style={styles.currentMeta}>{currentCheckin.activity} · expires {formatDateTime(currentCheckin.expires_at)}</Text></View><Pressable disabled={working} onPress={endCheckin}><Text style={styles.endText}>End</Text></Pressable></View>}
+          {!!error&&<Notice tone="dispute" label="NOT LOADED">{error}</Notice>}
 
-      <View style={styles.filtersCard}>
-        <Text style={styles.filterLabel}>Area</Text><View style={styles.areaRow}><TextInput value={areaDraft} onChangeText={setAreaDraft} onSubmitEditing={applyArea} placeholder="Town or area" placeholderTextColor={INK.inkSoft} style={styles.areaInput}/><Pressable style={styles.applyButton} onPress={applyArea}><Text style={styles.applyText}>Apply</Text></Pressable></View>
-        <Pressable style={styles.locationButton} disabled={locating} onPress={useLocation}>{locating?<ActivityIndicator color={INK.ink}/>:<Text style={styles.locationText}>{latitude!=null?"✓ Using approximate location":"Use approximate location"}</Text>}</Pressable>
-        <Text style={styles.filterLabel}>Distance</Text><View style={styles.chips}>{[5,15,25,50].map(value=><Pressable key={value} style={[styles.chip,radius===value&&styles.chipActive]} onPress={()=>setRadius(value)}><Text style={[styles.chipText,radius===value&&styles.chipTextActive]}>{value} km</Text></Pressable>)}</View>
-        <Text style={styles.filterLabel}>Time window</Text><View style={styles.chips}>{[6,24,72,168].map(value=><Pressable key={value} style={[styles.chip,windowHours===value&&styles.chipActive]} onPress={()=>setWindowHours(value)}><Text style={[styles.chipText,windowHours===value&&styles.chipTextActive]}>{value<24?`${value}h`:value===24?"Today":value===72?"3 days":"7 days"}</Text></Pressable>)}</View>
-      </View>
+          {/* Your own check-in is the only genuinely live reading on this
+              screen, so it is the only thing that moves. */}
+          {currentCheckin&&(
+            <Notice
+              tone="scheduled"
+              label="YOU ARE CHECKED IN"
+              action={<Action kind="quiet" label="End check-in" glyph="close" disabled={working} onPress={endCheckin}/>}
+            >
+              <View style={styles.checkinRow}>
+                <LiveLamp/>
+                <View style={styles.checkinText}>
+                  <Text style={styles.checkinTitle} numberOfLines={2}>{currentCheckin.place_name}</Text>
+                  <Text style={styles.checkinMeta} numberOfLines={2}>
+                    {currentCheckin.activity} · expires {formatDateTime(currentCheckin.expires_at)}
+                  </Text>
+                </View>
+              </View>
+            </Notice>
+          )}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeTabs}>{TYPES.map(item=><Pressable key={item.key} style={[styles.typeTab,type===item.key&&styles.typeTabActive]} onPress={()=>setType(item.key)}><Text style={[styles.typeText,type===item.key&&styles.typeTextActive]}>{item.label}</Text></Pressable>)}</ScrollView>
+          <SectionRule label="Where to look"/>
 
-      {filtered.length===0&&<View style={styles.emptyCard}><Text style={styles.emptyIcon}>📡</Text><Text style={styles.emptyTitle}>Nothing live in this view</Text><Text style={styles.emptyText}>Widen the area or time filters, or create the first Link-up.</Text></View>}
+          <Field label="Area" hint="A town or a district, never a street.">
+            <View style={styles.areaRow}>
+              <TextInput
+                value={areaDraft}
+                onChangeText={setAreaDraft}
+                onSubmitEditing={applyArea}
+                placeholder="Town or area"
+                placeholderTextColor={INK.readoutFaint}
+                accessibilityLabel="Area to look in"
+                style={[fieldInputStyle,styles.areaInput]}
+              />
+              <Action kind="quiet" label="Apply" style={styles.applyButton} onPress={applyArea}/>
+            </View>
+          </Field>
 
-      {filtered.map(item=><View key={`${item.item_type}-${item.item_id}`} style={styles.card}>
-        <View style={styles.cardTop}><View style={styles.iconWrap}><Text style={styles.icon}>{liveItemIcon(item.item_type)}</Text></View><View style={styles.cardHead}><Text style={styles.itemType}>{item.item_type.replace("_"," ")}</Text><Text style={styles.cardTitle}>{item.title}</Text></View>{item.distance_km!=null&&<Text style={styles.distance}>{item.distance_km} km</Text>}</View>
-        <Text style={styles.subtitleText}>{item.subtitle}</Text>
-        {!!item.area&&<Text style={styles.areaText}>📍 {item.area}</Text>}
-        {!!item.starts_at&&<Text style={styles.timeText}>{formatDateTime(item.starts_at)}</Text>}
-        <View style={styles.cardActions}><Pressable style={styles.openButton} onPress={()=>router.push(item.deep_link)}><Text style={styles.openText}>{item.action_label}</Text></Pressable>{item.item_type==="checkin"&&<Pressable onPress={()=>reportCheckin(item)}><Text style={styles.reportText}>Report</Text></Pressable>}</View>
-      </View>)}
-    </ScrollView>
+          <Action
+            kind="secondary"
+            label={latitude!=null?"Using approximate location":"Use approximate location"}
+            glyph={latitude!=null?"check":"target"}
+            loading={locating}
+            disabled={locating}
+            onPress={useLocation}
+          />
+
+          {/* Two dials, not eight pills. A range with a handful of stops is what
+              a detented control is for, and every stop is still its own button. */}
+          <View style={styles.dialRow}>
+            <Text style={styles.dialLabel}>DISTANCE</Text>
+            <Dial values={[5,15,25,50]} active={radius} onChange={setRadius} width={224} format={(value)=>`${value}KM`}/>
+          </View>
+
+          <View style={styles.dialRow}>
+            <Text style={styles.dialLabel}>TIME WINDOW</Text>
+            <Dial values={[6,24,72,168]} active={windowHours} onChange={setWindowHours} width={224} format={windowLabel}/>
+          </View>
+
+          <SectionRule label="Live now" meta={String(filtered.length)}/>
+
+          <Segmented items={TYPES} active={type} onChange={setType} scroll/>
+
+          {filtered.length===0&&(
+            <Empty
+              title="Nothing live in this view"
+              instruction="Widen the area or time filters, or create the first Link-up."
+              glyph="live"
+            />
+          )}
+
+          {filtered.map(item=>(
+            <View key={`${item.item_type}-${item.item_id}`}>
+              <Row
+                tone="scheduled"
+                glyph={TYPE_GLYPH[item.item_type]||"live"}
+                title={item.title}
+                sub={item.subtitle}
+                meta={clockLabel(item.starts_at)||"LIVE"}
+                metaSub={item.distance_km!=null?`${item.distance_km} KM`:null}
+                onPress={()=>router.push(item.deep_link)}
+              >
+                <View style={styles.rowFoot}>
+                  <Text style={styles.rowKind}>{String(item.item_type).replace("_"," ")}</Text>
+                  {!!item.area&&(
+                    <View style={styles.rowFootCell}>
+                      <Glyph name="pin" size={11} colour={INK.readoutFaint}/>
+                      <Text style={styles.rowFootText} numberOfLines={1}>{item.area}</Text>
+                    </View>
+                  )}
+                  {!!item.starts_at&&(
+                    <View style={styles.rowFootCell}>
+                      <Glyph name="clock" size={11} colour={INK.readoutFaint}/>
+                      <Text style={styles.rowFootText} numberOfLines={1}>{formatDateTime(item.starts_at)}</Text>
+                    </View>
+                  )}
+                  {!!item.action_label&&<Text style={styles.rowAction} numberOfLines={1}>{item.action_label}</Text>}
+                </View>
+              </Row>
+
+              {/* Reporting somebody's presence is a safety control, never behind
+                  a menu -- and only check-ins have a person behind them. */}
+              {item.item_type==="checkin"&&(
+                <Action kind="quiet" label="Report" glyph="flag" style={styles.report} disabled={working} onPress={()=>reportCheckin(item)}/>
+              )}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
-// Riso tokens only (utils/tokens.js). Blue/pink/yellow are state colours --
-// "a place exists" / "something is scheduled or live" / "an offer is running"
-// -- never decoration (design-system.md's three-ink rule), so a generic hero
-// or a generic filter chip does not get one. The one place this screen
-// carries a colour with real meaning is the "you are checked in" card: that
-// genuinely IS "something is live", which is exactly what ink-pink means.
+function windowLabel(value){
+  if(value<24) return `${value}H`;
+  if(value===24) return "TODAY";
+  if(value===72) return "3 DAYS";
+  return "7 DAYS";
+}
+
+// Everything measured is mono; everything a person wrote is the body face. The
+// only saturated colour on this screen is the state edge each Row carries and
+// the lamp on your own live check-in -- both of which mean the same thing the
+// map means by amber: something is happening here.
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},hero:{padding:2},eyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:34,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7},heroActions:{flexDirection:"row",gap:9,marginTop:15},primaryButton:{flex:1,backgroundColor:INK.ink,borderRadius:12,padding:13,alignItems:"center"},primaryText:{color:INK.card,fontWeight:"900"},checkinButton:{flex:1,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,borderRadius:12,padding:13,alignItems:"center"},checkinText:{color:INK.ink,fontWeight:"900"},errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:12,marginTop:13},errorText:{color:INK.ink},currentCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.card,borderColor:INK.pink,borderWidth:2,borderRadius:14,padding:13,marginTop:13},currentText:{flex:1},currentLabel:{color:INK.ink,fontSize:9,fontWeight:"900"},currentTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginTop:3},currentMeta:{color:INK.inkSoft,fontSize:11,marginTop:3},endText:{color:INK.ink,fontWeight:"900",padding:8,textDecorationLine:"underline"},filtersCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:15,padding:13,marginTop:13},filterLabel:{color:INK.ink,fontWeight:"900",fontSize:12,marginTop:9,marginBottom:7},areaRow:{flexDirection:"row",gap:7},areaInput:{flex:1,backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:10,color:INK.ink,paddingHorizontal:11,paddingVertical:10},applyButton:{backgroundColor:INK.ink,borderRadius:10,paddingHorizontal:14,justifyContent:"center"},applyText:{color:INK.card,fontWeight:"900"},locationButton:{borderColor:INK.ink,borderWidth:2,backgroundColor:INK.card,borderRadius:10,padding:11,alignItems:"center",marginTop:9},locationText:{color:INK.ink,fontWeight:"900",fontSize:11},chips:{flexDirection:"row",gap:6},chip:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:9,paddingVertical:9,alignItems:"center"},chipActive:{backgroundColor:INK.ink},chipText:{color:INK.inkSoft,fontWeight:"900",fontSize:10},chipTextActive:{color:INK.card},typeTabs:{gap:7,paddingVertical:14},typeTab:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:18,paddingHorizontal:12,paddingVertical:8},typeTabActive:{backgroundColor:INK.ink},typeText:{color:INK.inkSoft,fontWeight:"900",fontSize:11},typeTextActive:{color:INK.card},card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:15,padding:14,marginBottom:11,shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},cardTop:{flexDirection:"row",alignItems:"center"},iconWrap:{width:43,height:43,borderRadius:22,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},icon:{fontSize:20},cardHead:{flex:1,marginLeft:10},itemType:{color:INK.inkSoft,fontSize:8,fontWeight:"900",textTransform:"uppercase",letterSpacing:.7},cardTitle:{color:INK.ink,fontSize:17,fontWeight:"900",marginTop:2},distance:{color:INK.inkSoft,fontWeight:"900",fontSize:11},subtitleText:{color:INK.inkSoft,lineHeight:19,marginTop:9},areaText:{color:INK.inkSoft,fontSize:12,marginTop:7},timeText:{color:INK.ink,fontSize:11,fontWeight:"800",marginTop:6},cardActions:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:12},openButton:{backgroundColor:INK.ink,borderRadius:10,paddingHorizontal:13,paddingVertical:10},openText:{color:INK.card,fontWeight:"900",fontSize:11},reportText:{color:INK.ink,fontWeight:"900",fontSize:10,padding:8},emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:15,padding:28,alignItems:"center"},emptyIcon:{fontSize:38},emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:8},emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:19,marginTop:5}
+  center:{alignItems:"center",justifyContent:"center"},
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
+
+  heroActions:{flexDirection:"row",gap:8,marginTop:6,marginBottom:4},
+  heroAction:{flex:1},
+
+  checkinRow:{flexDirection:"row",alignItems:"flex-start",gap:9},
+  checkinText:{flex:1,minWidth:0},
+  checkinTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  checkinMeta:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3,lineHeight:TYPE.body.sizes.sm*1.5},
+
+  areaRow:{flexDirection:"row",alignItems:"stretch"},
+  areaInput:{flex:1},
+  applyButton:{borderWidth:0,borderLeftWidth:SHAPE.border,borderLeftColor:INK.hairline,borderRadius:0,paddingHorizontal:14},
+
+  dialRow:{alignItems:"center",gap:8,marginBottom:18},
+  dialLabel:{
+    alignSelf:"flex-start",color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md
+  },
+
+  rowFoot:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:10,marginTop:7},
+  rowFootCell:{flexDirection:"row",alignItems:"center",gap:4,flexShrink:1},
+  rowFootText:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.6,flexShrink:1},
+  rowKind:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:1
+  },
+  rowAction:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.9,marginLeft:"auto"
+  },
+
+  report:{alignSelf:"flex-end",marginTop:-2,marginBottom:10}
 });

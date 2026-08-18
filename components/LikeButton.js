@@ -3,7 +3,8 @@ import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph,MONO} from "./instrument";
 
 // viewerId is a PROP, and that is the whole point of this signature.
 //
@@ -17,6 +18,22 @@ import {INK} from "../utils/tokens";
 // Callers that genuinely have no viewer to hand can pass nothing: the button
 // still renders and a press sends them to log in, which is what the effect
 // produced anyway.
+//
+// WHAT IT LOOKS LIKE, AND WHY IT MATCHES THREE OTHER FILES
+//
+// Like, endorse, follow and favourite are the four most-repeated controls in
+// the app, and they used to be four different print pills -- one filled red
+// with a heart character in it, one filled green with a thumbs-up emoji, one
+// filled blue, one outlined.
+// An emoji carries its own colour and weight, so on a dark instrument face it
+// reads as a sticker; and a fill in a state ink says "this place IS something",
+// which is not what having pressed a button means.
+//
+// So all four are now ONE machined control: a stroked Glyph, a mono count, a
+// 1px hairline. Acting on it steps the surface up (panel -> panelRaised) and
+// strengthens the edge, exactly the way a selected chip does. It is the same
+// shape as the comment button in components/FeedCard.js, which is what makes a
+// feed row's action strip read as one instrument rather than four badges.
 export default function LikeButton({targetType,targetId,viewerId=null,initialCount=0,initialLiked=false,onChanged}){
   const {showFeedback}=useFeedback();
   const [liked,setLiked]=useState(!!initialLiked);
@@ -83,21 +100,32 @@ export default function LikeButton({targetType,targetId,viewerId=null,initialCou
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={liked ? "Remove like" : "Like"}
-      style={[styles.button,liked && styles.likedButton]}
+      accessibilityState={{selected:liked,disabled:working}}
+      style={[styles.control,liked && styles.controlOn]}
       disabled={working}
       onPress={toggle}
     >
-      {working ? <ActivityIndicator size="small" color={liked?INK.pink:INK.inkSoft}/> : <Text style={[styles.icon,liked && styles.likedIcon]}>{liked ? "♥" : "♡"}</Text>}
-      <Text style={[styles.text,liked && styles.likedText]}>{count}</Text>
+      {working
+        ? <ActivityIndicator size="small" color={liked?INK.readout:INK.readoutSoft}/>
+        : <Glyph name="heart" size={14} colour={liked?INK.readout:INK.readoutSoft} weight={liked?1.9:1.5}/>}
+      <Text style={[styles.count,liked && styles.countOn]}>{count}</Text>
     </Pressable>
   );
 }
 
+// The shared shape. Four files carry it because the kit has no "counter"
+// primitive to hold it -- see the note at the top.
 const styles=StyleSheet.create({
-  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
-  likedButton:{backgroundColor:INK.red,borderColor:INK.red},
-  icon:{color:INK.ink,fontSize:20,lineHeight:20},
-  likedIcon:{color:INK.card},
-  text:{color:INK.ink,fontSize:12,fontWeight:"900"},
-  likedText:{color:INK.card}
+  control:{
+    flexDirection:"row",alignItems:"center",gap:6,
+    minHeight:38,paddingHorizontal:11,paddingVertical:7,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  count:{
+    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
+    textTransform:"uppercase",color:INK.readoutSoft
+  },
+  countOn:{color:INK.readout}
 });

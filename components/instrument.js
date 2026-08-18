@@ -29,16 +29,23 @@ export const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.
 // Mono, uppercase, wide-tracked label above a large value. This is the single
 // most reused piece of the system: distances, counts, ranks, durations, scores.
 // The label is what the thing IS; the value is what the app measured.
-export function Readout({label,value,unit,tone="readout",align="left",size="md"}){
+// `valueFirst` puts the numeral above its label instead of below it. A grid of
+// ten or more gauges reads better that way -- the eye scans the numbers and
+// drops to the label only for the one it stops on -- and it is also what makes
+// the value and its label read as one contiguous phrase to a screen reader.
+export function Readout({label,value,unit,tone="readout",align="left",size="md",valueFirst}){
   const sizes={sm:{v:18,l:TYPE.data.sizes.sm},md:{v:24,l:TYPE.data.sizes.md},lg:{v:34,l:TYPE.data.sizes.md}};
   const s=sizes[size]||sizes.md;
+  const labelNode=<Text key="l" style={[styles.readoutLabel,{fontSize:s.l},valueFirst&&styles.readoutLabelUnder]} numberOfLines={2}>{label}</Text>;
+  const valueNode=(
+    <View key="v" style={styles.readoutValueRow}>
+      <Text style={[styles.readoutValue,{fontSize:s.v,color:INK[tone]||INK.readout}]}>{value}</Text>
+      {unit ? <Text style={styles.readoutUnit}>{unit}</Text> : null}
+    </View>
+  );
   return(
     <View style={{alignItems:align==="center"?"center":"flex-start"}}>
-      <Text style={[styles.readoutLabel,{fontSize:s.l}]} numberOfLines={1}>{label}</Text>
-      <View style={styles.readoutValueRow}>
-        <Text style={[styles.readoutValue,{fontSize:s.v,color:INK[tone]||INK.readout}]}>{value}</Text>
-        {unit ? <Text style={styles.readoutUnit}>{unit}</Text> : null}
-      </View>
+      {valueFirst?[valueNode,labelNode]:[labelNode,valueNode]}
     </View>
   );
 }
@@ -242,6 +249,7 @@ const styles=StyleSheet.create({
     color:INK.readoutFaint,fontFamily:MONO,textTransform:"uppercase",
     letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,marginBottom:3
   },
+  readoutLabelUnder:{marginBottom:0,marginTop:4},
   readoutValueRow:{flexDirection:"row",alignItems:"baseline",gap:4},
   readoutValue:{color:INK.readout,fontWeight:"700",letterSpacing:-0.5},
   readoutUnit:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,textTransform:"uppercase"},
@@ -421,7 +429,7 @@ export function ScreenTitle({eyebrow,title,meta,right}){
 // Filters, categories, tags, toggles. Selection steps a surface and strengthens
 // an edge; it never fills with a state ink, because being selected is not a
 // state a place is in. `tone` adds a 6px state dot for chips that DO carry one.
-export function Chip({label,selected,tone,onPress,glyph,disabled,style}){
+export function Chip({label,selected,tone,onPress,glyph,disabled,style,accessibilityLabel}){
   const Wrap=onPress?Pressable:View;
   return(
     <Wrap
@@ -430,7 +438,12 @@ export function Chip({label,selected,tone,onPress,glyph,disabled,style}){
       disabled={disabled}
       accessibilityRole={onPress?"button":undefined}
       accessibilityState={onPress?{selected:!!selected,disabled:!!disabled}:undefined}
-      accessibilityLabel={label}
+      // The visible label is usually the right thing to speak, but not always:
+      // a filter chip reading "Tonight" is a sentence when spoken ("Show what
+      // is happening tonight"). Without this override a screen has to wrap the
+      // chip in another Pressable to keep the fuller label, which nests two
+      // buttons and is worse for everybody.
+      accessibilityLabel={accessibilityLabel||label}
     >
       {tone ? <View style={[kit.chipDot,{backgroundColor:INK[tone]||INK.exists}]}/> : null}
       {glyph ? <Glyph name={glyph} size={13} colour={selected?INK.readout:INK.readoutFaint}/> : null}
@@ -451,13 +464,15 @@ export function Segmented({items,active,onChange,scroll=false}){
     const key=item.key??item;
     const label=item.label??String(item);
     const selected=key===active;
+    // Same reasoning as Chip's override above.
+    const spoken=item.accessibilityLabel||label;
     return(
       <Pressable
         key={String(key)}
         style={kit.segment}
         accessibilityRole="tab"
         accessibilityState={{selected}}
-        accessibilityLabel={label}
+        accessibilityLabel={spoken}
         onPress={()=>onChange?.(key)}
       >
         <Text style={[kit.segmentText,selected&&kit.segmentTextActive]} numberOfLines={1}>{label}</Text>
@@ -519,16 +534,25 @@ export function Action({label,onPress,kind="secondary",glyph,disabled,loading,st
 // Name in display type, a body sentence under it, and whatever the app MEASURED
 // about it set in mono down the right. `tone` turns the row into a StateEdge, so
 // "this one is live" is an edge rather than a coloured background.
-export function Row({title,sub,meta,metaSub,tone,onPress,glyph,right,style,children}){
+// `nested` is for a Row that sits INSIDE a Panel. Without it the row paints
+// `panel` on `panel` and disappears into the card it is in; nested steps it up
+// a surface and strengthens its edge, which is the same move selection makes.
+export function Row({title,sub,meta,metaSub,tone,onPress,glyph,right,style,children,accessibilityLabel,nested}){
   const Wrap=onPress?Pressable:View;
+  // `glyph` takes an icon NAME or a rendered node. A row's leading well is the
+  // natural home for an avatar, a real map marker or a thumbnail, and forcing
+  // it to be one of the kit's icons meant those rows could not use Row at all.
+  const lead=typeof glyph==="string"
+    ? <Glyph name={glyph} size={17} colour={INK.readoutSoft}/>
+    : glyph;
   const inner=(
     <Wrap
-      style={[kit.row,!tone&&kit.rowStandalone,style]}
+      style={[kit.row,!tone&&kit.rowStandalone,!tone&&nested&&kit.rowNested,style]}
       onPress={onPress}
       accessibilityRole={onPress?"button":undefined}
-      accessibilityLabel={onPress?[title,sub,meta].filter(Boolean).join(". "):undefined}
+      accessibilityLabel={onPress?(accessibilityLabel||[title,sub,meta].filter(Boolean).join(". ")):undefined}
     >
-      {glyph?<View style={kit.rowGlyph}><Glyph name={glyph} size={17} colour={INK.readoutSoft}/></View>:null}
+      {lead?<View style={kit.rowGlyph}>{lead}</View>:null}
       <View style={kit.rowBody}>
         <Text style={kit.rowTitle} numberOfLines={2}>{title}</Text>
         {sub?<Text style={kit.rowSub} numberOfLines={2}>{sub}</Text>:null}
@@ -602,7 +626,22 @@ export const fieldInputStyle={
 // ---------------------------------------------------------------------------
 // KEY VALUE — a mono definition line.
 // ---------------------------------------------------------------------------
-export function KeyValue({label,value,tone}){
+// `wrap` puts the value on its own line under the label rather than opposite
+// it. An address, a licence line or an opening-hours block is genuinely two or
+// three lines, and squeezing one onto a single row truncates the half that
+// carries the information.
+export function KeyValue({label,value,tone,wrap}){
+  if(wrap){
+    return(
+      <View style={kit.kvStack}>
+        <View style={kit.kvStackHead}>
+          <Text style={kit.kvLabel} numberOfLines={1}>{label}</Text>
+          <View style={kit.kvLine}/>
+        </View>
+        <Text style={[kit.kvStackValue,tone&&{color:INK[tone]}]}>{value}</Text>
+      </View>
+    );
+  }
   return(
     <View style={kit.kv}>
       <Text style={kit.kvLabel} numberOfLines={1}>{label}</Text>
@@ -674,10 +713,15 @@ export function Empty({title,instruction,action,glyph="info"}){
 // ---------------------------------------------------------------------------
 // Errors, permission gates, warnings. An edge in the state ink and a mono
 // eyebrow; never a coloured background with text fighting it.
-export function Notice({tone="scheduled",label,children,action}){
+export function Notice({tone="scheduled",label,children,action,glyph}){
   return(
     <StateEdge tone={tone} style={kit.notice}>
-      {label?<Text style={[kit.noticeLabel,{color:INK[tone]||INK.scheduled}]}>{label}</Text>:null}
+      {label?(
+        <View style={kit.noticeHead}>
+          {glyph?<Glyph name={glyph} size={13} colour={INK[tone]||INK.scheduled}/>:null}
+          <Text style={[kit.noticeLabel,{color:INK[tone]||INK.scheduled}]}>{label}</Text>
+        </View>
+      ):null}
       {typeof children==="string"?<Text style={kit.noticeBody}>{children}</Text>:children}
       {action?<View style={kit.noticeAction}>{action}</View>:null}
     </StateEdge>
@@ -745,6 +789,7 @@ const kit=StyleSheet.create({
     backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
     borderRadius:SHAPE.radius.card,marginBottom:8
   },
+  rowNested:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
   rowGlyph:{
     width:34,height:34,borderRadius:SHAPE.radius.control,alignItems:"center",justifyContent:"center",
     backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
@@ -780,6 +825,11 @@ const kit=StyleSheet.create({
   kvLabel:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,textTransform:"uppercase",letterSpacing:0.8},
   kvLine:{flex:1,height:1,backgroundColor:INK.hairline},
   kvValue:{color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
+  kvStack:{paddingVertical:9,gap:6},
+  kvStackHead:{flexDirection:"row",alignItems:"center",gap:8},
+  // Body face, not mono: a wrapped value is prose (an address, a set of hours),
+  // and prose set in the data face is unreadable at three lines.
+  kvStackValue:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5},
 
   strip:{flexDirection:"row",alignItems:"stretch",paddingVertical:12},
   stripCell:{flex:1,alignItems:"center",paddingHorizontal:6},
@@ -804,6 +854,7 @@ const kit=StyleSheet.create({
   emptyAction:{marginTop:8,alignSelf:"stretch"},
 
   notice:{padding:13,marginBottom:12,gap:6},
+  noticeHead:{flexDirection:"row",alignItems:"center",gap:7},
   noticeLabel:{fontFamily:MONO,fontSize:TYPE.data.sizes.md,textTransform:"uppercase",letterSpacing:1},
   noticeBody:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5},
   noticeAction:{marginTop:4}

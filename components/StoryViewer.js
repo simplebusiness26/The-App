@@ -2,7 +2,6 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {
   View,
   Text,
-  Image,
   Modal,
   Pressable,
   ActivityIndicator,
@@ -13,7 +12,8 @@ import {router} from "expo-router";
 import SocialImage from "./SocialImage";
 import {supabase} from "../services/supabase";
 import {entityRoute} from "../utils/places";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Action,CornerFrame,Empty,Glyph,MONO,Notice} from "./instrument";
 
 // Watching somebody's live Moments.
 //
@@ -40,6 +40,15 @@ import {INK} from "../utils/tokens";
 // mark_moment_viewed on arrival at each Moment, not on close. Somebody who
 // watches three of five and closes has watched three, and the ring should say
 // so.
+//
+// WHAT IT LOOKS LIKE
+//
+// The viewer is the app's second viewfinder: a full `inset` well with the
+// photograph in it and the same L brackets the camera draws, so watching
+// somebody's Moment reads as looking down the same instrument that took it. The
+// segment bar along the top is the ring from components/StoryRing.js unrolled
+// flat -- one detent per Moment, lit up to where you are -- so the two surfaces
+// count the same thing the same way.
 
 const HOUR=1000*60*60;
 
@@ -153,9 +162,9 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=f
     <Modal visible={!!visible} animationType="fade" transparent={false} onRequestClose={onClose}>
       <View style={styles.screen}>
         {/*
-          One segment per Moment, filled up to where you are. It is the only
-          thing telling somebody how much is left, which matters when tapping
-          past the end closes the viewer.
+          One detent per Moment, lit up to where you are. It is the only thing
+          telling somebody how much is left, which matters when tapping past the
+          end closes the viewer.
         */}
         <View style={styles.segments}>
           {moments.map((moment,position)=>(
@@ -168,7 +177,7 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=f
 
         <View style={styles.header}>
           <Text style={styles.owner} numberOfLines={1}>{ownerName || "Explorer"}</Text>
-          {!!current && <Text style={styles.when}>{ago(current.created_at)}</Text>}
+          {!!current && <Text style={styles.when} numberOfLines={1}>{ago(current.created_at).toUpperCase()}</Text>}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close"
@@ -176,26 +185,38 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=f
             style={styles.close}
             onPress={onClose}
           >
-            <Text style={styles.closeText}>✕</Text>
+            <Glyph name="close" size={16} colour={INK.readout}/>
           </Pressable>
         </View>
 
         {loading ? (
-          <View style={styles.centre}><ActivityIndicator size="large" color={INK.card}/></View>
+          <View style={styles.centre}><ActivityIndicator size="large" color={INK.readoutSoft}/></View>
         ) : error ? (
-          <View style={styles.centre}><Text style={styles.message}>{error}</Text></View>
+          <View style={styles.centre}>
+            <Notice tone="dispute" label="Not loaded">{error}</Notice>
+          </View>
         ) : !current ? (
           <View style={styles.centre}>
-            <Text style={styles.message}>Nothing is live right now.</Text>
+            <Empty
+              glyph="live"
+              title="Nothing is live right now"
+              instruction="A Moment lasts a day. When this Explorer posts one it appears here."
+            />
           </View>
         ) : (
           <Animated.View style={[styles.stage,{opacity:fade}]}>
             {current.media_type==="image" || current.thumbnail_url ? (
-              <SocialImage
-                uri={current.media_url || current.thumbnail_url}
-                style={styles.media}
-                resizeMode="contain"
-              />
+              <>
+                <SocialImage
+                  uri={current.media_url || current.thumbnail_url}
+                  style={styles.media}
+                  resizeMode="contain"
+                />
+                {/* The viewfinder's own brackets. Every picture in this app sits
+                    in a bracketed well; a full-bleed one gets the brackets
+                    without the well. */}
+                <CornerFrame inset={14} length={26} colour={INK.readoutSoft} opacity={0.4}/>
+              </>
             ) : (
               <View style={[styles.media,styles.videoFallback]}>
                 {/*
@@ -203,15 +224,20 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=f
                   a black rectangle. expo-av is not installed and adding it is
                   not this job.
                 */}
-                <Text style={styles.message}>This Moment is a video. Open it to watch.</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Open this Moment"
-                  style={styles.openButton}
-                  onPress={()=>{onClose?.();router.push(`/moments/${current.id}`);}}
-                >
-                  <Text style={styles.openButtonText}>Open the Moment</Text>
-                </Pressable>
+                <Empty
+                  glyph="video"
+                  title="This Moment is a video"
+                  instruction="Open it on its own page to watch."
+                  action={
+                    <Action
+                      kind="secondary"
+                      glyph="play"
+                      label="Open the Moment"
+                      accessibilityLabel="Open this Moment"
+                      onPress={()=>{onClose?.();router.push(`/moments/${current.id}`);}}
+                    />
+                  }
+                />
               </View>
             )}
 
@@ -241,32 +267,35 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=f
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${current.target_name}`}
                 disabled={!place}
+                style={styles.placeRow}
                 onPress={()=>{onClose?.();place && router.push(place);}}
               >
-                <Text style={styles.place}>📍 {current.target_name}</Text>
+                <Glyph name="pin" size={13} colour={INK.readoutSoft}/>
+                <Text style={styles.place} numberOfLines={1}>{current.target_name}</Text>
               </Pressable>
             )}
 
             {/* A Moment expires. Saying when is the difference between this and
-                a photo gallery. */}
-            <Text style={styles.expiry}>{leftToRun(current.expires_at)}</Text>
+                a photo gallery, so it is set as a reading rather than a caption. */}
+            <View style={styles.expiryRow}>
+              <Glyph name="clock" size={12} colour={INK.readoutFaint}/>
+              <Text style={styles.expiry}>{leftToRun(current.expires_at)}</Text>
+            </View>
 
             {isOwner && (
-              <Pressable
-                accessibilityRole="button"
+              <Action
+                kind={kept.has(current.id) ? "quiet" : "secondary"}
+                glyph={kept.has(current.id) ? "check" : "bookmark"}
+                label={kept.has(current.id) ? "Kept as a Memory" : "Keep this as a Memory"}
                 accessibilityLabel={
                   kept.has(current.id)
                     ? "Kept as a Memory"
                     : "Keep this Moment as a Memory"
                 }
                 disabled={keeping || kept.has(current.id)}
-                style={[styles.keep,kept.has(current.id) && styles.keptOn]}
+                style={styles.keep}
                 onPress={keep}
-              >
-                <Text style={styles.keepText}>
-                  {kept.has(current.id) ? "✓ Kept as a Memory" : "Keep this as a Memory"}
-                </Text>
-              </Pressable>
+              />
             )}
           </View>
         )}
@@ -276,44 +305,47 @@ export default function StoryViewer({ownerId,ownerName,visible,onClose,isOwner=f
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.ink},
+  // The viewfinder ground, one step below the housing: a Moment is a picture
+  // being looked THROUGH the instrument at, not a card sitting on it.
+  screen:{flex:1,backgroundColor:INK.inset},
+
   segments:{flexDirection:"row",gap:4,paddingHorizontal:12,paddingTop:44},
-  segment:{flex:1,height:3,borderRadius:2,backgroundColor:"rgba(243,243,237,0.3)"},
-  segmentDone:{backgroundColor:INK.card},
+  segment:{flex:1,height:2,backgroundColor:INK.hairline},
+  segmentDone:{backgroundColor:INK.scheduled},
 
   header:{flexDirection:"row",alignItems:"center",gap:10,paddingHorizontal:14,paddingVertical:12},
-  owner:{color:INK.card,fontWeight:"800",fontSize:15,flexShrink:1},
-  when:{color:"rgba(243,243,237,0.7)",fontSize:12,flex:1},
-  close:{width:36,height:36,alignItems:"center",justifyContent:"center"},
-  closeText:{color:INK.card,fontSize:18,fontWeight:"800"},
+  owner:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2,flexShrink:1},
+  when:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.9,textTransform:"uppercase",flex:1
+  },
+  close:{
+    width:34,height:34,borderRadius:SHAPE.radius.control,
+    alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
 
   stage:{flex:1,position:"relative"},
   media:{flex:1,width:"100%"},
-  videoFallback:{alignItems:"center",justifyContent:"center",padding:24,gap:14},
+  videoFallback:{alignItems:"center",justifyContent:"center",padding:24},
 
   tapZone:{position:"absolute",top:0,bottom:0,width:"32%"},
   tapLeft:{left:0},
   tapRight:{right:0},
 
-  centre:{flex:1,alignItems:"center",justifyContent:"center",padding:28},
-  message:{color:INK.card,fontSize:15,textAlign:"center",lineHeight:22},
+  centre:{flex:1,justifyContent:"center",paddingHorizontal:16},
 
-  openButton:{borderWidth:2,borderColor:INK.card,borderRadius:99,paddingHorizontal:18,paddingVertical:10},
-  openButtonText:{color:INK.card,fontWeight:"800"},
-
-  footer:{padding:16,paddingBottom:30,gap:6},
-  caption:{color:INK.card,fontSize:15,lineHeight:21},
-  place:{color:INK.card,fontSize:13,fontWeight:"800"},
-  expiry:{color:"rgba(243,243,237,0.65)",fontSize:11,fontWeight:"700"},
-  keep:{
-    marginTop:8,
-    alignSelf:"flex-start",
-    borderWidth:2,
-    borderColor:INK.card,
-    borderRadius:99,
-    paddingHorizontal:16,
-    paddingVertical:8
+  footer:{
+    padding:16,paddingBottom:30,gap:8,
+    borderTopWidth:SHAPE.border,borderTopColor:INK.hairline,backgroundColor:INK.ground
   },
-  keptOn:{opacity:0.6},
-  keepText:{color:INK.card,fontWeight:"800",fontSize:12}
+  caption:{color:INK.readout,fontSize:TYPE.body.sizes.lg,lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight},
+  placeRow:{flexDirection:"row",alignItems:"center",gap:6},
+  place:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,flexShrink:1},
+  expiryRow:{flexDirection:"row",alignItems:"center",gap:6},
+  expiry:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.9,textTransform:"uppercase"
+  },
+  keep:{alignSelf:"flex-start",marginTop:4}
 });

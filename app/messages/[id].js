@@ -8,7 +8,8 @@ import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import {entityRoute,entityTypeLabel} from "../../utils/places";
 import useKeyboardInset from "../../hooks/useKeyboardInset";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {Action,Empty,Glyph,MONO,Screen} from "../../components/instrument";
 
 // One conversation.
 //
@@ -124,11 +125,21 @@ export default function Conversation(){
   },[keyboard]);
 
   if(loading){
-    return <View style={styles.centre}><ActivityIndicator size="large" color={INK.ink}/></View>;
+    return(
+      <Screen>
+        <View style={styles.centre}><ActivityIndicator size="large" color={INK.readout}/></View>
+      </Screen>
+    );
   }
 
   if(error){
-    return <View style={styles.centre}><Text style={styles.muted}>{error}</Text></View>;
+    return(
+      <Screen>
+        <View style={styles.centre}>
+          <Empty glyph="warn" title="Conversation unavailable" instruction={error}/>
+        </View>
+      </Screen>
+    );
   }
 
   const place=conversation?.kind==="listing" && conversation?.target_type
@@ -141,8 +152,15 @@ export default function Conversation(){
     // the old one had no behaviour on Android at all, and Expo's edge-to-edge
     // default means the window no longer resizes underneath it, so the keyboard
     // simply covered the composer.
-    <View style={[styles.screen,{paddingBottom:keyboard}]}>
+    <Screen style={{paddingBottom:keyboard}}>
+      {/*
+        The head plate. A mono eyebrow saying what kind of thread this is, the
+        other person's name in display type, and an etched rule under it -- the
+        same opening every panel in the instrument carries.
+      */}
       <View style={styles.header}>
+        <Text style={styles.eyebrow}>{conversation?.kind==="listing" ? "ABOUT A PLACE" : "DIRECT MESSAGE"}</Text>
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Open ${other?.full_name || "this Explorer"}'s profile`}
@@ -153,16 +171,20 @@ export default function Conversation(){
 
         {conversation?.kind==="listing" && (
           <Pressable
+            style={styles.aboutRow}
             accessibilityRole="button"
             accessibilityLabel="Open the listing this conversation is about"
             disabled={!place}
             onPress={()=>place && router.push(place)}
           >
             <Text style={styles.about}>
-              About a {entityTypeLabel(conversation.target_type).toLowerCase()} →
+              About a {entityTypeLabel(conversation.target_type).toLowerCase()}
             </Text>
+            <Glyph name="forward" size={12} colour={INK.readoutFaint}/>
           </Pressable>
         )}
+
+        <View style={styles.headerRule}/>
       </View>
 
       <ScrollView
@@ -189,11 +211,13 @@ export default function Conversation(){
         scrollEventThrottle={64}
       >
         {!messages.length && (
-          <Text style={styles.muted}>
-            {conversation?.kind==="listing"
+          <Empty
+            glyph="comment"
+            title="Nothing said yet"
+            instruction={conversation?.kind==="listing"
               ? "Ask whatever you need to know about this place."
               : "Say something."}
-          </Text>
+          />
         )}
 
         {messages.map((message)=>{
@@ -204,59 +228,116 @@ export default function Conversation(){
               style={[styles.bubble,mine ? styles.mine : styles.theirs]}
               accessibilityLabel={`${mine ? "You" : other?.full_name || "They"} said: ${message.body}`}
             >
-              <Text style={[styles.body,mine && styles.mineBody]}>{message.body}</Text>
+              <Text style={styles.body}>{message.body}</Text>
             </View>
           );
         })}
       </ScrollView>
 
       <View style={styles.composer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Write a message"
-          placeholderTextColor={INK.inkSoft}
-          value={draft}
-          onChangeText={setDraft}
-          multiline
-          maxLength={2000}
-          accessibilityLabel="Your message"
-        />
-        <Pressable
-          accessibilityRole="button"
+        {/*
+          The well is cut into the housing rather than stuck on it -- the same
+          inset surface every input in the app sits in. It is not wrapped in a
+          Field because a composer has no label above it: the placeholder and the
+          Send control beside it are the whole instruction.
+        */}
+        <View style={styles.inputWell}>
+          <TextInput
+            style={styles.input}
+            placeholder="Write a message"
+            placeholderTextColor={INK.readoutFaint}
+            value={draft}
+            onChangeText={setDraft}
+            multiline
+            maxLength={2000}
+            accessibilityLabel="Your message"
+          />
+        </View>
+
+        <Action
+          kind="primary"
+          glyph="send"
+          label="Send"
           accessibilityLabel="Send"
-          style={[styles.send,(!draft.trim() || sending) && styles.sendOff]}
-          disabled={!draft.trim() || sending}
+          disabled={!draft.trim()}
+          loading={sending}
           onPress={send}
-        >
-          <Text style={styles.sendText}>{sending ? "…" : "Send"}</Text>
-        </Pressable>
+          style={styles.send}
+        />
       </View>
-    </View>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  header:{paddingHorizontal:16,paddingTop:12,paddingBottom:10,borderBottomWidth:2,borderBottomColor:INK.ink,backgroundColor:INK.card},
-  name:{color:INK.ink,fontSize:19,fontWeight:"900"},
-  about:{color:INK.inkSoft,fontSize:12,fontWeight:"800",marginTop:2},
+  centre:{flex:1,alignItems:"center",justifyContent:"center",padding:16},
+
+  header:{paddingHorizontal:16,paddingTop:12,paddingBottom:0,backgroundColor:INK.ground},
+  eyebrow:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:1,marginBottom:5
+  },
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700",letterSpacing:-0.5},
+  aboutRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:4,minHeight:32},
+  about:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:0.8
+  },
+  headerRule:{height:1,backgroundColor:INK.hairline,marginTop:12},
+
   thread:{flex:1},
   threadContent:{padding:16,gap:8,paddingBottom:20},
-  muted:{color:INK.inkSoft,fontSize:14,lineHeight:20},
-  bubble:{maxWidth:"82%",borderWidth:2,borderColor:INK.ink,borderRadius:14,paddingHorizontal:13,paddingVertical:9},
-  mine:{alignSelf:"flex-end",backgroundColor:INK.ink},
-  theirs:{alignSelf:"flex-start",backgroundColor:INK.card},
-  body:{color:INK.ink,fontSize:14,lineHeight:20},
-  mineBody:{color:INK.card},
+
+  // A message is something a person wrote, so it stays in the body face on a
+  // panel. Whose it is reads as a step up the surface stack and a stronger
+  // edge -- not a fill, which is what made the old dark bubble need a second
+  // text colour and a second contrast argument.
+  bubble:{
+    maxWidth:"82%",
+    borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.card,
+    paddingHorizontal:13,
+    paddingVertical:10
+  },
+  mine:{alignSelf:"flex-end",backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  theirs:{alignSelf:"flex-start",backgroundColor:INK.panel,borderColor:INK.hairline},
+  body:{
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight
+  },
+
   // paddingBottom was 96, a hand-tuned clearance for the tab bar. It double
   // counted: components/TabBar.js renders as a SIBLING of the Stack in
   // app/_layout.js, so this screen's box already stops above it. The only thing
   // actually overlapping is the 20px strip the raised centre button rises into,
   // so 28 clears it with room to spare -- and gives 68px of screen back.
-  composer:{flexDirection:"row",alignItems:"flex-end",gap:9,padding:12,paddingBottom:28,borderTopWidth:2,borderTopColor:INK.ink,backgroundColor:INK.card},
-  input:{flex:1,minHeight:44,maxHeight:120,borderWidth:2,borderColor:INK.hair,borderRadius:12,paddingHorizontal:12,paddingVertical:10,color:INK.ink,backgroundColor:INK.paper,textAlignVertical:"top"},
-  send:{minHeight:44,justifyContent:"center",paddingHorizontal:18,borderRadius:99,backgroundColor:INK.ink},
-  sendOff:{opacity:0.4},
-  sendText:{color:INK.card,fontWeight:"800"}
+  composer:{
+    flexDirection:"row",
+    alignItems:"flex-end",
+    gap:9,
+    padding:12,
+    paddingBottom:28,
+    borderTopWidth:SHAPE.border,
+    borderTopColor:INK.hairline,
+    backgroundColor:INK.panel
+  },
+  inputWell:{
+    flex:1,
+    backgroundColor:INK.inset,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,
+    overflow:"hidden"
+  },
+  input:{
+    minHeight:SHAPE.tapTarget,
+    maxHeight:120,
+    paddingHorizontal:12,
+    paddingVertical:11,
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.lg,
+    textAlignVertical:"top"
+  },
+  send:{minWidth:104}
 });

@@ -5,6 +5,7 @@ import LivingMap from "./LivingMap";
 import MemoryRow from "./MemoryRow";
 import {markerForMemory} from "../utils/markers";
 import {memoryPinOpacity} from "../utils/mapLayers";
+import {Frame} from "./instrument";
 
 // My Map's Memories, on the same map as everything else.
 //
@@ -28,6 +29,13 @@ import {memoryPinOpacity} from "../utils/mapLayers";
 // never below MIN_PIN_OPACITY because a pin at 4% is one nobody can tap. A
 // Memory leaving the map is not a Memory being deleted; it stays in the
 // scrapbook either way.
+//
+// THE MAP SITS IN A FRAME
+//
+// A live map is the app's one genuinely optical surface, so it goes in the
+// viewfinder's bracketed well like every other picture -- an `inset` ground, a
+// 1px hairline and four L brackets, rather than a bare 14px rounded rectangle
+// that belonged to the print system's card.
 
 export default function MemoryPins({memories}){
   // The list is what somebody gets if the map cannot run -- no WebGL, a dead
@@ -59,20 +67,25 @@ export default function MemoryPins({memories}){
   }));
 
   return(
-    <LivingMap
-      pins={pins}
-      // Opens on the first Memory rather than on Brighton: this is somebody's
-      // own map, and the middle of it is wherever they have been.
-      centre={{latitude:Number(memories[0].latitude),longitude:Number(memories[0].longitude)}}
-      zoom={11}
-      style={styles.map}
-      onUnavailable={()=>setMapFailed(true)}
-    />
+    <Frame style={styles.frame}>
+      <LivingMap
+        pins={pins}
+        // Opens on the first Memory rather than on Brighton: this is somebody's
+        // own map, and the middle of it is wherever they have been.
+        centre={{latitude:Number(memories[0].latitude),longitude:Number(memories[0].longitude)}}
+        zoom={11}
+        style={styles.map}
+        onUnavailable={()=>setMapFailed(true)}
+      />
+    </Frame>
   );
 }
 
 const styles=StyleSheet.create({
-  map:{height:280,borderRadius:14,overflow:"hidden"},
+  // aspectRatio is Frame's own default sizing; a fixed height needs it out of
+  // the way, and a key set to undefined is dropped by StyleSheet.flatten.
+  frame:{height:280,alignSelf:"stretch",aspectRatio:undefined},
+  map:{width:"100%",height:"100%"},
   list:{maxHeight:320},
   content:{paddingBottom:4}
 });

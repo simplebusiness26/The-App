@@ -5,7 +5,22 @@ import {supabase} from "../../services/supabase";
 import {useAdminGate} from "../../hooks/useAdminGate";
 import {useFeedback} from "../../context/FeedbackContext";
 import {PUBLIC_PLACE_TYPES,publicPlaceTypeLabel,roundCoordinate} from "../../utils/places";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Empty,
+  Field,
+  fieldInputStyle,
+  MONO,
+  Notice,
+  Panel,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
 
 // Packet 8e: where canonical public places come from.
 //
@@ -17,6 +32,12 @@ import {INK} from "../../utils/tokens";
 // There is no claim flow and no manager here on purpose. Deciding that a park
 // exists is not the same as deciding who speaks for it, and only the first of
 // those is built.
+//
+// The form is a bank of labelled wells rather than a stack of bordered boxes:
+// what you type into an instrument is cut INTO the housing, one surface step
+// below the panel it sits on, which is what Field draws. A place is a place, so
+// its type and its state are still chips -- but a chip is selected by stepping
+// a surface, never by filling with a state ink.
 
 const STATUSES=["published","draft","hidden"];
 
@@ -32,6 +53,20 @@ const EMPTY={
   image_url:"",
   status:"published"
 };
+
+// Chip with a real accessibility label on the control around it.
+function Choice({label,accessibilityLabel,selected,onPress}){
+  return(
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{selected}}
+      onPress={onPress}
+    >
+      <Chip label={label} selected={selected}/>
+    </Pressable>
+  );
+}
 
 export default function AdminPublicPlaces(){
   const {checking,allowed,error:gateError}=useAdminGate();
@@ -183,256 +218,275 @@ export default function AdminPublicPlaces(){
     await load();
   }
 
-  if(checking || !allowed){
+  if(checking){
     return(
-      <View style={styles.centre}>
-        {checking
-          ? <ActivityIndicator size="large" color={INK.ink}/>
-          : <Text style={styles.centreText}>{gateError || "An admin account is required to open this screen."}</Text>}
-      </View>
+      <Screen style={styles.fullState}>
+        <ActivityIndicator size="large" color={INK.readout}/>
+        <Text style={styles.stateText}>Checking admin access…</Text>
+      </Screen>
+    );
+  }
+
+  if(!allowed){
+    return(
+      <Screen>
+        <ScreenTitle eyebrow="Admin" title="Admin access required"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Refused">
+            {gateError || "An admin account is required to open this screen."}
+          </Notice>
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Public places</Text>
-      <Text style={styles.subtitle}>
-        Parks, beaches and viewpoints, as canonical rows. One row per place means one page, one follow
-        and one set of Moments instead of a different spelling every time somebody checks in.
-      </Text>
-
-      {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
-
-      <View style={styles.formCard}>
-        <Text style={styles.formTitle}>{form.id ? "Edit place" : "Add a place"}</Text>
-
-        <Text style={styles.label}>NAME</Text>
-        <TextInput
-          value={form.name}
-          onChangeText={(value)=>set("name",value)}
-          placeholder="Alexandra Park"
-          placeholderTextColor={INK.inkSoft}
-          style={styles.input}
-          maxLength={120}
-          accessibilityLabel="Public place name"
+    <Screen>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scroll}
+      >
+        <ScreenTitle
+          eyebrow="Admin places"
+          title="Public places"
+          meta="Parks, beaches and viewpoints, as canonical rows. One row per place means one page, one follow and one set of Moments instead of a different spelling every time somebody checks in."
         />
 
-        <Text style={styles.label}>TYPE</Text>
-        <View style={styles.wrap}>
-          {PUBLIC_PLACE_TYPES.map((item)=>(
-            <Pressable
-              key={item.key}
-              style={[styles.chip,form.place_type===item.key && styles.chipActive]}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              onPress={()=>set("place_type",item.key)}
-            >
-              <Text style={styles.chipText}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <View style={styles.body}>
+          {!!error && <Notice tone="exists" label="Not saved">{error}</Notice>}
 
-        <Text style={styles.label}>AREA</Text>
-        <View style={styles.wrap}>
-          <Pressable
-            style={[styles.chip,!form.area_id && styles.chipActive]}
-            accessibilityRole="button"
-            accessibilityLabel="No area yet"
-            onPress={()=>set("area_id",null)}
-          >
-            <Text style={styles.chipText}>No area yet</Text>
-          </Pressable>
-          {areas.map((area)=>(
-            <Pressable
-              key={area.id}
-              style={[styles.chip,form.area_id===area.id && styles.chipActive]}
-              accessibilityRole="button"
-              accessibilityLabel={area.name}
-              onPress={()=>set("area_id",area.id)}
-            >
-              <Text style={styles.chipText}>{area.name}</Text>
-            </Pressable>
-          ))}
-        </View>
+          <SectionRule label={form.id ? "Edit place" : "Add a place"}/>
 
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Text style={styles.label}>LATITUDE</Text>
-            <TextInput
-              value={form.latitude}
-              onChangeText={(value)=>set("latitude",value)}
-              placeholder="50.855"
-              placeholderTextColor={INK.inkSoft}
-              style={styles.input}
-              keyboardType="numbers-and-punctuation"
-              accessibilityLabel="Latitude"
+          <Panel style={styles.form}>
+            <Field label="Name" required>
+              <TextInput
+                value={form.name}
+                onChangeText={(value)=>set("name",value)}
+                placeholder="Alexandra Park"
+                placeholderTextColor={INK.readoutFaint}
+                style={fieldInputStyle}
+                maxLength={120}
+                accessibilityLabel="Public place name"
+              />
+            </Field>
+
+            <Text style={styles.label}>Type</Text>
+            <View style={styles.wrap}>
+              {PUBLIC_PLACE_TYPES.map((item)=>(
+                <Choice
+                  key={item.key}
+                  label={item.label}
+                  accessibilityLabel={item.label}
+                  selected={form.place_type===item.key}
+                  onPress={()=>set("place_type",item.key)}
+                />
+              ))}
+            </View>
+
+            <Text style={styles.label}>Area</Text>
+            <View style={styles.wrap}>
+              <Choice
+                label="No area yet"
+                accessibilityLabel="No area yet"
+                selected={!form.area_id}
+                onPress={()=>set("area_id",null)}
+              />
+              {areas.map((area)=>(
+                <Choice
+                  key={area.id}
+                  label={area.name}
+                  accessibilityLabel={area.name}
+                  selected={form.area_id===area.id}
+                  onPress={()=>set("area_id",area.id)}
+                />
+              ))}
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.half}>
+                <Field label="Latitude">
+                  <TextInput
+                    value={form.latitude}
+                    onChangeText={(value)=>set("latitude",value)}
+                    placeholder="50.855"
+                    placeholderTextColor={INK.readoutFaint}
+                    style={fieldInputStyle}
+                    keyboardType="numbers-and-punctuation"
+                    accessibilityLabel="Latitude"
+                  />
+                </Field>
+              </View>
+              <View style={styles.half}>
+                <Field label="Longitude">
+                  <TextInput
+                    value={form.longitude}
+                    onChangeText={(value)=>set("longitude",value)}
+                    placeholder="0.573"
+                    placeholderTextColor={INK.readoutFaint}
+                    style={fieldInputStyle}
+                    keyboardType="numbers-and-punctuation"
+                    accessibilityLabel="Longitude"
+                  />
+                </Field>
+              </View>
+            </View>
+
+            <Text style={styles.help}>
+              Rounded to three decimal places, the same precision a check-in is stored at.
+            </Text>
+
+            <Field label="Where to find it" style={styles.spaced}>
+              <TextInput
+                value={form.location_description}
+                onChangeText={(value)=>set("location_description",value)}
+                placeholder="Main gate on St Helens Road"
+                placeholderTextColor={INK.readoutFaint}
+                style={fieldInputStyle}
+                maxLength={200}
+                accessibilityLabel="Where to find it"
+              />
+            </Field>
+
+            <Field label="Description">
+              <TextInput
+                value={form.description}
+                onChangeText={(value)=>set("description",value)}
+                placeholder="What is here, and what people come for."
+                placeholderTextColor={INK.readoutFaint}
+                style={[fieldInputStyle,styles.textarea]}
+                multiline
+                textAlignVertical="top"
+                maxLength={1000}
+                accessibilityLabel="Description"
+              />
+            </Field>
+
+            <Field label="Image URL">
+              <TextInput
+                value={form.image_url}
+                onChangeText={(value)=>set("image_url",value)}
+                placeholder="https://..."
+                placeholderTextColor={INK.readoutFaint}
+                style={fieldInputStyle}
+                autoCapitalize="none"
+                accessibilityLabel="Image URL"
+              />
+            </Field>
+
+            <Text style={styles.label}>Status</Text>
+            <View style={styles.wrap}>
+              {STATUSES.map((status)=>(
+                <Choice
+                  key={status}
+                  label={status}
+                  accessibilityLabel={`Status ${status}`}
+                  selected={form.status===status}
+                  onPress={()=>set("status",status)}
+                />
+              ))}
+            </View>
+
+            <View style={styles.row}>
+              <Action
+                kind="primary"
+                glyph={form.id ? "check" : "plus"}
+                label={form.id ? "Save place" : "Add place"}
+                accessibilityLabel={form.id ? "Save this public place" : "Add this public place"}
+                loading={saving}
+                disabled={saving}
+                onPress={save}
+                style={styles.button}
+              />
+
+              {!!form.id && (
+                <Action
+                  kind="secondary"
+                  glyph="close"
+                  label="Cancel"
+                  accessibilityLabel="Stop editing"
+                  onPress={()=>{setForm(EMPTY);setError("");}}
+                  style={styles.button}
+                />
+              )}
+            </View>
+          </Panel>
+
+          <SectionRule label="Public places" meta={String(places.length)}/>
+
+          {loading ? (
+            <ActivityIndicator color={INK.readout} style={styles.loader}/>
+          ) : places.length===0 ? (
+            <Empty
+              glyph="pin"
+              title="No public places yet"
+              instruction="Add a park, beach or viewpoint above and Explorers can follow it and check in."
             />
-          </View>
-          <View style={styles.half}>
-            <Text style={styles.label}>LONGITUDE</Text>
-            <TextInput
-              value={form.longitude}
-              onChangeText={(value)=>set("longitude",value)}
-              placeholder="0.573"
-              placeholderTextColor={INK.inkSoft}
-              style={styles.input}
-              keyboardType="numbers-and-punctuation"
-              accessibilityLabel="Longitude"
-            />
-          </View>
-        </View>
-        <Text style={styles.help}>Rounded to three decimal places, the same precision a check-in is stored at.</Text>
+          ) : places.map((place)=>(
+            <View key={place.id} style={styles.placeBlock}>
+              <Row
+                glyph="pin"
+                title={place.name}
+                sub={`${publicPlaceTypeLabel(place.place_type)}${
+                  place.area_id && areaName[place.area_id] ? ` · ${areaName[place.area_id]}` : " · no area yet"
+                }`}
+                meta={place.status}
+              />
 
-        <Text style={styles.label}>WHERE TO FIND IT</Text>
-        <TextInput
-          value={form.location_description}
-          onChangeText={(value)=>set("location_description",value)}
-          placeholder="Main gate on St Helens Road"
-          placeholderTextColor={INK.inkSoft}
-          style={styles.input}
-          maxLength={200}
-          accessibilityLabel="Where to find it"
-        />
+              <View style={styles.placeButtons}>
+                <Action
+                  kind="secondary"
+                  glyph="edit"
+                  label="Edit"
+                  accessibilityLabel={`Edit ${place.name}`}
+                  onPress={()=>edit(place)}
+                  style={styles.button}
+                />
 
-        <Text style={styles.label}>DESCRIPTION</Text>
-        <TextInput
-          value={form.description}
-          onChangeText={(value)=>set("description",value)}
-          placeholder="What is here, and what people come for."
-          placeholderTextColor={INK.inkSoft}
-          style={[styles.input,styles.textarea]}
-          multiline
-          textAlignVertical="top"
-          maxLength={1000}
-          accessibilityLabel="Description"
-        />
-
-        <Text style={styles.label}>IMAGE URL</Text>
-        <TextInput
-          value={form.image_url}
-          onChangeText={(value)=>set("image_url",value)}
-          placeholder="https://..."
-          placeholderTextColor={INK.inkSoft}
-          style={styles.input}
-          autoCapitalize="none"
-          accessibilityLabel="Image URL"
-        />
-
-        <Text style={styles.label}>STATUS</Text>
-        <View style={styles.wrap}>
-          {STATUSES.map((status)=>(
-            <Pressable
-              key={status}
-              style={[styles.chip,form.status===status && styles.chipActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`Status ${status}`}
-              onPress={()=>set("status",status)}
-            >
-              <Text style={styles.chipText}>{status}</Text>
-            </Pressable>
+                {place.status!=="hidden" && (
+                  <Action
+                    kind="secondary"
+                    glyph="eyeOff"
+                    label="Hide"
+                    accessibilityLabel={`Hide ${place.name}`}
+                    onPress={()=>confirmHide(place)}
+                    style={styles.button}
+                  />
+                )}
+              </View>
+            </View>
           ))}
         </View>
-
-        <View style={styles.row}>
-          <Pressable
-            style={[styles.primary,saving && styles.disabled]}
-            disabled={saving}
-            accessibilityRole="button"
-            accessibilityLabel={form.id ? "Save this public place" : "Add this public place"}
-            onPress={save}
-          >
-            {saving
-              ? <ActivityIndicator color={INK.card}/>
-              : <Text style={styles.primaryText}>{form.id ? "Save place" : "Add place"}</Text>}
-          </Pressable>
-
-          {!!form.id && (
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
-              accessibilityLabel="Stop editing"
-              onPress={()=>{setForm(EMPTY);setError("");}}
-            >
-              <Text style={styles.secondaryText}>Cancel</Text>
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>{places.length} public place{places.length===1 ? "" : "s"}</Text>
-
-      {loading ? <ActivityIndicator color={INK.ink} style={styles.loader}/> : places.map((place)=>(
-        <View key={place.id} style={styles.placeCard}>
-          <Text style={styles.placeName}>{place.name}</Text>
-          <Text style={styles.placeDetail}>
-            {publicPlaceTypeLabel(place.place_type)}
-            {place.area_id && areaName[place.area_id] ? ` · ${areaName[place.area_id]}` : " · no area yet"}
-            {` · ${place.status}`}
-          </Text>
-
-          <View style={styles.row}>
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit ${place.name}`}
-              onPress={()=>edit(place)}
-            >
-              <Text style={styles.secondaryText}>Edit</Text>
-            </Pressable>
-
-            {place.status!=="hidden" && (
-              <Pressable
-                style={styles.secondary}
-                accessibilityRole="button"
-                accessibilityLabel={`Hide ${place.name}`}
-                onPress={()=>confirmHide(place)}
-              >
-                <Text style={styles.secondaryText}>Hide</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
-const card={
-  backgroundColor:INK.card,
-  borderWidth:2,
-  borderColor:INK.ink,
-  borderRadius:12
-};
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:60},
-  centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  centreText:{color:INK.ink,textAlign:"center",lineHeight:22},
-  title:{color:INK.ink,fontSize:28,fontWeight:"800",letterSpacing:-0.6},
-  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:21,marginTop:6},
-  errorCard:{...card,padding:14,marginTop:14},
-  errorText:{color:INK.ink,fontWeight:"700"},
-  formCard:{...card,padding:16,marginTop:18},
-  formTitle:{color:INK.ink,fontSize:19,fontWeight:"800"},
-  label:{color:INK.inkSoft,fontSize:10,fontWeight:"800",letterSpacing:1,marginTop:14},
-  input:{...card,minHeight:46,paddingHorizontal:12,paddingVertical:10,color:INK.ink,marginTop:6},
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+  fullState:{alignItems:"center",justifyContent:"center",gap:12,padding:32},
+  stateText:{
+    maxWidth:320,color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,textAlign:"center"
+  },
+
+  form:{padding:14},
+  label:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md,marginBottom:7},
+  wrap:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:16},
+  help:{
+    color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:-8,marginBottom:12
+  },
+  spaced:{marginTop:2},
   textarea:{minHeight:92},
-  help:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},
-  wrap:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:7},
-  chip:{borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:12,paddingVertical:7},
-  chipActive:{backgroundColor:INK.hair},
-  chipText:{color:INK.ink,fontWeight:"800",fontSize:12},
-  row:{flexDirection:"row",gap:10,marginTop:14,flexWrap:"wrap"},
+
+  row:{flexDirection:"row",gap:9,flexWrap:"wrap"},
   half:{flex:1,minWidth:130},
-  primary:{minHeight:48,paddingHorizontal:20,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12},
-  primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{minHeight:44,paddingHorizontal:16,justifyContent:"center",alignItems:"center",...card},
-  secondaryText:{color:INK.ink,fontWeight:"800"},
-  disabled:{opacity:0.6},
-  sectionTitle:{color:INK.ink,fontSize:19,fontWeight:"800",marginTop:26,marginBottom:10},
+  button:{flex:1,minWidth:110},
+
   loader:{marginTop:16},
-  placeCard:{...card,padding:14,marginBottom:11},
-  placeName:{color:INK.ink,fontSize:16,fontWeight:"800"},
-  placeDetail:{color:INK.inkSoft,fontSize:12,marginTop:3}
+  placeBlock:{marginBottom:14},
+  placeButtons:{flexDirection:"row",gap:9,marginTop:2}
 });

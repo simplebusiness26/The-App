@@ -1,6 +1,5 @@
 import React,{useCallback,useMemo,useState} from "react";
 import {
-  Platform,
   View,
   Text,
   StyleSheet,
@@ -20,10 +19,37 @@ import {managesAnyListing} from "../utils/permissions";
 import {withNext} from "../utils/navigation";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
 import {CREATE_HUB_CLEARANCE} from "./CreateHub";
+import {
+  Action,
+  Chip,
+  Empty,
+  Frame,
+  Glyph,
+  KeyValue,
+  Meter,
+  MONO,
+  Panel,
+  ReadoutStrip,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "./instrument";
 
-// Native matches a single family name, not a CSS stack -- see the same note in
-// components/HappeningSegments.js.
-const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
+// AN EXPLORER, READ OFF THE INSTRUMENT.
+//
+// Everything on this page that the app WORKED OUT -- counts, ranks, averages,
+// endorsements, dates, categories -- is a measured value, so it is set in the
+// data face and shown the way an instrument shows a reading: a ReadoutStrip
+// across the top, KeyValues for stated facts, a Meter for a rating that used to
+// be five repeated star characters. Everything a person WROTE -- their name,
+// their bio, the text of a review -- stays in the body face.
+//
+// The emoji are gone: the pin beside an area, the map and pin on the fallback
+// tiles, the play triangles, the speech bubble, the fullwidth plus on the two
+// Moment buttons, the chevrons, and the five stars. All of them are Glyphs on
+// the same 16x16 grid as the map markers now. Not one Supabase call, permission
+// check, route or spoken label changed.
 
 function dateLabel(value){
   if(!value) return "";
@@ -42,29 +68,15 @@ function listingRoute(item){
   return "/map";
 }
 
+// The face, in the bracketed well every picture in this app sits in.
 function Avatar({profile,size=94}){
-  if(profile?.profile_photo){
-    return <Image source={{uri:profile.profile_photo}} style={{width:size,height:size,borderRadius:size/2,backgroundColor:INK.panelRaised}}/>;
-  }
-
   return(
-    <View style={[styles.avatarFallback,{width:size,height:size,borderRadius:size/2}]}>
-      <Text style={[styles.avatarLetter,{fontSize:size*0.38}]}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>
-    </View>
+    <Frame size={size} round style={styles.avatarFrame}>
+      {profile?.profile_photo
+        ? <Image source={{uri:profile.profile_photo}} style={{width:size,height:size,borderRadius:SHAPE.radius.pill}}/>
+        : <Text style={[styles.avatarLetter,{fontSize:size*0.38}]}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+    </Frame>
   );
-}
-
-function StatCard({label,value,accent=false}){
-  return(
-    <View style={[styles.statCard,accent && styles.statCardAccent]}>
-      <Text style={[styles.statValue,accent && styles.statValueAccent]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function EmptyCard({children}){
-  return <View style={styles.emptyCard}><Text style={styles.emptyText}>{children}</Text></View>;
 }
 
 // Packet 8a: the scrapbook, in the brief's order.
@@ -311,61 +323,79 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
   const isOwner=!!currentUser && currentUser.id===resolvedId;
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></View>;
+    return(
+      <Screen>
+        <View style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></View>
+      </Screen>
+    );
   }
 
   if(error || !profile){
     return(
-      <View style={styles.center}>
-        <Text style={styles.errorTitle}>Profile unavailable</Text>
-        <Text style={styles.errorText}>{error || "This profile could not be loaded."}</Text>
-        <Pressable
-          style={styles.primaryButton}
-          accessibilityRole="button"
-          accessibilityLabel="Try again"
-          onPress={loadProfile}
-        >
-          <Text style={styles.primaryButtonText}>Try again</Text>
-        </Pressable>
-      </View>
+      <Screen>
+        <View style={styles.center}>
+          <Empty
+            glyph="warn"
+            title="Profile unavailable"
+            instruction={error || "This profile could not be loaded."}
+            action={
+              <Action
+                kind="primary"
+                glyph="refresh"
+                label="Try again"
+                accessibilityLabel="Try again"
+                onPress={loadProfile}
+              />
+            }
+          />
+        </View>
+      </Screen>
     );
   }
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.profileCard}>
-        {/*
-          Packet 8a: three separately labelled figures.
+      {/*
+        THE HEAD PLATE.
 
-          The brief names them Explorer Score, Average Review Score and Review
-          Reputation. **Explorer Score does not exist yet** -- it belongs to
-          Packet 9a, which builds the scoring engine and awards points
-          server-side. `total_points` is review points and nothing else, so
-          labelling it "Explorer Score" here would name a thing 9a has to build
-          and then contradict.
+        Packet 8a: three separately labelled figures.
 
-          These are the three honest figures today's data supports. Each says
-          what it counts, which is the point the brief was making: the old pair
-          read AVG RATING and REVIEW POINTS, and neither said whose ratings or
-          what the points were for.
-        */}
-        <View style={styles.topScoreRow}>
-          <View style={styles.scorePill} accessibilityLabel={`Average review score given: ${Number(stats?.average_rating_given || 0).toFixed(1)} out of 5`}>
-            <Text style={styles.scoreNumber}>{Number(stats?.average_rating_given || 0).toFixed(1)}</Text>
-            {/* "given", explicitly. An Explorer cannot receive a review --
-                RULES.md: reviews attach to places, clubs and events. */}
-            <Text style={styles.scoreLabel}>AVG SCORE GIVEN</Text>
-          </View>
-          <View style={[styles.scorePill,styles.pointsPill]} accessibilityLabel={`Review points: ${stats?.total_points || 0}`}>
-            <Text style={styles.pointsNumber}>{stats?.total_points || 0}</Text>
-            <Text style={styles.scoreLabel}>REVIEW POINTS</Text>
-          </View>
-          <View style={[styles.scorePill,styles.reputationPill]} accessibilityLabel={`Review reputation: ${Number(reputation?.total_endorsements || 0)} endorsements`}>
-            <Text style={styles.reputationNumber}>{Number(reputation?.total_endorsements || 0)}</Text>
-            <Text style={styles.scoreLabel}>REVIEW REPUTATION</Text>
-          </View>
+        The brief names them Explorer Score, Average Review Score and Review
+        Reputation. **Explorer Score does not exist yet** -- it belongs to
+        Packet 9a, which builds the scoring engine and awards points
+        server-side. `total_points` is review points and nothing else, so
+        labelling it "Explorer Score" here would name a thing 9a has to build
+        and then contradict.
+
+        These are the three honest figures today's data supports. Each says
+        what it counts, which is the point the brief was making: the old pair
+        read AVG RATING and REVIEW POINTS, and neither said whose ratings or
+        what the points were for.
+
+        They were three pills in a row. They are one plate now -- three
+        measurements with etched dividers between them -- because that is what
+        an instrument does with three figures taken at the same time.
+      */}
+      <View style={styles.strips}>
+        <View style={styles.stripCell} accessibilityLabel={`Average review score given: ${Number(stats?.average_rating_given || 0).toFixed(1)} out of 5`}>
+          {/* "given", explicitly. An Explorer cannot receive a review --
+              RULES.md: reviews attach to places, clubs and events. */}
+          <Text style={styles.stripLabel}>AVG SCORE GIVEN</Text>
+          <Text style={styles.stripValue}>{Number(stats?.average_rating_given || 0).toFixed(1)}</Text>
         </View>
+        <View style={styles.stripDivider}/>
+        <View style={styles.stripCell} accessibilityLabel={`Review points: ${stats?.total_points || 0}`}>
+          <Text style={styles.stripLabel}>REVIEW POINTS</Text>
+          <Text style={styles.stripValue}>{stats?.total_points || 0}</Text>
+        </View>
+        <View style={styles.stripDivider}/>
+        <View style={styles.stripCell} accessibilityLabel={`Review reputation: ${Number(reputation?.total_endorsements || 0)} endorsements`}>
+          <Text style={styles.stripLabel}>REVIEW REPUTATION</Text>
+          <Text style={styles.stripValue}>{Number(reputation?.total_endorsements || 0)}</Text>
+        </View>
+      </View>
 
+      <Panel style={styles.identity}>
         {/*
           The ring. It is the only way into somebody's live Moments now, and it
           draws nothing at all when there is nothing live -- an empty section is
@@ -384,16 +414,21 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
           onClose={()=>setStoryOpen(false)}
         />
         <Text style={styles.profileName}>{profile.full_name || "Explorer"}</Text>
-        {!!profile.show_area && !!profile.area?.trim() && <Text style={styles.area}>📍 {profile.area.trim()}</Text>}
+        {!!profile.show_area && !!profile.area?.trim() && (
+          <View style={styles.areaRow}>
+            <Glyph name="pin" size={13} colour={INK.readoutFaint}/>
+            <Text style={styles.area}>{profile.area.trim()}</Text>
+          </View>
+        )}
         {!!profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
         {isOwner && (
           <View style={styles.ownerActions}>
-            <Pressable style={styles.editProfileButton} onPress={()=>router.push("/profile/edit")}><Text style={styles.editProfileText}>Edit profile</Text></Pressable>
-            <Pressable style={styles.newMomentButton} onPress={()=>router.push("/camera")}><Text style={styles.newMomentText}>＋ New Moment</Text></Pressable>
+            <Action kind="secondary" glyph="edit" label="Edit profile" onPress={()=>router.push("/profile/edit")} style={styles.ownerAction}/>
+            <Action kind="primary" glyph="camera" label="New Moment" onPress={()=>router.push("/camera")} style={styles.ownerAction}/>
           </View>
         )}
-      </View>
+      </Panel>
 
       {/*
         Anything the surrounding screen wants directly under the identity card:
@@ -422,94 +457,91 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         flag from the manager capability layer, per CLAUDE.md's account model.
       */}
       {isOwner && (
-        <View style={styles.manageSection}>
-          <Text style={styles.sectionEyebrowDark}>MANAGE</Text>
+        <>
+          <SectionRule label="Manage"/>
 
           <Pressable
-            style={styles.manageRow}
             accessibilityRole="button"
             accessibilityLabel="Open My Places, your manager tools"
             onPress={()=>router.push("/manager/dashboard")}
           >
-            <View style={styles.manageRowText}>
-              <Text style={styles.manageRowTitle}>My Places</Text>
-              <Text style={styles.manageRowSub}>
-                {managesSomething ? "Businesses, properties, clubs and events you run" : "Request access to manage a listing"}
-              </Text>
-            </View>
-            <Text style={styles.manageRowChevron}>›</Text>
+            <Row
+              glyph="building"
+              title="My Places"
+              sub={managesSomething ? "Businesses, properties, clubs and events you run" : "Request access to manage a listing"}
+              right={<Glyph name="forward" size={13} colour={INK.readoutFaint}/>}
+            />
           </Pressable>
 
           <Pressable
-            style={styles.manageRow}
             accessibilityRole="button"
             accessibilityLabel="Open Account and Safety settings"
             onPress={()=>router.push("/settings")}
           >
-            <View style={styles.manageRowText}>
-              <Text style={styles.manageRowTitle}>Account &amp; Safety</Text>
-              <Text style={styles.manageRowSub}>Notifications, safety, legal and your account</Text>
-            </View>
-            <Text style={styles.manageRowChevron}>›</Text>
+            <Row
+              glyph="settings"
+              title="Account & Safety"
+              sub="Notifications, safety, legal and your account"
+              right={<Glyph name="forward" size={13} colour={INK.readoutFaint}/>}
+            />
           </Pressable>
 
           {!!profile.is_admin && (
             <Pressable
-              style={[styles.manageRow,styles.manageRowLast]}
               accessibilityRole="button"
               accessibilityLabel="Open the Admin Console"
               onPress={()=>router.push("/admin/dashboard")}
             >
-              <View style={styles.manageRowText}>
-                <Text style={styles.manageRowTitle}>Admin Console</Text>
-                <Text style={styles.manageRowSub}>Claims, moderation and platform review queues</Text>
-              </View>
-              <Text style={styles.manageRowChevron}>›</Text>
+              <Row
+                glyph="shield"
+                title="Admin Console"
+                sub="Claims, moderation and platform review queues"
+                right={<Glyph name="forward" size={13} colour={INK.readoutFaint}/>}
+              />
             </Pressable>
           )}
-        </View>
+        </>
       )}
 
-      <View style={styles.statsGrid}>
-        <StatCard label="Reviews" value={stats?.review_count || 0}/>
-        <StatCard label="Verified" value={stats?.verified_review_count || 0}/>
-        <StatCard label="Videos" value={stats?.video_review_count || 0} accent/>
-        <StatCard label="Live Moments" value={liveMomentCount} accent/>
-      </View>
+      {/* Four more measurements, on one plate. */}
+      <SectionRule label="Activity"/>
+      <ReadoutStrip
+        items={[
+          {label:"REVIEWS",value:String(stats?.review_count || 0)},
+          {label:"VERIFIED",value:String(stats?.verified_review_count || 0)},
+          {label:"VIDEOS",value:String(stats?.video_review_count || 0)},
+          {label:"LIVE",value:String(liveMomentCount)}
+        ]}
+      />
 
-      <Pressable style={styles.rankCard} onPress={()=>router.push("/leaderboards")}>
-        <View>
-          <Text style={styles.sectionEyebrow}>MONTHLY LEADERBOARD</Text>
-          <Text style={styles.rankTitle}>Leaderboard position</Text>
-        </View>
-        <View style={styles.rankValues}>
-          <Text style={styles.rankText}>Local {monthlyLocalRank ? `#${monthlyLocalRank}` : "—"}</Text>
-          <Text style={styles.rankText}>National {monthlyNationalRank ? `#${monthlyNationalRank}` : "—"}</Text>
-        </View>
+      <SectionRule label="Standing"/>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open the leaderboards"
+        onPress={()=>router.push("/leaderboards")}
+      >
+        <Row
+          glyph="award"
+          title="Leaderboard position"
+          sub="Monthly, local and national"
+          meta={monthlyLocalRank ? `LOCAL #${monthlyLocalRank}` : "LOCAL —"}
+          metaSub={monthlyNationalRank ? `NATIONAL #${monthlyNationalRank}` : "NATIONAL —"}
+        />
       </Pressable>
 
       {!!reputation && (
-        <View style={styles.reputationCard}>
-          <Text style={styles.sectionEyebrow}>REVIEW REPUTATION</Text>
+        <Panel style={styles.reputationCard}>
           <Text style={styles.reputationHeadline}>
             {Number(reputation.total_endorsements || 0)} useful review endorsement{Number(reputation.total_endorsements || 0)===1 ? "" : "s"}
           </Text>
-          <View style={styles.reputationRow}>
-            <View style={styles.reputationStat}>
-              <Text style={styles.reputationValue}>{Number(reputation.reviews_with_endorsement || 0)}</Text>
-              <Text style={styles.reputationLabel}>Reviews found useful</Text>
-            </View>
-            <View style={styles.reputationStat}>
-              <Text style={styles.reputationValue}>{Number(reputation.average_endorsements_per_review || 0).toFixed(1)}</Text>
-              <Text style={styles.reputationLabel}>Avg. per review</Text>
-            </View>
-          </View>
+          <KeyValue label="Reviews found useful" value={String(Number(reputation.reviews_with_endorsement || 0))}/>
+          <KeyValue label="Avg. per review" value={Number(reputation.average_endorsements_per_review || 0).toFixed(1)}/>
           {!!reputation.most_useful_review_id && (
             <Text style={styles.reputationMostUseful}>
               Most useful review: {reputation.most_useful_review_target_name} · {Number(reputation.most_useful_review_count || 0)} people found it useful
             </Text>
           )}
-        </View>
+        </Panel>
       )}
 
       {/*
@@ -517,19 +549,38 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         profile used to be. My Map appears in the list only for the owner, so a
         visitor is not offered a tab that would be empty for them -- they are
         not offered the tab at all.
+
+        They were filled pills in an unconstrained horizontal ScrollView. This is
+        the kit's Segmented in every respect but one -- each tab speaks "Show
+        Reviews" while displaying "Reviews", and Segmented uses a single `label`
+        for both -- so the detented switch is rebuilt here from the same parts:
+        mono label, tick detent, no fill anywhere, and the flexGrow:0/flexShrink:0
+        and centred content container that stop a sideways ScrollView in a flex
+        column stretching its children to fill it.
       */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrapbookTabRow} contentContainerStyle={styles.scrapbookTabContent}>
-        {SCRAPBOOK_TABS.filter(tab=>!tab.ownerOnly || isOwner).map(tab=>(
-          <Pressable
-            key={tab.key}
-            style={[styles.scrapbookTab,scrapbookTab===tab.key && styles.scrapbookTabActive]}
-            accessibilityRole="button"
-            accessibilityLabel={`Show ${tab.label}`}
-            onPress={()=>setScrapbookTab(tab.key)}
-          >
-            <Text style={[styles.scrapbookTabText,scrapbookTab===tab.key && styles.scrapbookTabTextActive]}>{tab.label}</Text>
-          </Pressable>
-        ))}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.scrapbookTabs}
+        contentContainerStyle={styles.scrapbookTabContent}
+        accessibilityRole="tablist"
+      >
+        {SCRAPBOOK_TABS.filter(tab=>!tab.ownerOnly || isOwner).map(tab=>{
+          const selected=scrapbookTab===tab.key;
+          return(
+            <Pressable
+              key={tab.key}
+              style={styles.scrapbookTab}
+              accessibilityRole="button"
+              accessibilityLabel={`Show ${tab.label}`}
+              accessibilityState={{selected}}
+              onPress={()=>setScrapbookTab(tab.key)}
+            >
+              <Text style={[styles.scrapbookTabText,selected&&styles.scrapbookTabTextActive]} numberOfLines={1}>{tab.label}</Text>
+              <View style={[styles.scrapbookDetent,selected&&styles.scrapbookDetentActive]}/>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       {/*
@@ -540,29 +591,41 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
       {scrapbookTab==="mymap" && isOwner && <MyMap ownerId={resolvedId} viewerId={currentUser?.id}/>}
 
       {scrapbookTab==="adventures" && <>
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Memories</Text><Text style={styles.sectionCount}>{memories.length}</Text></View>
+      <SectionRule label="Memories" meta={String(memories.length)}/>
       {memories.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tileScroll}
+          contentContainerStyle={styles.tileRow}
+        >
           {memories.map(item=>(
             <Pressable
               key={item.id}
-              style={styles.favouriteCard}
               accessibilityRole="button"
               accessibilityLabel={item.title || "Open this Memory"}
               onPress={()=>router.push(`/memories/${item.id}`)}
             >
-              {item.media_url ? <SocialImage uri={item.media_url} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>🗺️</Text></View>}
-              <Text style={styles.favouriteName} numberOfLines={2}>{item.title || item.target_name || "A Memory"}</Text>
-              <Text style={styles.favouriteType}>{item.is_live ? "live" : "archived"}</Text>
+              <Panel style={styles.tile}>
+                <Frame ratio={1.45} style={styles.tileFrame}>
+                  {item.media_url
+                    ? <SocialImage uri={item.media_url} style={styles.tileImage}/>
+                    : <Glyph name="map" size={22} colour={INK.readoutFaint}/>}
+                </Frame>
+                <Text style={styles.tileName} numberOfLines={2}>{item.title || item.target_name || "A Memory"}</Text>
+                <Text style={styles.tileType}>{item.is_live ? "live" : "archived"}</Text>
+              </Panel>
             </Pressable>
           ))}
         </ScrollView>
       ) : (
-        <EmptyCard>
-          {ownProfile
+        <Empty
+          glyph="bookmark"
+          title="No Memories here yet"
+          instruction={ownProfile
             ? "Keep a Memory of somewhere and choose whether it shows here."
             : "Nothing shared here yet."}
-        </EmptyCard>
+        />
       )}
 
       {/*
@@ -576,41 +639,64 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         Nothing was deleted. Every Moment row is still in the database; it just
         no longer has a permanent home on a profile.
       */}
-      {isOwner && <Pressable style={styles.createMomentWide} onPress={()=>router.push("/camera")}><Text style={styles.createMomentWideText}>＋ Share a new Moment</Text></Pressable>}
-      <EmptyCard>
-        {liveMomentCount>0
+      <SectionRule label="Moments" meta={String(liveMomentCount)}/>
+      {isOwner && (
+        <Action
+          kind="primary"
+          glyph="camera"
+          label="Share a new Moment"
+          onPress={()=>router.push("/camera")}
+          style={styles.wideAction}
+        />
+      )}
+      <Empty
+        glyph="live"
+        title={liveMomentCount>0 ? "Live now" : "Nothing live"}
+        instruction={liveMomentCount>0
           ? "Live Moments are watched through the ring on the profile picture above."
           : isOwner
             ? "Moments are live for a day and then they go. Post one and it appears as a ring on your profile picture."
             : "Nothing is live right now. Moments last a day."}
-      </EmptyCard>
+      />
       </>}
 
       {scrapbookTab==="reviews" && <>
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Review gallery</Text><Text style={styles.sectionCount}>{imageMedia.length}</Text></View>
+      <SectionRule label="Review gallery" meta={String(imageMedia.length)}/>
       {imageMedia.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tileScroll}
+          contentContainerStyle={styles.tileRow}
+        >
           {imageMedia.map(item=>{
             const review=reviews.find(row=>row.id===item.review_id);
             return(
-              <Pressable key={item.id} style={styles.galleryCard} onPress={()=>review && router.push(listingRoute(review))}>
-                <SocialImage uri={item.media_url} style={styles.galleryImage}/>
-                <View style={styles.galleryOverlay}><Text style={styles.galleryText} numberOfLines={1}>{review?.target_name || "Review"}</Text></View>
+              <Pressable key={item.id} onPress={()=>review && router.push(listingRoute(review))}>
+                <Frame size={166} ratio={1.15} style={styles.galleryFrame}>
+                  <SocialImage uri={item.media_url} style={styles.galleryImage}/>
+                  <View style={styles.galleryOverlay}>
+                    <Text style={styles.galleryText} numberOfLines={1}>{review?.target_name || "Review"}</Text>
+                  </View>
+                </Frame>
               </Pressable>
             );
           })}
         </ScrollView>
-      ) : <EmptyCard>Images added to reviews will appear here.</EmptyCard>}
+      ) : (
+        <Empty glyph="image" title="No review photographs yet" instruction="Images added to reviews will appear here."/>
+      )}
 
-      <View style={styles.reviewHeadingRow}>
-        <Text style={styles.sectionTitle}>Reviews</Text>
-        <View style={styles.sortRow}>
-          {[{key:"recent",label:"Recent"},{key:"highest",label:"Highest"},{key:"lowest",label:"Lowest"}].map(option=>(
-            <Pressable key={option.key} style={[styles.sortButton,sort===option.key && styles.sortButtonActive]} onPress={()=>setSort(option.key)}>
-              <Text style={[styles.sortText,sort===option.key && styles.sortTextActive]}>{option.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+      <SectionRule label="Reviews" meta={String(sortedReviews.length)}/>
+      <View style={styles.sortRow}>
+        {[{key:"recent",label:"Recent"},{key:"highest",label:"Highest"},{key:"lowest",label:"Lowest"}].map(option=>(
+          <Chip
+            key={option.key}
+            label={option.label}
+            selected={sort===option.key}
+            onPress={()=>setSort(option.key)}
+          />
+        ))}
       </View>
 
       {sortedReviews.length ? sortedReviews.map(review=>{
@@ -619,104 +705,193 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
         const video=reviewMedia.find(item=>item.media_type==="video");
         const likes=reviewLikes[review.id] || {count:0,liked:false};
         return(
-          <View key={review.id} style={styles.reviewCard}>
+          <Panel key={review.id} style={styles.reviewCard}>
+            {/* The head strip every panel in the instrument carries: what kind
+                of thing this is, and when. */}
             <Pressable onPress={()=>router.push(listingRoute(review))}>
+              <View style={styles.reviewHead}>
+                <Text style={styles.reviewType}>{review.target_type.replace("_"," ")}</Text>
+                <View style={styles.reviewHeadLine}/>
+                <Text style={styles.reviewDate}>{dateLabel(review.created_at).toUpperCase()}</Text>
+              </View>
               <View style={styles.reviewTopRow}>
-                <View style={styles.reviewTitleWrap}>
-                  <Text style={styles.reviewPlace}>{review.target_name}</Text>
-                  <Text style={styles.reviewType}>{review.target_type.replace("_"," ")} · {dateLabel(review.created_at)}</Text>
-                </View>
-                <View style={styles.pointsBadge}><Text style={styles.pointsBadgeText}>+{review.points_awarded || 0}</Text></View>
+                <Text style={styles.reviewPlace}>{review.target_name}</Text>
+                <Text style={styles.pointsBadge}>+{review.points_awarded || 0}</Text>
               </View>
             </Pressable>
 
-            <Text style={styles.reviewStars}>{"★".repeat(review.rating)}<Text style={styles.emptyStars}>{"★".repeat(5-review.rating)}</Text></Text>
+            {/* A REVIEW SCORE IS A MEASUREMENT, SO IT IS READ OFF A SCALE.
+                Five repeated star characters were a count you have to do
+                yourself, in a shape belonging to the system font. */}
+            <View style={styles.ratingRow} accessibilityLabel={`Rated ${review.rating} out of 5`}>
+              <Meter value={review.rating} max={5} width={96} tone="exists" label="RATED"/>
+              <Text style={styles.ratingValue}>{review.rating}/5</Text>
+            </View>
+
             {!!review.title && <Text style={styles.reviewTitle}>{review.title}</Text>}
             <Text style={styles.reviewComment}>{review.comment}</Text>
-            {!!review.verified_qr && <View style={styles.verifiedBadge}><Text style={styles.verifiedText}>✓ VERIFIED ON-SITE REVIEW</Text></View>}
+
+            {/* Verified on-site is a fact the app checked, so it is a checked
+                box on the housing rather than a green sticker. */}
+            {!!review.verified_qr && (
+              <View style={styles.verifiedRow}>
+                <Glyph name="check" size={13} colour={INK.readoutSoft} weight={1.8}/>
+                <Text style={styles.verifiedText}>VERIFIED ON-SITE REVIEW</Text>
+              </View>
+            )}
 
             {!!photos.length && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewImageRow}>
-                {photos.map(photo=><SocialImage key={photo.id} uri={photo.media_url} style={styles.reviewImage}/>)}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.tileScroll}
+                contentContainerStyle={styles.reviewImageRow}
+              >
+                {photos.map(photo=>(
+                  <Frame key={photo.id} size={116} style={styles.reviewImageFrame}>
+                    <SocialImage uri={photo.media_url} style={styles.reviewImage}/>
+                  </Frame>
+                ))}
               </ScrollView>
             )}
 
             {!!video && (
-              <Pressable style={styles.videoButton} onPress={()=>router.push(`/social-comments/${review.id}`)}>
-                <Text style={styles.videoButtonIcon}>▶</Text>
-                <View style={{flex:1}}>
-                  <Text style={styles.videoButtonTitle}>Open video review</Text>
-                  <Text style={styles.videoButtonText}>Watch, like and join the discussion</Text>
-                </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open video review"
+                onPress={()=>router.push(`/social-comments/${review.id}`)}
+              >
+                <Row
+                  glyph="play"
+                  title="Open video review"
+                  sub="Watch, like and join the discussion"
+                  right={<Glyph name="forward" size={13} colour={INK.readoutFaint}/>}
+                />
               </Pressable>
             )}
 
             <View style={styles.reviewActions}>
               <EndorseButton reviewId={review.id} ownerId={review.user_id} viewerId={currentUser?.id} initialCount={likes.count} initialEndorsed={likes.liked}/>
-              {!!video && <Pressable style={styles.commentsLink} onPress={()=>router.push(`/social-comments/${review.id}`)}><Text style={styles.commentsLinkText}>💬 Comments</Text></Pressable>}
+              {!!video && (
+                <Pressable
+                  style={styles.commentsLink}
+                  accessibilityRole="button"
+                  accessibilityLabel="Comments"
+                  onPress={()=>router.push(`/social-comments/${review.id}`)}
+                >
+                  <Glyph name="comment" size={14} colour={INK.readoutSoft}/>
+                  <Text style={styles.commentsLinkText}>COMMENTS</Text>
+                </Pressable>
+              )}
             </View>
-          </View>
+          </Panel>
         );
-      }) : <EmptyCard>No reviews have been published yet.</EmptyCard>}
+      }) : (
+        <Empty glyph="comment" title="No reviews yet" instruction="No reviews have been published yet."/>
+      )}
 
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Video reviews</Text><Text style={styles.sectionCount}>{videoMedia.length}</Text></View>
+      <SectionRule label="Video reviews" meta={String(videoMedia.length)}/>
       {videoMedia.length ? videoMedia.map(item=>{
         const review=reviews.find(row=>row.id===item.review_id);
         return(
-          <Pressable key={item.id} style={styles.videoCard} onPress={()=>review && router.push(`/social-comments/${review.id}`)}>
-            <View style={styles.videoPoster}>
-              {item.thumbnail_url || review?.target_image_url ? <SocialImage uri={item.thumbnail_url || review?.target_image_url} style={styles.videoPosterImage}/> : <Text style={styles.largePlay}>▶</Text>}
-              <View style={styles.playOverlay}><Text style={styles.playOverlayText}>▶</Text></View>
-            </View>
-            <View style={styles.videoCardBody}>
-              <Text style={styles.videoCardTitle}>{review?.title || review?.target_name || "Video review"}</Text>
-              <Text style={styles.videoCardPlace}>{review?.target_name}</Text>
-              <Text style={styles.videoCardMeta}>{review ? `${review.rating}/5 · ${dateLabel(review.created_at)} · Open comments` : "Video review"}</Text>
-            </View>
+          <Pressable
+            key={item.id}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${review?.title || review?.target_name || "this video review"}`}
+            onPress={()=>review && router.push(`/social-comments/${review.id}`)}
+          >
+            <Panel style={styles.videoCard}>
+              <Frame ratio={1.9} style={styles.videoPoster}>
+                {item.thumbnail_url || review?.target_image_url
+                  ? <SocialImage uri={item.thumbnail_url || review?.target_image_url} style={styles.videoPosterImage}/>
+                  : null}
+                <View style={styles.playCircle}>
+                  <Glyph name="play" size={20} colour={INK.readout} weight={1.4}/>
+                </View>
+              </Frame>
+              <View style={styles.videoCardBody}>
+                <Text style={styles.videoCardTitle}>{review?.title || review?.target_name || "Video review"}</Text>
+                <Text style={styles.videoCardPlace}>{review?.target_name}</Text>
+                <Text style={styles.videoCardMeta}>{review ? `${review.rating}/5 · ${dateLabel(review.created_at)} · OPEN COMMENTS` : "VIDEO REVIEW"}</Text>
+              </View>
+            </Panel>
           </Pressable>
         );
-      }) : <EmptyCard>Video reviews will appear here.</EmptyCard>}
+      }) : (
+        <Empty glyph="video" title="No video reviews yet" instruction="Video reviews will appear here."/>
+      )}
       </>}
 
       {scrapbookTab==="collections" && <>
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Favourite places</Text><Text style={styles.sectionCount}>{favourites.length}</Text></View>
+      <SectionRule label="Favourite places" meta={String(favourites.length)}/>
       {favourites.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tileScroll}
+          contentContainerStyle={styles.tileRow}
+        >
           {favourites.map(item=>(
-            <Pressable key={item.id} style={styles.favouriteCard} onPress={()=>router.push(listingRoute(item))}>
-              {item.target_image_url ? <SocialImage uri={item.target_image_url} style={styles.favouriteImage}/> : <View style={styles.favouriteFallback}><Text style={styles.favouriteEmoji}>📍</Text></View>}
-              <Text style={styles.favouriteName} numberOfLines={2}>{item.target_name}</Text>
-              <Text style={styles.favouriteType}>{item.target_type.replace("_"," ")}</Text>
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${item.target_name}`}
+              onPress={()=>router.push(listingRoute(item))}
+            >
+              <Panel style={styles.tile}>
+                <Frame ratio={1.45} style={styles.tileFrame}>
+                  {item.target_image_url
+                    ? <SocialImage uri={item.target_image_url} style={styles.tileImage}/>
+                    : <Glyph name="pin" size={22} colour={INK.readoutFaint}/>}
+                </Frame>
+                <Text style={styles.tileName} numberOfLines={2}>{item.target_name}</Text>
+                <Text style={styles.tileType}>{item.target_type.replace("_"," ")}</Text>
+              </Panel>
             </Pressable>
           ))}
         </ScrollView>
-      ) : <EmptyCard>No favourite places have been shared yet.</EmptyCard>}
-
+      ) : (
+        <Empty glyph="heart" title="No favourites shared" instruction="No favourite places have been shared yet."/>
+      )}
       </>}
 
       {scrapbookTab==="clubs" && <>
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Clubs</Text><Text style={styles.sectionCount}>{clubs.length}</Text></View>
+      <SectionRule label="Clubs" meta={String(clubs.length)}/>
       {clubs.length ? clubs.map(row=>(
         <Pressable
           key={row.id}
-          style={styles.reviewCard}
           accessibilityRole="button"
           accessibilityLabel={`Open ${row.activity_clubs.name}`}
           onPress={()=>router.push(`/activity-clubs/${row.activity_clubs.id}`)}
         >
-          <Text style={styles.reviewPlace}>{row.activity_clubs.name}</Text>
-          <Text style={styles.reviewType}>{row.activity_clubs.category} · {row.activity_clubs.location}</Text>
+          <Row
+            glyph="people"
+            title={row.activity_clubs.name}
+            sub={row.activity_clubs.location}
+            meta={String(row.activity_clubs.category || "").toUpperCase()}
+          />
         </Pressable>
       )) : (
-        <EmptyCard>
-          {isOwner
+        <Empty
+          glyph="people"
+          title="No Clubs yet"
+          instruction={isOwner
             ? "Join a Club and the ones you are part of will be listed here."
             : "This Explorer is not part of any Club yet."}
-        </EmptyCard>
+        />
       )}
       </>}
 
-      {isOwner && <Pressable style={styles.logoutButton} onPress={logout}><Text style={styles.logoutText}>Logout</Text></Pressable>}
+      {isOwner && (
+        <Action
+          kind="secondary"
+          glyph="close"
+          label="Logout"
+          accessibilityLabel="Logout"
+          onPress={logout}
+          style={styles.logout}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -726,55 +901,50 @@ const styles=StyleSheet.create({
   // exists/scheduled/offer say what a PLACE is, and agree/dispute are a
   // manager's two answers to a review. A reputation score, a leaderboard rank
   // and a points badge are none of those -- they are readings, so they are set
-  // in the readout on layered housing surfaces. That is also what fixed the
-  // 1.99:1 reputation headline: there is no filled state colour left to put
-  // light text on.
+  // in the readout on layered housing surfaces.
+  //
+  // This block is a third of the size it was, because the cards, pills, badges,
+  // tabs and empty states all moved into components/instrument.js.
   screen:{flex:1,backgroundColor:INK.ground},
   // The Create action floats bottom-right over this screen; reserve its
   // footprint so the last row can be scrolled clear of it.
-  content:{padding:18,paddingBottom:24+CREATE_HUB_CLEARANCE},
-  center:{flex:1,backgroundColor:INK.ground,alignItems:"center",justifyContent:"center",padding:28},
-  errorTitle:{color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700"},
-  errorText:{color:INK.readoutSoft,textAlign:"center",marginTop:8},
+  content:{paddingHorizontal:16,paddingTop:14,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  center:{flex:1,backgroundColor:INK.ground,alignItems:"center",justifyContent:"center",padding:16},
 
-  profileCard:{
+  // The head plate. Built here rather than with ReadoutStrip for two reasons:
+  // each cell carries its own spoken label ("Review points: 120") and
+  // ReadoutStrip takes plain items, and Readout clamps its label to one line --
+  // "REVIEW REPUTATION" is 17 mono characters and a third of a 412pt screen is
+  // not wide enough for it, so it would have shipped as "REVIEW REPUTATI…".
+  // Same geometry as the kit's strip, same dividers, label allowed to wrap.
+  strips:{
+    flexDirection:"row",
+    alignItems:"stretch",
     backgroundColor:INK.panel,
-    borderColor:INK.hairline,
     borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.sheet,
-    padding:20,
-    alignItems:"center"
-  },
-  topScoreRow:{width:"100%",flexDirection:"row",justifyContent:"space-between",gap:6,marginBottom:12},
-  scorePill:{
-    flex:1,
-    minWidth:82,
-    backgroundColor:INK.panelRaised,
     borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
     borderRadius:SHAPE.radius.card,
-    paddingHorizontal:8,
-    paddingVertical:9,
-    alignItems:"center"
+    paddingVertical:12,
+    marginBottom:12
   },
-  // Emphasis is an edge, not a fill.
-  reputationPill:{borderColor:INK.hairlineStrong},
-  pointsPill:{borderColor:INK.hairlineStrong},
-  // Numbers the app worked out: mono.
-  reputationNumber:{color:INK.readout,fontFamily:MONO,fontSize:20},
-  scoreNumber:{color:INK.readout,fontFamily:MONO,fontSize:20},
-  pointsNumber:{color:INK.readout,fontFamily:MONO,fontSize:20},
-  scoreLabel:{
-    color:INK.readoutSoft,
+  stripCell:{flex:1,alignItems:"center",paddingHorizontal:6},
+  stripDivider:{width:1,backgroundColor:INK.hairline,marginVertical:2},
+  // Label above value, the same way the kit's Readout sets one out, so the head
+  // plate and the Activity strip further down read as the same instrument.
+  stripLabel:{
+    color:INK.readoutFaint,
     fontFamily:MONO,
     fontSize:TYPE.data.sizes.sm,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.sm,
     textTransform:"uppercase",
-    marginTop:2
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.sm,
+    textAlign:"center",
+    marginBottom:3
   },
+  stripValue:{color:INK.readout,fontFamily:MONO,fontSize:20,fontWeight:"700",letterSpacing:-0.5},
 
-  avatarFallback:{backgroundColor:INK.panelRaised,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.readout,fontWeight:"700"},
+  identity:{alignItems:"center",padding:18},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700"},
   profileName:{
     color:INK.readout,
     fontSize:TYPE.display.sizes.xl,
@@ -783,7 +953,8 @@ const styles=StyleSheet.create({
     textAlign:"center",
     marginTop:13
   },
-  area:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.lg,marginTop:6},
+  areaRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:6},
+  area:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.lg},
   bio:{
     color:INK.readoutSoft,
     fontSize:TYPE.body.sizes.lg,
@@ -792,167 +963,49 @@ const styles=StyleSheet.create({
     marginTop:10,
     maxWidth:520
   },
+  ownerActions:{flexDirection:"row",gap:9,marginTop:15,alignSelf:"stretch"},
+  ownerAction:{flex:1},
 
-  ownerActions:{flexDirection:"row",gap:9,marginTop:15},
-  editProfileButton:{
-    borderColor:INK.hairlineStrong,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.control,
-    paddingHorizontal:16,
-    paddingVertical:10
-  },
-  editProfileText:{color:INK.readout,fontWeight:"600"},
-  // The one lit control: the readout itself, with dark ground text on it.
-  newMomentButton:{
-    backgroundColor:INK.readout,
-    borderColor:INK.readout,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.control,
-    paddingHorizontal:16,
-    paddingVertical:10
-  },
-  newMomentText:{color:INK.ground,fontWeight:"700"},
-
-  manageSection:{
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.sheet,
-    marginTop:16,
-    paddingTop:14,
-    paddingHorizontal:16,
-    paddingBottom:4
-  },
-  sectionEyebrowDark:{
-    color:INK.readoutSoft,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase",
-    marginBottom:6
-  },
-  manageRow:{
-    flexDirection:"row",
-    alignItems:"center",
-    justifyContent:"space-between",
-    paddingVertical:14,
-    borderTopWidth:SHAPE.border,
-    borderTopColor:INK.hairline
-  },
-  manageRowLast:{},
-  manageRowText:{flex:1,paddingRight:10},
-  manageRowTitle:{color:INK.readout,fontSize:16,fontWeight:"700"},
-  manageRowSub:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3,lineHeight:17},
-  manageRowChevron:{color:INK.readoutSoft,fontSize:22,fontWeight:"600"},
-
-  statsGrid:{flexDirection:"row",flexWrap:"wrap",gap:10,marginTop:13},
-  statCard:{
-    width:"48%",
-    flexGrow:1,
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    padding:15,
-    alignItems:"center"
-  },
-  statCardAccent:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  statValue:{color:INK.readout,fontFamily:MONO,fontSize:25},
-  statValueAccent:{color:INK.readout},
-  statLabel:{
-    color:INK.readoutSoft,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase",
-    marginTop:3
-  },
-
-  rankCard:{
-    backgroundColor:INK.panelRaised,
-    borderColor:INK.hairlineStrong,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    padding:16,
-    marginTop:13,
-    flexDirection:"row",
-    justifyContent:"space-between",
-    alignItems:"center"
-  },
-  sectionEyebrow:{
-    color:INK.readoutSoft,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase"
-  },
-  rankTitle:{color:INK.readout,fontWeight:"700",fontSize:16,marginTop:4},
-  rankValues:{alignItems:"flex-end"},
-  rankText:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.lg,marginVertical:2},
-
-  reputationCard:{
-    backgroundColor:INK.panelRaised,
-    borderColor:INK.hairlineStrong,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    padding:16,
-    marginTop:13
-  },
-  reputationHeadline:{color:INK.readout,fontSize:18,fontWeight:"700",marginTop:5},
-  reputationRow:{flexDirection:"row",gap:22,marginTop:13},
-  reputationStat:{alignItems:"flex-start"},
-  reputationValue:{color:INK.readout,fontFamily:MONO,fontSize:22},
-  reputationLabel:{
-    color:INK.readoutSoft,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase",
-    marginTop:2
+  reputationCard:{padding:15,marginBottom:8},
+  reputationHeadline:{
+    color:INK.readout,
+    fontSize:TYPE.display.sizes.md,
+    fontWeight:"700",
+    letterSpacing:-0.3,
+    marginBottom:4
   },
   reputationMostUseful:{
     color:INK.readoutSoft,
     fontSize:TYPE.body.sizes.sm,
-    lineHeight:18,
-    marginTop:13
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,
+    marginTop:11
   },
 
-  sectionHeader:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:27,marginBottom:11},
-  sectionTitle:{
-    color:INK.readout,
-    fontSize:TYPE.display.sizes.lg,
-    fontWeight:"700",
-    letterSpacing:TYPE.display.tracking*TYPE.display.sizes.lg
-  },
-  sectionCount:{
-    color:INK.readoutSoft,
+  scrapbookTabs:{flexGrow:0,flexShrink:0,marginTop:22,marginBottom:2},
+  scrapbookTabContent:{alignItems:"center",gap:2},
+  scrapbookTab:{paddingHorizontal:12,paddingTop:10,alignItems:"center",minHeight:SHAPE.tapTarget},
+  scrapbookTabText:{
+    color:INK.readoutFaint,
     fontFamily:MONO,
-    fontSize:TYPE.data.sizes.lg,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.lg
+    fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",
+    letterSpacing:0.8,
+    marginBottom:8
   },
+  scrapbookTabTextActive:{color:INK.readout},
+  scrapbookDetent:{height:2,alignSelf:"stretch",minWidth:18,backgroundColor:INK.hairline},
+  scrapbookDetentActive:{backgroundColor:INK.hairlineStrong},
 
-  horizontalRow:{paddingRight:10},
-  favouriteCard:{
-    width:145,
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    padding:9,
-    marginRight:10
-  },
-  favouriteImage:{width:"100%",height:95,borderRadius:8,backgroundColor:INK.inset},
-  favouriteFallback:{
-    width:"100%",
-    height:95,
-    borderRadius:8,
-    backgroundColor:INK.panelRaised,
-    alignItems:"center",
-    justifyContent:"center"
-  },
-  favouriteEmoji:{fontSize:29},
-  favouriteName:{color:INK.readout,fontWeight:"700",fontSize:14,marginTop:9},
-  favouriteType:{
+  // A horizontal ScrollView in a flex column claims the leftover vertical space
+  // and stretches its children to fill it unless both of these are set --
+  // measured in this repo at 402px-tall pills.
+  tileScroll:{flexGrow:0,flexShrink:0},
+  tileRow:{alignItems:"center",paddingRight:10,gap:10},
+  tile:{width:150,padding:9},
+  tileFrame:{width:"100%",backgroundColor:INK.inset},
+  tileImage:{width:"100%",height:"100%"},
+  tileName:{color:INK.readout,fontSize:TYPE.body.sizes.md,fontWeight:"600",marginTop:9},
+  tileType:{
     color:INK.readoutSoft,
     fontFamily:MONO,
     fontSize:TYPE.data.sizes.md,
@@ -961,236 +1014,119 @@ const styles=StyleSheet.create({
     marginTop:4
   },
 
-  galleryCard:{width:165,height:145,borderRadius:SHAPE.radius.card,overflow:"hidden",marginRight:10,backgroundColor:INK.inset},
+  galleryFrame:{backgroundColor:INK.inset},
   galleryImage:{width:"100%",height:"100%"},
-  galleryOverlay:{position:"absolute",left:0,right:0,bottom:0,backgroundColor:"rgba(11,14,18,0.78)",padding:8},
+  galleryOverlay:{position:"absolute",left:0,right:0,bottom:0,backgroundColor:"rgba(11,14,18,0.82)",padding:8},
   galleryText:{color:INK.readout,fontSize:TYPE.body.sizes.sm,fontWeight:"600"},
 
-  emptyCard:{
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    padding:18
-  },
-  emptyText:{color:INK.readoutSoft,textAlign:"center",lineHeight:20},
+  sortRow:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:12},
 
-  reviewHeadingRow:{marginTop:28,marginBottom:11},
-  sortRow:{flexDirection:"row",gap:7,marginTop:11},
-  sortButton:{
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:12,
-    paddingVertical:7
-  },
-  sortButtonActive:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  sortText:{
+  reviewCard:{padding:15,marginBottom:12},
+  reviewHead:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:11},
+  reviewType:{
     color:INK.readoutSoft,
     fontFamily:MONO,
     fontSize:TYPE.data.sizes.md,
     letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
     textTransform:"uppercase"
   },
-  sortTextActive:{color:INK.readout},
-
-  reviewCard:{
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.sheet,
-    padding:16,
-    marginBottom:12
-  },
-  reviewTopRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  reviewTitleWrap:{flex:1,paddingRight:10},
-  reviewPlace:{color:INK.readout,fontSize:18,fontWeight:"700"},
-  reviewType:{
-    color:INK.readoutSoft,
+  reviewHeadLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  reviewDate:{
+    color:INK.readoutFaint,
     fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase",
-    marginTop:3
+    fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.5
   },
+  reviewTopRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:10},
+  reviewPlace:{flex:1,color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
   pointsBadge:{
+    color:INK.readout,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.lg,
+    letterSpacing:0.5,
     backgroundColor:INK.panelRaised,
-    borderColor:INK.hairlineStrong,
     borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:10,
-    paddingVertical:6
+    borderColor:INK.hairlineStrong,
+    borderRadius:SHAPE.radius.control,
+    paddingHorizontal:9,
+    paddingVertical:4,
+    overflow:"hidden"
   },
-  pointsBadgeText:{color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.lg},
-  reviewStars:{color:INK.readout,fontSize:18,letterSpacing:1,marginTop:12},
-  emptyStars:{color:INK.readoutSoft},
-  reviewTitle:{color:INK.readout,fontSize:17,fontWeight:"700",marginTop:10},
+
+  ratingRow:{flexDirection:"row",alignItems:"center",gap:10,marginTop:12},
+  ratingValue:{
+    color:INK.readout,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.lg,
+    letterSpacing:0.9,
+    textTransform:"uppercase"
+  },
+
+  reviewTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",marginTop:11},
   reviewComment:{
     color:INK.readout,
     fontSize:TYPE.body.sizes.lg,
     lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,
     marginTop:7
   },
-  // A verified visit is a fact the app checked, so it is a mono readout on a
-  // raised surface -- not the manager's agree ink, which belongs to a review
-  // reply and nothing else.
-  verifiedBadge:{
-    alignSelf:"flex-start",
-    backgroundColor:INK.panelRaised,
-    borderColor:INK.hairlineStrong,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:10,
-    paddingVertical:6,
-    marginTop:12
-  },
+  verifiedRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:12},
   verifiedText:{
-    color:INK.readout,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase"
-  },
-  reviewImageRow:{paddingTop:13},
-  reviewImage:{width:115,height:115,borderRadius:SHAPE.radius.control,backgroundColor:INK.inset,marginRight:9},
-  videoButton:{
-    backgroundColor:INK.panelRaised,
-    borderColor:INK.hairlineStrong,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    padding:12,
-    flexDirection:"row",
-    alignItems:"center",
-    marginTop:13
-  },
-  videoButtonIcon:{color:INK.readout,fontSize:20,marginRight:12},
-  videoButtonTitle:{color:INK.readout,fontWeight:"700"},
-  videoButtonText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:2},
-  reviewActions:{flexDirection:"row",alignItems:"center",gap:9,marginTop:13},
-  commentsLink:{paddingHorizontal:11,paddingVertical:9},
-  commentsLinkText:{color:INK.readoutSoft,fontWeight:"600",fontSize:TYPE.body.sizes.sm},
-
-  scrapbookTabRow:{marginTop:26,maxHeight:52},
-  scrapbookTabContent:{gap:7},
-  scrapbookTab:{
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:15,
-    paddingVertical:11
-  },
-  scrapbookTabActive:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  scrapbookTabText:{
-    color:INK.readoutSoft,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase"
-  },
-  scrapbookTabTextActive:{color:INK.readout},
-
-  mediaTabRow:{
-    flexDirection:"row",
-    backgroundColor:INK.inset,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    padding:4,
-    marginTop:28,
-    marginBottom:12
-  },
-  mediaTab:{flex:1,padding:11,borderRadius:SHAPE.radius.control,alignItems:"center"},
-  mediaTabActive:{backgroundColor:INK.panelRaised},
-  mediaTabText:{color:INK.readoutSoft,fontWeight:"600"},
-  mediaTabTextActive:{color:INK.readout},
-
-  videoCard:{
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    overflow:"hidden",
-    marginBottom:12
-  },
-  videoPoster:{height:165,backgroundColor:INK.inset,alignItems:"center",justifyContent:"center"},
-  videoPosterImage:{width:"100%",height:"100%"},
-  largePlay:{color:INK.readout,fontSize:42},
-  playOverlay:{
-    position:"absolute",
-    width:52,
-    height:52,
-    borderRadius:26,
-    backgroundColor:"rgba(11,14,18,0.78)",
-    alignItems:"center",
-    justifyContent:"center"
-  },
-  playOverlayText:{color:INK.readout,fontSize:20,marginLeft:3},
-  videoCardBody:{padding:14},
-  videoCardTitle:{color:INK.readout,fontSize:18,fontWeight:"700"},
-  videoCardPlace:{color:INK.readoutSoft,fontWeight:"600",marginTop:4},
-  videoCardMeta:{
-    color:INK.readoutSoft,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    marginTop:5
-  },
-
-  createMomentWide:{
-    backgroundColor:INK.readout,
-    borderRadius:SHAPE.radius.card,
-    paddingVertical:14,
-    alignItems:"center",
-    marginBottom:12
-  },
-  createMomentWideText:{color:INK.ground,fontWeight:"700"},
-
-  momentGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},
-  momentCard:{
-    width:"48%",
-    flexGrow:1,
-    backgroundColor:INK.panel,
-    borderColor:INK.hairline,
-    borderWidth:SHAPE.border,
-    borderRadius:SHAPE.radius.card,
-    overflow:"hidden"
-  },
-  momentMediaWrap:{height:170,backgroundColor:INK.inset,alignItems:"center",justifyContent:"center"},
-  momentImage:{width:"100%",height:"100%"},
-  momentPlay:{
-    position:"absolute",
-    width:44,
-    height:44,
-    borderRadius:22,
-    backgroundColor:"rgba(11,14,18,0.78)",
-    alignItems:"center",
-    justifyContent:"center"
-  },
-  momentPlayText:{color:INK.readout,fontSize:17,marginLeft:3},
-  momentBody:{padding:10},
-  momentCaption:{color:INK.readout,fontSize:TYPE.body.sizes.md,fontWeight:"600",lineHeight:18},
-  momentMeta:{
     color:INK.readoutSoft,
     fontFamily:MONO,
     fontSize:TYPE.data.sizes.sm,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.sm,
+    letterSpacing:0.9,
+    textTransform:"uppercase"
+  },
+  reviewImageRow:{alignItems:"center",paddingTop:13,gap:9},
+  reviewImageFrame:{backgroundColor:INK.inset},
+  reviewImage:{width:"100%",height:"100%"},
+
+  reviewActions:{
+    flexDirection:"row",
+    alignItems:"center",
+    gap:9,
+    marginTop:13,
+    paddingTop:12,
+    borderTopWidth:SHAPE.border,
+    borderTopColor:INK.hairline
+  },
+  commentsLink:{flexDirection:"row",alignItems:"center",gap:6,minHeight:36,paddingHorizontal:11},
+  commentsLinkText:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:0.9,
+    textTransform:"uppercase"
+  },
+
+  videoCard:{marginBottom:12,overflow:"hidden"},
+  videoPoster:{width:"100%",backgroundColor:INK.inset},
+  videoPosterImage:{width:"100%",height:"100%"},
+  // A ringed dial over the frame, not a black blob: the play control is the same
+  // shape language as the shutter it was filmed with.
+  playCircle:{
+    position:"absolute",
+    width:54,
+    height:54,
+    borderRadius:SHAPE.radius.pill,
+    backgroundColor:"rgba(11,14,18,0.78)",
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    alignItems:"center",
+    justifyContent:"center",
+    paddingLeft:3
+  },
+  videoCardBody:{padding:14},
+  videoCardTitle:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
+  videoCardPlace:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,marginTop:4},
+  videoCardMeta:{
+    color:INK.readoutFaint,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.md,
+    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
     marginTop:5
   },
 
-  primaryButton:{backgroundColor:INK.readout,padding:16,borderRadius:SHAPE.radius.card,marginTop:15},
-  primaryButtonText:{color:INK.ground,fontWeight:"700",textAlign:"center"},
-  // Logging out is not a manager disputing a review, so it is not INK.dispute.
-  // The design system reserves that ink for exactly two jobs and says in as
-  // many words that it is never a generic error colour.
-  logoutButton:{
-    backgroundColor:INK.panel,
-    borderColor:INK.hairlineStrong,
-    borderWidth:SHAPE.border,
-    padding:16,
-    borderRadius:SHAPE.radius.card,
-    marginTop:25
-  },
-  logoutText:{color:INK.readout,fontWeight:"700",textAlign:"center"}
+  wideAction:{marginBottom:8},
+  logout:{marginTop:25}
 });

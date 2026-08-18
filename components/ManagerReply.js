@@ -1,8 +1,9 @@
 import React,{useState} from "react";
-import {View,Text,TextInput,Pressable,ActivityIndicator,StyleSheet} from "react-native";
+import {View,Text,TextInput,Pressable,StyleSheet} from "react-native";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
+import {Action,Chip,Field,fieldInputStyle,Notice} from "./instrument";
 
 // The manager's two answers to a review, and the only place either is drawn.
 //
@@ -22,12 +23,22 @@ import {INK} from "../utils/tokens";
 // So both live here, inline, under the review they are about, and both are
 // VISIBLE afterwards.
 //
-// GREEN AND RED
+// THE TWO ANSWERS, AND WHY THIS FILE OWNS THEM
 //
 // A reply is the business agreeing to talk. A challenge is the business saying
-// this review is wrong. They are opposites and they sit next to each other, so
-// they are the one place in this app that spends a green and a red -- see the
-// note in docs/design-system.md, which this is the only exception to.
+// this review is wrong. They are opposites, they sit next to each other, and
+// they are the ONLY two saturated colours in this app that are not about what a
+// place is: INK.agree and INK.dispute. (They were called INK.green and INK.red
+// under the print system; the aliases still resolve to the same two hexes, but
+// a colour named after its own hue tells you nothing about when to spend it.)
+//
+// They are spent here and nowhere else. Not on an admin approve/reject -- an
+// administrator deciding a claim is not a manager answering a customer, and
+// docs/design-system.md says so explicitly -- and never on the map.
+//
+// And they are spent as an EDGE and a dot, not a fill. A green box and a red
+// box side by side under every review was the loudest thing on a listing page;
+// a 2px lit edge on the manager's answer says the same thing once.
 //
 // WHO SEES WHAT
 //
@@ -39,6 +50,22 @@ import {INK} from "../utils/tokens";
 // worked out once per page by whoever actually knows, and the database refuses
 // it independently: respond_to_review and challenge_review both check
 // listing_is_managed_by_user and raise rather than matching no rows.
+
+// A control that carries one of the two answers. Chip draws the state dot; the
+// Pressable around it carries the real accessibility label, which Chip has no
+// way to take. Selection steps the surface -- it never fills with the ink.
+function AnswerControl({tone,label,accessibilityLabel,selected,onPress}){
+  return(
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{selected:!!selected}}
+      onPress={onPress}
+    >
+      <Chip tone={tone} label={label} selected={selected}/>
+    </Pressable>
+  );
+}
 
 export default function ManagerReply({review,canManage=false,onChanged}){
   const {showFeedback}=useFeedback();
@@ -101,18 +128,18 @@ export default function ManagerReply({review,canManage=false,onChanged}){
       {/* ------------------------------------------------------------------ */}
 
       {!!reply && (
-        <View style={[styles.block,styles.replyBlock]}>
-          <Text style={[styles.blockLabel,styles.replyLabel]}>REPLY FROM THE MANAGER</Text>
-          <Text style={styles.blockText}>{reply}</Text>
-        </View>
+        <Notice tone="agree" label="REPLY FROM THE MANAGER">{reply}</Notice>
       )}
 
       {challenged && (
-        <View style={[styles.block,styles.challengeBlock]}>
-          <Text style={[styles.blockLabel,styles.challengeLabel]}>THE MANAGER DISPUTES THIS REVIEW</Text>
-          {!!challengeReason && <Text style={styles.blockText}>{challengeReason}</Text>}
-          <Text style={styles.blockMeta}>Sent to moderation. The review stays up until a moderator decides.</Text>
-        </View>
+        <Notice tone="dispute" label="THE MANAGER DISPUTES THIS REVIEW">
+          <View>
+            {!!challengeReason && <Text style={styles.blockText}>{challengeReason}</Text>}
+            <Text style={styles.blockMeta}>
+              Sent to moderation. The review stays up until a moderator decides.
+            </Text>
+          </View>
+        </Notice>
       )}
 
       {/* ------------------------------------------------------------------ */}
@@ -121,137 +148,108 @@ export default function ManagerReply({review,canManage=false,onChanged}){
 
       {canManage && (
         <View style={styles.tools}>
-          <Pressable
-            accessibilityRole="button"
+          <AnswerControl
+            tone="agree"
+            selected={open==="reply"}
+            label={open==="reply" ? "Cancel" : (reply ? "Edit reply" : "Reply")}
             accessibilityLabel={reply ? "Edit your reply to this review" : "Reply to this review as the manager"}
-            style={[styles.tool,styles.replyTool,open==="reply" && styles.toolOpen]}
             onPress={(event)=>{
               event?.stopPropagation?.();
               setReplyDraft(reply);
               setOpen((current)=>current==="reply" ? null : "reply");
             }}
-          >
-            <Text style={[styles.toolText,styles.replyToolText]}>
-              {open==="reply" ? "Cancel" : (reply ? "Edit reply" : "Reply")}
-            </Text>
-          </Pressable>
+          />
 
           {!challenged && (
-            <Pressable
-              accessibilityRole="button"
+            <AnswerControl
+              tone="dispute"
+              selected={open==="challenge"}
+              label={open==="challenge" ? "Cancel" : "Challenge"}
               accessibilityLabel="Challenge this review"
-              style={[styles.tool,styles.challengeTool,open==="challenge" && styles.toolOpen]}
               onPress={(event)=>{
                 event?.stopPropagation?.();
                 setReasonDraft(challengeReason);
                 setOpen((current)=>current==="challenge" ? null : "challenge");
               }}
-            >
-              <Text style={[styles.toolText,styles.challengeToolText]}>
-                {open==="challenge" ? "Cancel" : "Challenge"}
-              </Text>
-            </Pressable>
+            />
           )}
         </View>
       )}
 
       {canManage && open==="reply" && (
-        <View style={[styles.editor,styles.replyEditor]}>
-          <Text style={styles.editorHint}>
-            This is the business answering, in public, under the review. Everybody
-            who reads the review reads this.
-          </Text>
+        <Field
+          label="YOUR REPLY"
+          hint="This is the business answering, in public, under the review. Everybody who reads the review reads this."
+          style={styles.editor}
+        >
           <TextInput
-            style={styles.input}
+            style={[fieldInputStyle,styles.input]}
             placeholder="Thanks for coming in — we've…"
-            placeholderTextColor={INK.inkSoft}
+            placeholderTextColor={INK.readoutFaint}
             value={replyDraft}
             onChangeText={setReplyDraft}
             multiline
+            textAlignVertical="top"
             accessibilityLabel="Your reply to this review"
           />
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.save,styles.saveReply,working && styles.saveDisabled]}
-            disabled={working}
-            onPress={saveReply}
-          >
-            {working
-              ? <ActivityIndicator color={INK.card}/>
-              : <Text style={styles.saveText}>{reply ? "Save changes" : "Post reply"}</Text>}
-          </Pressable>
-        </View>
+        </Field>
+      )}
+
+      {canManage && open==="reply" && (
+        <Action
+          kind="primary"
+          glyph="send"
+          label={reply ? "Save changes" : "Post reply"}
+          loading={working}
+          onPress={saveReply}
+        />
       )}
 
       {canManage && open==="challenge" && (
-        <View style={[styles.editor,styles.challengeEditor]}>
-          <Text style={styles.editorHint}>
-            A challenge is for a review that is untrue or not about your place. It
-            goes to a moderator, and the review stays up while they look at it.
-            Disagreeing with somebody is a reply, not a challenge.
-          </Text>
+        <Field
+          label="WHAT IS WRONG WITH IT"
+          hint="A dispute is for a review that is untrue or not about your place. It goes to a moderator, and the review stays up while they look at it. Disagreeing with somebody is a reply."
+          style={styles.editor}
+        >
           <TextInput
-            style={styles.input}
+            style={[fieldInputStyle,styles.input]}
             placeholder="What is wrong with this review?"
-            placeholderTextColor={INK.inkSoft}
+            placeholderTextColor={INK.readoutFaint}
             value={reasonDraft}
             onChangeText={setReasonDraft}
             multiline
+            textAlignVertical="top"
             accessibilityLabel="Why you are challenging this review"
           />
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.save,styles.saveChallenge,working && styles.saveDisabled]}
-            disabled={working}
-            onPress={saveChallenge}
-          >
-            {working
-              ? <ActivityIndicator color={INK.card}/>
-              : <Text style={styles.saveText}>Send to moderation</Text>}
-          </Pressable>
-        </View>
+        </Field>
+      )}
+
+      {canManage && open==="challenge" && (
+        <Action
+          kind="danger"
+          glyph="flag"
+          label="Send to moderation"
+          loading={working}
+          onPress={saveChallenge}
+        />
       )}
     </View>
   );
 }
 
 const styles=StyleSheet.create({
-  block:{marginTop:11,borderLeftWidth:3,paddingLeft:11},
-  replyBlock:{borderLeftColor:INK.green},
-  challengeBlock:{borderLeftColor:INK.red},
-  blockLabel:{fontSize:10,fontWeight:"800",letterSpacing:0.8},
-  replyLabel:{color:INK.green},
-  challengeLabel:{color:INK.red},
-  blockText:{color:INK.ink,fontSize:14,lineHeight:20,marginTop:3},
-  blockMeta:{color:INK.inkSoft,fontSize:11,marginTop:5},
-
-  tools:{flexDirection:"row",gap:8,marginTop:10,flexWrap:"wrap"},
-  tool:{borderWidth:2,borderRadius:99,paddingHorizontal:14,paddingVertical:6,backgroundColor:INK.card},
-  replyTool:{borderColor:INK.green},
-  challengeTool:{borderColor:INK.red},
-  toolOpen:{backgroundColor:INK.paper},
-  toolText:{fontWeight:"800",fontSize:12},
-  replyToolText:{color:INK.ink},
-  challengeToolText:{color:INK.red},
-
-  editor:{marginTop:10,borderWidth:2,borderRadius:12,padding:11,backgroundColor:INK.card},
-  replyEditor:{borderColor:INK.green},
-  challengeEditor:{borderColor:INK.red},
-  editorHint:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginBottom:8},
-  input:{
-    borderWidth:2,
-    borderColor:INK.hair,
-    borderRadius:10,
-    padding:10,
-    minHeight:70,
-    color:INK.ink,
-    fontSize:14,
-    textAlignVertical:"top",
-    backgroundColor:INK.paper
+  blockText:{
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
   },
-  save:{marginTop:9,borderRadius:99,paddingVertical:10,alignItems:"center"},
-  saveReply:{backgroundColor:INK.green},
-  saveChallenge:{backgroundColor:INK.red},
-  saveDisabled:{opacity:0.5},
-  saveText:{color:INK.card,fontWeight:"800",fontSize:13}
+  blockMeta:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,
+    marginTop:5
+  },
+  tools:{flexDirection:"row",gap:8,marginTop:10,flexWrap:"wrap"},
+  editor:{marginTop:12,marginBottom:10},
+  input:{minHeight:78}
 });

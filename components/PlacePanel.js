@@ -4,7 +4,8 @@ import {router} from "expo-router";
 import Directions from "./Directions";
 import {heroImageFor,summaryFor,reviewTargetType} from "../utils/placeCards";
 import {loadPlaceRating} from "../utils/reviews";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {Action,Frame,Glyph,Meter,MONO,SectionRule} from "./instrument";
 
 // One panel for the place somebody tapped.
 //
@@ -32,6 +33,17 @@ import {INK} from "../utils/tokens";
 // listing in the county to show one number for one of them. Two numbers, on
 // tap, for the place in front of somebody. See loadPlaceRating in
 // utils/reviews.js.
+//
+// WHAT THIS PASS CHANGED
+//
+// The shape, not the content. This was a 2px-bordered card whose picture had a
+// 2px border of its own, whose score was a text star and a middle dot, whose
+// address opened with a pin emoji, and whose two buttons were 99px stadium
+// pills filled with what is now the near-white readout colour. It is the map's
+// main readout, so it opens the way every readout in this app opens: a mono
+// head strip saying what kind of thing this is, the name in display type, then
+// the MEASUREMENTS -- score, review count -- and only then the sentences
+// somebody wrote.
 
 export default function PlacePanel({place,onClose,onRoute,embedded=false}){
   const [rating,setRating]=useState(null);
@@ -56,6 +68,12 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
   const hero=heroImageFor(place);
   const summary=summaryFor(place);
   const where=card.detail || place.address || place.location || "";
+  const name=place.name || card.name || "This place";
+  // What the pin under this panel IS: `exists`, `scheduled` or `offer`. It
+  // lights one dot on the head strip and nothing else -- the state inks belong
+  // to the map, and a panel that tinted itself in one would be competing with
+  // the pins it is describing.
+  const tone=card.marker?.state || place.state || "exists";
   // The review route is one segment inserted into the same route the "Open
   // profile" button already uses -- /business/b1 -> /business/review/b1 --
   // so this needs no second lookup table for what a kind is called.
@@ -74,71 +92,104 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.head}>
-          {hero
-            ? <Image source={{uri:hero}} style={styles.hero} accessibilityIgnoresInvertColors/>
-            : (
-              // No invented picture. An empty block says "no photo yet", which
-              // is true; a stock image of somewhere else would not be.
-              <View style={[styles.hero,styles.heroEmpty]}>
-                <Text style={styles.heroEmptyText}>No photo yet</Text>
-              </View>
-            )}
-
-          <View style={styles.headText}>
-            <Text style={styles.name} numberOfLines={2}>{place.name || card.name || "This place"}</Text>
-            {!!card.typeLabel && <Text style={styles.type}>{card.typeLabel}</Text>}
-
-            {/*
-              Three states, and they are different things. A score, "no reviews
-              yet", and "still loading" must not look the same -- a blank where
-              a number goes reads as a place nobody rated.
-            */}
-            {rating===null && <Text style={styles.score}>Loading reviews…</Text>}
-            {rating!==null && rating.count>0 && (
-              <Text style={styles.score} accessibilityLabel={`Rated ${rating.average} out of 5 from ${rating.count} reviews`}>
-                ★ {rating.average} · {rating.count} {rating.count===1 ? "review" : "reviews"}
-              </Text>
-            )}
-            {rating!==null && rating.count===0 && (
-              <Text style={styles.scoreEmpty}>No reviews yet</Text>
-            )}
-          </View>
-
+        {/* THE HEAD STRIP. What kind of place, then the etched rule, then the
+            close control. A person reads this before the name, which is why it
+            sits above it -- the same head components/PinSheet.js and
+            components/FeedCard.js open with. */}
+        <View style={styles.headRow}>
+          <View style={[styles.headDot,{backgroundColor:INK[tone] || INK.exists}]}/>
+          <Text style={styles.headKind} numberOfLines={1}>
+            {String(card.typeLabel || place.kind || "PLACE").toUpperCase()}
+          </Text>
+          <View style={styles.headLine}/>
           <Pressable
+            style={styles.close}
             accessibilityRole="button"
             accessibilityLabel={`Close ${place.name || "this place"}`}
             hitSlop={12}
             onPress={onClose}
           >
-            <Text style={styles.close}>✕</Text>
+            <Glyph name="close" size={14} colour={INK.readoutSoft}/>
           </Pressable>
         </View>
 
-        {!!where && <Text style={styles.where} numberOfLines={2}>📍 {where}</Text>}
+        <View style={styles.head}>
+          {/* Every picture in this app sits in a bracketed Frame -- the same
+              well the viewfinder uses -- rather than a rounded rectangle with
+              a print border round it. */}
+          <Frame size={84} style={styles.hero}>
+            {hero
+              ? <Image source={{uri:hero}} style={styles.heroImage} accessibilityIgnoresInvertColors/>
+              : (
+                // No invented picture. An empty well says "no photo yet", which
+                // is true; a stock image of somewhere else would not be.
+                <Text style={styles.heroEmptyText}>NO PHOTO YET</Text>
+              )}
+          </Frame>
+
+          <View style={styles.headText}>
+            <Text style={styles.name} numberOfLines={2}>{name}</Text>
+
+            {/*
+              THE SCORE IS A MEASUREMENT, SO IT IS READ OFF A SCALE.
+              It used to be a star character, the average, a middle dot and a
+              word -- a sentence pretending to be a number, drawn in a glyph
+              belonging to the system font.
+
+              Three states, and they are different things. A score, "no reviews
+              yet", and "still loading" must not look the same -- a blank where
+              a number goes reads as a place nobody rated.
+            */}
+            {rating===null && <Text style={styles.scoreWaiting}>READING REVIEWS…</Text>}
+            {rating!==null && rating.count>0 && (
+              <View
+                style={styles.scoreRow}
+                accessibilityLabel={`Rated ${rating.average} out of 5 from ${rating.count} reviews`}
+              >
+                <Meter value={Number(rating.average) || 0} max={5} width={72} tone="exists" label="RATED"/>
+                <Text style={styles.scoreValue}>{rating.average}/5</Text>
+                <Text style={styles.scoreCount}>{rating.count} {rating.count===1 ? "REVIEW" : "REVIEWS"}</Text>
+              </View>
+            )}
+            {rating!==null && rating.count===0 && (
+              <Text style={styles.scoreEmpty}>NOT RATED YET</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Where it is, in the body face with a drawn pin -- it is an address
+            somebody wrote, not a number the app measured, and the emoji that
+            used to sit here carried its own colour onto the housing. */}
+        {!!where && (
+          <View style={styles.whereRow}>
+            <Glyph name="pin" size={13} colour={INK.readoutFaint}/>
+            <Text style={styles.where} numberOfLines={2}>{where}</Text>
+          </View>
+        )}
+
         {!!summary && <Text style={styles.summary}>{summary}</Text>}
 
-        <Pressable
-          style={styles.open}
-          accessibilityRole="button"
-          accessibilityLabel={`Open ${place.name || "this place"}`}
-          onPress={()=>card.route && router.push(card.route)}
-        >
-          <Text style={styles.openText}>Open profile</Text>
-        </Pressable>
+        <View style={styles.actions}>
+          <Action
+            kind="primary"
+            label="Open profile"
+            glyph="forward"
+            accessibilityLabel={`Open ${place.name || "this place"}`}
+            onPress={()=>card.route && router.push(card.route)}
+          />
 
-        {/* One tap from the map to the review form -- the map's own quick-
-            action, not only the one on the full listing page. */}
-        {!!reviewRoute && (
-          <Pressable
-            style={styles.review}
-            accessibilityRole="button"
-            accessibilityLabel={`Leave a review for ${place.name || "this place"}`}
-            onPress={()=>router.push(reviewRoute)}
-          >
-            <Text style={styles.reviewText}>Leave a review</Text>
-          </Pressable>
-        )}
+          {/* One tap from the map to the review form -- the map's own quick-
+              action, not only the one on the full listing page. */}
+          {!!reviewRoute && (
+            <Action
+              kind="secondary"
+              label="Leave a review"
+              glyph="star"
+              accessibilityLabel={`Leave a review for ${place.name || "this place"}`}
+              onPress={()=>router.push(reviewRoute)}
+            />
+          )}
+        </View>
 
         {/*
           DIRECTIONS, INSIDE THE SAME PANEL.
@@ -146,6 +197,7 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
           sheet, which is how a place card came to cover the route. One panel
           cannot cover itself.
         */}
+        <SectionRule label="Route"/>
         <Directions
           destination={{latitude:place.latitude,longitude:place.longitude}}
           destinationName={place.name || card.name || "this place"}
@@ -156,12 +208,18 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
   );
 }
 
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
+
 const styles=StyleSheet.create({
   // Capped, so it never becomes the whole screen: the map is the point and this
-  // is a look at one thing on it.
+  // is a look at one thing on it. A panel genuinely floating over the map is
+  // one of the two things design-system.md still allows a soft ambient shadow
+  // for -- the other is the Create action.
   panel:{
     position:"absolute",left:12,right:12,bottom:12,zIndex:20,maxHeight:"62%",
-    backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16
+    backgroundColor:INK.panel,borderColor:INK.hairline,borderWidth:SHAPE.border,
+    borderRadius:SHAPE.radius.sheet,overflow:"hidden",
+    ...SHAPE.shadow.floating
   },
   // No position, no border, no cap -- components/PinSheet.js's own sheet
   // already draws all three, and its content area already scrolls.
@@ -173,29 +231,38 @@ const styles=StyleSheet.create({
   // the sheet's own overflow:hidden edge.
   embeddedScroll:{flex:1},
   content:{padding:14},
+
+  headRow:{flexDirection:"row",alignItems:"center",gap:8,marginBottom:12},
+  headDot:{width:7,height:7,borderRadius:SHAPE.radius.pill},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md,flexShrink:1},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  close:{
+    width:30,height:30,alignItems:"center",justifyContent:"center",
+    borderRadius:SHAPE.radius.control,backgroundColor:INK.panelRaised,
+    borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+
   head:{flexDirection:"row",alignItems:"flex-start",gap:12},
-  hero:{width:84,height:84,borderRadius:12,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.hair},
-  heroEmpty:{alignItems:"center",justifyContent:"center",padding:6},
-  // Full ink, not inkSoft. On the hair-coloured empty block inkSoft is 3.42:1,
-  // and scripts/verify-contrast.cjs is right to refuse it -- a label saying
-  // there is no photo is no use if you cannot read it either.
-  heroEmptyText:{color:INK.ink,fontSize:10,fontWeight:"700",textAlign:"center"},
-  headText:{flex:1},
-  name:{color:INK.ink,fontWeight:"900",fontSize:17,lineHeight:22},
-  type:{color:INK.inkSoft,fontWeight:"700",fontSize:12,marginTop:3},
-  score:{color:INK.ink,fontWeight:"800",fontSize:13,marginTop:6},
-  scoreEmpty:{color:INK.inkSoft,fontWeight:"700",fontSize:12,marginTop:6},
-  close:{color:INK.ink,fontWeight:"900",fontSize:18},
-  where:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:10},
-  summary:{color:INK.ink,fontSize:13,lineHeight:19,marginTop:8},
-  open:{
-    marginTop:12,minHeight:44,justifyContent:"center",alignItems:"center",
-    borderRadius:99,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.paper
+  hero:{backgroundColor:INK.inset},
+  heroImage:{width:"100%",height:"100%"},
+  heroEmptyText:{
+    ...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,
+    textAlign:"center",paddingHorizontal:6
   },
-  openText:{color:INK.ink,fontWeight:"900",fontSize:14},
-  review:{
-    marginTop:9,minHeight:40,justifyContent:"center",alignItems:"center",
-    borderRadius:99,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card
-  },
-  reviewText:{color:INK.ink,fontWeight:"800",fontSize:13}
+  headText:{flex:1,minWidth:0},
+  // Display type, tight. A place name is the largest thing on this panel.
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700",letterSpacing:-0.5},
+
+  scoreWaiting:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:9},
+  scoreRow:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:8,marginTop:9},
+  scoreValue:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.lg},
+  scoreCount:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+  scoreEmpty:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:9},
+
+  whereRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:12},
+  where:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,flexShrink:1},
+  // A summary is a sentence somebody wrote, so it stays in the body face.
+  summary:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5,marginTop:9},
+
+  actions:{gap:9,marginTop:14}
 });

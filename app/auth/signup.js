@@ -1,20 +1,20 @@
 import React,{useState} from "react";
 
-import {
-View,
-Text,
-TextInput,
-Pressable,
-StyleSheet,
-ScrollView,
-Alert,
-ActivityIndicator
-} from "react-native";
+import {View,Text,TextInput,StyleSheet,ScrollView,Alert} from "react-native";
 
 import {router} from "expo-router";
 
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Field,
+  fieldInputStyle,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 
 export default function Signup(){
 
@@ -242,249 +242,139 @@ message
 
 return(
 
-<ScrollView
-
-style={styles.screen}
-
-contentContainerStyle={styles.container}
-
->
-
-
-<Text style={styles.title}>
-Create Account
-</Text>
-
-<Text style={styles.subtitle}>
-Join Xplorer to review places, check in and see your local world come alive.
-</Text>
-
-
-
-<TextInput
-
-style={styles.input}
-
-placeholder="Name"
-
-placeholderTextColor={INK.inkSoft}
-
-value={name}
-
-onChangeText={setName}
-
-/>
-
-
-
-<TextInput
-
-style={styles.input}
-
-placeholder="Email"
-
-placeholderTextColor={INK.inkSoft}
-
-autoCapitalize="none"
-
-keyboardType="email-address"
-
-value={email}
-
-onChangeText={setEmail}
-
-/>
-
-
-
-<TextInput
-
-style={styles.input}
-
-placeholder="Phone number"
-
-placeholderTextColor={INK.inkSoft}
-
-keyboardType="phone-pad"
-
-value={phone}
-
-onChangeText={setPhone}
-
-/>
-
-
-
-<TextInput
-
-style={styles.input}
-
-placeholder="Password"
-
-placeholderTextColor={INK.inkSoft}
-
-secureTextEntry
-
-value={password}
-
-onChangeText={setPassword}
-
-/>
-
-
-
-<Pressable
-
-style={[styles.button,styles.buttonShadow,loading && styles.disabled]}
-
-onPress={signup}
-
-disabled={loading}
-
->
-
-{
-
-loading
-
-?
-
-<View style={styles.loadingContainer}>
-
-<ActivityIndicator color={INK.card}/>
-
-<Text style={styles.buttonText}>
-Creating...
-</Text>
-
-</View>
-
-:
-
-<Text style={styles.buttonText}>
-Create Account
-</Text>
-
-}
-
-</Pressable>
-
-<Pressable
-style={styles.loginLink}
-accessibilityRole="button"
-accessibilityLabel="Already have an account? Log in"
-onPress={()=>router.push("/auth/login")}
->
-<Text style={styles.loginLinkText}>Already have an account? Log in</Text>
-</Pressable>
-
-{/*
-  BOTH STORES REQUIRE THESE TO BE REACHABLE BEFORE SOMEBODY SIGNS UP, and
-  it is the right place for them anyway: this is the moment a person is
-  deciding whether to hand anything over. Both are marked as drafts on
-  the screen itself -- see utils/legal.js.
-*/}
-<Text style={styles.legalNote}>
-By creating an account you agree to the terms, and to the privacy policy
-below.
-</Text>
-
-<View style={styles.legalRow}>
-<Pressable
-accessibilityRole="button"
-accessibilityLabel="Read the terms"
-onPress={()=>router.push("/legal/terms")}
->
-<Text style={styles.legalLink}>Terms</Text>
-</Pressable>
-<Pressable
-accessibilityRole="button"
-accessibilityLabel="Read the privacy policy"
-onPress={()=>router.push("/legal/privacy")}
->
-<Text style={styles.legalLink}>Privacy policy</Text>
-</Pressable>
-</View>
-
-</ScrollView>
+  <Screen>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      <ScreenTitle eyebrow="XPLORER" title="Create account"/>
+      <Text style={styles.lead}>
+        Join Xplorer to review places, check in and see your local world come alive.
+      </Text>
+
+      {/*
+        Four wells cut into the housing, each with the mono label naming what
+        goes in it. The old screen was four identical bordered boxes carrying
+        only a placeholder, so the label vanished the moment anybody typed --
+        the field stopped saying what it was at exactly the point it mattered.
+      */}
+      <Field label="Name" required>
+        <TextInput
+          style={fieldInputStyle}
+          placeholder="Your name"
+          placeholderTextColor={INK.readoutFaint}
+          value={name}
+          onChangeText={setName}
+        />
+      </Field>
+
+      <Field label="Email" required>
+        <TextInput
+          style={fieldInputStyle}
+          placeholder="you@example.com"
+          placeholderTextColor={INK.readoutFaint}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+      </Field>
+
+      <Field label="Phone number" required>
+        <TextInput
+          style={fieldInputStyle}
+          placeholder="Phone number"
+          placeholderTextColor={INK.readoutFaint}
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
+        />
+      </Field>
+
+      <Field label="Password" required hint="At least 6 characters.">
+        <TextInput
+          style={fieldInputStyle}
+          placeholder="Choose a password"
+          placeholderTextColor={INK.readoutFaint}
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+      </Field>
+
+      <Action
+        kind="primary"
+        glyph="person"
+        label="Create account"
+        loading={loading}
+        onPress={signup}
+      />
+
+      <Action
+        kind="quiet"
+        label="Already have an account? Log in"
+        accessibilityLabel="Already have an account? Log in"
+        style={styles.loginLink}
+        onPress={()=>router.push("/auth/login")}
+      />
+
+      {/*
+        BOTH STORES REQUIRE THESE TO BE REACHABLE BEFORE SOMEBODY SIGNS UP, and
+        it is the right place for them anyway: this is the moment a person is
+        deciding whether to hand anything over. Both are marked as drafts on
+        the screen itself -- see utils/legal.js.
+      */}
+      <SectionRule label="Before you sign up"/>
+
+      <Text style={styles.legalNote}>
+        By creating an account you agree to the terms, and to the privacy policy
+        below.
+      </Text>
+
+      <View style={styles.legalRow}>
+        <Action
+          kind="secondary"
+          glyph="clipboard"
+          label="Terms"
+          accessibilityLabel="Read the terms"
+          style={styles.legalButton}
+          onPress={()=>router.push("/legal/terms")}
+        />
+        <Action
+          kind="secondary"
+          glyph="lock"
+          label="Privacy policy"
+          accessibilityLabel="Read the privacy policy"
+          style={styles.legalButton}
+          onPress={()=>router.push("/legal/privacy")}
+        />
+      </View>
+    </ScrollView>
+  </Screen>
 
 );
 
 }
 
-
-
 const styles=StyleSheet.create({
-
-screen:{
-flex:1,
-backgroundColor:INK.paper
-},
-
-container:{
-padding:30,
-paddingBottom:50
-},
-
-title:{
-fontSize:34,
-fontWeight:"900",
-color:INK.ink,
-letterSpacing:-1,
-marginBottom:8
-},
-
-subtitle:{
-fontSize:14,
-color:INK.inkSoft,
-lineHeight:20,
-marginBottom:26
-},
-
-input:{
-backgroundColor:INK.card,
-color:INK.ink,
-borderColor:INK.ink,
-borderWidth:2,
-borderRadius:12,
-padding:15,
-fontSize:16,
-marginBottom:15
-},
-
-legalNote:{color:INK.inkSoft,fontSize:13,lineHeight:20,marginTop:26,textAlign:"center"},
-legalRow:{flexDirection:"row",justifyContent:"center",gap:22,marginTop:10,paddingBottom:8},
-legalLink:{color:INK.blue,fontSize:14,fontWeight:"800",minHeight:44,lineHeight:44},
-
-button:{
-backgroundColor:INK.blue,
-borderColor:INK.ink,
-borderWidth:2,
-padding:16,
-borderRadius:12,
-marginTop:8,
-alignItems:"center"
-},
-
-// Nested shadowOffset stays out of `button` itself -- see the identical note
-// in app/auth/login.js, which is where this pattern was first worked out.
-buttonShadow:{shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0},
-
-disabled:{opacity:0.55},
-
-buttonText:{
-color:INK.card,
-fontWeight:"900",
-fontSize:16
-},
-
-loginLink:{marginTop:18,alignItems:"center",padding:8},
-loginLinkText:{color:INK.ink,fontSize:14,fontWeight:"600"},
-
-loadingContainer:{
-flexDirection:"row",
-alignItems:"center",
-gap:10
-}
-
+  container:{paddingHorizontal:16,paddingBottom:32+CREATE_HUB_CLEARANCE},
+  // ScreenTitle's meta line is clamped to one line -- right for a place's
+  // "2.4 KM · OPEN NOW", wrong for a sentence, which it silently truncates with
+  // an ellipsis. Anything longer than a readout goes here instead.
+  lead:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:-2,
+    marginBottom:14
+  },
+  loginLink:{marginTop:12},
+  legalNote:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    textAlign:"center"
+  },
+  legalRow:{flexDirection:"row",gap:9,marginTop:12},
+  legalButton:{flex:1}
 });

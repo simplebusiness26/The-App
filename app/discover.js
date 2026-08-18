@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
-import {Platform,View,Text,TextInput,Pressable,StyleSheet,ScrollView,ActivityIndicator,RefreshControl} from "react-native";
+import {View,Text,TextInput,StyleSheet,ScrollView,ActivityIndicator,RefreshControl} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {SECTIONS,recommend} from "../utils/discover";
@@ -14,7 +14,17 @@ import {
   markerForClub,
   typeLabelForBusiness
 } from "../utils/markers";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
+import {
+  Action,
+  Empty,
+  Field,
+  Notice,
+  Screen,
+  ScreenTitle,
+  SectionRule,
+  fieldInputStyle
+} from "../components/instrument";
 import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
 import LiveNow from "./live";
 import EventsSegment from "./events/index";
@@ -58,10 +68,16 @@ import LinkupsSegment from "./linkups/index";
 //   CAROUSELS instead of stacked boxes. Seven sections of six boxes is
 //   forty-two boxes; the owner's word was "too long", and nobody ever reached
 //   the bottom section.
-
-// Native matches a single family name, not a CSS stack -- see the same note in
-// components/HappeningSegments.js.
-const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.data.family});
+//
+// WHY IT WAS REBUILT RATHER THAN RETINTED
+//
+// Rendered, this screen was a DOCUMENT: a display heading per section with a
+// hairline under it, a bare sentence where the content should be, a rounded
+// pill saying "See on the map", and nothing on the page measured. Every one of
+// those is now a machined part -- SectionRule with the real count hung off it,
+// Empty carrying the instruction, Action for the button, Field for the search
+// well. Nothing here draws its own card any more, which is why this file's
+// StyleSheet is a fraction of what it was.
 
 export default function Discover(){
   // Which of the five Happening segments is showing. "For You" first and by
@@ -349,28 +365,37 @@ export default function Discover(){
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load();}}/>}
     >
-      <Text style={styles.title}>Discover</Text>
-      {!!area && <Text style={styles.lead}>What is on around {area}.</Text>}
-      {!!notice && <Text style={styles.notice}>{notice}</Text>}
-
-      <TextInput
-        style={styles.search}
-        placeholder="Search businesses, stays or clubs..."
-        placeholderTextColor={INK.readoutSoft}
-        value={query}
-        onChangeText={setQuery}
-        accessibilityLabel="Search businesses, stays or clubs"
-        returnKeyType="search"
+      <ScreenTitle
+        eyebrow="HAPPENING"
+        title="Discover"
+        meta={area ? `What is on around ${area}.` : undefined}
       />
 
-      <Pressable
-        style={styles.toMap}
-        accessibilityRole="button"
+      <View style={styles.body}>
+      {/* Not a tinted box with a sentence in it: an edge in the state ink and a
+          mono eyebrow, so a partial reading announces itself the way every
+          other warning in this app does. */}
+      {!!notice && <Notice tone="scheduled" label="PARTIAL READING">{notice}</Notice>}
+
+      <Field label="Search" hint="Businesses, stays and clubs — the same three the map draws.">
+        <TextInput
+          style={fieldInputStyle}
+          placeholder="Search businesses, stays or clubs..."
+          placeholderTextColor={INK.readoutFaint}
+          value={query}
+          onChangeText={setQuery}
+          accessibilityLabel="Search businesses, stays or clubs"
+          returnKeyType="search"
+        />
+      </Field>
+
+      <Action
+        kind="secondary"
+        label="See on the map"
+        glyph="map"
         accessibilityLabel="See all of this on the map"
         onPress={()=>router.push("/map")}
-      >
-        <Text style={styles.toMapText}>◎  See on the map</Text>
-      </Pressable>
+      />
 
       {/*
         SEARCHING REPLACES THE SECTIONS RATHER THAN SITTING ABOVE THEM.
@@ -380,19 +405,16 @@ export default function Discover(){
       */}
       {query.trim().length>=2 ? (
         <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Results</Text>
-            {!searching && <Text style={styles.count}>{results.length}</Text>}
-          </View>
+          <SectionRule label="Results" meta={searching ? "…" : String(results.length)}/>
 
           {searching && <ActivityIndicator color={INK.readoutSoft} style={styles.searchSpinner}/>}
 
           {!searching && results.length===0 && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>
-                Nothing matches that yet. Try part of a name, or the town it is in.
-              </Text>
-            </View>
+            <Empty
+              title="No matches"
+              instruction="Nothing matches that yet. Try part of a name, or the town it is in."
+              glyph="search"
+            />
           )}
 
           {/* Down the page, not sideways. A carousel is for browsing past things
@@ -413,15 +435,19 @@ export default function Discover(){
         />
       ))}
 
-      <Pressable
-        style={styles.card}
-        accessibilityRole="button"
+      {/* Not a section of its own -- app/feed.js already is that screen, and a
+          strip of the same rows here would be a second place to maintain the
+          same thing. A rule and one control, pointing at it. */}
+      <SectionRule label="Feed"/>
+      <Text style={styles.feedLead}>What the Explorers you follow have been doing.</Text>
+      <Action
+        kind="secondary"
+        label="Explorer feed"
+        glyph="people"
         accessibilityLabel="Open the Explorer feed"
         onPress={()=>router.push("/feed")}
-      >
-        <Text style={styles.cardTitle}>Explorer feed</Text>
-        <Text style={styles.cardSubtitle}>What the Explorers you follow have been doing.</Text>
-      </Pressable>
+      />
+      </View>
     </ScrollView>
   );
 
@@ -430,14 +456,15 @@ export default function Discover(){
   // app/linkups/index.js) rendered inline -- one component, one set of
   // Supabase queries, reachable both from here and by a direct deep link.
   return(
-    <View style={styles.root}>
+    <Screen>
       <HappeningSegments active={segment} onChange={setSegment}/>
+      <View style={styles.segmentRule}/>
       {segment==="for-you" && forYouContent}
       {segment==="live" && <LiveNow/>}
       {segment==="events" && <EventsSegment/>}
       {segment==="clubs" && <ClubsSegment/>}
       {segment==="linkups" && <LinkupsSegment/>}
-    </View>
+    </Screen>
   );
 }
 
@@ -450,93 +477,26 @@ function savedRoute(row){
 }
 
 const styles=StyleSheet.create({
-  root:{flex:1,backgroundColor:INK.ground},
-  screen:{flex:1,backgroundColor:INK.ground},
+  screen:{flex:1},
   centre:{flex:1,alignItems:"center",justifyContent:"center",backgroundColor:INK.ground},
+  // The etched line under the selector, so the segments read as a control on a
+  // housing rather than as tabs floating over the page.
+  segmentRule:{height:1,backgroundColor:INK.hairline},
   // The Create action floats bottom-right over every screen. Reserving its
   // footprint here is what lets the last card be scrolled clear of it instead
   // of sitting underneath it -- see CREATE_HUB_CLEARANCE in
   // components/CreateHub.js.
-  content:{padding:20,paddingBottom:24+CREATE_HUB_CLEARANCE},
-  // An input is a well, not a panel: the deepest surface in the housing.
-  search:{
-    backgroundColor:INK.inset,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.control,
-    paddingHorizontal:14,
-    paddingVertical:13,
-    marginTop:16,
-    color:INK.readout,
-    fontSize:TYPE.body.sizes.lg
-  },
-  toMap:{
-    alignSelf:"flex-start",
-    marginTop:10,
-    minHeight:44,
-    justifyContent:"center",
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairlineStrong,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:16,
-    backgroundColor:INK.panelRaised
-  },
-  toMapText:{color:INK.readout,fontWeight:"600",fontSize:TYPE.body.sizes.md},
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  // ScreenTitle carries its own gutter, so the gutter for everything under it
+  // lives here rather than on the scroll container.
+  body:{paddingHorizontal:16},
   searchSpinner:{marginTop:14},
+  section:{marginBottom:4},
   results:{gap:12,alignItems:"flex-start"},
-  title:{
-    fontSize:TYPE.display.sizes.xl,
-    fontWeight:"700",
-    letterSpacing:TYPE.display.tracking*TYPE.display.sizes.xl,
-    color:INK.readout
-  },
-  lead:{fontSize:TYPE.body.sizes.lg,lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,color:INK.readoutSoft,marginTop:6},
-  notice:{
-    backgroundColor:INK.panel,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.card,
-    padding:12,
-    marginTop:14,
+  feedLead:{
+    color:INK.readoutSoft,
     fontSize:TYPE.body.sizes.md,
     lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
-    color:INK.readout
-  },
-  section:{marginTop:24},
-  sectionHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:10},
-  sectionTitle:{
-    fontSize:TYPE.display.sizes.lg,
-    fontWeight:"700",
-    color:INK.readout,
-    letterSpacing:TYPE.display.tracking*TYPE.display.sizes.lg
-  },
-  // A count is something the app measured, so it is mono.
-  count:{
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    color:INK.readoutSoft
-  },
-  empty:{borderTopWidth:SHAPE.border,borderTopColor:INK.hairline,paddingTop:12},
-  emptyText:{fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,color:INK.readoutSoft},
-  // Elevation is a surface step and a 1px bevel, never the old print offset.
-  card:{
-    backgroundColor:INK.panel,
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.card,
-    padding:14,
-    marginBottom:10
-  },
-  cardTitle:{fontSize:16,fontWeight:"700",color:INK.readout},
-  cardSubtitle:{fontSize:TYPE.body.sizes.md,color:INK.readoutSoft,marginTop:3},
-  // A reason is a computed label, not a sentence somebody wrote: mono eyebrow.
-  reason:{
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.sm,
-    color:INK.readoutSoft,
-    marginTop:8,
-    textTransform:"uppercase",
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.sm
+    marginBottom:12
   }
 });

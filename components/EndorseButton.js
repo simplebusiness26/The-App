@@ -3,7 +3,8 @@ import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph,MONO} from "./instrument";
 
 // Packet 8c: review reputation.
 //
@@ -17,7 +18,14 @@ import {INK} from "../utils/tokens";
 //
 // Still writes straight to social_likes with target_type="review", same table
 // LikeButton uses for moments. One table, two words for two different claims.
-
+//
+// It wears the same machined shape as LikeButton, FollowButton,
+// EntityFollowButton and FavouriteButton: a stroked Glyph, a mono count, a 1px
+// hairline, stepping up to panelRaised + hairlineStrong once the viewer has
+// acted. The thumbs-up emoji that used to sit here was somebody else's drawing
+// in somebody else's colour, and the green fill said "a manager agrees with
+// this", which is
+// a different act by a different person.
 export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,initialEndorsed=false,onChanged}){
   const {showFeedback}=useFeedback();
   const [endorsed,setEndorsed]=useState(!!initialEndorsed);
@@ -86,9 +94,9 @@ export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,
   // just the ones allowed to change it.
   if(viewerId && ownerId && viewerId===ownerId){
     return(
-      <Pressable disabled accessibilityRole="text" accessibilityLabel={label} style={styles.button}>
-        <Text style={styles.icon}>👍</Text>
-        <Text style={styles.text}>{count} Useful</Text>
+      <Pressable disabled accessibilityRole="text" accessibilityLabel={label} style={[styles.control,styles.controlInert]}>
+        <Glyph name="check" size={14} colour={INK.readoutFaint} weight={1.8}/>
+        <Text style={styles.count}>{count} Useful</Text>
       </Pressable>
     );
   }
@@ -97,24 +105,33 @@ export default function EndorseButton({reviewId,ownerId,viewerId,initialCount=0,
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={endorsed ? `Remove useful mark. ${label}.` : `Mark as useful. ${label}.`}
-      style={[styles.button,endorsed && styles.endorsedButton]}
+      accessibilityState={{selected:endorsed,disabled:working}}
+      style={[styles.control,endorsed && styles.controlOn]}
       disabled={working}
       onPress={toggle}
     >
       {working
-        ? <ActivityIndicator size="small" color={endorsed ? INK.green : INK.inkSoft}/>
-        : <Text style={[styles.icon,endorsed && styles.endorsedIcon]}>👍</Text>
+        ? <ActivityIndicator size="small" color={endorsed ? INK.readout : INK.readoutSoft}/>
+        : <Glyph name="check" size={14} colour={endorsed ? INK.readout : INK.readoutSoft} weight={endorsed ? 2.1 : 1.6}/>
       }
-      <Text style={[styles.text,endorsed && styles.endorsedText]}>{count} Useful</Text>
+      <Text style={[styles.count,endorsed && styles.countOn]}>{count} Useful</Text>
     </Pressable>
   );
 }
 
 const styles=StyleSheet.create({
-  button:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
-  endorsedButton:{backgroundColor:INK.green,borderColor:INK.green},
-  icon:{fontSize:15,lineHeight:18},
-  endorsedIcon:{},
-  text:{color:INK.ink,fontSize:12,fontWeight:"900"},
-  endorsedText:{color:INK.card}
+  control:{
+    flexDirection:"row",alignItems:"center",gap:6,
+    minHeight:38,paddingHorizontal:11,paddingVertical:7,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  // The author's own review: a plate that reports, not a control that acts.
+  controlInert:{backgroundColor:"transparent",borderColor:INK.hairline},
+  count:{
+    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
+    textTransform:"uppercase",color:INK.readoutSoft
+  },
+  countOn:{color:INK.readout}
 });

@@ -1,8 +1,8 @@
 import React from "react";
-import {View,Text,Pressable,StyleSheet} from "react-native";
+import {View,StyleSheet} from "react-native";
 import {CATEGORIES,typesForCategory,UNCLASSIFIED} from "../utils/taxonomy";
 import MarkerPreview from "./MarkerPreview";
-import {INK} from "../utils/tokens";
+import {Chip,Field} from "./instrument";
 
 // The only classification control in the app. It reads utils/taxonomy.js and
 // nothing else, so the forms cannot drift from the database catalogue -- the
@@ -10,6 +10,14 @@ import {INK} from "../utils/tokens";
 //
 // Changing the category resets the type, because a type belongs to exactly one
 // category and keeping the old one would submit a pair the database refuses.
+//
+// REBUILT ON THE KIT. It used to hand-roll two rows of 18px pills that filled
+// with a state ink when selected -- `exists` spent on "this chip is chosen",
+// which is not a state a place is in (docs/design-system.md). They are `Chip`s
+// in a `Field` well now: selection steps the surface and strengthens the edge,
+// the labels are mono because a category is something the app catalogues, and
+// the asterisk in "Category *" is the kit's REQUIRED marker instead of
+// punctuation a screen reader reads as a star.
 export default function ClassificationPicker({
   category,
   businessType,
@@ -29,42 +37,37 @@ export default function ClassificationPicker({
   }
 
   return(
-    <View style={styles.wrap}>
-      <Text style={styles.label}>Category *</Text>
-      <View style={styles.chips}>
-        {CATEGORIES.map((item)=>(
-          <Pressable
-            key={item.key}
-            style={[styles.chip,category===item.key && styles.chipActive]}
-            disabled={disabled}
-            onPress={()=>selectCategory(item.key)}
-          >
-            <Text style={[styles.chipText,category===item.key && styles.chipTextActive]}>
-              {item.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+    <View>
+      <Field label="Category" required>
+        <View style={styles.chips}>
+          {CATEGORIES.map((item)=>(
+            <Chip
+              key={item.key}
+              label={item.label}
+              selected={category===item.key}
+              disabled={disabled}
+              onPress={()=>selectCategory(item.key)}
+            />
+          ))}
+        </View>
+      </Field>
 
-      <Text style={styles.label}>Type</Text>
-      <Text style={styles.help}>
-        Only a few types exist so far. Pick &quot;Not yet classified&quot; if none fits — the
-        category is still recorded.
-      </Text>
-      <View style={styles.chips}>
-        {types.map((item)=>(
-          <Pressable
-            key={item.key}
-            style={[styles.chip,businessType===item.key && styles.chipActive]}
-            disabled={disabled}
-            onPress={()=>selectType(item.key)}
-          >
-            <Text style={[styles.chipText,businessType===item.key && styles.chipTextActive]}>
-              {item.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Field
+        label="Type"
+        hint={"Only a few types exist so far. Pick “Not yet classified” if none fits — the category is still recorded."}
+      >
+        <View style={styles.chips}>
+          {types.map((item)=>(
+            <Chip
+              key={item.key}
+              label={item.label}
+              selected={businessType===item.key}
+              disabled={disabled}
+              onPress={()=>selectType(item.key)}
+            />
+          ))}
+        </View>
+      </Field>
 
       <MarkerPreview
         category={category || UNCLASSIFIED}
@@ -76,12 +79,5 @@ export default function ClassificationPicker({
 }
 
 const styles=StyleSheet.create({
-  wrap:{marginBottom:15},
-  label:{fontWeight:"900",fontSize:14,marginBottom:7,marginTop:6},
-  help:{color:INK.inkSoft,fontSize:12,lineHeight:17,marginBottom:8},
-  chips:{flexDirection:"row",flexWrap:"wrap",gap:8},
-  chip:{borderWidth:1,borderColor:INK.ink,borderRadius:18,paddingHorizontal:13,paddingVertical:8},
-  chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},
-  chipText:{fontSize:13,fontWeight:"700",color:INK.card},
-  chipTextActive:{color:INK.card}
+  chips:{flexDirection:"row",flexWrap:"wrap",gap:8,padding:10}
 });

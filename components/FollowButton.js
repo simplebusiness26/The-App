@@ -3,7 +3,8 @@ import {ActivityIndicator,Pressable,StyleSheet,Text} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph,MONO} from "./instrument";
 
 // Following one Explorer.
 //
@@ -137,6 +138,18 @@ export default function FollowButton({profileId,onChanged,compact=false}){
   // Friends is BOTH directions. Following without being followed back is still
   // just following, however long it has been.
   const friends=!!followId && followsBack;
+  const busy=loading || working;
+
+  // Three readings, one control. The blue filled pill this used to be said
+  // "this place IS something" in the map's own vocabulary, which is not what
+  // following somebody means -- and once you followed, the pill inverted to a
+  // white box, so the two states were two different objects. Now it is the same
+  // machined control as Like, Useful and Favourite: a stroked Glyph and a mono
+  // label, stepping up to panelRaised + hairlineStrong once you have acted.
+  const glyph=friends ? "people" : followId ? "check" : "person";
+  const text=!user
+    ? "Log in to follow"
+    : friends ? "Friends" : followId ? "Following" : "Follow";
 
   return(
     <Pressable
@@ -146,41 +159,40 @@ export default function FollowButton({profileId,onChanged,compact=false}){
           ? "You are friends. Unfollow this Explorer to end it."
           : followId ? "Unfollow Explorer" : "Follow Explorer"
       }
-      disabled={loading || working}
+      accessibilityState={{selected:!!followId,disabled:busy}}
+      disabled={busy}
       style={[
-        styles.button,
-        compact && styles.compact,
-        followId && styles.following,
-        (loading || working) && styles.disabled
+        styles.control,
+        compact ? styles.compact : styles.full,
+        !!followId && styles.controlOn,
+        busy && styles.disabled
       ]}
       onPress={toggleFollow}
     >
-      {(loading || working)
-        ? <ActivityIndicator size="small" color={INK.ink}/>
-        : <Text style={[styles.text,followId && styles.followingText]}>
-            {!user
-              ? "Log in to follow"
-              : friends ? "Friends" : followId ? "Following" : "Follow"}
-          </Text>
+      {busy
+        ? <ActivityIndicator size="small" color={INK.readoutSoft}/>
+        : <>
+            <Glyph name={glyph} size={14} colour={followId?INK.readout:INK.readoutSoft} weight={followId?1.9:1.5}/>
+            <Text style={[styles.label,!!followId && styles.labelOn]} numberOfLines={1}>{text}</Text>
+          </>
       }
     </Pressable>
   );
 }
 
 const styles=StyleSheet.create({
-  button:{
-    minWidth:118,
-    minHeight:44,
-    paddingHorizontal:20,
-    paddingVertical:12,
-    borderRadius:13,
-    backgroundColor:INK.blue,
-    alignItems:"center",
-    justifyContent:"center"
+  control:{
+    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:7,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
   },
-  compact:{minWidth:92,minHeight:38,paddingHorizontal:14,paddingVertical:9,borderRadius:11},
-  following:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1},
-  disabled:{opacity:0.65},
-  text:{color:INK.card,fontWeight:"900",fontSize:14},
-  followingText:{color:INK.ink}
+  full:{minWidth:118,minHeight:SHAPE.tapTarget,paddingHorizontal:18,paddingVertical:11},
+  compact:{minWidth:92,minHeight:38,paddingHorizontal:12,paddingVertical:8},
+  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  disabled:{opacity:0.55},
+  label:{
+    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
+    textTransform:"uppercase",fontWeight:"600",color:INK.readoutSoft
+  },
+  labelOn:{color:INK.readout}
 });

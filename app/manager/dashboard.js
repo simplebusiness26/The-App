@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Pressable,
   ActivityIndicator,
   Alert,
   Image
@@ -12,43 +11,91 @@ import {
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import QRCodeGenerator from "../../components/QRCodeGenerator";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {useFeedback} from "../../context/FeedbackContext";
 import {formatEventDate,formatEventPrice} from "../../utils/events";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Empty,
+  Frame,
+  KeyValue,
+  Meter,
+  MONO,
+  Notice,
+  Panel,
+  ReadoutStrip,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+
+// The manager's console: everything they run, and everything waiting on them.
+//
+// It is the most data-dense screen in the app, so it is the one the instrument
+// suits best. Counts are readouts, capacity is a meter with a real ceiling, and
+// every group is an etched rule with its count on the end. The old version drew
+// four kinds of card by hand and hung an emoji off each heading -- a shop, a
+// house, a runner and a party popper: four different type designers' idea of
+// what a listing looks like.
+//
+// No state ink appears anywhere on this screen except as a Meter fill and a
+// Chip dot. `scheduled` and `offer` say what a PLACE is; a listing you manage
+// is not a pin on a map, and a pending approval is not a happening.
 
 const ENABLED_STATUSES=["active","trial"];
 
-function CapabilityHeader({title,status,requestStatus,onRequest}){
+// One group's etched rule, its count, and whether the capability behind it is
+// unlocked. Selection/state is a mono chip, never a coloured pill.
+function CapabilityHeader({title,count,status,requestStatus,onRequest}){
   const enabled=ENABLED_STATUSES.includes(status);
+  const label=enabled
+    ? status
+    : requestStatus==="pending" ? "request pending" : status || "inactive";
 
   return(
-    <View style={styles.capabilityHeader}>
-      <View style={styles.capabilityHeadingText}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={[styles.statusPill,enabled ? styles.activePill : styles.inactivePill]}>
-          {enabled ? status : requestStatus==="pending" ? "request pending" : status || "inactive"}
-        </Text>
+    <>
+      <SectionRule label={title} meta={String(count)}/>
+      <View style={styles.capabilityRow}>
+        <Chip
+          label={label}
+          glyph={enabled ? "check" : "lock"}
+          selected={enabled}
+        />
+        {!enabled && requestStatus!=="pending" && (
+          <Action
+            kind="secondary"
+            glyph="key"
+            label="Request access"
+            accessibilityLabel={`Request access to ${title}`}
+            onPress={onRequest}
+          />
+        )}
       </View>
-
-      {!enabled && requestStatus!=="pending" && (
-        <Pressable style={styles.requestButton} onPress={onRequest}>
-          <Text style={styles.requestButtonText}>Request access</Text>
-        </Pressable>
-      )}
-    </View>
+    </>
   );
 }
 
+// The code, and the way to print it. The QR keeps its own light quiet zone --
+// see components/QRCodeGenerator.js for why it is the one thing here that is
+// not on the housing.
 function QRBlock({type,id,children}){
   return(
-    <View style={styles.qrSection}>
-      <View style={styles.qrPreview}>{children}</View>
-      <Pressable
-        style={styles.printQrButton}
-        onPress={()=>router.push(`/manager/qr/${type}/${id}`)}
-      >
-        <Text style={styles.printQrText}>Open printable QR</Text>
-      </Pressable>
+    <View style={styles.qrRow}>
+      {children}
+      <View style={styles.qrCopy}>
+        <Text style={styles.qrLabel}>Verified review code</Text>
+        <Action
+          kind="secondary"
+          glyph="qr"
+          label="Open printable QR"
+          accessibilityLabel="Open the printable QR code for this listing"
+          onPress={()=>router.push(`/manager/qr/${type}/${id}`)}
+          style={styles.qrButton}
+        />
+      </View>
     </View>
   );
 }
@@ -59,17 +106,15 @@ function MemberIdentity({membership,profiles}){
 
   return(
     <View style={styles.memberIdentity}>
-      {profile?.profile_photo ? (
-        <Image source={{uri:profile.profile_photo}} style={styles.memberAvatar}/>
-      ) : (
-        <View style={styles.memberAvatarFallback}>
-          <Text style={styles.memberInitial}>{name.slice(0,1).toUpperCase()}</Text>
-        </View>
-      )}
+      <Frame size={38} round style={styles.avatarFrame}>
+        {profile?.profile_photo
+          ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
+          : <Text style={styles.avatarLetter}>{name.slice(0,1).toUpperCase()}</Text>}
+      </Frame>
 
       <View style={styles.memberNameWrap}>
-        <Text style={styles.applicantName}>{name}</Text>
-        <Text style={styles.memberAccessText}>Message board access enabled</Text>
+        <Text style={styles.memberName} numberOfLines={1}>{name}</Text>
+        <Text style={styles.memberAccess}>Message board access enabled</Text>
       </View>
     </View>
   );
@@ -305,18 +350,21 @@ export default function ManagerDashboard(){
 
   if(loading){
     return(
-      <View style={styles.loading}>
-        <ActivityIndicator size="large"/>
-        <Text style={styles.loadingText}>Loading manager dashboard...</Text>
-      </View>
+      <Screen style={styles.centre}>
+        <ActivityIndicator size="large" color={INK.readout}/>
+        <Text style={styles.centreText}>Loading manager dashboard…</Text>
+      </Screen>
     );
   }
 
   if(error){
     return(
-      <View style={styles.loading}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Manager" title="Manager dashboard"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Not loaded">{error}</Notice>
+        </View>
+      </Screen>
     );
   }
 
@@ -326,433 +374,432 @@ export default function ManagerDashboard(){
   const eventsEnabled=capabilityEnabled("events");
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Manager Dashboard</Text>
-      <Text style={styles.subtitle}>
-        Manage listings, approved members and printable QR codes from one place.
-      </Text>
-
-      <View style={[styles.actionCard,totalPending>0 && styles.actionCardActive]}>
-        <View style={styles.actionCardTop}>
-          <View style={styles.actionCardText}>
-            <Text style={styles.actionEyebrow}>MANAGER ACTION CENTRE</Text>
-            <Text style={styles.actionTitle}>
-              {totalPending>0
-                ? `${totalPending} membership request${totalPending===1 ? "" : "s"} need a decision`
-                : "No pending membership requests"
-              }
-            </Text>
-            <Text style={styles.actionText}>
-              Approvals and other decisions are kept separate from listing management.
-            </Text>
-          </View>
-
-          <View style={[styles.actionCount,totalPending===0 && styles.actionCountClear]}>
-            <Text style={styles.actionCountNumber}>{totalPending}</Text>
-            <Text style={styles.actionCountLabel}>pending</Text>
-          </View>
-        </View>
-
-        <Pressable
-          style={styles.actionButton}
-          onPress={()=>router.push("/manager/requests")}
-        >
-          <Text style={styles.actionButtonText}>
-            {totalPending>0 ? "Review pending actions" : "Open Action Centre"}
-          </Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.section}>
-        <CapabilityHeader
-          title={`🏪 Businesses (${businesses.length})`}
-          status={capabilities.businesses_status}
-          requestStatus={requests.businesses}
-          onRequest={()=>requestCapability("businesses","Businesses")}
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenTitle
+          eyebrow="Manager"
+          title="Manager dashboard"
+          meta="Manage listings, approved members and printable QR codes from one place."
         />
 
-        {businessesEnabled && (
-          <Pressable
-            style={styles.dashboardLink}
-            accessibilityRole="button"
-            accessibilityLabel="Open the full Business Dashboard"
-            onPress={()=>router.push("/business/dashboard")}
-          >
-            <Text style={styles.dashboardLinkText}>Open Business Dashboard →</Text>
-          </Pressable>
-        )}
+        <View style={styles.body}>
+          <ReadoutStrip
+            items={[
+              {label:"Business",value:String(businesses.length)},
+              {label:"Property",value:String(properties.length)},
+              {label:"Clubs",value:String(clubs.length)},
+              {label:"Events",value:String(events.length)}
+            ]}
+          />
 
-        {businessesEnabled ? <>
-          {businesses.length===0 && (
-            <EmptyCard title="No businesses yet" text="Create your first business listing."/>
-          )}
+          {/* The one thing on this screen that is waiting on a person. */}
+          <SectionRule label="Action centre" meta={String(totalPending)}/>
 
-          {businesses.map(business=>(
-            <View key={business.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{business.name}</Text>
-              <Text style={styles.cardSub}>{business.category || business.address}</Text>
+          <Row
+            glyph="bell"
+            title={totalPending>0
+              ? `${totalPending} membership request${totalPending===1 ? "" : "s"} need a decision`
+              : "No pending membership requests"}
+            sub="Approvals and other decisions are kept separate from listing management."
+            meta={String(totalPending)}
+            metaSub="pending"
+          />
 
-              <QRBlock type="business" id={business.id}>
-                <QRCodeGenerator businessId={business.id} size={120}/>
-              </QRBlock>
+          <Action
+            kind={totalPending>0 ? "primary" : "secondary"}
+            glyph="forward"
+            label={totalPending>0 ? "Review pending actions" : "Open Action Centre"}
+            accessibilityLabel="Open the Manager Action Centre"
+            onPress={()=>router.push("/manager/requests")}
+          />
 
-              <View style={styles.buttonRow}>
-                <Pressable
-                  style={styles.secondaryButton}
-                  onPress={()=>router.push(`/business/edit/${business.id}`)}
-                >
-                  <Text style={styles.secondaryButtonText}>Edit</Text>
-                </Pressable>
+          {/* ------------------------------------------------------------ */}
+          {/* Businesses                                                    */}
+          {/* ------------------------------------------------------------ */}
+          <CapabilityHeader
+            title="Businesses"
+            count={businesses.length}
+            status={capabilities.businesses_status}
+            requestStatus={requests.businesses}
+            onRequest={()=>requestCapability("businesses","Businesses")}
+          />
 
-                <Pressable
-                  style={styles.darkButton}
-                  onPress={()=>router.push(`/business/${business.id}`)}
-                >
-                  <Text style={styles.buttonText}>Public profile</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
+          {businessesEnabled ? <>
+            <Action
+              kind="quiet"
+              glyph="external"
+              label="Open Business Dashboard"
+              accessibilityLabel="Open the full Business Dashboard"
+              onPress={()=>router.push("/business/dashboard")}
+              style={styles.linkAction}
+            />
 
-          <Pressable style={styles.addButton} onPress={()=>router.push("/business/add")}>
-            <Text style={styles.buttonText}>➕ Add Business</Text>
-          </Pressable>
-        </> : (
-          <LockedCard text="Request this capability to create and manage business listings."/>
-        )}
-      </View>
+            {businesses.length===0 && (
+              <Empty
+                glyph="building"
+                title="No businesses yet"
+                instruction="Create your first business listing."
+              />
+            )}
 
-      <View style={styles.section}>
-        <CapabilityHeader
-          title={`🏠 Properties (${properties.length})`}
-          status={capabilities.properties_status}
-          requestStatus={requests.properties}
-          onRequest={()=>requestCapability("properties","Properties")}
-        />
+            {businesses.map(business=>(
+              <Panel key={business.id} style={styles.card}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{business.name}</Text>
+                <KeyValue label="Detail" value={business.category || business.address || "—"}/>
 
-        {propertiesEnabled && (
-          <Pressable
-            style={styles.dashboardLink}
-            accessibilityRole="button"
-            accessibilityLabel="Open the full Property Dashboard"
-            onPress={()=>router.push("/property/dashboard")}
-          >
-            <Text style={styles.dashboardLinkText}>Open Property Dashboard →</Text>
-          </Pressable>
-        )}
-
-        {propertiesEnabled ? <>
-          {properties.length===0 && (
-            <EmptyCard title="No properties yet" text="Create your first property listing."/>
-          )}
-
-          {properties.map(property=>(
-            <View key={property.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{property.name}</Text>
-              <Text style={styles.cardSub}>{property.address}</Text>
-
-              <QRBlock type="property" id={property.id}>
-                <QRCodeGenerator propertyId={property.id} size={120}/>
-              </QRBlock>
-
-              <View style={styles.buttonRow}>
-                <Pressable
-                  style={styles.secondaryButton}
-                  onPress={()=>router.push(`/property/edit/${property.id}`)}
-                >
-                  <Text style={styles.secondaryButtonText}>Edit</Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.darkButton}
-                  onPress={()=>router.push(`/property/${property.id}`)}
-                >
-                  <Text style={styles.buttonText}>Public profile</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
-
-          <Pressable style={styles.addButton} onPress={()=>router.push("/property/add")}>
-            <Text style={styles.buttonText}>➕ Add Property</Text>
-          </Pressable>
-        </> : (
-          <LockedCard text="Request this capability to create and manage property listings."/>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <CapabilityHeader
-          title={`🏃 Activity Clubs (${clubs.length})`}
-          status={capabilities.activity_clubs_status}
-          requestStatus={requests.activity_clubs}
-          onRequest={()=>requestCapability("activity_clubs","Activity Clubs")}
-        />
-
-        {activitiesEnabled ? <>
-          {clubs.length===0 && (
-            <EmptyCard title="No Activity Clubs yet" text="Create your first club listing."/>
-          )}
-
-          {clubs.map(club=>{
-            const pending=pendingByClub[club.id] || [];
-            const approved=approvedByClub[club.id] || [];
-            const limit=club.member_limit || 20;
-            const full=approved.length>=limit;
-
-            return(
-              <View key={club.id} style={styles.clubCard}>
-                <Text style={styles.clubEyebrow}>ACTIVITY CLUB LISTING</Text>
-                <Text style={styles.cardTitle}>{club.name}</Text>
-                <Text style={styles.cardSub}>{club.category} · {club.location}</Text>
-
-                <View style={styles.capacityRow}>
-                  <Text style={styles.memberCount}>Approved: {approved.length} / {limit}</Text>
-                  {full && <Text style={styles.fullPill}>FULL</Text>}
-                </View>
-
-                <View style={[styles.requestSummary,pending.length>0 && styles.requestSummaryActive]}>
-                  <View style={styles.requestSummaryText}>
-                    <Text style={styles.requestSummaryTitle}>
-                      {pending.length>0
-                        ? `${pending.length} pending request${pending.length===1 ? "" : "s"}`
-                        : "No pending requests"
-                      }
-                    </Text>
-                    <Text style={styles.requestSummarySub}>
-                      Review membership decisions in the Action Centre.
-                    </Text>
-                  </View>
-
-                  <Pressable
-                    style={styles.reviewButton}
-                    onPress={()=>router.push(`/manager/requests?club=${club.id}&view=requests`)}
-                  >
-                    <Text style={styles.reviewButtonText}>
-                      {pending.length>0 ? "Review" : "View"}
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <QRBlock type="activity" id={club.id}>
-                  <QRCodeGenerator activityClubId={club.id} size={120}/>
+                <QRBlock type="business" id={business.id}>
+                  <QRCodeGenerator businessId={business.id} size={96}/>
                 </QRBlock>
 
-                <View style={styles.buttonRow}>
-                  <Pressable
-                    style={styles.secondaryButton}
-                    onPress={()=>router.push(`/activity-clubs/edit/${club.id}`)}
-                  >
-                    <Text style={styles.secondaryButtonText}>Edit</Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.darkButton}
-                    onPress={()=>router.push(`/activity-clubs/${club.id}`)}
-                  >
-                    <Text style={styles.buttonText}>Public profile</Text>
-                  </Pressable>
+                <View style={styles.buttons}>
+                  <Action
+                    kind="secondary" glyph="edit" label="Edit"
+                    accessibilityLabel={`Edit ${business.name}`}
+                    onPress={()=>router.push(`/business/edit/${business.id}`)}
+                    style={styles.button}
+                  />
+                  <Action
+                    kind="secondary" glyph="external" label="Public profile"
+                    accessibilityLabel={`View ${business.name}'s public profile`}
+                    onPress={()=>router.push(`/business/${business.id}`)}
+                    style={styles.button}
+                  />
                 </View>
+              </Panel>
+            ))}
 
-                <Pressable
-                  style={styles.boardButton}
-                  onPress={()=>router.push(`/activity-clubs/message-board/${club.id}`)}
-                >
-                  <Text style={styles.buttonText}>Open private message board</Text>
-                </Pressable>
-
-                <View style={styles.memberSectionHeader}>
-                  <Text style={styles.applicationTitle}>Approved members</Text>
-                  <Text style={styles.memberSectionClub}>{club.name}</Text>
-                  <Text style={styles.memberSectionCount}>
-                    {approved.length} approved member{approved.length===1 ? "" : "s"}
-                  </Text>
-                </View>
-
-                {approved.length===0 ? (
-                  <View style={styles.noApplications}>
-                    <Text style={styles.noApplicationsText}>
-                      No approved members in {club.name}.
-                    </Text>
-                  </View>
-                ) : approved.map(member=>(
-                  <View key={member.id} style={styles.approvedMemberCard}>
-                    <MemberIdentity membership={member} profiles={memberProfiles}/>
-                    <Pressable
-                      style={styles.removeButton}
-                      disabled={workingId===member.id}
-                      onPress={()=>confirmRemoveMember(member,club)}
-                    >
-                      <Text style={styles.removeButtonText}>
-                        {workingId===member.id ? "Removing..." : "Remove member"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            );
-          })}
-
-          <Pressable style={styles.addButton} onPress={()=>router.push("/activity-clubs/add")}>
-            <Text style={styles.buttonText}>➕ Add Activity Club</Text>
-          </Pressable>
-        </> : (
-          <LockedCard text="Request this paid capability to create clubs and approve explorer members."/>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <CapabilityHeader
-          title={`🎉 Events (${events.length})`}
-          status={capabilities.events_status}
-          requestStatus={requests.events}
-          onRequest={()=>requestCapability("events","Events")}
-        />
-
-        {eventsEnabled ? <>
-          {events.length===0 && (
-            <EmptyCard title="No events yet" text="Create your first public event listing."/>
+            <Action
+              kind="primary" glyph="plus" label="Add a business"
+              accessibilityLabel="Add a business"
+              onPress={()=>router.push("/business/add")}
+              style={styles.add}
+            />
+          </> : (
+            <Notice tone="exists" label="Locked">
+              Request this capability to create and manage business listings.
+            </Notice>
           )}
 
-          {events.map(event=>(
-            <View key={event.id} style={styles.card}>
-              <View style={styles.eventHeading}>
-                <Text style={styles.cardTitle}>{event.name}</Text>
-                <Text style={styles.eventStatus}>{event.status}</Text>
-              </View>
-              <Text style={styles.cardSub}>{event.category} · {formatEventPrice(event.price)}</Text>
-              <Text style={styles.eventDate}>📅 {formatEventDate(event.starts_at)}</Text>
-              <Text style={styles.cardSub}>📍 {event.location || event.address}</Text>
+          {/* ------------------------------------------------------------ */}
+          {/* Properties                                                    */}
+          {/* ------------------------------------------------------------ */}
+          <CapabilityHeader
+            title="Properties"
+            count={properties.length}
+            status={capabilities.properties_status}
+            requestStatus={requests.properties}
+            onRequest={()=>requestCapability("properties","Properties")}
+          />
 
-              <QRBlock type="event" id={event.id}>
-                <QRCodeGenerator eventId={event.id} size={120}/>
-              </QRBlock>
+          {propertiesEnabled ? <>
+            <Action
+              kind="quiet"
+              glyph="external"
+              label="Open Property Dashboard"
+              accessibilityLabel="Open the full Property Dashboard"
+              onPress={()=>router.push("/property/dashboard")}
+              style={styles.linkAction}
+            />
 
-              <View style={styles.buttonRow}>
-                <Pressable
-                  style={styles.secondaryButton}
-                  onPress={()=>router.push(`/events/edit/${event.id}`)}
-                >
-                  <Text style={styles.secondaryButtonText}>Edit</Text>
-                </Pressable>
+            {properties.length===0 && (
+              <Empty
+                glyph="bed"
+                title="No properties yet"
+                instruction="Create your first property listing."
+              />
+            )}
 
-                <Pressable
-                  style={styles.darkButton}
-                  onPress={()=>router.push(`/events/${event.id}`)}
-                >
-                  <Text style={styles.buttonText}>View listing</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
+            {properties.map(property=>(
+              <Panel key={property.id} style={styles.card}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{property.name}</Text>
+                <KeyValue label="Address" value={property.address || "—"}/>
 
-          <Pressable style={styles.addButton} onPress={()=>router.push("/events/add")}>
-            <Text style={styles.buttonText}>➕ Add Event</Text>
-          </Pressable>
-        </> : (
-          <LockedCard text="Request the Events capability to create and manage event listings."/>
-        )}
-      </View>
-    </ScrollView>
+                <QRBlock type="property" id={property.id}>
+                  <QRCodeGenerator propertyId={property.id} size={96}/>
+                </QRBlock>
+
+                <View style={styles.buttons}>
+                  <Action
+                    kind="secondary" glyph="edit" label="Edit"
+                    accessibilityLabel={`Edit ${property.name}`}
+                    onPress={()=>router.push(`/property/edit/${property.id}`)}
+                    style={styles.button}
+                  />
+                  <Action
+                    kind="secondary" glyph="external" label="Public profile"
+                    accessibilityLabel={`View ${property.name}'s public profile`}
+                    onPress={()=>router.push(`/property/${property.id}`)}
+                    style={styles.button}
+                  />
+                </View>
+              </Panel>
+            ))}
+
+            <Action
+              kind="primary" glyph="plus" label="Add a property"
+              accessibilityLabel="Add a property"
+              onPress={()=>router.push("/property/add")}
+              style={styles.add}
+            />
+          </> : (
+            <Notice tone="exists" label="Locked">
+              Request this capability to create and manage property listings.
+            </Notice>
+          )}
+
+          {/* ------------------------------------------------------------ */}
+          {/* Activity Clubs                                                */}
+          {/* ------------------------------------------------------------ */}
+          <CapabilityHeader
+            title="Activity Clubs"
+            count={clubs.length}
+            status={capabilities.activity_clubs_status}
+            requestStatus={requests.activity_clubs}
+            onRequest={()=>requestCapability("activity_clubs","Activity Clubs")}
+          />
+
+          {activitiesEnabled ? <>
+            {clubs.length===0 && (
+              <Empty
+                glyph="people"
+                title="No Activity Clubs yet"
+                instruction="Create your first club listing."
+              />
+            )}
+
+            {clubs.map(club=>{
+              const pending=pendingByClub[club.id] || [];
+              const approved=approvedByClub[club.id] || [];
+              const limit=club.member_limit || 20;
+              const full=approved.length>=limit;
+
+              return(
+                <Panel key={club.id} style={styles.card}>
+                  <View style={styles.head}>
+                    <Text style={styles.headKind}>Activity club listing</Text>
+                    <View style={styles.headLine}/>
+                    {full ? <Text style={styles.headFull}>Full</Text> : null}
+                  </View>
+
+                  <Text style={styles.cardTitle} numberOfLines={2}>{club.name}</Text>
+                  <KeyValue label="Category" value={club.category || "—"}/>
+                  <KeyValue label="Where" value={club.location || "—"}/>
+
+                  {/* Membership has a real ceiling, so it is read off a ticked
+                      track rather than written out as a fraction. */}
+                  <View style={styles.meterRow}>
+                    <Meter
+                      value={approved.length}
+                      max={limit}
+                      width={140}
+                      tone="exists"
+                      label="Approved"
+                      valueLabel={`${approved.length}/${limit}`}
+                    />
+                  </View>
+
+                  {/* A card inside a card steps UP a surface -- panelRaised
+                      with a stronger hairline -- rather than repeating the
+                      same plate at the same tone. */}
+                  <Row
+                    glyph="bell"
+                    style={styles.nestedRow}
+                    title={pending.length>0
+                      ? `${pending.length} pending request${pending.length===1 ? "" : "s"}`
+                      : "No pending requests"}
+                    sub="Review membership decisions in the Action Centre."
+                    meta={String(pending.length)}
+                  />
+
+                  <Action
+                    kind={pending.length>0 ? "primary" : "secondary"}
+                    glyph="forward"
+                    label={pending.length>0 ? "Review requests" : "View requests"}
+                    accessibilityLabel={`Review membership requests for ${club.name}`}
+                    onPress={()=>router.push(`/manager/requests?club=${club.id}&view=requests`)}
+                  />
+
+                  <QRBlock type="activity" id={club.id}>
+                    <QRCodeGenerator activityClubId={club.id} size={96}/>
+                  </QRBlock>
+
+                  <View style={styles.buttons}>
+                    <Action
+                      kind="secondary" glyph="edit" label="Edit"
+                      accessibilityLabel={`Edit ${club.name}`}
+                      onPress={()=>router.push(`/activity-clubs/edit/${club.id}`)}
+                      style={styles.button}
+                    />
+                    <Action
+                      kind="secondary" glyph="external" label="Public profile"
+                      accessibilityLabel={`View ${club.name}'s public profile`}
+                      onPress={()=>router.push(`/activity-clubs/${club.id}`)}
+                      style={styles.button}
+                    />
+                  </View>
+
+                  <Action
+                    kind="secondary"
+                    glyph="lock"
+                    label="Open private message board"
+                    accessibilityLabel={`Open the private message board for ${club.name}`}
+                    onPress={()=>router.push(`/activity-clubs/message-board/${club.id}`)}
+                    style={styles.wide}
+                  />
+
+                  <SectionRule label="Approved members" meta={String(approved.length)}/>
+
+                  {approved.length===0 ? (
+                    <Empty
+                      glyph="people"
+                      title={`No approved members in ${club.name}`}
+                      instruction="Approve a membership request in the Action Centre and the Explorer appears here."
+                    />
+                  ) : approved.map(member=>(
+                    <Panel key={member.id} raised style={styles.memberCard}>
+                      <MemberIdentity membership={member} profiles={memberProfiles}/>
+                      <Action
+                        kind="quiet"
+                        glyph="close"
+                        label={workingId===member.id ? "Removing…" : "Remove member"}
+                        accessibilityLabel={`Remove ${membershipName(member)} from ${club.name}`}
+                        disabled={workingId===member.id}
+                        onPress={()=>confirmRemoveMember(member,club)}
+                        style={styles.wide}
+                      />
+                    </Panel>
+                  ))}
+                </Panel>
+              );
+            })}
+
+            <Action
+              kind="primary" glyph="plus" label="Add an Activity Club"
+              accessibilityLabel="Add an Activity Club"
+              onPress={()=>router.push("/activity-clubs/add")}
+              style={styles.add}
+            />
+          </> : (
+            <Notice tone="exists" label="Locked">
+              Request this paid capability to create clubs and approve explorer members.
+            </Notice>
+          )}
+
+          {/* ------------------------------------------------------------ */}
+          {/* Events                                                        */}
+          {/* ------------------------------------------------------------ */}
+          <CapabilityHeader
+            title="Events"
+            count={events.length}
+            status={capabilities.events_status}
+            requestStatus={requests.events}
+            onRequest={()=>requestCapability("events","Events")}
+          />
+
+          {eventsEnabled ? <>
+            {events.length===0 && (
+              <Empty
+                glyph="calendar"
+                title="No events yet"
+                instruction="Create your first public event listing."
+              />
+            )}
+
+            {events.map(event=>(
+              <Panel key={event.id} style={styles.card}>
+                <View style={styles.head}>
+                  <Text style={styles.headKind}>Event</Text>
+                  <View style={styles.headLine}/>
+                  <Text style={styles.headState}>{event.status}</Text>
+                </View>
+
+                <Text style={styles.cardTitle} numberOfLines={2}>{event.name}</Text>
+
+                <KeyValue label="Category" value={event.category || "—"}/>
+                <KeyValue label="Price" value={formatEventPrice(event.price)}/>
+                <KeyValue label="Starts" value={formatEventDate(event.starts_at)}/>
+                <KeyValue label="Where" value={event.location || event.address || "—"}/>
+
+                <QRBlock type="event" id={event.id}>
+                  <QRCodeGenerator eventId={event.id} size={96}/>
+                </QRBlock>
+
+                <View style={styles.buttons}>
+                  <Action
+                    kind="secondary" glyph="edit" label="Edit"
+                    accessibilityLabel={`Edit ${event.name}`}
+                    onPress={()=>router.push(`/events/edit/${event.id}`)}
+                    style={styles.button}
+                  />
+                  <Action
+                    kind="secondary" glyph="external" label="View listing"
+                    accessibilityLabel={`View ${event.name}`}
+                    onPress={()=>router.push(`/events/${event.id}`)}
+                    style={styles.button}
+                  />
+                </View>
+              </Panel>
+            ))}
+
+            <Action
+              kind="primary" glyph="plus" label="Add an event"
+              accessibilityLabel="Add an event"
+              onPress={()=>router.push("/events/add")}
+              style={styles.add}
+            />
+          </> : (
+            <Notice tone="exists" label="Locked">
+              Request the Events capability to create and manage event listings.
+            </Notice>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
-function EmptyCard({title,text}){
-  return(
-    <View style={styles.emptyCard}>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyText}>{text}</Text>
-    </View>
-  );
-}
-
-function LockedCard({text}){
-  return(
-    <View style={styles.lockedCard}>
-      <Text>{text}</Text>
-    </View>
-  );
-}
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:60},
-  loading:{flex:1,justifyContent:"center",alignItems:"center",padding:30},
-  loadingText:{marginTop:16,color:INK.ink},
-  errorText:{fontSize:18,textAlign:"center"},
-  title:{fontSize:32,fontWeight:"bold",marginTop:10},
-  subtitle:{fontSize:16,color:INK.inkSoft,lineHeight:23,marginBottom:20,marginTop:6},
-  actionCard:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:17,marginBottom:30},
-  actionCardActive:{backgroundColor:INK.card,borderColor:INK.yellow},
-  actionCardTop:{flexDirection:"row",alignItems:"flex-start",gap:14},
-  actionCardText:{flex:1},
-  actionEyebrow:{fontSize:11,fontWeight:"bold",color:INK.red,letterSpacing:0.5},
-  actionTitle:{fontSize:19,fontWeight:"bold",marginTop:5},
-  actionText:{fontSize:14,color:INK.inkSoft,lineHeight:20,marginTop:5},
-  actionCount:{minWidth:68,backgroundColor:INK.yellow,borderRadius:13,paddingVertical:9,paddingHorizontal:11,alignItems:"center"},
-  actionCountClear:{backgroundColor:INK.card},
-  actionCountNumber:{fontSize:23,fontWeight:"bold"},
-  actionCountLabel:{fontSize:10,fontWeight:"bold",textTransform:"uppercase"},
-  actionButton:{backgroundColor:INK.blue,padding:13,borderRadius:10,marginTop:14},
-  actionButtonText:{color:INK.card,fontWeight:"bold",textAlign:"center"},
-  section:{marginBottom:34},
-  capabilityHeader:{marginBottom:14},
-  capabilityHeadingText:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:10},
-  sectionTitle:{fontSize:23,fontWeight:"bold",flexShrink:1},
-  statusPill:{fontSize:12,fontWeight:"bold",textTransform:"capitalize",paddingHorizontal:10,paddingVertical:6,borderRadius:20,overflow:"hidden"},
-  activePill:{backgroundColor:INK.card,color:INK.green},
-  inactivePill:{backgroundColor:INK.card,color:INK.red},
-  requestButton:{backgroundColor:INK.blue,padding:13,borderRadius:10,marginTop:12,alignSelf:"flex-start"},
-  requestButtonText:{color:INK.card,fontWeight:"bold"},
-  dashboardLink:{alignSelf:"flex-start",marginBottom:12},
-  dashboardLinkText:{color:INK.blue,fontWeight:"800",fontSize:13},
-  card:{backgroundColor:INK.card,padding:18,borderRadius:14,marginBottom:15,borderWidth:1,borderColor:INK.ink},
-  clubCard:{backgroundColor:INK.card,padding:18,borderRadius:18,marginBottom:28,borderWidth:2,borderColor:INK.ink},
-  clubEyebrow:{fontSize:11,fontWeight:"bold",color:INK.blue,letterSpacing:0.6,marginBottom:7},
-  cardTitle:{fontSize:21,fontWeight:"bold"},
-  cardSub:{fontSize:15,color:INK.inkSoft,marginTop:5},
-  eventHeading:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:10},
-  eventStatus:{fontSize:11,fontWeight:"bold",textTransform:"uppercase",color:INK.blue,backgroundColor:INK.card,paddingHorizontal:9,paddingVertical:5,borderRadius:16,overflow:"hidden"},
-  eventDate:{fontSize:14,fontWeight:"600",color:INK.blue,marginTop:10,lineHeight:20},
-  capacityRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:10},
-  memberCount:{fontWeight:"700",color:INK.blue},
-  fullPill:{backgroundColor:INK.card,color:INK.red,fontSize:12,fontWeight:"bold",paddingHorizontal:9,paddingVertical:5,borderRadius:20,overflow:"hidden"},
-  requestSummary:{flexDirection:"row",alignItems:"center",gap:12,backgroundColor:INK.card,borderRadius:11,padding:13,marginTop:14,borderWidth:1,borderColor:INK.ink},
-  requestSummaryActive:{backgroundColor:INK.card,borderColor:INK.yellow},
-  requestSummaryText:{flex:1},
-  requestSummaryTitle:{fontWeight:"bold",fontSize:16},
-  requestSummarySub:{fontSize:12,color:INK.inkSoft,marginTop:3},
-  reviewButton:{backgroundColor:INK.blue,paddingHorizontal:14,paddingVertical:10,borderRadius:9},
-  reviewButtonText:{color:INK.card,fontWeight:"bold"},
-  qrSection:{flexDirection:"row",alignItems:"center",gap:16,marginTop:16,paddingTop:16,borderTopWidth:1,borderColor:INK.hair},
-  qrPreview:{padding:8,backgroundColor:INK.card},
-  printQrButton:{flex:1,backgroundColor:INK.card,padding:14,borderRadius:10},
-  printQrText:{color:INK.blue,fontWeight:"bold",textAlign:"center"},
-  buttonRow:{flexDirection:"row",gap:10,marginTop:12},
-  darkButton:{flex:1,backgroundColor:INK.ink,padding:14,borderRadius:10},
-  secondaryButton:{flex:1,backgroundColor:INK.card,padding:14,borderRadius:10,borderWidth:1,borderColor:INK.ink},
-  secondaryButtonText:{color:INK.ink,fontWeight:"bold",textAlign:"center"},
-  boardButton:{backgroundColor:INK.blue,padding:14,borderRadius:10,marginTop:10},
-  addButton:{backgroundColor:INK.blue,padding:16,borderRadius:12,marginTop:8},
-  buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"},
-  emptyCard:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:1,borderColor:INK.ink},
-  emptyTitle:{fontSize:18,fontWeight:"bold"},
-  emptyText:{fontSize:15,color:INK.inkSoft,marginTop:8,lineHeight:21},
-  lockedCard:{backgroundColor:INK.card,padding:18,borderRadius:14,borderWidth:1,borderColor:INK.yellow},
-  memberSectionHeader:{marginTop:22,marginBottom:10,paddingTop:18,borderTopWidth:2,borderColor:INK.ink},
-  applicationTitle:{fontSize:18,fontWeight:"bold"},
-  memberSectionClub:{fontSize:15,fontWeight:"700",color:INK.blue,marginTop:4},
-  memberSectionCount:{fontSize:12,color:INK.inkSoft,marginTop:3},
-  noApplications:{backgroundColor:INK.card,padding:14,borderRadius:10,borderWidth:1,borderColor:INK.ink},
-  noApplicationsText:{color:INK.ink,lineHeight:20},
-  approvedMemberCard:{backgroundColor:INK.card,padding:14,borderRadius:11,marginBottom:10,borderWidth:1,borderColor:INK.ink},
-  memberIdentity:{flexDirection:"row",alignItems:"center"},
-  memberAvatar:{width:44,height:44,borderRadius:22,backgroundColor:INK.hair},
-  memberAvatarFallback:{width:44,height:44,borderRadius:22,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  memberInitial:{color:INK.card,fontWeight:"bold",fontSize:18},
-  memberNameWrap:{marginLeft:11,flex:1},
-  applicantName:{fontSize:17,fontWeight:"bold"},
-  memberAccessText:{fontSize:12,color:INK.inkSoft,marginTop:3},
-  removeButton:{borderWidth:1,borderColor:INK.red,padding:11,borderRadius:9,marginTop:12},
-  removeButtonText:{color:INK.red,fontWeight:"bold",textAlign:"center"}
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+  centre:{alignItems:"center",justifyContent:"center",gap:12,padding:28},
+  centreText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,textAlign:"center"},
+
+  capabilityRow:{flexDirection:"row",alignItems:"center",gap:9,flexWrap:"wrap",marginBottom:10},
+  linkAction:{alignSelf:"flex-start",marginBottom:10},
+
+  nestedRow:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+
+  card:{padding:14,marginBottom:10},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headState:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+  headFull:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.sm},
+  cardTitle:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
+
+  meterRow:{marginTop:11,marginBottom:4},
+
+  qrRow:{
+    flexDirection:"row",alignItems:"center",gap:14,marginTop:12,paddingTop:12,
+    borderTopWidth:SHAPE.border,borderTopColor:INK.hairline
+  },
+  qrCopy:{flex:1,minWidth:0,gap:9},
+  qrLabel:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md},
+  qrButton:{alignSelf:"stretch"},
+
+  buttons:{flexDirection:"row",gap:9,marginTop:12},
+  button:{flex:1},
+  wide:{marginTop:9},
+  add:{marginTop:4,marginBottom:6},
+
+  memberCard:{padding:12,marginBottom:8},
+  memberIdentity:{flexDirection:"row",alignItems:"center",gap:11},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:38,height:38,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:15},
+  memberNameWrap:{flex:1,minWidth:0},
+  memberName:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  memberAccess:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3}
 });

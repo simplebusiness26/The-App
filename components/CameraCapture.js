@@ -575,7 +575,7 @@ const styles=StyleSheet.create({
     fontWeight:"700",
     fontSize:13,
     backgroundColor:INK.dispute,
-    borderRadius:12,
+    borderRadius:SHAPE.radius.card,
     paddingHorizontal:14,
     paddingVertical:9,
     overflow:"hidden",
@@ -609,6 +609,12 @@ const styles=StyleSheet.create({
     width:74,
     height:74,
     borderRadius:37,
+    // THE ONE THICK RING IN THE APP, AND IT IS NOT AN EDGE.
+    // SHAPE.border is 1 because a border is a hairline etched into the housing.
+    // This is not a border round a panel -- it is the shutter itself, the
+    // drawn ring of a physical control, sitting inside the Aperture's blades
+    // and under the ProgressRing that fills as a recording runs. A 1px shutter
+    // would read as a circle somebody forgot to finish.
     borderWidth:4,
     borderColor:INK.readout,
     alignItems:"center",
@@ -622,7 +628,7 @@ const styles=StyleSheet.create({
   // means "this is live and being kept" is worth more than consistency.
   shutterRecording:{borderColor:INK.dispute},
   shutterInner:{width:56,height:56,borderRadius:28,backgroundColor:INK.readout},
-  shutterInnerRecording:{width:30,height:30,borderRadius:6,backgroundColor:INK.dispute},
+  shutterInnerRecording:{width:30,height:30,borderRadius:SHAPE.radius.control,backgroundColor:INK.dispute},
   videoPreview:{alignItems:"center",justifyContent:"center"},
   videoPreviewText:{color:INK.readout,fontWeight:"700",fontSize:16},
 

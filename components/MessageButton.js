@@ -1,9 +1,9 @@
 import React,{useCallback,useState} from "react";
-import {Pressable,Text,ActivityIndicator,StyleSheet} from "react-native";
+import {StyleSheet} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {Action} from "./instrument";
 
 // The way into a conversation, both kinds.
 //
@@ -82,33 +82,22 @@ export default function MessageButton({profileId,targetType,targetId,compact=fal
   if(!checked || !allowed) return null;
 
   return(
-    <Pressable
-      accessibilityRole="button"
+    <Action
+      kind="secondary"
+      glyph="comment"
+      label={profileId ? "Message" : "Message the manager"}
       accessibilityLabel={profileId ? "Message this Explorer" : "Message whoever manages this place"}
-      style={[styles.button,compact && styles.compact]}
-      disabled={working}
+      loading={working}
       onPress={open}
-    >
-      {working
-        ? <ActivityIndicator size="small" color={INK.ink}/>
-        : <Text style={styles.text}>{profileId ? "Message" : "Message the manager"}</Text>}
-    </Pressable>
+      style={[styles.button,compact && styles.compact]}
+    />
   );
 }
 
 const styles=StyleSheet.create({
-  button:{
-    minWidth:118,
-    minHeight:44,
-    paddingHorizontal:18,
-    paddingVertical:11,
-    borderRadius:12,
-    borderWidth:2,
-    borderColor:INK.ink,
-    backgroundColor:INK.card,
-    alignItems:"center",
-    justifyContent:"center"
-  },
-  compact:{minWidth:96,minHeight:38,paddingHorizontal:13,paddingVertical:8,borderRadius:10},
-  text:{color:INK.ink,fontWeight:"800",fontSize:14}
+  // The kit's Action already carries the 44px floor, the hairline edge and the
+  // mono label. All this adds is the width the two callers rely on: a full-width
+  // button under a profile, and a narrower one beside a name in a list.
+  button:{minWidth:132,alignSelf:"flex-start"},
+  compact:{minWidth:104,paddingHorizontal:12}
 });

@@ -1,7 +1,8 @@
 import React,{useEffect,useState} from "react";
 import {View,Text,StyleSheet} from "react-native";
 import {ATTRIBUTION_SHORT} from "../utils/mapProvider";
-import {INK} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
+import {MONO,TickScale} from "./instrument";
 
 // The first five seconds of the app, and the reason the map has no credit on it.
 //
@@ -26,6 +27,15 @@ import {INK} from "../utils/tokens";
 // It shows once per launch. Navigating around the app afterwards does not bring
 // it back -- app/_layout.js holds the flag, so it covers the app on start
 // whichever route the app opened on.
+//
+// WHAT IT LOOKS LIKE, AND WHY THAT IS ALL
+//
+// The instrument powering up: the wordmark, an etched rule with real ticks
+// under it, and the credit. The tagline that used to sit under the wordmark was
+// a mood, and docs/design-system.md bans those; this screen has exactly one job
+// that is not decoration, so nothing else is on it. The rule is TickScale from
+// the kit -- the same ruler under every ScreenTitle -- so the first thing
+// anybody sees is already the app's own language rather than a title card.
 
 export const SPLASH_MS=5000;
 
@@ -47,14 +57,18 @@ export default function StartupSplash({onDone,duration=SPLASH_MS}){
     <View style={styles.screen} accessibilityRole="none">
       <View style={styles.middle}>
         <Text style={styles.wordmark}>Xplorer</Text>
-        <Text style={styles.tagline}>Discover local places, stays and experiences.</Text>
+        <View style={styles.rule}>
+          <TickScale width={126} height={12} count={13} majorEvery={4} colour={INK.hairlineStrong}/>
+          <View style={styles.ruleLine}/>
+        </View>
       </View>
 
       {/*
-        The credit, and it is not fine print. Same ink as everything else, at a
-        size somebody reads without trying -- because this is the app's
-        attribution now, and hiding it at 9px in grey would make the whole
-        arrangement dishonest.
+        The credit, and it is not fine print. The readout colour, at a size
+        somebody reads without trying -- because this is the app's attribution
+        now, and hiding it at 9px in grey would make the whole arrangement
+        dishonest. Mono, because it is a stated fact about where the data came
+        from rather than a sentence somebody wrote.
       */}
       <View style={styles.credit}>
         <Text style={styles.creditText} accessibilityLabel={ATTRIBUTION_SHORT}>
@@ -71,7 +85,7 @@ export default function StartupSplash({onDone,duration=SPLASH_MS}){
 const styles=StyleSheet.create({
   screen:{
     ...StyleSheet.absoluteFillObject,
-    backgroundColor:INK.paper,
+    backgroundColor:INK.ground,
     alignItems:"center",
     justifyContent:"space-between",
     paddingVertical:80,
@@ -81,9 +95,22 @@ const styles=StyleSheet.create({
     elevation:1000
   },
   middle:{flex:1,alignItems:"center",justifyContent:"center"},
-  wordmark:{color:INK.ink,fontSize:52,fontWeight:"900",letterSpacing:-1},
-  tagline:{color:INK.inkSoft,fontSize:16,lineHeight:23,textAlign:"center",marginTop:10},
-  credit:{alignItems:"center"},
-  creditText:{color:INK.ink,fontSize:16,fontWeight:"700",textAlign:"center"},
-  creditSmall:{color:INK.inkSoft,fontSize:12,lineHeight:17,textAlign:"center",marginTop:7}
+  wordmark:{color:INK.readout,fontSize:52,fontWeight:"700",letterSpacing:-1},
+  rule:{flexDirection:"row",alignItems:"flex-end",width:206,marginTop:14},
+  ruleLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  credit:{alignItems:"center",gap:9},
+  creditText:{
+    color:INK.readout,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.lg,
+    textTransform:"uppercase",
+    letterSpacing:1,
+    textAlign:"center"
+  },
+  creditSmall:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,
+    textAlign:"center"
+  }
 });

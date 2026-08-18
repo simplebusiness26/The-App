@@ -1,10 +1,18 @@
 import React,{useCallback,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,Pressable,StyleSheet,View} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import FollowButton from "./FollowButton";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE} from "../utils/tokens";
+import {Action,Panel,Readout} from "./instrument";
 
+// Followers, following, Moments -- and the one control that changes any of them.
+//
+// All three are counts the app worked out, so all three are Readouts on one
+// plate: mono label above, the figure below, hairline dividers between. That is
+// the instrument's answer to a stat row, and it is the same plate ReadoutStrip
+// builds; this draws its own only because two of the three cells have to be
+// pressable and ReadoutStrip's cells are not.
 export default function ProfileSocialBar({profileId,ownProfile=false}){
   const [resolvedId,setResolvedId]=useState(profileId || null);
   const [currentUser,setCurrentUser]=useState(null);
@@ -47,63 +55,58 @@ export default function ProfileSocialBar({profileId,ownProfile=false}){
 
   return(
     <View style={styles.wrap}>
-      <View style={styles.card}>
+      <Panel style={styles.plate}>
         {loading ? (
-          <ActivityIndicator color={INK.blue}/>
+          <ActivityIndicator color={INK.readoutSoft}/>
         ) : (
           <>
             <View style={styles.countRow}>
               <Pressable
-                style={styles.countButton}
+                style={styles.cell}
+                accessibilityRole="button"
+                accessibilityLabel={`${counts.follower_count} followers`}
                 onPress={()=>router.push({pathname:`/connections/${resolvedId}`,params:{tab:"followers"}})}
               >
-                <Text style={styles.countNumber}>{counts.follower_count}</Text>
-                <Text style={styles.countLabel}>Followers</Text>
+                <Readout label="FOLLOWERS" value={String(counts.follower_count)} align="center" size="sm"/>
               </Pressable>
 
               <View style={styles.divider}/>
 
               <Pressable
-                style={styles.countButton}
+                style={styles.cell}
+                accessibilityRole="button"
+                accessibilityLabel={`Following ${counts.following_count}`}
                 onPress={()=>router.push({pathname:`/connections/${resolvedId}`,params:{tab:"following"}})}
               >
-                <Text style={styles.countNumber}>{counts.following_count}</Text>
-                <Text style={styles.countLabel}>Following</Text>
+                <Readout label="FOLLOWING" value={String(counts.following_count)} align="center" size="sm"/>
               </Pressable>
 
               <View style={styles.divider}/>
 
-              <View style={styles.countButton}>
-                <Text style={styles.countNumber}>{counts.moment_count}</Text>
-                <Text style={styles.countLabel}>Moments</Text>
+              <View style={styles.cell}>
+                <Readout label="MOMENTS" value={String(counts.moment_count)} align="center" size="sm"/>
               </View>
             </View>
 
             <View style={styles.actionRow}>
               {isOwner ? (
-                <Pressable style={styles.discoverButton} onPress={()=>router.push("/explorers")}>
-                  <Text style={styles.discoverText}>Find Explorers</Text>
-                </Pressable>
+                <Action kind="secondary" glyph="search" label="Find Explorers" onPress={()=>router.push("/explorers")}/>
               ) : (
                 <FollowButton profileId={resolvedId} onChanged={load}/>
               )}
             </View>
           </>
         )}
-      </View>
+      </Panel>
     </View>
   );
 }
 
 const styles=StyleSheet.create({
-  wrap:{backgroundColor:INK.paper,paddingHorizontal:18,paddingTop:14},
-  card:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:17,padding:14,minHeight:102,justifyContent:"center"},
+  wrap:{backgroundColor:INK.ground,paddingHorizontal:16,paddingTop:14},
+  plate:{padding:14,minHeight:102,justifyContent:"center"},
   countRow:{flexDirection:"row",alignItems:"center"},
-  countButton:{flex:1,alignItems:"center",paddingVertical:4},
-  countNumber:{color:INK.ink,fontSize:20,fontWeight:"900"},
-  countLabel:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:3},
-  divider:{height:32,width:1,backgroundColor:INK.card},
-  actionRow:{alignItems:"center",marginTop:13},
-  discoverButton:{minWidth:150,minHeight:42,paddingHorizontal:20,paddingVertical:11,borderRadius:12,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  discoverText:{color:INK.card,fontWeight:"900"}
+  cell:{flex:1,alignItems:"center",paddingVertical:4,minHeight:SHAPE.tapTarget,justifyContent:"center"},
+  divider:{height:32,width:1,backgroundColor:INK.hairline},
+  actionRow:{alignItems:"center",marginTop:13}
 });

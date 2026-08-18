@@ -1,7 +1,8 @@
 import React,{useState} from "react";
 import {View,Text,Pressable,StyleSheet} from "react-native";
 import {DEMO_ENABLED,DEMO_OFF_MESSAGE,demoAccounts} from "../utils/demoLogins";
-import {INK} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
+import {Glyph,MONO,Panel,Row} from "./instrument";
 
 // The way into the demo accounts: five taps on the login screen's own heading.
 //
@@ -48,48 +49,68 @@ export default function DemoLogins({onPick,disabled=false,label="Login",children
       </Pressable>
 
       {open && (
-        <View style={styles.panel}>
+        <Panel style={styles.panel}>
           <View style={styles.panelHead}>
             <Text style={styles.panelTitle}>Demo logins</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Hide demo logins" onPress={()=>setOpen(false)} hitSlop={10}>
-              <Text style={styles.close}>✕</Text>
+            <View style={styles.panelLine}/>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Hide demo logins"
+              onPress={()=>setOpen(false)}
+              hitSlop={10}
+              style={styles.close}
+            >
+              <Glyph name="close" size={15} colour={INK.readoutSoft}/>
             </Pressable>
           </View>
 
           {!DEMO_ENABLED && <Text style={styles.offText}>{DEMO_OFF_MESSAGE}</Text>}
 
+          {/*
+            The Row draws the line; the Pressable around it carries the spoken
+            label. Row derives its own accessibility label from its title and
+            subtitle, and "Log in as Manager" is the sentence this control has to
+            say -- so the press handler sits outside it rather than being handed
+            in, which would have replaced that sentence with the row's text.
+          */}
           {accounts.map((account)=>(
             <Pressable
               key={account.key}
               accessibilityRole="button"
               accessibilityLabel={`Log in as ${account.label}`}
-              style={[styles.account,disabled&&styles.accountDisabled]}
+              style={disabled&&styles.accountDisabled}
               disabled={disabled}
               onPress={()=>onPick(account)}
             >
-              <Text style={styles.accountLabel}>{account.label}</Text>
-              <Text style={styles.accountDetail}>{account.detail}</Text>
+              <Row title={account.label} sub={account.detail} glyph="key"/>
             </Pressable>
           ))}
 
           <Text style={styles.footNote}>
             These are shared demonstration accounts. Anything posted from one is visible to anybody else using it.
           </Text>
-        </View>
+        </Panel>
       )}
     </View>
   );
 }
 
 const styles=StyleSheet.create({
-  panel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:14,marginTop:14},
-  panelHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  panelTitle:{color:INK.ink,fontWeight:"900",fontSize:16},
-  close:{color:INK.ink,fontWeight:"900",fontSize:18},
-  offText:{color:INK.ink,fontSize:13,lineHeight:19,marginTop:10},
-  account:{borderColor:INK.ink,borderWidth:1,borderRadius:11,paddingHorizontal:13,paddingVertical:12,marginTop:10,minHeight:44,justifyContent:"center"},
+  panel:{padding:13,marginTop:14},
+  panelHead:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:11},
+  panelTitle:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md
+  },
+  panelLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  close:{minWidth:32,minHeight:32,alignItems:"flex-end",justifyContent:"center"},
+  offText:{
+    color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,marginBottom:10
+  },
   accountDisabled:{opacity:0.55},
-  accountLabel:{color:INK.ink,fontWeight:"900",fontSize:15},
-  accountDetail:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:3},
-  footNote:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:12}
+  footNote:{
+    color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,marginTop:6
+  }
 });

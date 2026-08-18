@@ -1,17 +1,15 @@
 import React from "react";
-import {StyleSheet,View} from "react-native";
 import ExplorerProfileScreen from "../components/ExplorerProfileScreen";
 import ProfileSocialBar from "../components/ProfileSocialBar";
-import {INK} from "../utils/tokens";
+import {Screen} from "../components/instrument";
 
+// The Me tab. The housing comes from the kit rather than a local StyleSheet --
+// one View with a background colour is exactly the kind of hand-rolled shape
+// that drifts, and Screen is the same housing every other page sits in.
 export default function Profile(){
   return(
-    <View style={styles.screen}>
+    <Screen>
       <ExplorerProfileScreen ownProfile belowIdentity={<ProfileSocialBar ownProfile/>}/>
-    </View>
+    </Screen>
   );
 }
-
-const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.ground}
-});

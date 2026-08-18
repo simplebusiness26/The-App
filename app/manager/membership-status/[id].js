@@ -4,13 +4,38 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Pressable,
   ActivityIndicator,
   Image
 } from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
-import {INK} from "../../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../../components/CreateHub";
+import {INK,TYPE,SHAPE} from "../../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Frame,
+  Glyph,
+  KeyValue,
+  Meter,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../../components/instrument";
+
+// Where a membership stands, opened from a notification.
+//
+// The old version drew a 76px coloured disc holding a tick or a cross set at
+// 44px in the system font, on a card whose border changed colour with the
+// outcome. That is a status page shouting a mood. An instrument reports: a mono
+// state chip, a stroked glyph, the ceiling the club is running against, and a
+// sentence saying what it means now.
+//
+// No agree/dispute here. Approving somebody into a club is a decision about
+// access, not a manager answering a review -- see docs/design-system.md.
 
 function firstParam(value){
   return Array.isArray(value) ? value[0] : value || null;
@@ -29,8 +54,8 @@ function formatDate(value){
 
 const STATUS_COPY={
   approved:{
-    eyebrow:"CURRENT MEMBERSHIP STATUS",
-    icon:"✓",
+    eyebrow:"Current membership status",
+    glyph:"check",
     title:"Membership approved",
     description:name=>`${name} is currently an approved member and has access to the private message board.`,
     next:[
@@ -40,8 +65,8 @@ const STATUS_COPY={
     ]
   },
   rejected:{
-    eyebrow:"APPLICATION DECISION",
-    icon:"×",
+    eyebrow:"Application decision",
+    glyph:"close",
     title:"Application rejected",
     description:name=>`${name}'s application was not approved. They are not a member of this club.`,
     next:[
@@ -51,8 +76,8 @@ const STATUS_COPY={
     ]
   },
   removed:{
-    eyebrow:"CURRENT MEMBERSHIP STATUS",
-    icon:"×",
+    eyebrow:"Current membership status",
+    glyph:"close",
     title:"Membership ended",
     description:name=>`${name} was previously approved, but is no longer a member. Their private message-board access has been removed.`,
     next:[
@@ -62,8 +87,8 @@ const STATUS_COPY={
     ]
   },
   left:{
-    eyebrow:"CURRENT MEMBERSHIP STATUS",
-    icon:"×",
+    eyebrow:"Current membership status",
+    glyph:"close",
     title:"Member left the club",
     description:name=>`${name} is no longer a member and no longer has access to the private message board.`,
     next:[
@@ -73,8 +98,8 @@ const STATUS_COPY={
     ]
   },
   pending:{
-    eyebrow:"MEMBERSHIP REQUEST",
-    icon:"!",
+    eyebrow:"Membership request",
+    glyph:"warn",
     title:"Decision still required",
     description:name=>`${name}'s request is still waiting for approval or rejection.`,
     next:[
@@ -84,6 +109,17 @@ const STATUS_COPY={
     ]
   }
 };
+
+function NextStep({glyph,text}){
+  return(
+    <View style={styles.nextStepRow}>
+      <View style={styles.nextStepGlyph}>
+        <Glyph name={glyph} size={13} colour={INK.readoutSoft}/>
+      </View>
+      <Text style={styles.nextStepText}>{text}</Text>
+    </View>
+  );
+}
 
 export default function ManagerMembershipStatus(){
   const params=useLocalSearchParams();
@@ -158,15 +194,14 @@ export default function ManagerMembershipStatus(){
 
   const status=membership?.status || "pending";
   const copy=STATUS_COPY[status] || {
-    eyebrow:"CURRENT MEMBERSHIP STATUS",
-    icon:"i",
+    eyebrow:"Current membership status",
+    glyph:"info",
     title:"Membership status updated",
     description:name=>`${name}'s current membership status is ${status}.`,
     next:["The membership record has changed","Review the Manager Dashboard for more details"]
   };
 
   const memberName=memberProfile?.full_name || membership?.applicant_name || "Explorer";
-  const negative=["rejected","removed","left"].includes(status);
   const pending=status==="pending";
 
   const decisionLabel=useMemo(()=>{
@@ -180,174 +215,187 @@ export default function ManagerMembershipStatus(){
 
   if(loading){
     return(
-      <View style={styles.center}>
-        <ActivityIndicator size="large"/>
-        <Text style={styles.loadingText}>Loading current membership status...</Text>
-      </View>
+      <Screen style={styles.centre}>
+        <ActivityIndicator size="large" color={INK.readout}/>
+        <Text style={styles.centreText}>Loading current membership status…</Text>
+      </Screen>
     );
   }
 
   if(error || !membership || !club){
     return(
-      <View style={styles.center}>
-        <Text style={styles.errorTitle}>Membership status unavailable</Text>
-        <Text style={styles.errorText}>{error || "The membership could not be loaded."}</Text>
-        <Pressable style={styles.primaryButton} onPress={()=>router.push("/manager/dashboard")}>
-          <Text style={styles.buttonText}>Open Manager Dashboard</Text>
-        </Pressable>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Membership" title="Membership status unavailable"/>
+        <View style={styles.body}>
+          <Notice
+            tone="exists"
+            label="Not loaded"
+            action={
+              <Action
+                kind="secondary"
+                glyph="grid"
+                label="Open Manager Dashboard"
+                accessibilityLabel="Open the Manager Dashboard"
+                onPress={()=>router.push("/manager/dashboard")}
+              />
+            }
+          >
+            {error || "The membership could not be loaded."}
+          </Notice>
+        </View>
+      </Screen>
     );
   }
 
+  const limit=club.member_limit || 20;
+
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headingRow}>
-        <View style={styles.headingText}>
-          <Text style={styles.pageTitle}>Membership status</Text>
-          <Text style={styles.pageSubtitle}>{club.name}</Text>
-        </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusPillText}>{status.toUpperCase()}</Text>
-        </View>
-      </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenTitle
+          eyebrow={copy.eyebrow}
+          title="Membership status"
+          meta={club.name}
+          right={<Chip label={status}/>}
+        />
 
-      <View style={[
-        styles.resultCard,
-        negative ? styles.negativeCard : pending ? styles.pendingCard : styles.approvedCard
-      ]}>
-        <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
-
-        <View style={[
-          styles.iconCircle,
-          negative ? styles.negativeIcon : pending ? styles.pendingIcon : styles.approvedIcon
-        ]}>
-          <Text style={styles.iconText}>{copy.icon}</Text>
-        </View>
-
-        <View style={styles.identityRow}>
-          {memberProfile?.profile_photo ? (
-            <Image source={{uri:memberProfile.profile_photo}} style={styles.avatar}/>
-          ) : (
-            <View style={styles.avatarFallback}>
-              <Text style={styles.avatarInitial}>{memberName.slice(0,1).toUpperCase()}</Text>
+        <View style={styles.body}>
+          <Panel style={styles.card}>
+            <View style={styles.head}>
+              <View style={styles.headGlyph}>
+                <Glyph name={copy.glyph} size={15} colour={INK.readoutSoft}/>
+              </View>
+              <Text style={styles.headKind}>{copy.eyebrow}</Text>
+              <View style={styles.headLine}/>
             </View>
-          )}
-          <View style={styles.identityText}>
-            <Text style={styles.memberName}>{memberName}</Text>
-            {!!membership.applied_at && (
-              <Text style={styles.dateText}>Applied {formatDate(membership.applied_at)}</Text>
-            )}
-          </View>
-        </View>
 
-        <Text style={styles.resultTitle}>{copy.title}</Text>
-        <Text style={styles.resultText}>{copy.description(memberName)}</Text>
-        {!!decisionLabel && <Text style={styles.decisionDate}>{decisionLabel}</Text>}
-
-        <View style={styles.capacityCard}>
-          <Text style={styles.capacityIcon}>👥</Text>
-          <View style={styles.capacityTextWrap}>
-            <Text style={styles.capacityLabel}>Current club capacity</Text>
-            <Text style={styles.capacityValue}>
-              {approvedCount} of {club.member_limit || 20} members approved
-            </Text>
-          </View>
-        </View>
-
-        {pending ? (
-          <Pressable
-            style={styles.primaryButton}
-            onPress={()=>router.replace(`/manager/requests?club=${club.id}&membership=${membership.id}&view=requests`)}
-          >
-            <Text style={styles.buttonText}>Review this request</Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            style={styles.primaryButton}
-            onPress={()=>router.push(`/manager/dashboard?club=${club.id}&view=members`)}
-          >
-            <Text style={styles.buttonText}>View current club members</Text>
-          </Pressable>
-        )}
-      </View>
-
-      <View style={styles.nextCard}>
-        <Text style={styles.nextTitle}>What this means now</Text>
-        {copy.next.map((item,index)=>(
-          <View key={`${item}-${index}`} style={styles.nextRow}>
-            <View style={[
-              styles.nextDot,
-              index===copy.next.length-1 ? styles.infoDot : negative ? styles.negativeDot : styles.successDot
-            ]}>
-              <Text style={styles.nextDotText}>{index===copy.next.length-1 ? "i" : "✓"}</Text>
+            <View style={styles.identity}>
+              <Frame size={48} round style={styles.avatarFrame}>
+                {memberProfile?.profile_photo
+                  ? <Image source={{uri:memberProfile.profile_photo}} style={styles.avatar}/>
+                  : <Text style={styles.avatarLetter}>{memberName.slice(0,1).toUpperCase()}</Text>}
+              </Frame>
+              <View style={styles.identityText}>
+                <Text style={styles.memberName} numberOfLines={1}>{memberName}</Text>
+                {!!membership.applied_at && (
+                  <Text style={styles.memberMeta}>Applied {formatDate(membership.applied_at)}</Text>
+                )}
+              </View>
             </View>
-            <Text style={styles.nextText}>{item}</Text>
-          </View>
-        ))}
-      </View>
 
-      <View style={styles.navigationRow}>
-        <Pressable style={styles.secondaryButton} onPress={()=>router.push("/notifications")}>
-          <Text style={styles.secondaryText}>Notifications</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={()=>router.push("/manager/dashboard")}>
-          <Text style={styles.secondaryText}>Manager Dashboard</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+            <Text style={styles.resultTitle}>{copy.title}</Text>
+            <Text style={styles.resultText}>{copy.description(memberName)}</Text>
+
+            {!!decisionLabel && <KeyValue label="Decided" value={decisionLabel}/>}
+
+            {/* Capacity has a ceiling, so it is read off a track. */}
+            <View style={styles.meterRow}>
+              <Meter
+                value={approvedCount}
+                max={limit}
+                width={140}
+                tone="exists"
+                label="Approved"
+                valueLabel={`${approvedCount}/${limit}`}
+              />
+            </View>
+
+            <Action
+              kind="primary"
+              glyph={pending ? "bell" : "people"}
+              label={pending ? "Review this request" : "View current club members"}
+              accessibilityLabel={pending ? "Review this membership request" : "View the current club members"}
+              onPress={()=>{
+                if(pending){
+                  router.replace(`/manager/requests?club=${club.id}&membership=${membership.id}&view=requests`);
+                }else{
+                  router.push(`/manager/dashboard?club=${club.id}&view=members`);
+                }
+              }}
+            />
+          </Panel>
+
+          <SectionRule label="What this means now"/>
+
+          <Panel style={styles.nextCard}>
+            {copy.next.map((item,index)=>(
+              <NextStep
+                key={`${item}-${index}`}
+                glyph={index===copy.next.length-1 ? "info" : "check"}
+                text={item}
+              />
+            ))}
+          </Panel>
+
+          <View style={styles.navRow}>
+            <Action
+              kind="secondary" glyph="bell" label="Notifications"
+              accessibilityLabel="Open notifications"
+              onPress={()=>router.push("/notifications")}
+              style={styles.button}
+            />
+            <Action
+              kind="secondary" glyph="grid" label="Dashboard"
+              accessibilityLabel="Open the Manager Dashboard"
+              onPress={()=>router.push("/manager/dashboard")}
+              style={styles.button}
+            />
+          </View>
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:70},
-  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.card},
-  loadingText:{marginTop:14,color:INK.inkSoft},
-  errorTitle:{fontSize:23,fontWeight:"bold",textAlign:"center"},
-  errorText:{fontSize:15,color:INK.inkSoft,textAlign:"center",lineHeight:22,marginTop:10},
-  headingRow:{flexDirection:"row",alignItems:"flex-start",gap:12,marginBottom:18},
-  headingText:{flex:1},
-  pageTitle:{fontSize:30,fontWeight:"bold"},
-  pageSubtitle:{fontSize:16,color:INK.inkSoft,marginTop:5},
-  statusPill:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.yellow,borderRadius:18,paddingHorizontal:12,paddingVertical:8},
-  statusPillText:{fontSize:11,fontWeight:"bold",color:INK.red},
-  resultCard:{borderRadius:18,padding:22,borderWidth:1,alignItems:"center"},
-  approvedCard:{backgroundColor:INK.card,borderColor:INK.green},
-  negativeCard:{backgroundColor:INK.card,borderColor:INK.red},
-  pendingCard:{backgroundColor:INK.card,borderColor:INK.yellow},
-  eyebrow:{fontSize:11,fontWeight:"bold",letterSpacing:0.7,color:INK.inkSoft,alignSelf:"flex-start"},
-  iconCircle:{width:76,height:76,borderRadius:38,alignItems:"center",justifyContent:"center",marginTop:18},
-  approvedIcon:{backgroundColor:INK.green},
-  negativeIcon:{backgroundColor:INK.red},
-  pendingIcon:{backgroundColor:INK.red},
-  iconText:{fontSize:44,fontWeight:"bold",color:INK.card,lineHeight:48},
-  identityRow:{alignSelf:"stretch",flexDirection:"row",alignItems:"center",marginTop:20,padding:13,borderRadius:12,backgroundColor:"rgba(255,255,255,0.62)"},
-  avatar:{width:54,height:54,borderRadius:27,backgroundColor:INK.hair},
-  avatarFallback:{width:54,height:54,borderRadius:27,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarInitial:{fontSize:21,fontWeight:"bold",color:INK.card},
-  identityText:{flex:1,marginLeft:12},
-  memberName:{fontSize:19,fontWeight:"bold"},
-  dateText:{fontSize:12,color:INK.inkSoft,marginTop:4},
-  resultTitle:{fontSize:27,fontWeight:"bold",textAlign:"center",marginTop:22},
-  resultText:{fontSize:16,lineHeight:23,textAlign:"center",color:INK.ink,marginTop:10},
-  decisionDate:{fontSize:12,fontWeight:"600",color:INK.inkSoft,marginTop:10},
-  capacityCard:{alignSelf:"stretch",flexDirection:"row",alignItems:"center",backgroundColor:"rgba(255,255,255,0.62)",borderRadius:12,padding:14,marginTop:20},
-  capacityIcon:{fontSize:28,marginRight:12},
-  capacityTextWrap:{flex:1},
-  capacityLabel:{fontSize:15,fontWeight:"bold"},
-  capacityValue:{fontSize:13,color:INK.ink,marginTop:3},
-  primaryButton:{alignSelf:"stretch",backgroundColor:INK.blue,paddingVertical:15,paddingHorizontal:18,borderRadius:11,marginTop:20},
-  buttonText:{color:INK.card,fontWeight:"bold",textAlign:"center",fontSize:15},
-  nextCard:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink,borderRadius:16,padding:20,marginTop:16},
-  nextTitle:{fontSize:20,fontWeight:"bold",marginBottom:15},
-  nextRow:{flexDirection:"row",alignItems:"flex-start",marginBottom:14},
-  nextDot:{width:26,height:26,borderRadius:13,alignItems:"center",justifyContent:"center",marginRight:11},
-  successDot:{backgroundColor:INK.green},
-  negativeDot:{backgroundColor:INK.red},
-  infoDot:{backgroundColor:INK.blue},
-  nextDotText:{color:INK.card,fontSize:13,fontWeight:"bold"},
-  nextText:{flex:1,fontSize:15,lineHeight:21,color:INK.ink},
-  navigationRow:{flexDirection:"row",gap:10,marginTop:16},
-  secondaryButton:{flex:1,borderWidth:1,borderColor:INK.ink,backgroundColor:INK.card,padding:13,borderRadius:10},
-  secondaryText:{fontWeight:"bold",textAlign:"center",color:INK.blue}
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+  centre:{alignItems:"center",justifyContent:"center",gap:12,padding:28},
+  centreText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,textAlign:"center"},
+
+  card:{padding:14,marginTop:4},
+  head:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:12},
+  headGlyph:{
+    width:28,height:28,borderRadius:SHAPE.radius.control,
+    alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+
+  identity:{flexDirection:"row",alignItems:"center",gap:12},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:48,height:48,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:18},
+  identityText:{flex:1,minWidth:0},
+  memberName:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  memberMeta:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3},
+
+  resultTitle:{
+    color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",
+    letterSpacing:-0.3,marginTop:14
+  },
+  resultText:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,marginTop:6
+  },
+
+  meterRow:{marginTop:12,marginBottom:12},
+
+  nextCard:{padding:13},
+  nextStepRow:{flexDirection:"row",alignItems:"flex-start",gap:10,paddingVertical:7},
+  nextStepGlyph:{
+    width:26,height:26,borderRadius:SHAPE.radius.control,
+    alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  nextStepText:{
+    flex:1,color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
+  },
+
+  navRow:{flexDirection:"row",gap:9,marginTop:14},
+  button:{flex:1}
 });

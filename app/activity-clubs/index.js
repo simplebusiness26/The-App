@@ -1,16 +1,38 @@
 import React,{useCallback,useState} from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  TextInput
-} from "react-native";
+import {View,Text,StyleSheet,ScrollView,ActivityIndicator,TextInput} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Chip,
+  Empty,
+  Field,
+  Glyph,
+  Meter,
+  MONO,
+  Notice,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule,
+  fieldInputStyle
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+
+// Activity Clubs. RULES.md: a club is a recurring thing and it has SESSIONS --
+// which is why utils/markers.js paints its pin amber. A club is not a place
+// that merely exists; it is a place something keeps happening at, so its rows
+// carry the same `scheduled` edge the rest of this tab does.
+//
+// WHAT CHANGED
+//
+// The list was a stack of bordered boxes with a hard offset shadow each, a map
+// pin emoji before the location, and a footer that read as two silhouettes, a
+// six, a star, a rating and a price -- three measurements rendered as
+// emoji-prefixed body text, which is exactly the thing docs/design-system.md's
+// mono/sans split exists to stop. Members, score and price are numbers the app
+// worked out, so they are mono now: the count in the meta column, the rest on a
+// measured foot line under the name.
 
 function formatPrice(value){
   const amount=Number(value || 0);
@@ -78,90 +100,106 @@ export default function ActivityClubs(){
   });
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Activity Clubs</Text>
-      <Text style={styles.subtitle}>
-        Discover local groups, read their reviews and apply to join.
-      </Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <ScreenTitle
+          eyebrow="RECURRING"
+          title="Activity Clubs"
+          meta="Discover local groups, read their reviews and apply to join."
+        />
 
-      <TextInput
-        style={styles.search}
-        placeholder="Search activities or locations"
-        value={query}
-        onChangeText={setQuery}
-      />
+        <View style={styles.body}>
+          <Field label="Search">
+            <TextInput
+              style={fieldInputStyle}
+              placeholder="Search activities or locations"
+              placeholderTextColor={INK.readoutFaint}
+              accessibilityLabel="Search activities or locations"
+              value={query}
+              onChangeText={setQuery}
+            />
+          </Field>
 
-      {loading && <ActivityIndicator size="large" color={INK.ink} style={styles.loader}/>}
+          {loading && <ActivityIndicator size="large" color={INK.readout} style={styles.loader}/>}
 
-      {!!error && (
-        <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>Supabase setup required</Text>
-          <Text style={styles.noticeText}>{error}</Text>
+          {!!error && (
+            <Notice tone="dispute" label="SUPABASE SETUP REQUIRED">{error}</Notice>
+          )}
+
+          {!loading && !error && <SectionRule label="Clubs" meta={String(filtered.length)}/>}
+
+          {!loading && !error && filtered.length===0 && (
+            <Empty
+              title="No clubs found"
+              instruction="No published Activity Clubs match this search. Try a shorter word, or start one from Create."
+              glyph="people"
+            />
+          )}
+
+          {filtered.map(club=>{
+            const clubStats=stats[club.id] || {};
+            const score=Number(clubStats.average_rating || 0);
+            const reviews=Number(clubStats.review_count || 0);
+
+            return(
+              <Row
+                key={club.id}
+                tone="scheduled"
+                glyph="people"
+                title={club.name}
+                sub={club.description}
+                meta={`${clubStats.member_count || 0} MEMBERS`}
+                // Open or full is a status the app holds, not a colour. A third
+                // pin ink was never on the table and this list must not invent
+                // one behind the map's back.
+                metaSub={club.status==="full" ? "FULL" : "OPEN"}
+                onPress={()=>router.push(`/activity-clubs/${club.id}`)}
+              >
+                <View style={styles.foot}>
+                  {!!club.category && <Chip label={club.category} style={styles.chip}/>}
+                  <View style={styles.footCell}>
+                    <Glyph name="pin" size={11} colour={INK.readoutFaint}/>
+                    <Text style={styles.footText} numberOfLines={1}>{club.location}</Text>
+                  </View>
+                  <Text style={styles.price}>{formatPrice(club.price).toUpperCase()}</Text>
+                </View>
+
+                {/* A score is a measurement, so it is read off a ticked track
+                    rather than counted out in repeated star characters. */}
+                {reviews>0 && (
+                  <View style={styles.rating} accessibilityLabel={`Rated ${score} out of 5 from ${reviews} reviews`}>
+                    <Meter value={score} max={5} width={78} tone="exists" label="RATED"/>
+                    <Text style={styles.ratingValue}>{score}/5 · {reviews}</Text>
+                  </View>
+                )}
+              </Row>
+            );
+          })}
         </View>
-      )}
-
-      {!loading && !error && filtered.length===0 && (
-        <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>No clubs found</Text>
-          <Text style={styles.noticeText}>No published activity clubs match this search.</Text>
-        </View>
-      )}
-
-      {filtered.map(club=>{
-        const clubStats=stats[club.id] || {};
-        return(
-          <Pressable
-            key={club.id}
-            style={styles.card}
-            onPress={()=>router.push(`/activity-clubs/${club.id}`)}
-          >
-            <View style={styles.badgeRow}>
-              <Text style={styles.category}>{club.category}</Text>
-              <Text style={styles.status}>{club.status==="full" ? "Full" : "Open"}</Text>
-            </View>
-
-            <Text style={styles.clubName}>{club.name}</Text>
-            <Text style={styles.location}>📍 {club.location}</Text>
-            <Text style={styles.description} numberOfLines={3}>{club.description}</Text>
-
-            <View style={styles.statsRow}>
-              <Text style={styles.stat}>👥 {clubStats.member_count || 0}</Text>
-              <Text style={styles.stat}>⭐ {clubStats.average_rating || 0} ({clubStats.review_count || 0})</Text>
-              <Text style={styles.stat}>{formatPrice(club.price)}</Text>
-            </View>
-
-            <Text style={styles.viewText}>View club profile →</Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
-// Riso tokens only. Open/full is a mono status label, not a colour -- see the
-// UI spec's own note: a third pin colour was never on the table, and this
-// list should not invent one behind the map's back either.
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},
-  content:{padding:20,paddingBottom:50},
-  title:{fontSize:32,fontWeight:"900",color:INK.ink},
-  subtitle:{fontSize:15,color:INK.inkSoft,lineHeight:22,marginTop:8,marginBottom:18},
-  search:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,marginBottom:18,color:INK.ink},
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
   loader:{marginTop:40},
-  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:2,borderColor:INK.ink},
-  noticeTitle:{fontSize:18,fontWeight:"800",marginBottom:7,color:INK.ink},
-  noticeText:{color:INK.ink,lineHeight:21},
-  card:{
-    backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:2,borderColor:INK.ink,marginBottom:16,
-    shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0
+
+  foot:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:8,marginTop:8},
+  footCell:{flexDirection:"row",alignItems:"center",gap:4,flexShrink:1},
+  footText:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.6,flexShrink:1
   },
-  badgeRow:{flexDirection:"row",justifyContent:"space-between"},
-  category:{borderWidth:2,borderColor:INK.ink,color:INK.ink,paddingHorizontal:10,paddingVertical:5,borderRadius:20,fontWeight:"800",fontSize:11},
-  status:{borderWidth:2,borderColor:INK.hair,color:INK.inkSoft,paddingHorizontal:10,paddingVertical:5,borderRadius:20,fontWeight:"800",fontSize:11,textTransform:"uppercase",letterSpacing:0.6},
-  clubName:{fontSize:23,fontWeight:"800",marginTop:14,color:INK.ink},
-  location:{color:INK.inkSoft,marginTop:6},
-  description:{color:INK.ink,lineHeight:21,marginTop:12},
-  statsRow:{flexDirection:"row",justifyContent:"space-between",marginTop:16},
-  stat:{fontWeight:"800",color:INK.inkSoft,fontSize:12},
-  viewText:{fontWeight:"800",color:INK.ink,marginTop:16}
+  chip:{minHeight:24,paddingVertical:3},
+  price:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.8,marginLeft:"auto"
+  },
+
+  rating:{flexDirection:"row",alignItems:"center",gap:8,marginTop:9},
+  ratingValue:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.6
+  }
 });

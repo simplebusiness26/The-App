@@ -106,6 +106,9 @@ jobs:
       - name: Verify every screen can actually be read
         run: npm run verify:contrast
 
+      - name: Verify the app is built on the instrument, not recoloured
+        run: npm run verify:instrument
+
       - name: Verify the native map props exist on the installed MapLibre
         run: npm run verify:nativemap
 

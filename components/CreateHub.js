@@ -2,6 +2,7 @@ import React,{useState} from "react";
 import {Platform,View,Text,Pressable,StyleSheet,Modal} from "react-native";
 import Svg,{Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
+import {isCreateActionHidden} from "../utils/navigation";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import CameraCapture from "./CameraCapture";
 import ReviewComposer from "./ReviewComposer";
@@ -75,11 +76,11 @@ export default function CreateHub(){
   const [open,setOpen]=useState(false);
   const [view,setView]=useState("camera");   // "camera" | "review"
 
-  // Hidden on the /camera route itself. That screen is already a full-screen
-  // camera end to end (components/CameraCapture.js, shared with this hub), so
-  // a second Create trigger floating on top of it would offer the same
-  // action twice in the same place.
-  if(normalise(pathname)==="/camera") return null;
+  // Hidden wherever the screen already has its own compose control pinned to
+  // the bottom edge -- the camera, and any message thread or board. The rule
+  // and the reasoning live in utils/navigation.js, next to the other route
+  // predicates, so there is one place that answers "what does this route do".
+  if(isCreateActionHidden(pathname)) return null;
 
   function openHub(){
     setView("camera");

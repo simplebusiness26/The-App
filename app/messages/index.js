@@ -10,7 +10,18 @@ import {
   listingSubtitle,
   unreadFor
 } from "../../utils/messageViews";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Empty,
+  Frame,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 
 // The inbox, and three other ways of looking at it.
 //
@@ -51,6 +62,50 @@ function when(value){
 }
 
 const BOARD_LABEL={linkup:"Link-up",activity_club:"Activity club"};
+
+// THE TAB STRIP, COMPOSED LOCALLY.
+//
+// This is the kit's Segmented in every respect except one: each tab has to
+// speak a different sentence from the one it displays -- "Friends, 2 unread"
+// read aloud, "Friends" on the glass -- and Segmented uses a single `label` for
+// both. So the detented switch is rebuilt here from the same parts (mono label,
+// tick detent, no fill anywhere, because being the tab you are on is not a
+// state a place is in) with an accessibilityLabel of its own and a mono count
+// plate for the unread figure. Noted in the report as a kit gap: Segmented
+// wants a per-item accessibilityLabel and a meta slot.
+function MessageTabs({items,active,onChange,unread}){
+  return(
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.tabScroll}
+      contentContainerStyle={styles.tabScrollContent}
+      accessibilityRole="tablist"
+    >
+      {items.map((tab)=>{
+        const selected=tab.key===active;
+        const count=tab.key==="boards" ? 0 : unread[tab.key];
+
+        return(
+          <Pressable
+            key={tab.key}
+            style={styles.tab}
+            accessibilityRole="tab"
+            accessibilityState={{selected}}
+            accessibilityLabel={count ? `${tab.label}, ${count} unread` : tab.label}
+            onPress={()=>onChange(tab.key)}
+          >
+            <View style={styles.tabRow}>
+              <Text style={[styles.tabText,selected&&styles.tabTextActive]} numberOfLines={1}>{tab.label}</Text>
+              {count>0 && <Text style={[styles.tabCount,selected&&styles.tabCountActive]}>{count}</Text>}
+            </View>
+            <View style={[styles.tabDetent,selected&&styles.tabDetentActive]}/>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
 
 export default function Messages(){
   const [rows,setRows]=useState([]);
@@ -102,180 +157,173 @@ export default function Messages(){
   }),[rows]);
 
   if(loading){
-    return <View style={styles.centre}><ActivityIndicator size="large" color={INK.ink}/></View>;
+    return(
+      <Screen>
+        <View style={styles.centre}><ActivityIndicator size="large" color={INK.readout}/></View>
+      </Screen>
+    );
   }
 
   const showingBoards=view==="boards";
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Messages</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <ScreenTitle eyebrow="INBOX" title="Messages"/>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabs}
-      >
-        {MESSAGE_VIEWS.map((tab)=>{
-          const active=tab.key===view;
-          const count=tab.key==="boards" ? 0 : unread[tab.key];
+        <MessageTabs items={MESSAGE_VIEWS} active={view} onChange={setView} unread={unread}/>
 
-          return(
-            <Pressable
-              key={tab.key}
-              style={[styles.tab,active && styles.tabActive]}
-              accessibilityRole="tab"
-              accessibilityState={{selected:active}}
-              accessibilityLabel={count ? `${tab.label}, ${count} unread` : tab.label}
-              onPress={()=>setView(tab.key)}
-            >
-              <Text style={[styles.tabText,active && styles.tabTextActive]}>{tab.label}</Text>
-              {count>0 && (
-                <View style={[styles.tabCount,active && styles.tabCountActive]}>
-                  <Text style={[styles.tabCountText,active && styles.tabCountTextActive]}>{count}</Text>
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+        {!showingBoards && !!error && <Notice tone="dispute" label="Not loaded">{error}</Notice>}
+        {showingBoards && !!boardError && <Notice tone="dispute" label="Not loaded">{boardError}</Notice>}
 
-      {!showingBoards && !!error && <View style={styles.card}><Text style={styles.muted}>{error}</Text></View>}
-      {showingBoards && !!boardError && <View style={styles.card}><Text style={styles.muted}>{boardError}</Text></View>}
-
-      {!showingBoards && !error && !visible.length && (
-        <View style={styles.card}>
-          <Text style={styles.emptyTitle}>
-            {view==="friends" ? "No friend messages yet"
+        {!showingBoards && !error && !visible.length && (
+          <Empty
+            glyph="comment"
+            title={view==="friends" ? "No friend messages yet"
               : view==="managers" ? "No messages about a place yet"
               : "Nothing here yet"}
-          </Text>
-          {/* An instruction, not a mood. Both routes in, named. */}
-          <Text style={styles.muted}>
-            {view==="managers"
+            /* An instruction, not a mood. Both routes in, named. */
+            instruction={view==="managers"
               ? "You can message whoever manages a place from its page, about that place. Anything about a business, property, club or event appears here."
               : "You can message an Explorer once you follow each other, from their profile. You can message whoever manages a place from its page, about that place."}
-          </Text>
+            action={
+              <Action
+                kind="primary"
+                glyph="search"
+                label="Find Explorers"
+                accessibilityLabel="Find Explorers"
+                onPress={()=>router.push("/explorers")}
+              />
+            }
+          />
+        )}
+
+        {showingBoards && !boardError && !boards.length && (
+          <Empty
+            glyph="people"
+            title="No message boards yet"
+            instruction="Join a Link-up or an Activity Club and its board appears here. A board belongs to the people in it, so you will only ever see the ones you are part of."
+            action={
+              <Action
+                kind="primary"
+                glyph="search"
+                label="Browse Link-ups"
+                accessibilityLabel="Browse Link-ups"
+                onPress={()=>router.push("/linkups")}
+              />
+            }
+          />
+        )}
+
+        {showingBoards && boards.map((board)=>(
           <Pressable
-            style={styles.button}
+            key={`${board.board_kind}-${board.board_id}`}
             accessibilityRole="button"
-            accessibilityLabel="Find Explorers"
-            onPress={()=>router.push("/explorers")}
+            accessibilityLabel={`Open the ${board.title} board`}
+            onPress={()=>router.push(board.route)}
           >
-            <Text style={styles.buttonText}>Find Explorers</Text>
-          </Pressable>
-        </View>
-      )}
+            <Panel style={styles.row}>
+              <Frame size={44} round style={styles.avatar}>
+                <Text style={styles.initial}>{(board.title || "B").slice(0,1)}</Text>
+              </Frame>
 
-      {showingBoards && !boardError && !boards.length && (
-        <View style={styles.card}>
-          <Text style={styles.emptyTitle}>No message boards yet</Text>
-          <Text style={styles.muted}>
-            Join a Link-up or an Activity Club and its board appears here. A board belongs to
-            the people in it, so you will only ever see the ones you are part of.
-          </Text>
+              <View style={styles.rowText}>
+                <Text style={styles.name} numberOfLines={1}>{board.title}</Text>
+                <Text style={styles.about} numberOfLines={1}>
+                  {BOARD_LABEL[board.board_kind] || "Board"}{board.subtitle ? ` · ${board.subtitle}` : ""}
+                </Text>
+                <Text style={styles.preview} numberOfLines={1}>{board.last_message || "No messages yet"}</Text>
+              </View>
+
+              <View style={styles.rowEnd}>
+                <Text style={styles.time}>{board.last_message_at ? when(board.last_message_at) : ""}</Text>
+              </View>
+            </Panel>
+          </Pressable>
+        ))}
+
+        {!showingBoards && visible.map((row)=>(
           <Pressable
-            style={styles.button}
+            key={row.conversation_id}
             accessibilityRole="button"
-            accessibilityLabel="Browse Link-ups"
-            onPress={()=>router.push("/linkups")}
+            accessibilityLabel={`Open conversation with ${row.other_name}${row.unread_count ? `, ${row.unread_count} unread` : ""}`}
+            onPress={()=>router.push(`/messages/${row.conversation_id}`)}
           >
-            <Text style={styles.buttonText}>Browse Link-ups</Text>
+            <Panel style={styles.row}>
+              <Frame size={44} round style={styles.avatar}>
+                {row.other_photo
+                  ? <Image source={{uri:row.other_photo}} style={styles.avatarImage}/>
+                  : <Text style={styles.initial}>{(row.other_name || "E").slice(0,1)}</Text>}
+              </Frame>
+
+              <View style={styles.rowText}>
+                <Text style={styles.name} numberOfLines={1}>{row.other_name}</Text>
+                {row.kind==="listing" && (
+                  <Text style={styles.about} numberOfLines={1}>
+                    {listingSubtitle(row,entityTypeLabel(row.target_type))}
+                  </Text>
+                )}
+                <Text style={styles.preview} numberOfLines={1}>{row.last_message || "No messages yet"}</Text>
+              </View>
+
+              <View style={styles.rowEnd}>
+                <Text style={styles.time}>{when(row.last_message_at)}</Text>
+                {row.unread_count>0 && <Text style={styles.unread}>{row.unread_count}</Text>}
+              </View>
+            </Panel>
           </Pressable>
-        </View>
-      )}
-
-      {showingBoards && boards.map((board)=>(
-        <Pressable
-          key={`${board.board_kind}-${board.board_id}`}
-          style={styles.row}
-          accessibilityRole="button"
-          accessibilityLabel={`Open the ${board.title} board`}
-          onPress={()=>router.push(board.route)}
-        >
-          <View style={[styles.avatar,styles.avatarBlank]}>
-            <Text style={styles.initial}>{(board.title || "B").slice(0,1)}</Text>
-          </View>
-
-          <View style={styles.rowText}>
-            <Text style={styles.name} numberOfLines={1}>{board.title}</Text>
-            <Text style={styles.about} numberOfLines={1}>
-              {BOARD_LABEL[board.board_kind] || "Board"}{board.subtitle ? ` · ${board.subtitle}` : ""}
-            </Text>
-            <Text style={styles.preview} numberOfLines={1}>{board.last_message || "No messages yet"}</Text>
-          </View>
-
-          <View style={styles.rowEnd}>
-            <Text style={styles.time}>{board.last_message_at ? when(board.last_message_at) : ""}</Text>
-          </View>
-        </Pressable>
-      ))}
-
-      {!showingBoards && visible.map((row)=>(
-        <Pressable
-          key={row.conversation_id}
-          style={styles.row}
-          accessibilityRole="button"
-          accessibilityLabel={`Open conversation with ${row.other_name}${row.unread_count ? `, ${row.unread_count} unread` : ""}`}
-          onPress={()=>router.push(`/messages/${row.conversation_id}`)}
-        >
-          {row.other_photo
-            ? <Image source={{uri:row.other_photo}} style={styles.avatar}/>
-            : <View style={[styles.avatar,styles.avatarBlank]}><Text style={styles.initial}>{(row.other_name || "E").slice(0,1)}</Text></View>}
-
-          <View style={styles.rowText}>
-            <Text style={styles.name} numberOfLines={1}>{row.other_name}</Text>
-            {row.kind==="listing" && (
-              <Text style={styles.about} numberOfLines={1}>
-                {listingSubtitle(row,entityTypeLabel(row.target_type))}
-              </Text>
-            )}
-            <Text style={styles.preview} numberOfLines={1}>{row.last_message || "No messages yet"}</Text>
-          </View>
-
-          <View style={styles.rowEnd}>
-            <Text style={styles.time}>{when(row.last_message_at)}</Text>
-            {row.unread_count>0 && (
-              <View style={styles.unread}><Text style={styles.unreadText}>{row.unread_count}</Text></View>
-            )}
-          </View>
-        </Pressable>
-      ))}
-    </ScrollView>
+        ))}
+      </ScrollView>
+    </Screen>
   );
 }
 
-const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
-
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:110},
-  centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  title:{color:INK.ink,fontSize:30,fontWeight:"900",marginBottom:14},
-  tabs:{flexDirection:"row",gap:8,paddingBottom:14,paddingRight:16},
-  tab:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:14,paddingVertical:9,minHeight:44,backgroundColor:INK.paper},
-  tabActive:{backgroundColor:INK.ink},
-  tabText:{color:INK.ink,fontWeight:"800",fontSize:13},
-  tabTextActive:{color:INK.card},
-  tabCount:{minWidth:20,height:20,borderRadius:10,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
-  tabCountActive:{backgroundColor:INK.card},
-  tabCountText:{color:INK.card,fontSize:10,fontWeight:"900"},
-  tabCountTextActive:{color:INK.ink},
-  card:{...card,padding:18},
-  emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:6},
-  muted:{color:INK.inkSoft,fontSize:14,lineHeight:20},
-  button:{marginTop:14,alignSelf:"flex-start",borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:16,paddingVertical:8,backgroundColor:INK.paper},
-  buttonText:{color:INK.ink,fontWeight:"800"},
-  row:{...card,flexDirection:"row",alignItems:"center",gap:11,padding:11,marginBottom:10},
-  avatar:{width:46,height:46,borderRadius:23,backgroundColor:INK.hair},
-  avatarBlank:{alignItems:"center",justifyContent:"center"},
-  initial:{color:INK.ink,fontWeight:"900",fontSize:18},
-  rowText:{flex:1},
-  name:{color:INK.ink,fontWeight:"800",fontSize:15},
-  about:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:1},
-  preview:{color:INK.inkSoft,fontSize:13,marginTop:2},
+  content:{paddingHorizontal:16,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  centre:{flex:1,alignItems:"center",justifyContent:"center"},
+
+  // flexGrow:0 / flexShrink:0 and a centred content container. Without both, a
+  // horizontal ScrollView inside a flex column claims the leftover vertical
+  // space and stretches its children to fill it -- measured in this repo at
+  // 402px-tall pills. docs/instrument-kit.md, rule nine.
+  tabScroll:{flexGrow:0,flexShrink:0,marginBottom:14},
+  tabScrollContent:{alignItems:"center",gap:2},
+  tab:{paddingHorizontal:12,paddingTop:10,alignItems:"center",minHeight:SHAPE.tapTarget},
+  tabRow:{flexDirection:"row",alignItems:"center",gap:7,marginBottom:8},
+  tabText:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:0.8
+  },
+  tabTextActive:{color:INK.readout},
+  // The unread figure is a count the app made, so it is mono on the housing --
+  // not a filled dot, which would spend a colour on chrome.
+  tabCount:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.5,
+    borderWidth:SHAPE.border,borderColor:INK.hairline,borderRadius:SHAPE.radius.control,
+    paddingHorizontal:5,paddingVertical:1,overflow:"hidden"
+  },
+  tabCountActive:{color:INK.readout,borderColor:INK.hairlineStrong},
+  tabDetent:{height:2,alignSelf:"stretch",minWidth:18,backgroundColor:INK.hairline},
+  tabDetentActive:{backgroundColor:INK.hairlineStrong},
+
+  row:{flexDirection:"row",alignItems:"center",gap:11,padding:11,marginBottom:9},
+  avatar:{backgroundColor:INK.inset},
+  avatarImage:{width:44,height:44,borderRadius:SHAPE.radius.pill},
+  initial:{color:INK.readoutSoft,fontWeight:"700",fontSize:17},
+  rowText:{flex:1,minWidth:0},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  // What the conversation is ABOUT is a fact the app derived, so it is mono.
+  about:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.6,marginTop:3
+  },
+  // What somebody wrote stays in the body face.
+  preview:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:3},
   rowEnd:{alignItems:"flex-end",gap:5},
-  time:{color:INK.inkSoft,fontSize:11},
-  unread:{minWidth:22,height:22,borderRadius:11,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:6},
-  unreadText:{color:INK.card,fontSize:11,fontWeight:"900"}
+  time:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.5},
+  unread:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.5,
+    borderWidth:SHAPE.border,borderColor:INK.hairlineStrong,borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panelRaised,paddingHorizontal:6,paddingVertical:2,overflow:"hidden"
+  }
 });

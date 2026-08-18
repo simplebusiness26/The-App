@@ -3,14 +3,37 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   ActivityIndicator,
   Image,
   ScrollView
 } from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Frame,
+  Glyph,
+  KeyValue,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
+
+// Where a scanned code lands.
+//
+// It is the far end of the viewfinder, so it reads like one: the listing sits
+// in a Frame with the same brackets the camera draws round its feed, and the
+// reading the app took -- the code resolved, the listing it points at, the
+// bonus it is worth -- is mono and measured.
+//
+// The old version opened with a 78px green disc holding a tick set at 43px. A
+// tick in a coloured circle is a sticker; a checked reading on the housing is
+// an instrument saying it got a clean scan.
 
 const CONFIG={
   business:{table:"businesses",select:"id,name,image,photos",label:"Business",route:"business/review",image:(row)=>row?.image || row?.photos?.[0]},
@@ -89,71 +112,135 @@ export default function VerifiedReviewQR(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+    return(
+      <Screen style={styles.centre}>
+        <ActivityIndicator size="large" color={INK.readout}/>
+      </Screen>
+    );
   }
 
   if(error && !listing){
-    return <View style={styles.center}><Text style={styles.errorTitle}>QR code unavailable</Text><Text style={styles.errorText}>{error}</Text><Pressable style={styles.secondaryButton} onPress={()=>router.replace("/")}><Text style={styles.secondaryText}>Return home</Text></Pressable></View>;
+    return(
+      <Screen>
+        <ScreenTitle eyebrow="On-site scan" title="QR code unavailable"/>
+        <View style={styles.body}>
+          <Notice
+            tone="exists"
+            label="Code not read"
+            action={
+              <Action
+                kind="secondary"
+                glyph="home"
+                label="Return home"
+                accessibilityLabel="Return home"
+                onPress={()=>router.replace("/")}
+              />
+            }
+          >
+            {error}
+          </Notice>
+        </View>
+      </Screen>
+    );
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.verifiedIcon}><Text style={styles.check}>✓</Text></View>
-      <Text style={styles.eyebrow}>ON-SITE GUESTBOOK SCAN</Text>
-      <Text style={styles.title}>Verified visit ready</Text>
-      <Text style={styles.subtitle}>Continue to leave a review for this {listing._config.label.toLowerCase()} and add the verified-visit bonus.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenTitle
+          eyebrow="On-site Xplorer scan"
+          title="Verified visit ready"
+          meta={`Continue to leave a review for this ${listing._config.label.toLowerCase()} and add the verified-visit bonus.`}
+        />
 
-      <View style={styles.listingCard}>
-        {listing._image ? <Image source={{uri:listing._image}} style={styles.image}/> : <View style={styles.imageFallback}><Text style={styles.pin}>📍</Text></View>}
-        <Text style={styles.type}>{listing._config.label.toUpperCase()}</Text>
-        <Text style={styles.name}>{listing.name}</Text>
-      </View>
+        <View style={styles.body}>
+          {/* The clean reading, stated once, on the housing. */}
+          <View style={styles.readingRow}>
+            <View style={styles.readingGlyph}>
+              <Glyph name="check" size={16} colour={INK.readoutSoft} weight={1.8}/>
+            </View>
+            <Text style={styles.readingLabel}>Code matched</Text>
+            <View style={styles.readingLine}/>
+            <Text style={styles.readingCode} numberOfLines={1}>{code}</Text>
+          </View>
 
-      <View style={styles.pointsCard}>
-        <Text style={styles.pointsTitle}>+3 VERIFIED-VISIT POINTS</Text>
-        <Text style={styles.pointsText}>This bonus is added once the review publishes and the code matches this listing.</Text>
-      </View>
+          <Panel style={styles.card}>
+            <Frame ratio={16/9} style={styles.media}>
+              {listing._image
+                ? <Image source={{uri:listing._image}} style={styles.image}/>
+                : <Glyph name="pin" size={30} colour={INK.readoutFaint}/>}
+            </Frame>
 
-      {!!error && <View style={styles.errorBox}><Text style={styles.errorBoxText}>{error}</Text></View>}
+            <Text style={styles.type}>{listing._config.label}</Text>
+            <Text style={styles.name} numberOfLines={2}>{listing.name}</Text>
+          </Panel>
 
-      <Pressable style={styles.primaryButton} onPress={continueToReview}>
-        <Text style={styles.primaryText}>{user ? "Continue to verified review" : "Log in to continue"}</Text>
-      </Pressable>
+          <SectionRule label="What this scan is worth"/>
 
-      <Text style={styles.ruleText}>The QR bonus can only be used once per review. The review must satisfy Xplorer’s normal eligibility rules.</Text>
-    </ScrollView>
+          <Panel style={styles.scores}>
+            <KeyValue label="Verified-visit bonus" value="+3"/>
+            <KeyValue label="Applies once" value="Per review"/>
+          </Panel>
+
+          <Text style={styles.scoreNote}>
+            This bonus is added once the review publishes and the code matches this listing.
+          </Text>
+
+          {!!error && <Notice tone="exists" label="Code not read">{error}</Notice>}
+
+          <Action
+            kind="primary"
+            glyph={user ? "forward" : "key"}
+            label={user ? "Continue to verified review" : "Log in to continue"}
+            accessibilityLabel={user ? "Continue to verified review" : "Log in to continue"}
+            onPress={continueToReview}
+            style={styles.continue}
+          />
+
+          <Text style={styles.ruleText}>
+            The QR bonus can only be used once per review. The review must satisfy Xplorer’s normal eligibility rules.
+          </Text>
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:22,paddingBottom:60,alignItems:"center"},
-  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  verifiedIcon:{width:78,height:78,borderRadius:39,backgroundColor:INK.green,alignItems:"center",justifyContent:"center",marginTop:18},
-  // Text on a filled state colour is dark INK.ground, never the light readout
-  // -- docs/design-system.md's accessibility table. This file's own migration
-  // to the Field Instrument system belongs to the pass that owns this route;
-  // this is the contrast pair only, so scripts/verify-contrast.cjs passes.
-  check:{color:INK.ground,fontSize:43,fontWeight:"900"},
-  eyebrow:{color:INK.ink,fontWeight:"900",fontSize:11,letterSpacing:0.8,marginTop:18},
-  title:{color:INK.ink,fontSize:30,fontWeight:"900",textAlign:"center",marginTop:7},
-  subtitle:{color:INK.inkSoft,fontSize:15,lineHeight:22,textAlign:"center",marginTop:8,maxWidth:520},
-  listingCard:{width:"100%",maxWidth:520,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:14,marginTop:22},
-  image:{width:"100%",height:180,borderRadius:12,backgroundColor:INK.card},
-  imageFallback:{width:"100%",height:150,borderRadius:12,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
-  pin:{fontSize:40},
-  type:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:0.7,marginTop:13},
-  name:{color:INK.ink,fontSize:22,fontWeight:"900",marginTop:4},
-  pointsCard:{width:"100%",maxWidth:520,backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:14,padding:15,marginTop:13},
-  pointsTitle:{color:INK.card,fontWeight:"900",textAlign:"center"},
-  pointsText:{color:INK.card,fontSize:12,lineHeight:18,textAlign:"center",marginTop:5},
-  errorBox:{width:"100%",maxWidth:520,backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:13,marginTop:13},
-  errorBoxText:{color:INK.card,fontWeight:"700",textAlign:"center"},
-  primaryButton:{width:"100%",maxWidth:520,backgroundColor:INK.blue,padding:17,borderRadius:13,marginTop:18},
-  primaryText:{color:INK.card,fontWeight:"900",textAlign:"center",fontSize:16},
-  ruleText:{color:INK.inkSoft,fontSize:11,lineHeight:17,textAlign:"center",maxWidth:500,marginTop:13},
-  errorTitle:{color:INK.ink,fontSize:24,fontWeight:"900"},
-  errorText:{color:INK.inkSoft,textAlign:"center",lineHeight:22,marginTop:8},
-  secondaryButton:{borderColor:INK.ink,borderWidth:1,borderRadius:11,paddingHorizontal:20,paddingVertical:12,marginTop:17},
-  secondaryText:{color:INK.ink,fontWeight:"800"}
+  scroll:{paddingBottom:CREATE_HUB_CLEARANCE+24},
+  body:{paddingHorizontal:16},
+  centre:{alignItems:"center",justifyContent:"center"},
+
+  readingRow:{flexDirection:"row",alignItems:"center",gap:9,marginTop:6,marginBottom:12},
+  readingGlyph:{
+    width:30,height:30,borderRadius:SHAPE.radius.control,
+    alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  readingLabel:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md},
+  readingLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  readingCode:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,maxWidth:120},
+
+  card:{padding:12},
+  media:{alignSelf:"stretch"},
+  image:{width:"100%",height:"100%"},
+  type:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md,marginTop:12},
+  name:{
+    color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700",
+    letterSpacing:-0.5,marginTop:4
+  },
+
+  scores:{paddingHorizontal:13,paddingVertical:4},
+  scoreNote:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:8,marginBottom:14
+  },
+
+  continue:{marginTop:4},
+  ruleText:{
+    color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,textAlign:"center",marginTop:14
+  }
 });

@@ -1,19 +1,29 @@
 import React,{useMemo,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Location from "expo-location";
 import DateTimeField from "./DateTimeField";
 import AudienceCeiling from "./AudienceCeiling";
 import {localInputToIso,toLocalInputValue} from "../utils/linkups";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {Action,Chip,Field,fieldInputStyle,Glyph,Notice,SectionRule,Segmented} from "./instrument";
 
 const CATEGORIES=["Football","Walking","Running","Coffee","Food","Games","Social","Other"];
 
-function defaultTimes(){
-  const start=new Date(Date.now()+2*60*60*1000);
-  start.setMinutes(Math.ceil(start.getMinutes()/15)*15,0,0);
-  const end=new Date(start.getTime()+2*60*60*1000);
-  return {start:toLocalInputValue(start),end:toLocalInputValue(end)};
-}
+// What each audience actually means, kept beside the control that sets it so the
+// form reads the meaning out rather than making somebody guess from one word.
+const AUDIENCE_MEANING={
+  everyone:"Any Explorer, if your profile allows it",
+  friends:"People you both follow"
+};
+
+// WHY EVERY LABEL IS AN ELEMENT RATHER THAN A STRING
+//
+// scripts/verify-linkup-title-only.cjs reads this file as text and asserts that
+// each field of the full form is still named here -- it looks for the name as
+// rendered JSX (`>Area<`), which is how the form expressed labels before the
+// kit existed. Passing the name as a <Text> keeps that literally true while the
+// name still lands inside `Field`'s mono label, so the gate goes on checking
+// the thing it was written to check instead of being edited around it.
 
 export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up",working=false,titleOnly=false}){
   const defaults=useMemo(defaultTimes,[]);
@@ -113,60 +123,146 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
 
   return(
     <View>
-      {!!error && <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
+      {!!error && <Notice tone="dispute" label="Not posted">{error}</Notice>}
 
-      <Text style={styles.label}>Title</Text>
-      <TextInput value={title} onChangeText={setTitle} maxLength={100} placeholder="Five-a-side football" placeholderTextColor={INK.inkSoft} style={styles.input}/>
+      <SectionRule label="What and when"/>
 
-      <Text style={styles.label}>Description</Text>
-      <TextInput value={description} onChangeText={setDescription} maxLength={2000} multiline textAlignVertical="top" placeholder="Tell people what to expect and what to bring." placeholderTextColor={INK.inkSoft} style={[styles.input,styles.textarea]}/>
+      <Field label={<Text>Title</Text>} required>
+        <TextInput
+          value={title}
+          onChangeText={setTitle}
+          maxLength={100}
+          placeholder="Five-a-side football"
+          placeholderTextColor={INK.readoutFaint}
+          style={fieldInputStyle}
+        />
+      </Field>
 
-      <Text style={styles.label}>Category</Text>
-      <View style={styles.wrapRow}>
-        {CATEGORIES.map(item=><Pressable key={item} style={[styles.chip,category===item&&styles.chipActive]} onPress={()=>setCategory(item)}><Text style={[styles.chipText,category===item&&styles.chipTextActive]}>{item}</Text></Pressable>)}
-      </View>
+      <Field label={<Text>Description</Text>}>
+        <TextInput
+          value={description}
+          onChangeText={setDescription}
+          maxLength={2000}
+          multiline
+          textAlignVertical="top"
+          placeholder="Tell people what to expect and what to bring."
+          placeholderTextColor={INK.readoutFaint}
+          style={[fieldInputStyle,styles.textarea]}
+        />
+      </Field>
 
-      <Text style={styles.label}>Starts</Text>
-      <DateTimeField value={startsAt} onChange={setStartsAt} min={toLocalInputValue(new Date())}/>
+      <Field label={<Text>Category</Text>}>
+        <View style={styles.chips}>
+          {CATEGORIES.map(item=>(
+            <Chip key={item} label={item} selected={category===item} onPress={()=>setCategory(item)}/>
+          ))}
+        </View>
+      </Field>
 
-      <Text style={styles.label}>Ends</Text>
-      <DateTimeField value={endsAt} onChange={setEndsAt} min={startsAt}/>
+      <Field label={<Text>Starts</Text>}>
+        <DateTimeField value={startsAt} onChange={setStartsAt} min={toLocalInputValue(new Date())}/>
+      </Field>
 
-      <Text style={styles.label}>Area</Text>
-      <TextInput value={area} onChangeText={setArea} maxLength={80} placeholder="Hastings" placeholderTextColor={INK.inkSoft} style={styles.input}/>
+      <Field label={<Text>Ends</Text>}>
+        <DateTimeField value={endsAt} onChange={setEndsAt} min={startsAt}/>
+      </Field>
 
-      <Text style={styles.label}>Public meeting place</Text>
-      <TextInput value={locationName} onChangeText={setLocationName} maxLength={120} placeholder="Alexandra Park main entrance" placeholderTextColor={INK.inkSoft} style={styles.input}/>
-      <Text style={styles.help}>Use a public place. Never publish a private home address.</Text>
+      <SectionRule label="Where"/>
 
-      <Text style={styles.label}>Exact meeting instructions</Text>
-      <TextInput value={meetingDetails} onChangeText={setMeetingDetails} maxLength={500} multiline textAlignVertical="top" placeholder="Shown only to joined attendees." placeholderTextColor={INK.inkSoft} style={[styles.input,styles.smallTextarea]}/>
+      <Field label={<Text>Area</Text>}>
+        <TextInput
+          value={area}
+          onChangeText={setArea}
+          maxLength={80}
+          placeholder="Hastings"
+          placeholderTextColor={INK.readoutFaint}
+          style={fieldInputStyle}
+        />
+      </Field>
 
-      <Pressable style={styles.locationButton} disabled={locating} onPress={useLocation}>
-        {locating?<ActivityIndicator color={INK.ink}/>:<Text style={styles.locationText}>{latitude!=null?"✓ Approximate location added":"Use approximate current location"}</Text>}
-      </Pressable>
-      {latitude!=null && <Pressable onPress={()=>{setLatitude(null);setLongitude(null);}}><Text style={styles.removeLocation}>Remove location</Text></Pressable>}
+      <Field label={<Text>Public meeting place</Text>} hint="Use a public place. Never publish a private home address.">
+        <TextInput
+          value={locationName}
+          onChangeText={setLocationName}
+          maxLength={120}
+          placeholder="Alexandra Park main entrance"
+          placeholderTextColor={INK.readoutFaint}
+          style={fieldInputStyle}
+        />
+      </Field>
 
-      <Text style={styles.label}>Maximum attendees</Text>
-      <TextInput value={maxAttendees} onChangeText={setMaxAttendees} keyboardType="number-pad" maxLength={2} style={styles.input}/>
-      <Text style={styles.help}>The organiser counts as one attendee.</Text>
+      <Field label={<Text>Exact meeting instructions</Text>} hint="Shown only to joined attendees.">
+        <TextInput
+          value={meetingDetails}
+          onChangeText={setMeetingDetails}
+          maxLength={500}
+          multiline
+          textAlignVertical="top"
+          placeholder="Meet by the bandstand, look for the orange bibs."
+          placeholderTextColor={INK.readoutFaint}
+          style={[fieldInputStyle,styles.smallTextarea]}
+        />
+      </Field>
 
-      <Text style={styles.label}>Who can see this?</Text>
-      <View style={styles.visibilityRow}>
-        <Pressable style={[styles.visibilityButton,visibility==="everyone"&&styles.visibilityActive]} onPress={()=>chooseVisibility("everyone")}><Text style={[styles.visibilityText,visibility==="everyone"&&styles.visibilityTextActive]}>Everyone</Text><Text style={styles.visibilityHint}>Any Explorer, if your profile allows it</Text></Pressable>
-        <Pressable style={[styles.visibilityButton,visibility==="friends"&&styles.visibilityActive]} onPress={()=>chooseVisibility("friends")}><Text style={[styles.visibilityText,visibility==="friends"&&styles.visibilityTextActive]}>Friends</Text><Text style={styles.visibilityHint}>People you both follow</Text></Pressable>
-      </View>
+      {/* A coordinate is a measurement, so the control that takes one reads back
+          as a checked instrument rather than a tick character in a font this app
+          does not control. */}
+      <Action
+        kind="secondary"
+        glyph={latitude!=null ? "check" : "pin"}
+        label={latitude!=null ? "Approximate location added" : "Use approximate current location"}
+        loading={locating}
+        onPress={useLocation}
+      />
+      {latitude!=null && (
+        <Action
+          kind="quiet"
+          label="Remove location"
+          style={styles.removeLocation}
+          onPress={()=>{setLatitude(null);setLongitude(null);}}
+        />
+      )}
+
+      <Field label={<Text>Maximum attendees</Text>} hint="The organiser counts as one attendee." style={styles.spacedField}>
+        <TextInput
+          value={maxAttendees}
+          onChangeText={setMaxAttendees}
+          keyboardType="number-pad"
+          maxLength={2}
+          style={fieldInputStyle}
+        />
+      </Field>
+
+      <SectionRule label="Who can see it"/>
+
+      {/* A detented selector, not two filled cards. Being the chosen audience is
+          not a state a place is in, so it never takes a state ink. */}
+      <Field label={<Text>Who can see this?</Text>} hint={AUDIENCE_MEANING[visibility]}>
+        <Segmented
+          items={[{key:"everyone",label:"Everyone"},{key:"friends",label:"Friends"}]}
+          active={visibility}
+          onChange={chooseVisibility}
+        />
+      </Field>
 
       {visibility==="everyone" && (
-        <View style={styles.warningCard}>
-          <Text style={styles.warningTitle}>Everyone means everyone</Text>
-          <Text style={styles.warningText}>Every Explorer signed in to Xplorer can see this Link-up: the title, the description, the area, the public meeting place and the time. Not only people you know.</Text>
-          <Text style={styles.warningText}>Your exact meeting instructions stay hidden until someone joins.</Text>
-          <Pressable style={styles.acknowledgeRow} onPress={()=>{setUnderstoodEveryone(!understoodEveryone);setError("");}} accessibilityRole="checkbox" accessibilityState={{checked:understoodEveryone}}>
-            <View style={[styles.acknowledgeBox,understoodEveryone&&styles.acknowledgeBoxOn]}><Text style={styles.acknowledgeTick}>{understoodEveryone?"✓":""}</Text></View>
-            <Text style={styles.acknowledgeText}>I understand this Link-up is visible to every Explorer.</Text>
-          </Pressable>
-        </View>
+        <Notice tone="scheduled" label="Everyone means everyone">
+          <View>
+            <Text style={styles.warningText}>Every Explorer signed in to Xplorer can see this Link-up: the title, the description, the area, the public meeting place and the time. Not only people you know.</Text>
+            <Text style={styles.warningText}>Your exact meeting instructions stay hidden until someone joins.</Text>
+            <Pressable
+              style={styles.acknowledgeRow}
+              onPress={()=>{setUnderstoodEveryone(!understoodEveryone);setError("");}}
+              accessibilityRole="checkbox"
+              accessibilityState={{checked:understoodEveryone}}
+            >
+              <View style={[styles.acknowledgeBox,understoodEveryone&&styles.acknowledgeBoxOn]}>
+                {understoodEveryone ? <Glyph name="check" size={13} colour={INK.readout} weight={1.9}/> : null}
+              </View>
+              <Text style={styles.acknowledgeText}>I understand this Link-up is visible to every Explorer.</Text>
+            </Pressable>
+          </View>
+        </Notice>
       )}
 
       {/*
@@ -183,37 +279,47 @@ export default function LinkupForm({initial,onSubmit,submitLabel="Create Link-up
       */}
       <AudienceCeiling audience={visibility}/>
 
-      <View style={styles.safetyCard}>
-        <Text style={styles.safetyTitle}>Safety</Text>
-        <Text style={styles.safetyText}>Meet in public, keep private contact details out of the description, and report or block anyone who makes you uncomfortable.</Text>
-      </View>
+      <Notice tone="scheduled" label="Safety">
+        Meet in public, keep private contact details out of the description, and report or block anyone who makes you uncomfortable.
+      </Notice>
 
-      <Pressable style={[styles.submitButton,working&&styles.disabled]} disabled={working} onPress={submit}>
-        {working?<ActivityIndicator color={INK.ink}/>:<Text style={styles.submitText}>{submitLabel}</Text>}
-      </Pressable>
+      <Action
+        kind="primary"
+        glyph="send"
+        label={submitLabel}
+        loading={working}
+        style={styles.submit}
+        onPress={submit}
+      />
     </View>
   );
 }
 
+function defaultTimes(){
+  const start=new Date(Date.now()+2*60*60*1000);
+  start.setMinutes(Math.ceil(start.getMinutes()/15)*15,0,0);
+  const end=new Date(start.getTime()+2*60*60*1000);
+  return {start:toLocalInputValue(start),end:toLocalInputValue(end)};
+}
+
 const styles=StyleSheet.create({
-  label:{color:INK.ink,fontSize:14,fontWeight:"900",marginTop:18,marginBottom:8},
-  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,color:INK.ink,fontSize:15,paddingHorizontal:14,paddingVertical:13},
-  textarea:{minHeight:130},smallTextarea:{minHeight:90},help:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},
-  errorCard:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:12},errorText:{color:INK.card,lineHeight:19},
-  wrapRow:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:8},chipActive:{backgroundColor:INK.blue,borderColor:INK.blue},chipText:{color:INK.inkSoft,fontWeight:"800",fontSize:12},chipTextActive:{color:INK.card},
-  locationButton:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:12,padding:13,alignItems:"center",marginTop:12},locationText:{color:INK.card,fontWeight:"900"},removeLocation:{color:INK.inkSoft,fontWeight:"800",textAlign:"center",paddingVertical:9},
-  visibilityRow:{flexDirection:"row",gap:9},visibilityButton:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:13},visibilityActive:{borderColor:INK.blue,borderWidth:2},visibilityText:{color:INK.inkSoft,fontWeight:"900"},visibilityTextActive:{color:INK.ink},visibilityHint:{color:INK.inkSoft,fontSize:10,marginTop:4},
-  // Deliberately no new colour. This is the card that has to be read, not the
-  // card that has to be noticed -- so it is the plain card with a heavy border,
-  // and the ink stays the same ink as every other body line on the screen.
-  warningCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:13,marginTop:12},
-  warningTitle:{color:INK.ink,fontWeight:"900",fontSize:14},
-  warningText:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:6},
-  acknowledgeRow:{flexDirection:"row",alignItems:"center",gap:9,marginTop:12},
-  acknowledgeBox:{width:22,height:22,borderRadius:6,borderColor:INK.ink,borderWidth:2,alignItems:"center",justifyContent:"center"},
-  acknowledgeBoxOn:{backgroundColor:INK.blue,borderColor:INK.blue},
-  acknowledgeTick:{color:INK.card,fontWeight:"900",fontSize:13},
-  acknowledgeText:{flex:1,color:INK.ink,fontSize:12,fontWeight:"800",lineHeight:17},
-  safetyCard:{backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:INK.card,fontWeight:"900"},safetyText:{color:INK.card,fontSize:12,lineHeight:18,marginTop:5},
-  submitButton:{backgroundColor:INK.blue,borderRadius:14,paddingVertical:16,alignItems:"center",marginTop:22},submitText:{color:INK.card,fontSize:16,fontWeight:"900"},disabled:{opacity:.6}
+  textarea:{minHeight:130},
+  smallTextarea:{minHeight:90},
+  chips:{flexDirection:"row",flexWrap:"wrap",gap:8,padding:10},
+  removeLocation:{marginTop:8},
+  spacedField:{marginTop:16},
+  warningText:{color:INK.readout,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:2},
+  acknowledgeRow:{flexDirection:"row",alignItems:"center",gap:10,marginTop:12,minHeight:SHAPE.tapTarget},
+  // A bracketed box on the housing, not a filled state ink. Selection is a
+  // stronger edge and a raised surface -- docs/design-system.md.
+  acknowledgeBox:{
+    width:22,height:22,borderRadius:SHAPE.radius.control,
+    borderWidth:SHAPE.border,borderColor:INK.hairline,backgroundColor:INK.inset,
+    alignItems:"center",justifyContent:"center"
+  },
+  acknowledgeBoxOn:{borderColor:INK.hairlineStrong,backgroundColor:INK.panelRaised},
+  acknowledgeText:{
+    flex:1,color:INK.readout,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5
+  },
+  submit:{marginTop:20}
 });

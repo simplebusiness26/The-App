@@ -1,9 +1,10 @@
 import React,{useCallback,useState} from "react";
-import {View,Text,Pressable,StyleSheet} from "react-native";
+import {View,Text,StyleSheet} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {ceilingWarning} from "../utils/audience";
-import {INK} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
+import {Action,Notice} from "./instrument";
 
 // "Nobody will see this" — said before somebody posts, not discovered after.
 //
@@ -23,6 +24,10 @@ import {INK} from "../utils/tokens";
 // what they picked against their own ceiling, and says what will actually
 // happen. It never blocks posting -- a private post is a legitimate thing to
 // make -- and it never changes the setting on somebody's behalf.
+//
+// It draws as a Notice: an edge in a state ink and a mono eyebrow, never a
+// boxed-in warning card. `exists` rather than a warm ink, because a ceiling is
+// a standing fact about an account, not something happening right now.
 
 export default function AudienceCeiling({audience}){
   const [visibility,setVisibility]=useState(null);
@@ -50,41 +55,36 @@ export default function AudienceCeiling({audience}){
   if(!warning) return null;
 
   return(
-    <View style={styles.card} accessibilityRole="alert">
-      <Text style={styles.title}>Who will actually see this</Text>
-      <Text style={styles.body}>{warning}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open Settings to change who can see what you share"
-        style={styles.button}
-        onPress={()=>router.push("/settings")}
+    <View accessibilityRole="alert" style={styles.wrap}>
+      <Notice
+        tone="exists"
+        label="AUDIENCE CEILING"
+        action={
+          <Action
+            kind="secondary"
+            glyph="settings"
+            label="Change it in Settings"
+            accessibilityLabel="Open Settings to change who can see what you share"
+            onPress={()=>router.push("/settings")}
+          />
+        }
       >
-        <Text style={styles.buttonText}>Change it in Settings</Text>
-      </Pressable>
+        <View>
+          <Text style={styles.title}>Who will actually see this</Text>
+          <Text style={styles.body}>{warning}</Text>
+        </View>
+      </Notice>
     </View>
   );
 }
 
 const styles=StyleSheet.create({
-  card:{
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    padding:14,
-    marginTop:12
-  },
-  title:{color:INK.ink,fontWeight:"800",fontSize:14},
-  body:{color:INK.inkSoft,fontSize:13,lineHeight:19,marginTop:5},
-  button:{
-    marginTop:11,
-    alignSelf:"flex-start",
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
-    paddingHorizontal:14,
-    paddingVertical:7,
-    backgroundColor:INK.paper
-  },
-  buttonText:{color:INK.ink,fontWeight:"800",fontSize:12}
+  wrap:{marginTop:12},
+  title:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  body:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,
+    marginTop:4
+  }
 });

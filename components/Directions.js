@@ -10,7 +10,8 @@ import {
   distanceLabel,
   durationLabel
 } from "../utils/routing";
-import {INK} from "../utils/tokens";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {Action,MONO,Notice,Panel,Readout} from "./instrument";
 
 // Directions, once, for anything on the map with coordinates.
 //
@@ -101,12 +102,34 @@ export default function Directions({destination,destinationName,onRoute}){
   const problem=route && route.status!==ROUTE_STATUS.OK ? routeMessage(route.status) : "";
 
   return(
-    <View style={styles.card}>
-      <Text style={styles.title}>Directions</Text>
+    <Panel style={styles.card}>
+      {/* THE HEAD READOUT. The same mono strip every panel in this app opens
+          with: what this instrument is measuring, and which mode it is set to.
+          The old version was a bold heading and a grey sentence -- a document's
+          shape, on a control. */}
+      <View style={styles.headRow}>
+        <Text style={styles.headKind}>ROUTE</Text>
+        <View style={styles.headLine}/>
+        <Text style={styles.headMode}>{String(mode).toUpperCase()}</Text>
+      </View>
+
       <Text style={styles.subtitle}>
         {destinationName ? `From where you are now to ${destinationName}.` : "From where you are now."}
       </Text>
 
+      {/*
+        THE MODE SELECTOR IS A DETENTED SWITCH, NOT THREE FILLED PILLS.
+        Picking walking over driving is not a state a place is in, so it never
+        fills with a state ink -- design-system.md is explicit about that, and
+        the old active pill filled with the compatibility alias that is now the
+        near-white readout colour, so the chosen mode was the brightest thing on
+        the panel. Selection is a surface step, a stronger edge and a brighter
+        label.
+
+        Not <Segmented/>: each detent here also FIRES the request, and carries
+        its own accessibilityLabel and disabled state while one is in flight,
+        which the kit's own selector does not model.
+      */}
       <View style={styles.modes}>
         {TRAVEL_MODES.map((entry)=>{
           const active=entry.key===mode;
@@ -115,68 +138,101 @@ export default function Directions({destination,destinationName,onRoute}){
               key={entry.key}
               style={[styles.mode,active && styles.modeActive]}
               accessibilityRole="button"
-              accessibilityState={{selected:active}}
+              accessibilityState={{selected:active,disabled:!!working}}
               accessibilityLabel={`Directions by ${entry.label.toLowerCase()}`}
               disabled={working}
               onPress={()=>go(entry.key)}
             >
               <Text style={[styles.modeText,active && styles.modeTextActive]}>{entry.label}</Text>
+              <View style={[styles.modeDetent,active && styles.modeDetentActive]}/>
             </Pressable>
           );
         })}
       </View>
 
-      {working && <ActivityIndicator color={INK.blue} style={styles.spinner}/>}
+      {working && <ActivityIndicator color={INK.readoutSoft} style={styles.spinner}/>}
 
+      {/* THE ANSWER IS TWO MEASUREMENTS, SO IT IS TWO READOUTS.
+          It used to be one bold sentence with a middle dot in it. A distance
+          and a duration are different quantities and an instrument shows them
+          on separate dials with their own labels. */}
       {!working && hasRoute && (
         <View style={styles.result}>
-          <Text style={styles.resultLine}>
-            {distanceLabel(route.distanceMetres)} · about {durationLabel(route.durationSeconds)}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
+          <View style={styles.resultRow}>
+            <Readout label="DISTANCE" value={distanceLabel(route.distanceMetres)} size="sm"/>
+            <View style={styles.resultDivider}/>
+            <Readout label="ABOUT" value={durationLabel(route.durationSeconds)} size="sm"/>
+          </View>
+          <Action
+            kind="quiet"
+            label="Clear route"
+            glyph="close"
             accessibilityLabel="Clear the route"
             style={styles.clear}
             onPress={clear}
-          >
-            <Text style={styles.clearText}>Clear route</Text>
-          </Pressable>
+          />
         </View>
       )}
 
+      {/* A refused permission, a missing fix or a dead provider is something
+          the app needs to SAY, so it is an edge and a mono eyebrow rather than
+          a grey paragraph indistinguishable from the help text above it. */}
       {!working && !!problem && (
-        <Text style={styles.problem} accessibilityRole="alert">{problem}</Text>
+        <View accessibilityRole="alert" style={styles.problem}>
+          <Notice tone="scheduled" label="NO ROUTE">{problem}</Notice>
+        </View>
       )}
 
       {!working && !route && (
-        <Pressable
-          style={styles.primary}
-          accessibilityRole="button"
+        <Action
+          kind="primary"
+          label="Get directions"
+          glyph="map"
           accessibilityLabel="Get directions"
+          style={styles.primary}
           onPress={()=>go(mode)}
-        >
-          <Text style={styles.primaryText}>Get directions</Text>
-        </Pressable>
+        />
       )}
-    </View>
+    </Panel>
   );
 }
 
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
+
 const styles=StyleSheet.create({
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:14,marginTop:12},
-  title:{color:INK.ink,fontWeight:"900",fontSize:16},
-  subtitle:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:4},
-  modes:{flexDirection:"row",gap:8,marginTop:12},
-  mode:{borderColor:INK.ink,borderWidth:2,borderRadius:99,paddingHorizontal:14,paddingVertical:9,minHeight:44,justifyContent:"center",backgroundColor:INK.paper},
-  modeActive:{backgroundColor:INK.ink},
-  modeText:{color:INK.ink,fontWeight:"800",fontSize:13},
-  modeTextActive:{color:INK.card},
+  card:{padding:14,marginTop:12},
+
+  headRow:{flexDirection:"row",alignItems:"center",gap:9},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headMode:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+
+  subtitle:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:9},
+
+  modes:{flexDirection:"row",gap:8,marginTop:13},
+  mode:{
+    flex:1,minHeight:SHAPE.tapTarget,justifyContent:"center",alignItems:"center",gap:7,
+    paddingHorizontal:10,paddingTop:8,paddingBottom:7,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control
+  },
+  modeActive:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  modeText:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  modeTextActive:{color:INK.readout},
+  modeDetent:{height:2,alignSelf:"stretch",backgroundColor:INK.hairline},
+  modeDetentActive:{backgroundColor:INK.hairlineStrong},
+
   spinner:{marginTop:14},
+
   result:{marginTop:14},
-  resultLine:{color:INK.ink,fontWeight:"900",fontSize:15},
-  clear:{marginTop:10,alignSelf:"flex-start",borderColor:INK.ink,borderWidth:2,borderRadius:99,paddingHorizontal:14,paddingVertical:8,minHeight:44,justifyContent:"center",backgroundColor:INK.paper},
-  clearText:{color:INK.ink,fontWeight:"800",fontSize:12},
-  problem:{color:INK.ink,fontSize:13,lineHeight:19,marginTop:12},
-  primary:{marginTop:14,backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:99,paddingVertical:12,alignItems:"center",minHeight:44,justifyContent:"center"},
-  primaryText:{color:INK.card,fontWeight:"900",fontSize:14}
+  resultRow:{
+    flexDirection:"row",alignItems:"center",gap:14,
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,paddingHorizontal:13,paddingVertical:11
+  },
+  resultDivider:{width:1,alignSelf:"stretch",backgroundColor:INK.hairline},
+  clear:{marginTop:10,alignSelf:"flex-start",paddingHorizontal:14},
+
+  problem:{marginTop:13},
+  primary:{marginTop:14}
 });

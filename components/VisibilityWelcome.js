@@ -1,8 +1,9 @@
 import React,{useCallback,useState} from "react";
-import {View,Text,Pressable,Modal,StyleSheet,AccessibilityInfo} from "react-native";
+import {View,Text,Modal,StyleSheet,AccessibilityInfo} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
-import {INK} from "../utils/tokens";
+import {INK,TYPE} from "../utils/tokens";
+import {Action,Panel,ScreenTitle} from "./instrument";
 
 // The one thing a new Explorer is never told.
 //
@@ -93,11 +94,17 @@ export default function VisibilityWelcome(){
       accessibilityViewIsModal
     >
       <View style={styles.backdrop}>
-        <View style={styles.card} accessibilityRole="alert">
-          <Text style={styles.eyebrow}>BEFORE YOU START</Text>
-          <Text style={styles.title}>
-            {isClosed ? "Nobody can see you yet" : "Who can see what you share"}
-          </Text>
+        <Panel raised style={styles.card} accessibilityRole="alert">
+          {/*
+            The same engraved plate every screen in the app opens with -- a mono
+            eyebrow, the display title, and a ticked rule. A modal that arrives
+            with its own heading style is a modal that reads as somebody else's
+            dialog box dropped on top of the instrument.
+          */}
+          <ScreenTitle
+            eyebrow="BEFORE YOU START"
+            title={isClosed ? "Nobody can see you yet" : "Who can see what you share"}
+          />
 
           {isClosed ? (
             <>
@@ -119,75 +126,53 @@ export default function VisibilityWelcome(){
             </Text>
           )}
 
-          <Pressable
-            style={styles.primary}
-            accessibilityRole="button"
-            accessibilityLabel="Choose who can see what you share"
-            onPress={()=>dismiss("/settings")}
-          >
-            <Text style={styles.primaryText}>Choose who can see me</Text>
-          </Pressable>
+          <View style={styles.actions}>
+            <Action
+              kind="primary"
+              glyph="eye"
+              label="Choose who can see me"
+              accessibilityLabel="Choose who can see what you share"
+              onPress={()=>dismiss("/settings")}
+            />
 
-          <Pressable
-            style={styles.secondary}
-            accessibilityRole="button"
-            accessibilityLabel="Stay private for now"
-            onPress={()=>dismiss(null)}
-          >
-            <Text style={styles.secondaryText}>
-              {isClosed ? "Stay private for now" : "Leave it as it is"}
-            </Text>
-          </Pressable>
+            <Action
+              kind="secondary"
+              label={isClosed ? "Stay private for now" : "Leave it as it is"}
+              accessibilityLabel="Stay private for now"
+              onPress={()=>dismiss(null)}
+            />
+          </View>
 
           <Text style={styles.footNote}>
             You can change this any time in Settings. Nothing here has changed
             your setting.
           </Text>
-        </View>
+        </Panel>
       </View>
     </Modal>
   );
 }
 
 const styles=StyleSheet.create({
-  backdrop:{flex:1,backgroundColor:"rgba(22,24,28,0.55)",alignItems:"center",justifyContent:"center",padding:22},
-  card:{
-    width:"100%",
-    maxWidth:420,
-    backgroundColor:INK.card,
-    borderColor:INK.ink,
-    borderWidth:2,
-    borderRadius:16,
-    padding:20
+  // The housing, dimmed. Not a grey wash invented here -- INK.ground at 78%, so
+  // whatever is behind the modal recedes into the same dark case the app lives
+  // in rather than into somebody else's neutral.
+  backdrop:{flex:1,backgroundColor:"rgba(15,18,22,0.78)",alignItems:"center",justifyContent:"center",padding:22},
+  card:{width:"100%",maxWidth:420,paddingBottom:16},
+  body:{
+    color:INK.readout,
+    fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight,
+    marginTop:12,
+    paddingHorizontal:16
   },
-  eyebrow:{color:INK.blue,fontSize:10,fontWeight:"900",letterSpacing:1},
-  title:{color:INK.ink,fontSize:26,fontWeight:"900",marginTop:6,letterSpacing:-0.4},
-  body:{color:INK.ink,fontSize:14,lineHeight:21,marginTop:12},
-  primary:{
-    backgroundColor:INK.blue,
-    borderColor:INK.ink,
-    borderWidth:2,
-    borderRadius:99,
-    paddingVertical:13,
-    paddingHorizontal:18,
-    alignItems:"center",
-    marginTop:20,
-    minHeight:44,
-    justifyContent:"center"
-  },
-  primaryText:{color:INK.card,fontWeight:"900",fontSize:15},
-  secondary:{
-    backgroundColor:INK.paper,
-    borderColor:INK.ink,
-    borderWidth:2,
-    borderRadius:99,
-    paddingVertical:13,
-    paddingHorizontal:18,
-    alignItems:"center",
-    marginTop:10,
-    minHeight:44,
-    justifyContent:"center"
-  },
-  secondaryText:{color:INK.ink,fontWeight:"900",fontSize:15},
-  footNote:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:14,textAlign:"center"}
+  actions:{gap:9,marginTop:20,paddingHorizontal:16},
+  footNote:{
+    color:INK.readoutFaint,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*TYPE.body.lineHeight,
+    marginTop:14,
+    paddingHorizontal:16,
+    textAlign:"center"
+  }
 });

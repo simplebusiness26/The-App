@@ -5,14 +5,14 @@ import ExplorerProfileScreen from "../../components/ExplorerProfileScreen";
 import ProfileSocialBar from "../../components/ProfileSocialBar";
 import ProfileSafetyActions from "../../components/ProfileSafetyActions";
 import MessageButton from "../../components/MessageButton";
-import {INK} from "../../utils/tokens";
+import {Screen} from "../../components/instrument";
 
 export default function PublicProfile(){
   const {id}=useLocalSearchParams();
   const profileId=Array.isArray(id) ? id[0] : id;
 
   return(
-    <View style={styles.screen}>
+    <Screen>
       <ExplorerProfileScreen
         profileId={profileId}
         belowIdentity={
@@ -30,11 +30,10 @@ export default function PublicProfile(){
           </>
         }
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
   messageRow:{alignItems:"center",marginTop:10}
 });

@@ -4,7 +4,36 @@ import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {effectiveLinkupStatus,formatDateTime} from "../../../utils/linkups";
-import {INK} from "../../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Empty,
+  Frame,
+  MONO,
+  Notice,
+  Panel,
+  Screen,
+  ScreenTitle,
+  fieldInputStyle
+} from "../../../components/instrument";
+
+// The Link-up's private attendee board.
+//
+// WHY THE BUBBLES CHANGED SHAPE
+//
+// Same reason as the club board: "what I wrote" was a solid block of ink, which
+// under the instrument palette is the near-white readout colour, so your own
+// half of the conversation was a column of white slabs with every label inside
+// restyled to survive it. Now yours steps UP a surface (`panelRaised` behind a
+// `hairlineStrong` edge) and everyone else's stays on `panel`. Nothing is
+// filled, so nothing inside needs a second set of colours.
+//
+// AN ANNOUNCEMENT IS A STATE, AND NOW LOOKS LIKE ONE. It used to be a tiny
+// uppercase word in the corner because the three state inks all mean things
+// about a PLACE. But an organiser announcement on a board that only attendees
+// can read is genuinely "the app is telling you something" -- which is what a
+// Notice is for, and it borrows no map colour to say it.
 
 const REPORT_REASONS=["spam","harassment","unsafe","inappropriate","other"];
 
@@ -91,59 +120,232 @@ export default function LinkupBoard(){
 
   function refresh(){setRefreshing(true);load(false);}
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
-  if(error || !linkup) return <View style={styles.center}><Text style={styles.errorTitle}>Board unavailable</Text><Text style={styles.errorText}>{error}</Text><Pressable style={styles.backButton} onPress={()=>router.replace(`/linkups/${id}`)}><Text style={styles.backText}>Back to Link-up</Text></Pressable></View>;
+  if(loading) return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.readout}/></Screen>;
+  if(error || !linkup) return(
+    <Screen style={styles.center}>
+      <Text style={styles.errorTitle}>Board unavailable</Text>
+      <Text style={styles.errorText}>{error}</Text>
+      <Action
+        kind="secondary"
+        label="Back to Link-up"
+        glyph="back"
+        style={styles.backButton}
+        accessibilityLabel="Back to the Link-up"
+        onPress={()=>router.replace(`/linkups/${id}`)}
+      />
+    </Screen>
+  );
 
   return(
-    <View style={styles.screen}>
+    <Screen>
       <ScrollView style={styles.messages} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh}/>}>
-        <Pressable style={styles.headerCard} onPress={()=>router.push(`/linkups/${id}`)}>
-          <Text style={styles.eyebrow}>PRIVATE ATTENDEE BOARD</Text>
-          <Text style={styles.title}>{linkup.title}</Text>
-          <Text style={styles.when}>{formatDateTime(linkup.starts_at)} · {linkup.location_name}</Text>
-          {readOnly&&<Text style={styles.readOnlyBanner}>This board is now read-only.</Text>}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${linkup.title}`}
+          onPress={()=>router.push(`/linkups/${id}`)}
+        >
+          <ScreenTitle
+            eyebrow="PRIVATE ATTENDEE BOARD"
+            title={linkup.title}
+            meta={`${formatDateTime(linkup.starts_at)} · ${linkup.location_name}`}
+          />
         </Pressable>
 
-        {messages.length===0&&<View style={styles.emptyCard}><Text style={styles.emptyIcon}>💬</Text><Text style={styles.emptyTitle}>Start the conversation</Text><Text style={styles.emptyText}>Use the board to coordinate without sharing private contact details.</Text></View>}
+        <View style={styles.body}>
+          {readOnly&&<Notice tone="scheduled" label="READ ONLY">This board is now read-only.</Notice>}
 
-        {messages.map(message=>{
-          const author=profiles[message.user_id];
-          const mine=message.user_id===user?.id;
-          const canRemove=mine||isOwner;
-          return(
-            <View key={message.id} style={[styles.messageCard,message.is_announcement&&styles.announcementCard,mine&&styles.myMessage]}>
-              <View style={styles.messageTop}>
-                <View style={[styles.avatar,mine&&styles.avatarMine]}><Text style={[styles.avatarText,mine&&styles.avatarTextMine]}>{author?.full_name?.charAt(0)?.toUpperCase()||"E"}</Text></View>
-                <View style={styles.authorText}><Text style={[styles.author,mine&&styles.authorMine]}>{author?.full_name||"Explorer"}</Text><Text style={[styles.time,mine&&styles.timeMine]}>{formatDateTime(message.created_at)}</Text></View>
-                {message.is_announcement&&<Text style={[styles.announcementBadge,mine&&styles.announcementBadgeMine]}>ANNOUNCEMENT</Text>}
-              </View>
-              <Text style={[styles.body,mine&&styles.bodyMine,message.status==="deleted"&&styles.deletedBody]}>{message.status==="deleted"?"Message removed":message.body}</Text>
-              {message.status!=="deleted"&&<View style={styles.messageActions}>{canRemove&&<Pressable onPress={()=>remove(message)}><Text style={[styles.removeText,mine&&styles.removeTextMine]}>Remove</Text></Pressable>}{!mine&&<Pressable onPress={()=>setReportingId(reportingId===message.id?null:message.id)}><Text style={[styles.reportText,mine&&styles.reportTextMine]}>Report</Text></Pressable>}</View>}
-              {reportingId===message.id&&!mine&&<View style={styles.reportPanel}><View style={styles.reasonWrap}>{REPORT_REASONS.map(reason=><Pressable key={reason} style={[styles.reason,reportReason===reason&&styles.reasonActive]} onPress={()=>setReportReason(reason)}><Text style={[styles.reasonText,reportReason===reason&&styles.reasonTextActive]}>{reason}</Text></Pressable>)}</View><Pressable style={styles.submitReport} disabled={working} onPress={()=>report(message)}><Text style={styles.submitReportText}>Submit report</Text></Pressable></View>}
-            </View>
-          );
-        })}
+          {messages.length===0&&(
+            <Empty
+              title="Start the conversation"
+              instruction="Use the board to coordinate without sharing private contact details."
+              glyph="comment"
+            />
+          )}
+
+          {messages.map(message=>{
+            const author=profiles[message.user_id];
+            const mine=message.user_id===user?.id;
+            const canRemove=mine||isOwner;
+            const removed=message.status==="deleted";
+
+            const inner=(
+              <>
+                <View style={styles.messageTop}>
+                  <Frame size={34} round style={styles.avatarFrame}>
+                    <Text style={styles.avatarText}>{author?.full_name?.charAt(0)?.toUpperCase()||"E"}</Text>
+                  </Frame>
+                  <View style={styles.authorText}>
+                    <Text style={styles.author} numberOfLines={1}>{author?.full_name||"Explorer"}</Text>
+                    <Text style={styles.time} numberOfLines={1}>{formatDateTime(message.created_at)}</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.body_,removed&&styles.deletedBody]}>
+                  {removed?"Message removed":message.body}
+                </Text>
+
+                {!removed&&(
+                  <View style={styles.messageActions}>
+                    {canRemove&&(
+                      <Action
+                        kind="quiet"
+                        label="Remove"
+                        glyph="trash"
+                        accessibilityLabel="Remove this message"
+                        onPress={()=>remove(message)}
+                      />
+                    )}
+                    {!mine&&(
+                      <Action
+                        kind="quiet"
+                        label="Report"
+                        glyph="flag"
+                        accessibilityLabel="Report this message"
+                        onPress={()=>setReportingId(reportingId===message.id?null:message.id)}
+                      />
+                    )}
+                  </View>
+                )}
+
+                {reportingId===message.id&&!mine&&(
+                  <View style={styles.reportPanel}>
+                    {/* Selection steps a surface and strengthens an edge; it
+                        never fills with a state ink. */}
+                    <View style={styles.reasonWrap}>
+                      {REPORT_REASONS.map(reason=>(
+                        <Chip
+                          key={reason}
+                          label={reason}
+                          selected={reportReason===reason}
+                          onPress={()=>setReportReason(reason)}
+                        />
+                      ))}
+                    </View>
+                    <Action
+                      kind="primary"
+                      label="Submit report"
+                      glyph="send"
+                      accessibilityLabel="Submit report"
+                      disabled={working}
+                      onPress={()=>report(message)}
+                    />
+                  </View>
+                )}
+              </>
+            );
+
+            // An organiser announcement is the app speaking to the whole board,
+            // so it gets the edge and eyebrow every other announcement in this
+            // app gets. Ordinary messages are panels.
+            return message.is_announcement ? (
+              <Notice key={message.id} tone="scheduled" label="ANNOUNCEMENT">
+                {inner}
+              </Notice>
+            ) : (
+              <Panel
+                key={message.id}
+                raised={mine}
+                style={[styles.messageCard,mine?styles.myMessage:styles.theirMessage]}
+              >
+                {inner}
+              </Panel>
+            );
+          })}
+        </View>
       </ScrollView>
 
-      {!readOnly&&<View style={styles.composer}>
-        {isOwner&&<Pressable style={[styles.announcementToggle,announcement&&styles.announcementToggleActive]} onPress={()=>setAnnouncement(current=>!current)}><Text style={[styles.announcementToggleText,announcement&&styles.announcementToggleTextActive]}>{announcement?"✓ Organiser announcement":"Post as announcement"}</Text></Pressable>}
-        <View style={styles.composerRow}><TextInput value={body} onChangeText={setBody} maxLength={1000} multiline placeholder="Message attendees" placeholderTextColor={INK.inkSoft} style={styles.input}/><Pressable style={[styles.sendButton,(!body.trim()||working)&&styles.disabled]} disabled={!body.trim()||working} onPress={post}>{working?<ActivityIndicator color={INK.card}/>:<Text style={styles.sendText}>Send</Text>}</Pressable></View>
-        <Text style={styles.counter}>{body.length}/1000</Text>
-      </View>}
-    </View>
+      {!readOnly&&(
+        <View style={styles.composer}>
+          {isOwner&&(
+            <Chip
+              label={announcement?"Organiser announcement":"Post as announcement"}
+              glyph={announcement?"check":"bell"}
+              selected={announcement}
+              style={styles.announcementToggle}
+              onPress={()=>setAnnouncement(current=>!current)}
+            />
+          )}
+          <View style={styles.composerRow}>
+            <View style={styles.composerWell}>
+              <TextInput
+                value={body}
+                onChangeText={setBody}
+                maxLength={1000}
+                multiline
+                placeholder="Message attendees"
+                placeholderTextColor={INK.readoutFaint}
+                accessibilityLabel="Message attendees"
+                style={[fieldInputStyle,styles.input]}
+              />
+            </View>
+            <Action
+              kind="primary"
+              label="Send"
+              glyph="send"
+              style={styles.sendButton}
+              accessibilityLabel="Send this message"
+              loading={working}
+              disabled={!body.trim()||working}
+              onPress={post}
+            />
+          </View>
+          <Text style={styles.counter}>{body.length}/1000</Text>
+        </View>
+      )}
+    </Screen>
   );
 }
 
-// Same visual system as Messages: a dark ink bubble for what you wrote, a
-// card bubble bordered in ink for everyone else's. "Announcement" is carried
-// by a badge, not a colour -- ink-blue means "a place exists" everywhere else
-// in this app, and an announcement on an attendee board is neither a place
-// nor a state the token table names.
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},messages:{flex:1},content:{padding:16,paddingBottom:24},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},errorTitle:{color:INK.ink,fontSize:22,fontWeight:"900"},errorText:{color:INK.inkSoft,textAlign:"center",marginTop:8},backButton:{backgroundColor:INK.ink,borderRadius:12,padding:13,marginTop:17},backText:{color:INK.card,fontWeight:"900"},
-  headerCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:16,padding:15,marginBottom:14},eyebrow:{color:INK.inkSoft,fontSize:9,fontWeight:"900",letterSpacing:.8},title:{color:INK.ink,fontSize:23,fontWeight:"900",marginTop:5},when:{color:INK.inkSoft,fontSize:12,marginTop:7},readOnlyBanner:{color:INK.ink,backgroundColor:INK.paper,borderWidth:2,borderColor:INK.ink,borderRadius:9,padding:9,marginTop:10,fontWeight:"800",fontSize:11,overflow:"hidden"},
-  emptyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:15,padding:28,alignItems:"center"},emptyIcon:{fontSize:36},emptyTitle:{color:INK.ink,fontSize:18,fontWeight:"900",marginTop:8},emptyText:{color:INK.inkSoft,textAlign:"center",lineHeight:19,marginTop:5},
-  messageCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:15,padding:13,marginBottom:10,maxWidth:"88%",alignSelf:"flex-start"},myMessage:{backgroundColor:INK.ink,alignSelf:"flex-end"},announcementCard:{borderColor:INK.ink,borderWidth:2},messageTop:{flexDirection:"row",alignItems:"center"},avatar:{width:38,height:38,borderRadius:19,borderWidth:2,borderColor:INK.ink,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},avatarMine:{borderColor:INK.card},avatarText:{color:INK.ink,fontWeight:"900"},avatarTextMine:{color:INK.card},authorText:{flex:1,marginLeft:9},author:{color:INK.ink,fontWeight:"900"},authorMine:{color:INK.card},time:{color:INK.inkSoft,fontSize:10,marginTop:2},timeMine:{color:INK.card},announcementBadge:{color:INK.ink,fontSize:8,fontWeight:"900"},announcementBadgeMine:{color:INK.card},body:{color:INK.ink,lineHeight:21,marginTop:11},bodyMine:{color:INK.card},deletedBody:{color:INK.ink,fontStyle:"italic"},messageActions:{flexDirection:"row",justifyContent:"flex-end",gap:16,marginTop:10},removeText:{color:INK.ink,fontWeight:"900",fontSize:11},removeTextMine:{color:INK.card},reportText:{color:INK.ink,fontWeight:"900",fontSize:11},reportTextMine:{color:INK.card},
-  reportPanel:{backgroundColor:INK.paper,borderRadius:11,padding:10,marginTop:10},reasonWrap:{flexDirection:"row",flexWrap:"wrap",gap:5},reason:{borderColor:INK.ink,borderWidth:2,borderRadius:16,paddingHorizontal:9,paddingVertical:6,backgroundColor:INK.card},reasonActive:{backgroundColor:INK.ink},reasonText:{color:INK.ink,fontSize:9,fontWeight:"800"},reasonTextActive:{color:INK.card},submitReport:{backgroundColor:INK.ink,borderRadius:9,padding:9,alignItems:"center",marginTop:9},submitReportText:{color:INK.card,fontWeight:"900",fontSize:11},
-  composer:{backgroundColor:INK.card,borderTopColor:INK.ink,borderTopWidth:2,padding:12,paddingBottom:18},announcementToggle:{alignSelf:"flex-start",borderColor:INK.ink,borderWidth:2,borderRadius:16,paddingHorizontal:10,paddingVertical:6,marginBottom:8,backgroundColor:INK.card},announcementToggleActive:{backgroundColor:INK.ink},announcementToggleText:{color:INK.ink,fontSize:10,fontWeight:"900"},announcementToggleTextActive:{color:INK.card},composerRow:{flexDirection:"row",alignItems:"flex-end",gap:8},input:{flex:1,maxHeight:110,minHeight:46,backgroundColor:INK.paper,borderColor:INK.ink,borderWidth:2,borderRadius:12,color:INK.ink,paddingHorizontal:12,paddingVertical:11},sendButton:{backgroundColor:INK.ink,borderRadius:11,minWidth:72,height:46,alignItems:"center",justifyContent:"center"},sendText:{color:INK.card,fontWeight:"900"},counter:{color:INK.inkSoft,fontSize:9,textAlign:"right",marginTop:4},disabled:{opacity:.55}
+  center:{alignItems:"center",justifyContent:"center",padding:28},
+  messages:{flex:1},
+  content:{paddingBottom:24},
+  body:{paddingHorizontal:16},
+
+  errorTitle:{color:INK.readout,fontSize:TYPE.display.sizes.lg,fontWeight:"700",letterSpacing:-0.3},
+  errorText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,textAlign:"center",lineHeight:TYPE.body.sizes.md*1.5,marginTop:8},
+  backButton:{marginTop:18,alignSelf:"stretch"},
+
+  messageCard:{padding:13,marginBottom:10,maxWidth:"88%"},
+  myMessage:{alignSelf:"flex-end",borderColor:INK.hairlineStrong},
+  theirMessage:{alignSelf:"flex-start"},
+
+  messageTop:{flexDirection:"row",alignItems:"center"},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatarText:{color:INK.readoutSoft,fontWeight:"700",fontSize:15},
+  authorText:{flex:1,marginLeft:10,minWidth:0},
+  author:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  // A timestamp is recorded, never written, so it is the data face.
+  time:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.7,marginTop:3
+  },
+  body_:{color:INK.readout,fontSize:TYPE.body.sizes.lg,lineHeight:TYPE.body.sizes.lg*1.5,marginTop:10},
+  deletedBody:{color:INK.readoutFaint,fontStyle:"italic"},
+
+  messageActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:10},
+  reportPanel:{
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,padding:11,marginTop:11
+  },
+  reasonWrap:{flexDirection:"row",flexWrap:"wrap",gap:6,marginBottom:11},
+
+  composer:{
+    paddingHorizontal:16,paddingTop:12,paddingBottom:18,
+    borderTopWidth:SHAPE.border,borderTopColor:INK.hairline,backgroundColor:INK.panel
+  },
+  announcementToggle:{alignSelf:"flex-start",marginBottom:9},
+  composerRow:{flexDirection:"row",alignItems:"flex-end",gap:8},
+  // An input is a well, cut into the housing rather than stuck on it.
+  composerWell:{
+    flex:1,
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    borderRadius:SHAPE.radius.control,overflow:"hidden"
+  },
+  input:{maxHeight:110,minHeight:46,textAlignVertical:"top",paddingTop:11},
+  sendButton:{minWidth:96},
+  counter:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.6,textAlign:"right",marginTop:6
+  }
 });

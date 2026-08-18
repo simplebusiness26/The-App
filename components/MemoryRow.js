@@ -1,33 +1,42 @@
 import React from "react";
-import {View,Text,StyleSheet,Pressable} from "react-native";
+import {View,StyleSheet,Pressable} from "react-native";
 import PlaceMarker from "./PlaceMarker";
 import {markerForMemory} from "../utils/markers";
 import {phaseLabel} from "../utils/memories";
-import {INK} from "../utils/tokens";
+import {Chip,Row} from "./instrument";
 
 // One Memory as a row. Used by MemoryPins when the map cannot run, so the
 // list and the native no-key fallback cannot drift into two different designs.
-
+//
+// It is the kit's Row now rather than a hand-drawn card. The pin sits in the
+// measured column on the right, where everything the app worked out about a
+// row lives, and the phase -- "Live until 4 Sep", "Archived" -- is a mono chip
+// under the title, because colour is never the only carrier of meaning and a
+// pin's ink alone cannot say which of the two a Memory is in.
+//
+// The Pressable is the outer wrapper rather than Row's own onPress because Row
+// composes its spoken label from the title and the meta, and this row's label
+// says what pressing it DOES. See the report note: Row has no accessibilityLabel
+// override.
 export default function MemoryRow({memory,onPress}){
   return(
     <Pressable
-      style={styles.row}
       accessibilityRole="button"
       accessibilityLabel={`Open ${memory.title || memory.target_name || "this Memory"}`}
       onPress={onPress}
     >
-      <PlaceMarker marker={markerForMemory(memory)}/>
-      <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={1}>{memory.title || memory.target_name || "A Memory"}</Text>
-        <Text style={styles.meta} numberOfLines={1}>{phaseLabel(memory)}</Text>
-      </View>
+      <Row
+        title={memory.title || memory.target_name || "A Memory"}
+        right={<PlaceMarker marker={markerForMemory(memory)}/>}
+      >
+        <View style={styles.phase}>
+          <Chip label={phaseLabel(memory)}/>
+        </View>
+      </Row>
     </Pressable>
   );
 }
 
 const styles=StyleSheet.create({
-  row:{flexDirection:"row",alignItems:"center",gap:11,backgroundColor:INK.ink,borderColor:INK.inkSoft,borderWidth:1,borderRadius:14,padding:12,marginBottom:9},
-  body:{flex:1},
-  title:{color:INK.card,fontWeight:"900",fontSize:15},
-  meta:{color:INK.card,fontSize:12,marginTop:3}
+  phase:{flexDirection:"row",marginTop:7}
 });

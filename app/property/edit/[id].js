@@ -14,7 +14,39 @@ import {supabase} from "../../../services/supabase";
 import ListingLocationPicker from "../../../components/ListingLocationPicker";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
-import {INK} from "../../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../../components/CreateHub";
+import {INK,SHAPE,TYPE} from "../../../utils/tokens";
+import {Action,Field,fieldInputStyle,Glyph,Panel,Screen,ScreenTitle,SectionRule} from "../../../components/instrument";
+
+// A MANAGER'S SWITCH, BUILT FROM THE KIT.
+//
+// The kit has no switch: it has Chip, Segmented and Action, and none of them is
+// "one claim, on or off, with the sentence that explains it attached". This is
+// the smallest honest composition of the parts that do exist -- a Panel that
+// steps to `panelRaised` when it is on, a bracketed tick box on the housing
+// rather than a filled state ink, and the body face for the sentence because a
+// person wrote it. It keeps accessibilityRole="switch" so it still announces
+// itself as one.
+function SwitchRow({label,hint,value,onPress,accessibilityLabel}){
+  return(
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{checked:value}}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+    >
+      <Panel raised={value} style={styles.switchRow}>
+        <View style={[styles.switchBox,value&&styles.switchBoxOn]}>
+          {value ? <Glyph name="check" size={13} colour={INK.readout} weight={1.9}/> : null}
+        </View>
+        <View style={styles.switchText}>
+          <Text style={styles.switchLabel}>{label}</Text>
+          {hint ? <Text style={styles.switchHint}>{hint}</Text> : null}
+        </View>
+      </Panel>
+    </Pressable>
+  );
+}
 
 export default function EditProperty(){
   const {id}=useLocalSearchParams();
@@ -143,76 +175,147 @@ export default function EditProperty(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large"/></View>;
+    return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Edit Property</Text>
-      <TextInput style={styles.input} placeholder="Property name" value={name} onChangeText={setName}/>
-      <TextInput style={styles.input} placeholder="Host name" value={host} onChangeText={setHost}/>
-      <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
-      <TextInput style={styles.input} placeholder="Booking URL" value={bookingUrl} onChangeText={setBookingUrl}/>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="EDIT STAY"
+          title={property?.name || "Edit property"}
+          meta="Changes appear on the map and the listing page straight away."
+        />
 
-      {/*
-        AVAILABILITY, ON THE MAP.
-        Only a Manager can know whether this is true, so only a Manager can say
-        it. Off by default, and off removes the bubble rather than the pin.
-      */}
-      <Pressable
-        accessibilityRole="switch"
-        accessibilityState={{checked:showAvailability}}
-        accessibilityLabel="Show availability on the map"
-        style={[styles.toggle,showAvailability && styles.toggleOn]}
-        onPress={()=>setShowAvailability((current)=>!current)}
-      >
-        <Text style={styles.toggleText}>
-          {showAvailability ? "On — availability can appear on the map" : "Show availability on the map"}
-        </Text>
-      </Pressable>
+        <SectionRule label="The listing"/>
 
-      {showAvailability && (
-        <>
+        <Field label="Property name" required>
           <TextInput
-            style={styles.input}
-            placeholder="Rooms available (optional)"
-            keyboardType="number-pad"
-            maxLength={2}
-            value={roomsAvailable}
-            onChangeText={setRoomsAvailable}
-            accessibilityLabel="Rooms available, optional"
+            style={fieldInputStyle}
+            placeholder="Cliff Top Cottage"
+            placeholderTextColor={INK.readoutFaint}
+            value={name}
+            onChangeText={setName}
           />
-          <Text style={styles.help}>
-            Leave this empty and the map simply says &quot;Available&quot;. Xplorer does not
-            track bookings, so it will never claim a number you have not given it.
-          </Text>
-        </>
-      )}
+        </Field>
 
-      <ListingLocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+        <Field label="Host name">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Who guests will be met by"
+            placeholderTextColor={INK.readoutFaint}
+            value={host}
+            onChangeText={setHost}
+          />
+        </Field>
 
-      <Pressable style={styles.button} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </Pressable>
-      <Pressable style={styles.deleteButton} onPress={deleteProperty}>
-        <Text style={styles.buttonText}>Delete Property</Text>
-      </Pressable>
-    </ScrollView>
+        <Field label="Description">
+          <TextInput
+            style={[fieldInputStyle,styles.multiline]}
+            placeholder="What the stay is like, and what is nearby."
+            placeholderTextColor={INK.readoutFaint}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
+        </Field>
+
+        <Field label="Booking URL">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="https://"
+            placeholderTextColor={INK.readoutFaint}
+            value={bookingUrl}
+            onChangeText={setBookingUrl}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        </Field>
+
+        <SectionRule label="On the map"/>
+
+        {/*
+          AVAILABILITY, ON THE MAP.
+          Only a Manager can know whether this is true, so only a Manager can say
+          it. Off by default, and off removes the bubble rather than the pin.
+        */}
+        <SwitchRow
+          accessibilityLabel="Show availability on the map"
+          label={showAvailability ? "On — availability can appear on the map" : "Show availability on the map"}
+          hint="Off leaves the pin exactly where it is. It only removes the bubble."
+          value={showAvailability}
+          onPress={()=>setShowAvailability((current)=>!current)}
+        />
+
+        {showAvailability && (
+          <Field
+            label="Rooms available"
+            hint={"Optional. Leave this empty and the map simply says “Available”. Xplorer does not track bookings, so it will never claim a number you have not given it."}
+            style={styles.spacedField}
+          >
+            <TextInput
+              style={fieldInputStyle}
+              placeholder="2"
+              placeholderTextColor={INK.readoutFaint}
+              keyboardType="number-pad"
+              maxLength={2}
+              value={roomsAvailable}
+              onChangeText={setRoomsAvailable}
+              accessibilityLabel="Rooms available, optional"
+            />
+          </Field>
+        )}
+
+        <SectionRule label="Where it is"/>
+
+        <ListingLocationPicker
+          initialAddress={address}
+          initialLatitude={latitude}
+          initialLongitude={longitude}
+          onChange={chooseLocation}
+        />
+
+        <Action
+          kind="primary"
+          glyph="check"
+          label="Save this property"
+          accessibilityLabel="Save this property"
+          loading={saving}
+          onPress={save}
+        />
+
+        {/* See the note on the same control in app/business/edit/[id].js:
+            `dispute` is the manager's colour, not a generic destructive one. */}
+        <Action
+          kind="quiet"
+          glyph="trash"
+          label="Delete this property"
+          accessibilityLabel="Delete this property"
+          style={styles.delete}
+          onPress={deleteProperty}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:50},
-  center:{flex:1,alignItems:"center",justifyContent:"center"},
-  title:{fontSize:30,fontWeight:"bold",marginBottom:20},
-  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},
-  multiline:{minHeight:100,textAlignVertical:"top"},
-  toggle:{borderWidth:2,borderColor:INK.hair,borderRadius:11,padding:14,marginBottom:14,minHeight:44,justifyContent:"center"},
-  toggleOn:{borderColor:INK.ink},
-  toggleText:{color:INK.ink,fontWeight:"800"},
-  help:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:-6,marginBottom:14},
-  button:{backgroundColor:INK.ink,padding:15,borderRadius:10},
-  deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:14},
-  buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"},
+  multiline:{minHeight:110},
+  spacedField:{marginTop:12},
+
+  switchRow:{flexDirection:"row",alignItems:"center",gap:12,padding:13,minHeight:SHAPE.tapTarget},
+  switchBox:{
+    width:22,height:22,borderRadius:SHAPE.radius.control,
+    borderWidth:SHAPE.border,borderColor:INK.hairline,backgroundColor:INK.inset,
+    alignItems:"center",justifyContent:"center"
+  },
+  switchBoxOn:{borderColor:INK.hairlineStrong,backgroundColor:INK.panelRaised},
+  switchText:{flex:1,minWidth:0},
+  switchLabel:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.4},
+  switchHint:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,marginTop:4},
+
+  delete:{marginTop:12}
 });

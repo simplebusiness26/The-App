@@ -4,7 +4,8 @@ import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
 import {entityTypeLabel} from "../utils/places";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph,MONO} from "./instrument";
 
 // Packet 8e. components/FollowButton.js follows a person; this follows a place,
 // a club, an event, a public place or a town.
@@ -123,51 +124,62 @@ export default function EntityFollowButton({targetType,targetId,targetName,noun,
     if(onChanged) await onChanged();
   }
 
+  const busy=loading || working;
+  const text=!user
+    ? "Log in to follow"
+    : following
+      ? (noun ? `Following ${noun}` : "Following")
+      : (noun ? `Follow ${noun}` : "Follow");
+
+  // Same machined control as FollowButton, LikeButton, EndorseButton and
+  // FavouriteButton. The follower count is a measurement, so it is set in mono
+  // beside the label rather than glued into it with a middle dot -- the old
+  // "Follow the park · 12" ran one sentence and one number together in the same
+  // face, and a reader could not tell which half the app had counted.
   return(
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={following ? `Unfollow ${noun || `this ${label}`}` : `Follow ${noun || `this ${label}`}`}
-      disabled={loading || working}
+      accessibilityState={{selected:following,disabled:busy}}
+      disabled={busy}
       style={[
-        styles.button,
-        compact && styles.compact,
-        following && styles.following,
-        (loading || working) && styles.disabled
+        styles.control,
+        compact ? styles.compact : styles.full,
+        following && styles.controlOn,
+        busy && styles.disabled
       ]}
       onPress={toggleFollow}
     >
-      {(loading || working)
-        ? <ActivityIndicator size="small" color={INK.ink}/>
+      {busy
+        ? <ActivityIndicator size="small" color={INK.readoutSoft}/>
         : (
-          <Text style={styles.text} numberOfLines={1}>
-            {!user
-              ? "Log in to follow"
-              : following
-                ? (noun ? `Following ${noun}` : "Following")
-                : (noun ? `Follow ${noun}` : "Follow")}
-            {count>0 ? ` · ${count}` : ""}
-          </Text>
+          <>
+            <Glyph name={following?"check":"plus"} size={14} colour={following?INK.readout:INK.readoutSoft} weight={following?1.9:1.5}/>
+            <Text style={[styles.label,following && styles.labelOn]} numberOfLines={1}>{text}</Text>
+            {count>0 ? <Text style={styles.count}>{count}</Text> : null}
+          </>
         )}
     </Pressable>
   );
 }
 
 const styles=StyleSheet.create({
-  button:{
-    minWidth:118,
-    maxWidth:230,
-    minHeight:44,
-    paddingHorizontal:18,
-    paddingVertical:11,
-    borderRadius:12,
-    borderWidth:2,
-    borderColor:INK.ink,
-    backgroundColor:INK.card,
-    alignItems:"center",
-    justifyContent:"center"
+  control:{
+    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:7,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
   },
-  compact:{minWidth:96,minHeight:38,paddingHorizontal:13,paddingVertical:8,borderRadius:10},
-  following:{backgroundColor:INK.hair},
-  disabled:{opacity:0.65},
-  text:{color:INK.ink,fontWeight:"800",fontSize:14}
+  full:{minWidth:118,maxWidth:230,minHeight:SHAPE.tapTarget,paddingHorizontal:16,paddingVertical:11},
+  compact:{minWidth:96,minHeight:38,paddingHorizontal:12,paddingVertical:8},
+  controlOn:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  disabled:{opacity:0.55},
+  label:{
+    fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.9,
+    textTransform:"uppercase",fontWeight:"600",color:INK.readoutSoft,flexShrink:1
+  },
+  labelOn:{color:INK.readout},
+  count:{
+    fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.9,
+    color:INK.readoutFaint,paddingLeft:2
+  }
 });

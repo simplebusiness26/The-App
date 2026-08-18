@@ -1,7 +1,8 @@
 import React from "react";
-import {View,Text,Pressable,StyleSheet,ActivityIndicator} from "react-native";
+import {View,StyleSheet,ActivityIndicator} from "react-native";
 import {router} from "expo-router";
 import {INK} from "../utils/tokens";
+import {Screen,Empty,Action} from "./instrument";
 
 // What a screen shows instead of itself when the person opening it is not
 // entitled to. Shared by the three listing management screens because the
@@ -9,50 +10,42 @@ import {INK} from "../utils/tokens";
 // refusal is how three different refusals eventually appear.
 //
 // Never a dead end: a refusal that does not say what to do next is the "Nothing
-// here" the design system bans, with extra steps.
+// here" the design system bans, with extra steps. That is exactly what the
+// kit's Empty is for -- it takes an instruction and an action, and it draws the
+// dial-face plate rather than a shrug.
 export default function GateNotice({checking,message}){
   if(checking){
     return(
-      <View style={styles.centre}>
-        <ActivityIndicator size="large" color={INK.ink}/>
-      </View>
+      <Screen>
+        <View style={styles.centre}>
+          <ActivityIndicator size="large" color={INK.readout}/>
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <View style={styles.centre}>
-      <Text style={styles.title}>Not your screen yet</Text>
-      <Text style={styles.body}>{message}</Text>
-
-      <Pressable
-        style={styles.action}
-        accessibilityRole="button"
-        accessibilityLabel="Open the manager dashboard"
-        onPress={()=>router.replace("/manager/dashboard")}
-      >
-        <Text style={styles.actionText}>Open the manager dashboard</Text>
-      </Pressable>
-    </View>
+    <Screen>
+      <View style={styles.centre}>
+        <Empty
+          glyph="lock"
+          title="Not your screen yet"
+          instruction={message}
+          action={
+            <Action
+              kind="secondary"
+              glyph="forward"
+              label="Open the manager dashboard"
+              accessibilityLabel="Open the manager dashboard"
+              onPress={()=>router.replace("/manager/dashboard")}
+            />
+          }
+        />
+      </View>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  centre:{flex:1,alignItems:"center",justifyContent:"center",padding:26,backgroundColor:INK.paper},
-  title:{fontSize:22,fontWeight:"800",color:INK.ink,marginBottom:10,textAlign:"center"},
-  body:{fontSize:14,lineHeight:21,color:INK.ink,textAlign:"center",marginBottom:20},
-  action:{
-    minHeight:48,
-    justifyContent:"center",
-    paddingHorizontal:18,
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:0
-  },
-  actionText:{fontSize:15,fontWeight:"700",color:INK.ink}
+  centre:{flex:1,alignItems:"center",justifyContent:"center",paddingHorizontal:8}
 });

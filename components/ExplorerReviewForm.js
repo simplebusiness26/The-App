@@ -14,7 +14,22 @@ import {router} from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
-import {INK} from "../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "./CreateHub";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {
+  Action,
+  Field,
+  fieldInputStyle,
+  Frame,
+  Glyph,
+  MONO,
+  Notice,
+  Panel,
+  ReadoutStrip,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "./instrument";
 
 const TARGET_CONFIG={
   business:{
@@ -354,173 +369,260 @@ export default function ExplorerReviewForm({targetType,targetId,qrCode}){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
+    return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
   }
 
   if(error && !target){
     return(
-      <View style={styles.center}>
-        <Text style={styles.fatalTitle}>Review unavailable</Text>
-        <Text style={styles.fatalText}>{error}</Text>
-        <Pressable style={styles.secondaryButton} onPress={()=>router.back()}>
-          <Text style={styles.secondaryButtonText}>Go back</Text>
-        </Pressable>
-      </View>
+      <Screen>
+        <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+          <ScreenTitle eyebrow="REVIEW" title="Review unavailable"/>
+          <Notice tone="dispute" label="Not loaded">{error}</Notice>
+          <Action kind="secondary" glyph="back" label="Go back" onPress={()=>router.back()}/>
+        </ScrollView>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>{contentLabel.toUpperCase()}</Text>
-      <Text style={styles.title}>Review {target?.name}</Text>
-      <Text style={styles.subtitle}>{config.subtitle}</Text>
+    <Screen>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenTitle
+          eyebrow={contentLabel.toUpperCase()}
+          title={`Review ${target?.name}`}
+          meta={config.subtitle}
+        />
 
-      <View style={styles.pointsCard}>
-        <View>
-          <Text style={styles.pointsLabel}>POINTS PREVIEW</Text>
-          <Text style={styles.pointsText}>{possiblePoints} point{possiblePoints===1 ? "" : "s"}</Text>
-        </View>
-        <Text style={styles.pointsBreakdown}>
-          {basePoints} content{cleanQrCode ? " + 3 verified visit" : ""}
-        </Text>
-      </View>
+        {/* WHAT THIS REVIEW IS WORTH, READ OFF A PLATE.
+            It was a filled blue card with three sizes of white text on it. The
+            points are three separate measurements -- what you will earn, what
+            the content is worth, and what the on-site scan adds -- so they are
+            three readouts on one strip, which is the instrument's answer to
+            "several numbers about one thing". */}
+        <ReadoutStrip
+          style={styles.points}
+          items={[
+            {label:"Points",value:String(possiblePoints)},
+            {label:"Content",value:String(basePoints)},
+            {label:"Verified visit",value:cleanQrCode ? "+3" : "—",tone:cleanQrCode ? "readout" : "readoutFaint"}
+          ]}
+        />
 
-      {!!error && <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View>}
+        {!!error && <Notice tone="dispute" label="Not published">{error}</Notice>}
 
-      <Text style={styles.label}>Rating</Text>
-      <View style={styles.stars}>
-        {[1,2,3,4,5].map(star=>(
-          <Pressable key={star} onPress={()=>setRating(star)} disabled={submitting}>
-            <Text style={styles.star}>{star<=rating ? "★" : "☆"}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.ratingText}>{rating}/5</Text>
+        <SectionRule label="Your rating"/>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Review title (required for video)"
-        placeholderTextColor={INK.inkSoft}
-        value={title}
-        onChangeText={setTitle}
-        maxLength={80}
-        editable={!submitting}
-      />
-
-      <TextInput
-        style={styles.textarea}
-        placeholder="What was your experience like?"
-        placeholderTextColor={INK.inkSoft}
-        value={comment}
-        onChangeText={setComment}
-        multiline
-        maxLength={1500}
-        editable={!submitting}
-      />
-      <Text style={styles.characterCount}>{comment.length}/1500</Text>
-
-      <View style={styles.mediaHeadingRow}>
-        <View>
-          <Text style={styles.sectionTitle}>Review media</Text>
-          <Text style={styles.sectionHelp}>Up to 3 images and one 30-second video</Text>
-        </View>
-        <Text style={styles.mediaCount}>{images.length}/3</Text>
-      </View>
-
-      {!!images.length && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageRow}>
-          {images.map((asset,index)=>(
-            <View key={`${asset.uri}-${index}`} style={styles.imageWrap}>
-              <Image source={{uri:asset.uri}} style={styles.previewImage}/>
-              <Pressable style={styles.removeButton} onPress={()=>setImages(current=>current.filter((_,itemIndex)=>itemIndex!==index))} disabled={submitting}>
-                <Text style={styles.removeText}>×</Text>
+        {/*
+          A RATING IS A MEASUREMENT, AND THIS ONE IS ALSO A CONTROL.
+          Five repeated star characters at 38px were a count somebody had to do
+          themselves, drawn in whatever the platform font felt like, with a tap
+          target the size of the character. These are the kit's star glyph on the
+          same 16x16 grid as everything else, each in its own 44px target, each
+          saying out loud what it sets -- and the number is read out beside them
+          so the value is legible without counting.
+        */}
+        <Field label="Rating" required>
+          <View style={styles.stars} accessibilityLabel={`Rated ${rating} out of 5`}>
+            {[1,2,3,4,5].map(star=>(
+              <Pressable
+                key={star}
+                style={styles.star}
+                onPress={()=>setRating(star)}
+                disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel={`Rate ${star} out of 5`}
+                accessibilityState={{selected:star<=rating,disabled:!!submitting}}
+              >
+                <Glyph
+                  name="star"
+                  size={22}
+                  weight={star<=rating ? 1.9 : 1.3}
+                  colour={star<=rating ? INK.exists : INK.hairlineStrong}
+                />
               </Pressable>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-
-      {!!video && (
-        <View style={styles.videoPreview}>
-          <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
-          <View style={styles.videoMeta}>
-            <Text style={styles.videoTitle}>Video selected</Text>
-            <Text style={styles.videoText}>{Math.ceil(durationSeconds(video) || 0)} seconds · 6-point review</Text>
+            ))}
+            <View style={styles.starRule}/>
+            <Text style={styles.ratingValue}>{rating}/5</Text>
           </View>
-          <Pressable onPress={()=>setVideo(null)} disabled={submitting}>
-            <Text style={styles.clearVideo}>Remove</Text>
-          </Pressable>
-        </View>
-      )}
+        </Field>
 
-      <View style={styles.mediaButtons}>
-        <Pressable style={[styles.mediaButton,images.length>=3 && styles.disabled]} onPress={pickImage} disabled={submitting || images.length>=3}>
-          <Text style={styles.mediaButtonText}>📷 Add image</Text>
-        </Pressable>
-        <Pressable style={[styles.mediaButton,!!video && styles.disabled]} onPress={pickVideo} disabled={submitting || !!video}>
-          <Text style={styles.mediaButtonText}>🎥 Add video</Text>
-        </Pressable>
-      </View>
+        <Field label="Review title" hint="Required for a video review.">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Worth the walk"
+            placeholderTextColor={INK.readoutFaint}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={80}
+            editable={!submitting}
+          />
+        </Field>
 
-      <Text style={styles.ruleText}>Points use the highest content type: text 1, images 3 or video 6. A valid on-site QR scan adds 3 more.</Text>
+        <Field label="Your review" required>
+          <TextInput
+            style={[fieldInputStyle,styles.textarea]}
+            placeholder="What was your experience like?"
+            placeholderTextColor={INK.readoutFaint}
+            value={comment}
+            onChangeText={setComment}
+            multiline
+            textAlignVertical="top"
+            maxLength={1500}
+            editable={!submitting}
+          />
+        </Field>
+        <Text style={styles.counter}>{comment.length}/1500</Text>
 
-      <Pressable style={[styles.submitButton,submitting && styles.disabled]} onPress={submitReview} disabled={submitting}>
-        {submitting ? (
-          <View style={styles.submitRow}><ActivityIndicator color={INK.ink}/><Text style={styles.submitText}>Publishing review...</Text></View>
-        ) : (
-          <Text style={styles.submitText}>Publish Review · {possiblePoints} pts</Text>
+        <SectionRule label="Review media" meta={`${images.length}/3`}/>
+        <Text style={styles.help}>Up to 3 images and one 30-second video.</Text>
+
+        {!!images.length && (
+          /*
+            A horizontal ScrollView inside a flex column claims all the leftover
+            vertical space and stretches its children to fill it -- measured in
+            this repo at 402px-tall pills. flexGrow:0/flexShrink:0 and a centred
+            content container are what stop that.
+          */
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.imageScroll}
+            contentContainerStyle={styles.imageRow}
+          >
+            {images.map((asset,index)=>(
+              <Frame key={`${asset.uri}-${index}`} size={112} style={styles.imageWrap}>
+                <Image source={{uri:asset.uri}} style={styles.previewImage}/>
+                <Pressable
+                  style={styles.removeButton}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove image ${index+1}`}
+                  onPress={()=>setImages(current=>current.filter((_,itemIndex)=>itemIndex!==index))}
+                  disabled={submitting}
+                >
+                  <Glyph name="close" size={13} colour={INK.readout} weight={1.8}/>
+                </Pressable>
+              </Frame>
+            ))}
+          </ScrollView>
         )}
-      </Pressable>
-    </ScrollView>
+
+        {!!video && (
+          <Panel style={styles.videoPreview}>
+            <View style={styles.playDial}>
+              <Glyph name="play" size={17} colour={INK.readout} weight={1.5}/>
+            </View>
+            <View style={styles.videoMeta}>
+              <Text style={styles.videoTitle}>Video selected</Text>
+              <Text style={styles.videoText}>
+                {Math.ceil(durationSeconds(video) || 0)}S · 6-POINT REVIEW
+              </Text>
+            </View>
+            <Action
+              kind="quiet"
+              label="Remove"
+              accessibilityLabel="Remove the video"
+              style={styles.removeVideo}
+              onPress={()=>setVideo(null)}
+              disabled={submitting}
+            />
+          </Panel>
+        )}
+
+        <View style={styles.mediaButtons}>
+          <Action
+            kind="secondary"
+            glyph="image"
+            label="Add image"
+            style={styles.mediaButton}
+            onPress={pickImage}
+            disabled={submitting || images.length>=3}
+          />
+          <Action
+            kind="secondary"
+            glyph="video"
+            label="Add video"
+            style={styles.mediaButton}
+            onPress={pickVideo}
+            disabled={submitting || !!video}
+          />
+        </View>
+
+        <Text style={styles.help}>
+          Points use the highest content type: text 1, images 3 or video 6. A
+          valid on-site QR scan adds 3 more.
+        </Text>
+
+        <Action
+          kind="primary"
+          glyph="send"
+          label="Publish this review"
+          accessibilityLabel="Publish this review"
+          loading={submitting}
+          style={styles.submit}
+          onPress={submitReview}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:22,paddingBottom:60},
-  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  eyebrow:{color:INK.blue,fontWeight:"800",fontSize:12,letterSpacing:1},
-  title:{color:INK.ink,fontSize:30,fontWeight:"900",marginTop:6},
-  subtitle:{color:INK.inkSoft,fontSize:16,lineHeight:23,marginTop:7,marginBottom:18},
-  pointsCard:{backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:15,padding:16,flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:18},
-  pointsLabel:{color:INK.card,fontSize:11,fontWeight:"900",letterSpacing:0.8},
-  pointsText:{color:INK.card,fontSize:23,fontWeight:"900",marginTop:3},
-  pointsBreakdown:{color:INK.card,fontSize:12,maxWidth:"44%",textAlign:"right"},
-  errorBox:{backgroundColor:INK.red,borderColor:INK.red,borderWidth:1,borderRadius:12,padding:13,marginBottom:16},
-  errorText:{color:INK.card,lineHeight:20,fontWeight:"600"},
-  label:{color:INK.ink,fontSize:17,fontWeight:"800"},
-  stars:{flexDirection:"row",marginTop:9},
-  star:{color:INK.ink,fontSize:38,marginRight:4},
-  ratingText:{color:INK.inkSoft,fontWeight:"700",marginTop:2,marginBottom:16},
-  input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,marginBottom:12},
-  textarea:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:12,padding:14,color:INK.ink,fontSize:16,minHeight:130,textAlignVertical:"top"},
-  characterCount:{color:INK.inkSoft,fontSize:12,textAlign:"right",marginTop:5},
-  mediaHeadingRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:22,marginBottom:11},
-  sectionTitle:{color:INK.ink,fontSize:19,fontWeight:"900"},
-  sectionHelp:{color:INK.inkSoft,fontSize:12,marginTop:3},
-  mediaCount:{color:INK.blue,fontWeight:"900"},
-  imageRow:{paddingBottom:10},
-  imageWrap:{width:115,height:115,marginRight:10,position:"relative"},
-  previewImage:{width:"100%",height:"100%",borderRadius:12,backgroundColor:INK.card},
-  removeButton:{position:"absolute",right:6,top:6,width:28,height:28,borderRadius:14,backgroundColor:"rgba(0,0,0,0.78)",alignItems:"center",justifyContent:"center"},
-  removeText:{color:INK.ink,fontSize:21,lineHeight:23,fontWeight:"900"},
-  videoPreview:{backgroundColor:INK.card,borderColor:INK.blue,borderWidth:1,borderRadius:13,padding:13,flexDirection:"row",alignItems:"center",marginBottom:10},
-  playCircle:{width:45,height:45,borderRadius:23,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  playIcon:{color:INK.card,fontSize:18,marginLeft:2},
-  videoMeta:{flex:1,marginLeft:11},
-  videoTitle:{color:INK.ink,fontWeight:"900"},
-  videoText:{color:INK.inkSoft,fontSize:12,marginTop:3},
-  clearVideo:{color:INK.ink,fontWeight:"800",fontSize:12},
-  mediaButtons:{flexDirection:"row",gap:10},
-  mediaButton:{flex:1,borderColor:INK.blue,borderWidth:1,backgroundColor:INK.blue,padding:13,borderRadius:11,alignItems:"center"},
-  mediaButtonText:{color:INK.card,fontWeight:"800"},
-  ruleText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:14},
-  submitButton:{backgroundColor:INK.blue,padding:17,borderRadius:13,alignItems:"center",marginTop:22},
-  submitText:{color:INK.card,fontWeight:"900",fontSize:16,marginLeft:9},
-  submitRow:{flexDirection:"row",alignItems:"center"},
-  disabled:{opacity:0.5},
-  fatalTitle:{color:INK.ink,fontSize:24,fontWeight:"900"},
-  fatalText:{color:INK.ink,textAlign:"center",lineHeight:22,marginTop:9},
-  secondaryButton:{marginTop:18,borderColor:INK.ink,borderWidth:1,borderRadius:11,paddingHorizontal:20,paddingVertical:12},
-  secondaryButtonText:{color:INK.ink,fontWeight:"800"}
+  screen:{flex:1},
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center",padding:28},
+
+  points:{marginTop:14,marginBottom:16},
+
+  stars:{flexDirection:"row",alignItems:"center",paddingHorizontal:6,paddingVertical:2},
+  star:{width:SHAPE.tapTarget,height:SHAPE.tapTarget,alignItems:"center",justifyContent:"center"},
+  starRule:{flex:1,height:1,backgroundColor:INK.hairline,marginHorizontal:10},
+  ratingValue:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.lg,
+    letterSpacing:0.8,paddingRight:10
+  },
+
+  textarea:{minHeight:130},
+  counter:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.8,textAlign:"right",marginTop:-10,marginBottom:4
+  },
+  help:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginBottom:12
+  },
+
+  imageScroll:{flexGrow:0,flexShrink:0},
+  imageRow:{alignItems:"center",gap:10,paddingBottom:12},
+  imageWrap:{position:"relative"},
+  previewImage:{width:"100%",height:"100%"},
+  removeButton:{
+    position:"absolute",right:5,top:5,width:26,height:26,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairlineStrong,
+    alignItems:"center",justifyContent:"center"
+  },
+
+  videoPreview:{flexDirection:"row",alignItems:"center",gap:12,padding:12,marginBottom:12},
+  playDial:{
+    width:38,height:38,borderRadius:SHAPE.radius.pill,
+    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairlineStrong,
+    alignItems:"center",justifyContent:"center",paddingLeft:2
+  },
+  videoMeta:{flex:1,minWidth:0},
+  videoTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  videoText:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.8,marginTop:4
+  },
+  removeVideo:{paddingHorizontal:12},
+
+  mediaButtons:{flexDirection:"row",gap:10,marginBottom:14},
+  mediaButton:{flex:1},
+
+  submit:{marginTop:6}
 });

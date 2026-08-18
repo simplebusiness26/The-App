@@ -1,18 +1,17 @@
 import React,{useState} from "react";
 import {
-  Text,
   TextInput,
-  Pressable,
   StyleSheet,
   ScrollView,
-  Alert,
-  ActivityIndicator
+  Alert
 } from "react-native";
 import {supabase} from "../../services/supabase";
 import {router} from "expo-router";
 import ListingLocationPicker from "../../components/ListingLocationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {INK} from "../../utils/tokens";
+import {Action,Field,fieldInputStyle,Screen,ScreenTitle,SectionRule} from "../../components/instrument";
 
 export default function AddProperty(){
   const {showFeedback}=useFeedback();
@@ -73,28 +72,78 @@ export default function AddProperty(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Add Property</Text>
-      <TextInput style={styles.input} placeholder="Property Name" value={name} onChangeText={setName}/>
-      <TextInput style={styles.input} placeholder="Host Name" value={host} onChangeText={setHost}/>
-      <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
-      <TextInput style={styles.input} placeholder="Booking URL" value={bookingUrl} onChangeText={setBookingUrl}/>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="NEW STAY"
+          title="Add a property"
+          meta="A place people can book. It goes on the map and into your manager dashboard."
+        />
 
-      <ListingLocationPicker onChange={setSelectedLocation}/>
+        <SectionRule label="The listing"/>
 
-      <Pressable style={styles.button} onPress={addProperty} disabled={loading}>
-        {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Create Property Listing</Text>}
-      </Pressable>
-    </ScrollView>
+        <Field label="Property name" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Cliff Top Cottage"
+            placeholderTextColor={INK.readoutFaint}
+            value={name}
+            onChangeText={setName}
+          />
+        </Field>
+
+        <Field label="Host name">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Who guests will be met by"
+            placeholderTextColor={INK.readoutFaint}
+            value={host}
+            onChangeText={setHost}
+          />
+        </Field>
+
+        <Field label="Description">
+          <TextInput
+            style={[fieldInputStyle,styles.multiline]}
+            placeholder="What the stay is like, and what is nearby."
+            placeholderTextColor={INK.readoutFaint}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
+        </Field>
+
+        <Field label="Booking URL">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="https://"
+            placeholderTextColor={INK.readoutFaint}
+            value={bookingUrl}
+            onChangeText={setBookingUrl}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        </Field>
+
+        <SectionRule label="Where it is"/>
+
+        <ListingLocationPicker onChange={setSelectedLocation}/>
+
+        <Action
+          kind="primary"
+          glyph="plus"
+          label="Create this property listing"
+          accessibilityLabel="Create this property listing"
+          loading={loading}
+          onPress={addProperty}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:50},
-  title:{fontSize:30,fontWeight:"bold",marginBottom:20},
-  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},
-  multiline:{minHeight:100,textAlignVertical:"top"},
-  button:{backgroundColor:INK.ink,padding:15,borderRadius:10},
-  buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  multiline:{minHeight:110}
 });

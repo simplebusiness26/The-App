@@ -1,9 +1,6 @@
 import React,{useEffect,useState} from "react";
 import {
-  View,
-  Text,
   TextInput,
-  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -16,7 +13,9 @@ import ClassificationPicker from "../../../components/ClassificationPicker";
 import {UNCLASSIFIED} from "../../../utils/taxonomy";
 import {useFeedback} from "../../../context/FeedbackContext";
 import {coordinate} from "../../../utils/coordinates";
+import {CREATE_HUB_CLEARANCE} from "../../../components/CreateHub";
 import {INK} from "../../../utils/tokens";
+import {Action,Field,fieldInputStyle,Screen,ScreenTitle,SectionRule} from "../../../components/instrument";
 
 export default function EditBusiness(){
   const {id}=useLocalSearchParams();
@@ -142,42 +141,140 @@ export default function EditBusiness(){
   }
 
   if(loading){
-    return <View style={styles.loading}><ActivityIndicator size="large"/></View>;
+    return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Edit Business</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Business name"/>
-      <ClassificationPicker
-        category={category}
-        businessType={businessType}
-        claimed={business?.claimed===true}
-        disabled={saving}
-        onChange={({category:nextCategory,businessType:nextType})=>{
-          setCategory(nextCategory);
-          setBusinessType(nextType);
-        }}
-      />
-      <TextInput style={[styles.input,styles.multiline]} value={description} onChangeText={setDescription} placeholder="Description" multiline/>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="EDIT BUSINESS"
+          title={business?.name || "Edit business"}
+          meta="Changes appear on the map and the listing page straight away."
+        />
 
-      <ListingLocationPicker initialAddress={address} initialLatitude={latitude} initialLongitude={longitude} onChange={chooseLocation}/>
+        <SectionRule label="The listing"/>
 
-      <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone"/>
-      <TextInput style={styles.input} value={website} onChangeText={setWebsite} placeholder="Website"/>
-      <TextInput style={styles.input} value={image} onChangeText={setImage} placeholder="Main image URL"/>
-      <TextInput style={styles.input} value={openingHours} onChangeText={setOpeningHours} placeholder="Opening hours"/>
+        <Field label="Business name" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="The Rock House"
+            placeholderTextColor={INK.readoutFaint}
+            value={name}
+            onChangeText={setName}
+          />
+        </Field>
 
-      <Pressable style={styles.button} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </Pressable>
-      <Pressable style={styles.deleteButton} onPress={deleteBusiness}>
-        <Text style={styles.buttonText}>Delete Business</Text>
-      </Pressable>
-    </ScrollView>
+        <ClassificationPicker
+          category={category}
+          businessType={businessType}
+          claimed={business?.claimed===true}
+          disabled={saving}
+          onChange={({category:nextCategory,businessType:nextType})=>{
+            setCategory(nextCategory);
+            setBusinessType(nextType);
+          }}
+        />
+
+        <Field label="Description">
+          <TextInput
+            style={[fieldInputStyle,styles.multiline]}
+            placeholder="What it is, and what somebody should know before coming."
+            placeholderTextColor={INK.readoutFaint}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
+        </Field>
+
+        <SectionRule label="Where it is"/>
+
+        <ListingLocationPicker
+          initialAddress={address}
+          initialLatitude={latitude}
+          initialLongitude={longitude}
+          onChange={chooseLocation}
+        />
+
+        <SectionRule label="How to reach it"/>
+
+        <Field label="Phone">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="01424 000000"
+            placeholderTextColor={INK.readoutFaint}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+        </Field>
+
+        <Field label="Website">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="https://"
+            placeholderTextColor={INK.readoutFaint}
+            value={website}
+            onChangeText={setWebsite}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        </Field>
+
+        <Field label="Main image URL">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="https://"
+            placeholderTextColor={INK.readoutFaint}
+            value={image}
+            onChangeText={setImage}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        </Field>
+
+        <Field label="Opening hours">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Mon–Sat 9–5"
+            placeholderTextColor={INK.readoutFaint}
+            value={openingHours}
+            onChangeText={setOpeningHours}
+          />
+        </Field>
+
+        <Action
+          kind="primary"
+          glyph="check"
+          label="Save this business"
+          accessibilityLabel="Save this business"
+          loading={saving}
+          onPress={save}
+        />
+
+        {/*
+          Delete is a destructive choice, not a manager dispute -- `dispute` is
+          reserved for that one pair (docs/design-system.md), so the quietest
+          control on the screen carries it instead of the loudest colour. The
+          confirmation dialog is what actually guards it.
+        */}
+        <Action
+          kind="quiet"
+          glyph="trash"
+          label="Delete this business"
+          accessibilityLabel="Delete this business"
+          style={styles.delete}
+          onPress={deleteBusiness}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},content:{padding:20,paddingBottom:50},loading:{flex:1,justifyContent:"center",alignItems:"center"},title:{fontSize:30,fontWeight:"bold",marginBottom:20},input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},multiline:{minHeight:100,textAlignVertical:"top"},button:{backgroundColor:INK.ink,padding:15,borderRadius:10,marginTop:10},deleteButton:{backgroundColor:INK.red,padding:15,borderRadius:10,marginTop:15},buttonText:{color:INK.card,textAlign:"center",fontWeight:"bold"}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"},
+  multiline:{minHeight:110},
+  delete:{marginTop:12}
 });

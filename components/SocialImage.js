@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from "react";
-import {Image} from "react-native";
+import {Image,StyleSheet} from "react-native";
 import {displayUrlFor} from "../utils/media";
+import {Frame} from "./instrument";
 
 // An <Image> for something in a private bucket.
 //
@@ -20,8 +21,21 @@ import {displayUrlFor} from "../utils/media";
 // It falls back to the raw value rather than to nothing. See the note in
 // utils/media.js: a picture that might be public is better than an empty frame,
 // and a missed call site degrades instead of breaking.
-
-export default function SocialImage({uri,bucket,fallback=null,...rest}){
+//
+// FRAMED
+//
+// docs/design-system.md puts every picture in this app inside the viewfinder's
+// bracketed well, so `framed` wraps the picture in the kit's `Frame`: an
+// `inset` ground, a 1px hairline and four L brackets. The style passed in
+// lands on the frame and the picture fills it, which is why the prop exists
+// rather than every call site nesting a Frame of its own and getting the
+// inner sizing subtly different each time.
+//
+// It is opt-in because a bare <Image> is still right in the places that draw
+// their own well -- a full-bleed story photograph, a poster behind a play
+// control -- and because a frame silently appearing under twenty existing call
+// sites is not a change any of them asked for.
+export default function SocialImage({uri,bucket,fallback=null,framed=false,round=false,ratio=1,style,...rest}){
   const [shown,setShown]=useState(null);
 
   useEffect(()=>{
@@ -44,5 +58,21 @@ export default function SocialImage({uri,bucket,fallback=null,...rest}){
 
   // Still signing. The <Image> is rendered with no source rather than held
   // back, so the layout does not jump when the URL arrives.
-  return <Image source={shown ? {uri:shown} : undefined} {...rest}/>;
+  const picture=<Image source={shown ? {uri:shown} : undefined} style={framed ? styles.filled : style} {...rest}/>;
+
+  if(!framed) return picture;
+
+  return(
+    <Frame round={round} ratio={ratio} style={[styles.frame,style]}>
+      {picture}
+    </Frame>
+  );
 }
+
+const styles=StyleSheet.create({
+  // aspectRatio is Frame's default sizing; a caller passing an explicit height
+  // in `style` needs it out of the way, and a style key set to undefined is
+  // dropped by StyleSheet.flatten.
+  frame:{aspectRatio:undefined},
+  filled:{width:"100%",height:"100%"}
+});

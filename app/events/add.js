@@ -1,10 +1,7 @@
 import React,{useState} from "react";
 import {
-  Text,
   StyleSheet,
   ScrollView,
-  Pressable,
-  ActivityIndicator,
   Alert
 } from "react-native";
 import {router} from "expo-router";
@@ -12,7 +9,8 @@ import {supabase} from "../../services/supabase";
 import EventFormFields from "../../components/EventFormFields";
 import {createDefaultEventForm,validateEventForm} from "../../utils/events";
 import {useFeedback} from "../../context/FeedbackContext";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {Action,Screen,ScreenTitle} from "../../components/instrument";
 
 export default function AddEvent(){
   const {showFeedback}=useFeedback();
@@ -57,29 +55,33 @@ export default function AddEvent(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Add Event</Text>
-      <Text style={styles.subtitle}>Create a public event listing with a location, schedule and optional booking link.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="NEW EVENT"
+          title="Add an event"
+          meta="Create a public event listing with a location, schedule and optional booking link."
+        />
 
-      <EventFormFields
-        form={form}
-        setForm={setForm}
-        statusOptions={["published","draft"]}
-      />
+        <EventFormFields
+          form={form}
+          setForm={setForm}
+          statusOptions={["published","draft"]}
+        />
 
-      <Pressable style={[styles.button,loading && styles.disabled]} onPress={createEvent} disabled={loading}>
-        {loading ? <ActivityIndicator color={INK.ink}/> : <Text style={styles.buttonText}>Create Event</Text>}
-      </Pressable>
-    </ScrollView>
+        <Action
+          kind="primary"
+          glyph="calendar"
+          label="Create this event"
+          accessibilityLabel="Create this event"
+          loading={loading}
+          onPress={createEvent}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},
-  content:{padding:20,paddingBottom:50},
-  title:{fontSize:30,fontWeight:"900",color:INK.ink},
-  subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},
-  button:{backgroundColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
-  disabled:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"800"}
+  content:{paddingHorizontal:16,paddingBottom:24}
 });

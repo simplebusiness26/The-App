@@ -6,7 +6,19 @@ import {useFeedback} from "../../context/FeedbackContext";
 import {effectiveLinkupStatus,formatDateTime,statusLabel} from "../../utils/linkups";
 import {LINKUP_TYPE_LABEL} from "../../utils/markers";
 import {audienceShortLabel} from "../../utils/audience";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Frame,
+  Glyph,
+  Meter,
+  MONO,
+  Notice,
+  Panel,
+  Row,
+  SectionRule
+} from "../../components/instrument";
 import PlaceLayout from "../../components/PlaceLayout";
 
 // Packet 5c. The last of the five, and the only one that is a privacy gate.
@@ -26,6 +38,20 @@ import PlaceLayout from "../../components/PlaceLayout";
 // photos and reviews. Link-ups have neither, and there is no linkup_reviews
 // table anywhere in the migrations. "No reviews yet" here would invite
 // something the app cannot record.
+//
+// WHAT CHANGED IN THE REBUILD
+//
+// The slots were hand-rolled: a bordered organiser card with a bare angle
+// quotation mark for a chevron, a bordered box for the meeting point, four filled or
+// bordered blocks for join / leave / board / edit, an attendee list of
+// hairline-separated rows with circular initials, and pill-shaped report
+// reasons that filled with ink when picked.
+//
+// All of it is kit now. The meeting point in particular is a Notice rather than
+// a box: it is the app telling a member something only members may read, which
+// is exactly what a state edge and a mono eyebrow are for. The gate itself is
+// untouched -- `joined && privateDetails` is still the second lock, and RLS is
+// still the first.
 
 const REPORTS=["spam","harassment","unsafe","inappropriate","false_information","other"];
 
@@ -134,7 +160,9 @@ export default function LinkupDetail(){
       info={[
         {label:"WHAT",value:linkup?.category},
         {label:"WHEN",value:linkup ? `${formatDateTime(linkup.starts_at)} – ${formatDateTime(linkup.ends_at)}` : ""},
-        {label:"WHERE",value:linkup ? `📍 ${linkup.location_name}, ${linkup.area}` : ""}
+        // Nothing welded to the front of the value -- the label already says
+        // which question the row answers.
+        {label:"WHERE",value:linkup ? `${linkup.location_name}, ${linkup.area}` : ""}
       ]}
       stats={linkup ? [
         {value:`${linkup.attendee_count}/${linkup.max_attendees}`,label:"joined"},
@@ -147,120 +175,137 @@ export default function LinkupDetail(){
       ] : null}
       beforeActions={linkup ? (
         <View style={styles.stack}>
-          <Pressable
-            style={styles.creatorCard}
-            accessibilityRole="button"
-            accessibilityLabel={`Organised by ${creator?.full_name || "an Explorer"}`}
-            onPress={()=>router.push(`/profile/${linkup.creator_id}`)}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{creator?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>
-            </View>
-            <View style={styles.creatorText}>
-              <Text style={styles.creatorLabel}>ORGANISED BY</Text>
-              <Text style={styles.creatorName}>{creator?.full_name || "Explorer"}</Text>
-              {creator?.show_area && creator?.area ? <Text style={styles.creatorArea}>{creator.area}</Text> : null}
-            </View>
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
+          <Panel>
+            <Row
+              glyph="person"
+              title={creator?.full_name || "Explorer"}
+              sub={creator?.show_area && creator?.area ? creator.area : undefined}
+              meta="ORGANISER"
+              onPress={()=>router.push(`/profile/${linkup.creator_id}`)}
+              style={styles.creatorRow}
+            />
+          </Panel>
 
           {/*
             The second lock. RLS already returns no row to a non-member, so this
             is defence in depth rather than the boundary -- but a boundary with
             one lock is a boundary one mistake from being open.
+
+            It reads as a Notice because that is what it is: the app saying
+            something to the people allowed to hear it. A padlock glyph and a
+            mono eyebrow, not a coloured box.
           */}
           {joined && privateDetails!=="" && (
-            <View style={styles.privateCard}>
-              <Text style={styles.privateLabel}>ATTENDEE MEETING DETAILS</Text>
-              <Text style={styles.privateText}>{privateDetails}</Text>
-            </View>
+            <Notice tone="offer" label="ATTENDEE MEETING DETAILS">
+              <View style={styles.privateRow}>
+                <Glyph name="lock" size={14} colour={INK.offer}/>
+                <Text style={styles.privateText}>{privateDetails}</Text>
+              </View>
+            </Notice>
           )}
         </View>
       ) : null}
       actions={linkup ? (
         <>
           {canJoin && (
-            <Pressable
-              style={styles.primary}
-              accessibilityRole="button"
+            <Action
+              kind="primary"
+              label="Join Link-up"
+              glyph="plus"
+              style={styles.action}
               accessibilityLabel="Join this Link-up"
               disabled={working}
               onPress={()=>callRpc("join_linkup",{p_linkup_id:id},"You joined the Link-up.")}
-            >
-              <Text style={styles.primaryText}>Join Link-up</Text>
-            </Pressable>
+            />
           )}
 
           {!isOwner && joined && status!=="completed" && (
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
+            <Action
+              kind="secondary"
+              label="Leave Link-up"
+              glyph="close"
+              style={styles.action}
               accessibilityLabel="Leave this Link-up"
               disabled={working}
               onPress={()=>callRpc("leave_linkup",{p_linkup_id:id},"You left the Link-up.")}
-            >
-              <Text style={styles.secondaryText}>Leave Link-up</Text>
-            </Pressable>
+            />
           )}
 
           {boardOpen && (
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
+            <Action
+              kind="secondary"
+              label="Open private board"
+              glyph="comment"
+              style={styles.action}
               accessibilityLabel="Open the private board"
               onPress={()=>router.push(`/linkups/board/${id}`)}
-            >
-              <Text style={styles.secondaryText}>💬 Open private board</Text>
-            </Pressable>
+            />
           )}
 
           {isOwner && !["cancelled","completed"].includes(status) && (
-            <Pressable
-              style={styles.secondary}
-              accessibilityRole="button"
+            <Action
+              kind="secondary"
+              label="Edit Link-up"
+              glyph="edit"
+              style={styles.action}
               accessibilityLabel="Edit this Link-up"
               onPress={()=>router.push(`/linkups/edit/${id}`)}
-            >
-              <Text style={styles.secondaryText}>Edit Link-up</Text>
-            </Pressable>
+            />
           )}
 
           {isOwner && !["cancelled","completed"].includes(status) && (
-            <Pressable
-              style={styles.quiet}
-              accessibilityRole="button"
+            <Action
+              kind="quiet"
+              label="Cancel Link-up"
+              glyph="block"
+              style={styles.action}
               accessibilityLabel="Cancel this Link-up"
               onPress={()=>setConfirmCancel(true)}
-            >
-              <Text style={styles.quietText}>Cancel Link-up</Text>
-            </Pressable>
+            />
           )}
 
           {confirmCancel && isOwner && (
-            <View style={styles.box}>
+            <Notice tone="dispute" label="CONFIRM">
               <Text style={styles.boxTitle}>Cancel this Link-up?</Text>
               <Text style={styles.boxText}>Everyone who joined will be notified. The board becomes read-only.</Text>
               <View style={styles.confirmRow}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Keep the Link-up" onPress={()=>setConfirmCancel(false)}>
-                  <Text style={styles.secondaryText}>Keep it</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.primary}
-                  accessibilityRole="button"
+                <Action
+                  kind="quiet"
+                  label="Keep it"
+                  style={styles.confirmCell}
+                  accessibilityLabel="Keep the Link-up"
+                  onPress={()=>setConfirmCancel(false)}
+                />
+                <Action
+                  kind="danger"
+                  label="Cancel it"
+                  style={styles.confirmCell}
                   accessibilityLabel="Confirm cancelling the Link-up"
                   disabled={working}
                   onPress={()=>{setConfirmCancel(false);callRpc("cancel_linkup",{p_linkup_id:id},"The Link-up was cancelled.");}}
-                >
-                  <Text style={styles.primaryText}>Cancel it</Text>
-                </Pressable>
+                />
               </View>
-            </View>
+            </Notice>
           )}
         </>
       ) : null}
       beforeReviews={linkup ? (
         <View style={styles.stack}>
-          <Text style={styles.sectionTitle}>Attendees</Text>
+          {/* Who is coming, read off a track. A Link-up with one place left is
+              a different proposition from one with six, and "2/8" makes you do
+              the division yourself. */}
+          <SectionRule label="Attendees" meta={`${linkup.attendee_count}/${linkup.max_attendees}`}/>
+          <View style={styles.capacity} accessibilityLabel={`${linkup.attendee_count} of ${linkup.max_attendees} places taken`}>
+            <Meter
+              value={Number(linkup.attendee_count || 0)}
+              max={Number(linkup.max_attendees || 0)}
+              width={120}
+              tone="scheduled"
+              label="JOINED"
+            />
+            <Text style={styles.capacityValue}>{linkup.attendee_count}/{linkup.max_attendees}</Text>
+          </View>
+
           {attendees.map((item)=>(
             <View key={item.user_id} style={styles.attendeeRow}>
               <Pressable
@@ -269,24 +314,24 @@ export default function LinkupDetail(){
                 accessibilityLabel={item.profile?.full_name || "Explorer"}
                 onPress={()=>router.push(`/profile/${item.user_id}`)}
               >
-                <View style={styles.smallAvatar}>
+                <Frame size={36} round style={styles.smallAvatar}>
                   <Text style={styles.smallAvatarText}>{item.profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>
-                </View>
+                </Frame>
                 <View style={styles.attendeeText}>
-                  <Text style={styles.attendeeName}>{item.profile?.full_name || "Explorer"}</Text>
-                  <Text style={styles.attendeeRole}>{item.role==="creator" ? "Organiser" : "Attendee"}</Text>
+                  <Text style={styles.attendeeName} numberOfLines={1}>{item.profile?.full_name || "Explorer"}</Text>
+                  <Text style={styles.attendeeRole}>{item.role==="creator" ? "ORGANISER" : "ATTENDEE"}</Text>
                 </View>
               </Pressable>
 
               {isOwner && item.user_id!==user?.id && (
-                <Pressable
-                  accessibilityRole="button"
+                <Action
+                  kind="quiet"
+                  label="Remove"
+                  glyph="close"
                   accessibilityLabel={`Remove ${item.profile?.full_name || "this Explorer"}`}
                   disabled={working}
                   onPress={()=>callRpc("remove_linkup_attendee",{p_linkup_id:id,p_user_id:item.user_id},"Attendee removed.")}
-                >
-                  <Text style={styles.removeText}>Remove</Text>
-                </Pressable>
+                />
               )}
             </View>
           ))}
@@ -298,48 +343,51 @@ export default function LinkupDetail(){
           */}
           {!isOwner && (
             <View style={styles.safetyRow}>
-              <Pressable
-                accessibilityRole="button"
+              <Action
+                kind="quiet"
+                label="Report Link-up"
+                glyph="flag"
+                style={styles.safetyCell}
                 accessibilityLabel="Report this Link-up"
                 onPress={()=>setShowReport((current)=>!current)}
-              >
-                <Text style={styles.safetyLink}>Report Link-up</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Block the organiser" onPress={blockCreator}>
-                <Text style={styles.safetyLink}>Block organiser</Text>
-              </Pressable>
+              />
+              <Action
+                kind="quiet"
+                label="Block organiser"
+                glyph="block"
+                style={styles.safetyCell}
+                accessibilityLabel="Block the organiser"
+                onPress={blockCreator}
+              />
             </View>
           )}
 
           {showReport && !isOwner && (
-            <View style={styles.box}>
+            <Panel style={styles.box}>
               <Text style={styles.boxTitle}>Why are you reporting this?</Text>
+              {/* Selection steps a surface and strengthens an edge. It never
+                  fills with a state ink -- a report reason is not a state a
+                  place is in, and a fill would make every label inside it
+                  unreadable. */}
               <View style={styles.reasonWrap}>
                 {REPORTS.map((reason)=>(
-                  <Pressable
+                  <Chip
                     key={reason}
-                    style={[styles.reason,reportReason===reason && styles.reasonActive]}
-                    accessibilityRole="button"
-                    accessibilityState={{selected:reportReason===reason}}
-                    accessibilityLabel={reason.replace("_"," ")}
+                    label={reason.replace("_"," ")}
+                    selected={reportReason===reason}
                     onPress={()=>setReportReason(reason)}
-                  >
-                    <Text style={reportReason===reason ? styles.reasonTextActive : styles.reasonText}>
-                      {reason.replace("_"," ")}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
-              <Pressable
-                style={styles.primary}
-                accessibilityRole="button"
+              <Action
+                kind="primary"
+                label="Submit report"
+                glyph="send"
                 accessibilityLabel="Submit report"
                 disabled={working}
                 onPress={report}
-              >
-                <Text style={styles.primaryText}>Submit report</Text>
-              </Pressable>
-            </View>
+              />
+            </Panel>
           )}
         </View>
       ) : null}
@@ -348,57 +396,50 @@ export default function LinkupDetail(){
 }
 
 const styles=StyleSheet.create({
-  stack:{marginTop:16,gap:11},
-  sectionTitle:{color:INK.ink,fontSize:19,fontWeight:"800",letterSpacing:-0.2},
-  creatorCard:{
-    flexDirection:"row",
-    alignItems:"center",
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    padding:12,
-    backgroundColor:INK.card
+  stack:{marginTop:16,gap:10},
+  action:{marginBottom:10},
+
+  // Row already draws a standalone card when it carries no tone; inside a Panel
+  // it is one line of that panel, so its own card chrome comes off.
+  creatorRow:{marginBottom:0,backgroundColor:"transparent",borderWidth:0},
+
+  privateRow:{flexDirection:"row",alignItems:"flex-start",gap:8},
+  privateText:{
+    flex:1,color:INK.readout,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5
   },
-  avatar:{width:48,height:48,borderRadius:24,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
-  avatarText:{color:INK.ink,fontSize:19,fontWeight:"800"},
-  creatorText:{flex:1,marginLeft:11},
-  creatorLabel:{color:INK.inkSoft,fontSize:9,fontWeight:"800",letterSpacing:1},
-  creatorName:{color:INK.ink,fontWeight:"800",marginTop:3},
-  creatorArea:{color:INK.inkSoft,fontSize:11,marginTop:2},
-  arrow:{color:INK.ink,fontSize:26},
-  privateCard:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,backgroundColor:INK.card},
-  privateLabel:{color:INK.inkSoft,fontSize:9,fontWeight:"800",letterSpacing:1},
-  privateText:{color:INK.ink,lineHeight:20,marginTop:6},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,paddingHorizontal:16,marginBottom:10},
-  primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{minHeight:52,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card,marginBottom:10},
-  secondaryText:{color:INK.ink,fontWeight:"800"},
-  quiet:{minHeight:48,justifyContent:"center",alignItems:"center",marginBottom:10},
-  quietText:{color:INK.inkSoft,fontWeight:"800"},
-  box:{borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,backgroundColor:INK.card},
-  boxTitle:{color:INK.ink,fontWeight:"800",fontSize:16},
-  boxText:{color:INK.ink,lineHeight:20,marginTop:5},
-  confirmRow:{flexDirection:"row",alignItems:"center",justifyContent:"flex-end",gap:16,marginTop:13},
+
+  box:{padding:14},
+  boxTitle:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  boxText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5,marginTop:6},
+  confirmRow:{flexDirection:"row",alignItems:"center",gap:10,marginTop:13},
+  confirmCell:{flex:1},
+
+  capacity:{flexDirection:"row",alignItems:"center",gap:10,marginBottom:6},
+  capacityValue:{color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.lg,letterSpacing:0.5},
+
   attendeeRow:{
     flexDirection:"row",
     alignItems:"center",
     justifyContent:"space-between",
-    paddingVertical:9,
-    borderBottomWidth:1,
-    borderBottomColor:INK.hair
+    gap:10,
+    paddingVertical:7,
+    borderBottomWidth:SHAPE.border,
+    borderBottomColor:INK.hairline
   },
-  attendeeProfile:{flexDirection:"row",alignItems:"center",flex:1},
-  smallAvatar:{width:38,height:38,borderRadius:19,borderWidth:2,borderColor:INK.ink,alignItems:"center",justifyContent:"center"},
-  smallAvatarText:{color:INK.ink,fontWeight:"800"},
-  attendeeText:{marginLeft:9},
-  attendeeName:{color:INK.ink,fontWeight:"800"},
-  attendeeRole:{color:INK.inkSoft,fontSize:10,marginTop:2},
-  removeText:{color:INK.ink,fontWeight:"800",fontSize:11,padding:8,textDecorationLine:"underline"},
-  safetyRow:{flexDirection:"row",justifyContent:"space-between",paddingVertical:14},
-  safetyLink:{color:INK.ink,fontWeight:"800",fontSize:13,textDecorationLine:"underline"},
-  reasonWrap:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10,marginBottom:12},
-  reason:{borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:10,paddingVertical:7},
-  reasonActive:{backgroundColor:INK.ink},
-  reasonText:{color:INK.card,fontSize:10,fontWeight:"800",textTransform:"capitalize"},
-  reasonTextActive:{color:INK.card,fontSize:10,fontWeight:"800",textTransform:"capitalize"}
+  attendeeProfile:{flexDirection:"row",alignItems:"center",flex:1,minWidth:0},
+  smallAvatar:{backgroundColor:INK.inset},
+  smallAvatarText:{color:INK.readoutSoft,fontWeight:"700",fontSize:15},
+  attendeeText:{marginLeft:10,flex:1,minWidth:0},
+  attendeeName:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  // A role is a fact the app holds about somebody, so it is mono.
+  attendeeRole:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:1,marginTop:3
+  },
+
+  safetyRow:{flexDirection:"row",gap:10,paddingVertical:8},
+  safetyCell:{flex:1},
+
+  reasonWrap:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:11,marginBottom:13}
 });

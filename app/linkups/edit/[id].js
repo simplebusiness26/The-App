@@ -1,10 +1,12 @@
 import React,{useCallback,useState} from "react";
-import {ActivityIndicator,ScrollView,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,ScrollView,StyleSheet} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import {supabase} from "../../../services/supabase";
 import LinkupForm from "../../../components/LinkupForm";
 import {useFeedback} from "../../../context/FeedbackContext";
+import {CREATE_HUB_CLEARANCE} from "../../../components/CreateHub";
 import {INK} from "../../../utils/tokens";
+import {Notice,Screen,ScreenTitle} from "../../../components/instrument";
 
 export default function EditLinkup(){
   const params=useLocalSearchParams();
@@ -38,17 +40,27 @@ export default function EditLinkup(){
     router.replace(`/linkups/${id}`);
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
+  if(loading) return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>ORGANISER CONTROLS</Text>
-      <Text style={styles.title}>Edit Link-up</Text>
-      <Text style={styles.subtitle}>Important time or location changes notify everyone who has joined.</Text>
-      {!!error&&<View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
-      {initial&&<LinkupForm initial={initial} onSubmit={update} working={working} submitLabel="Save changes"/>}
-    </ScrollView>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenTitle
+          eyebrow="ORGANISER CONTROLS"
+          title="Edit Link-up"
+          meta="Important time or location changes notify everyone who has joined."
+        />
+        {!!error && <Notice tone="dispute" label="Not editable">{error}</Notice>}
+        {initial && <LinkupForm initial={initial} onSubmit={update} working={working} submitLabel="Save this Link-up"/>}
+      </ScrollView>
+    </Screen>
   );
 }
 
-const styles=StyleSheet.create({screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},eyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7,marginBottom:4},errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:12,marginTop:16},errorText:{color:INK.ink}});
+const styles=StyleSheet.create({
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"}
+});

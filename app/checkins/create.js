@@ -1,10 +1,26 @@
 import React,{useEffect,useMemo,useState} from "react";
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Location from "expo-location";
 import {router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Empty,
+  Field,
+  fieldInputStyle,
+  Glyph,
+  MONO,
+  Notice,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule,
+  Segmented
+} from "../../components/instrument";
 
 // Public places only. A check-in used to accept businesses, clubs and events
 // as well, which is a different act wearing the same word: it broadcasts your
@@ -142,53 +158,209 @@ export default function CreateCheckin(){
 
   const audienceSentence=AUDIENCE_SENTENCE[visibility] || AUDIENCE_SENTENCE.nobody;
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
+  if(loading) return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>OPTIONAL LIVE STATUS</Text><Text style={styles.title}>Check in</Text>
-      <Text style={styles.subtitle}>Show that you are at a public place for a limited time. Your coordinates are rounded before storage.</Text>
-      {!!error&&<View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View>}
+    <Screen>
+      <ScrollView
+        contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenTitle
+          eyebrow="OPTIONAL LIVE STATUS"
+          title="Check in"
+          meta="Show that you are at a public place for a limited time. Your coordinates are rounded before storage."
+        />
 
-      <Text style={styles.label}>Place type</Text><View style={styles.wrap}>{TYPES.map(type=><Pressable key={type.key} style={[styles.chip,placeType===type.key&&styles.chipActive]} onPress={()=>setPlaceType(type.key)}><Text style={[styles.chipText,placeType===type.key&&styles.chipTextActive]}>{type.label}</Text></Pressable>)}</View>
+        {!!error && <Notice tone="dispute" label="Not started">{error}</Notice>}
 
-      <View style={styles.placePicker}><TextInput value={query} onChangeText={setQuery} placeholder={isPublicPlace?"Search parks and public places":"Search public places"} placeholderTextColor={INK.inkSoft} style={styles.input}/>{loadingPlaces&&<ActivityIndicator color={INK.ink} style={{margin:18}}/>}{!loadingPlaces&&filtered.slice(0,25).map(place=>{const selected=isPublicPlace?publicPlaceId===place.id:targetId===place.id;return <Pressable key={place.id} style={[styles.placeRow,selected&&styles.placeRowActive]} onPress={()=>selectPlace(place)}><View style={styles.placeText}><Text style={styles.placeName}>{place.name}</Text><Text style={styles.placeAddress}>{place.address||place.location||place.location_description||"Public location"}</Text></View><Text style={styles.check}>{selected?"✓":""}</Text></Pressable>;})}{!loadingPlaces&&isPublicPlace&&!filtered.length&&<Text style={styles.placeAddress}>No matching place yet. Type the name below and check in anyway.</Text>}</View>
+        <SectionRule label="Where you are"/>
 
-      <Text style={styles.label}>Public place name</Text><TextInput value={placeName} onChangeText={value=>{setPlaceName(value);setTargetId(null);setPublicPlaceId(null);}} maxLength={120} placeholder="Alexandra Park" placeholderTextColor={INK.inkSoft} style={styles.input}/>
-      <Text style={styles.label}>Broad area</Text><TextInput value={area} onChangeText={setArea} maxLength={80} placeholder="Hastings or Central Hastings" placeholderTextColor={INK.inkSoft} style={styles.input}/>
-      <Text style={styles.areaHelp}>Use a town or neighbourhood, not a street or private address.</Text>
-      <Pressable style={styles.locationButton} disabled={locating} onPress={useLocation}>{locating?<ActivityIndicator color={INK.ink}/>:<Text style={styles.locationText}>{latitude!=null?"✓ Approximate location added":"Add approximate location"}</Text>}</Pressable>
-      {latitude!=null&&<Pressable onPress={()=>{setLatitude(null);setLongitude(null);}}><Text style={styles.removeLocation}>Remove location</Text></Pressable>}
+        <Field label="Place type">
+          <Segmented items={TYPES} active={placeType} onChange={setPlaceType}/>
+        </Field>
 
-      <Text style={styles.label}>What are you doing?</Text><View style={styles.wrap}>{ACTIVITIES.map(item=><Pressable key={item} style={[styles.chip,activity===item&&styles.chipActive]} onPress={()=>setActivity(item)}><Text style={[styles.chipText,activity===item&&styles.chipTextActive]}>{item}</Text></Pressable>)}</View>
-      {activity==="Other"&&<TextInput value={customActivity} onChangeText={setCustomActivity} maxLength={80} placeholder="Your activity" placeholderTextColor={INK.inkSoft} style={[styles.input,{marginTop:9}]}/>} 
+        <Field label="Find it in the catalogue" hint="Choosing a listed place keeps twelve check-ins at one park on one place.">
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={isPublicPlace?"Search parks and public places":"Search public places"}
+            placeholderTextColor={INK.readoutFaint}
+            style={fieldInputStyle}
+          />
+        </Field>
 
-      <Text style={styles.label}>Short message <Text style={styles.optional}>(optional)</Text></Text><TextInput value={message} onChangeText={setMessage} maxLength={240} multiline textAlignVertical="top" placeholder="What should nearby Explorers know?" placeholderTextColor={INK.inkSoft} style={[styles.input,styles.textarea]}/><Text style={styles.counter}>{message.length}/240</Text>
+        {loadingPlaces && <ActivityIndicator color={INK.exists} style={styles.loader}/>}
 
-      <Text style={styles.label}>Visible for</Text><View style={styles.durationRow}>{[30,60,120,240].map(value=><Pressable key={value} style={[styles.duration,minutes===value&&styles.durationActive]} onPress={()=>setMinutes(value)}><Text style={[styles.durationText,minutes===value&&styles.durationTextActive]}>{value<60?`${value}m`:`${value/60}h`}</Text></Pressable>)}</View>
-      {/*
-        No Public option, and no visibility choice here at all. Who can see a
-        check-in is one setting on your profile -- Settings, "Who can see where
-        you are" -- and it is a ceiling: a check-in can never reach further than
-        it. With no setting value above Friends, a Public button here would be a
-        control that changes nothing, which is worse than no button.
-      */}
-      <View style={styles.safetyCard}>
-        <Text style={styles.safetyTitle}>Who will see this</Text>
-        <Text style={styles.safetyText}>{audienceSentence}</Text>
-        <Pressable onPress={()=>router.push("/settings")}><Text style={styles.changeAudience}>Change your visibility</Text></Pressable>
-      </View>
+        {!loadingPlaces && filtered.slice(0,25).map(place=>{
+          const selected=isPublicPlace?publicPlaceId===place.id:targetId===place.id;
+          return(
+            <Row
+              key={place.id}
+              glyph="pin"
+              title={place.name}
+              sub={place.address||place.location||place.location_description||"Public location"}
+              onPress={()=>selectPlace(place)}
+              right={selected ? <Glyph name="check" size={15} colour={INK.exists} weight={1.9}/> : null}
+              style={selected?styles.placeRowSelected:null}
+            />
+          );
+        })}
 
-      <View style={styles.safetyCard}><Text style={styles.safetyTitle}>Location safety</Text><Text style={styles.safetyText}>Only use public places. Xplorer rounds coordinates to roughly neighbourhood-level accuracy and removes this status automatically.</Text></View>
-      <Pressable style={[styles.submit,working&&styles.disabled]} disabled={working} onPress={publish}>{working?<ActivityIndicator color={INK.ink}/>:<Text style={styles.submitText}>Start check-in</Text>}</Pressable>
-    </ScrollView>
+        {!loadingPlaces && isPublicPlace && !filtered.length && (
+          <Empty
+            glyph="pin"
+            title="No matching place yet"
+            instruction="Type the name below and check in anyway."
+          />
+        )}
+
+        <Field label="Public place name" required>
+          <TextInput
+            value={placeName}
+            onChangeText={value=>{setPlaceName(value);setTargetId(null);setPublicPlaceId(null);}}
+            maxLength={120}
+            placeholder="Alexandra Park"
+            placeholderTextColor={INK.readoutFaint}
+            style={fieldInputStyle}
+          />
+        </Field>
+
+        <Field label="Broad area" required hint="Use a town or neighbourhood, not a street or private address.">
+          <TextInput
+            value={area}
+            onChangeText={setArea}
+            maxLength={80}
+            placeholder="Hastings or Central Hastings"
+            placeholderTextColor={INK.readoutFaint}
+            style={fieldInputStyle}
+          />
+        </Field>
+
+        {/* A coordinate is a reading, so the control that takes one reads back as
+            a checked instrument rather than a tick character in somebody else's
+            font. */}
+        <Action
+          kind="secondary"
+          glyph={latitude!=null ? "check" : "target"}
+          label={latitude!=null ? "Approximate location added" : "Add approximate location"}
+          loading={locating}
+          onPress={useLocation}
+        />
+        {latitude!=null && (
+          <Action
+            kind="quiet"
+            label="Remove location"
+            style={styles.spacedAction}
+            onPress={()=>{setLatitude(null);setLongitude(null);}}
+          />
+        )}
+
+        <SectionRule label="What you are doing"/>
+
+        <Field label="Activity" required>
+          <View style={styles.chips}>
+            {ACTIVITIES.map(item=>(
+              <Chip key={item} label={item} selected={activity===item} onPress={()=>setActivity(item)}/>
+            ))}
+          </View>
+        </Field>
+
+        {activity==="Other" && (
+          <Field label="Your activity" required>
+            <TextInput
+              value={customActivity}
+              onChangeText={setCustomActivity}
+              maxLength={80}
+              placeholder="Sea swimming"
+              placeholderTextColor={INK.readoutFaint}
+              style={fieldInputStyle}
+            />
+          </Field>
+        )}
+
+        <Field label="Short message" hint="Optional.">
+          <TextInput
+            value={message}
+            onChangeText={setMessage}
+            maxLength={240}
+            multiline
+            textAlignVertical="top"
+            placeholder="What should nearby Explorers know?"
+            placeholderTextColor={INK.readoutFaint}
+            style={[fieldInputStyle,styles.textarea]}
+          />
+        </Field>
+        <Text style={styles.counter}>{message.length}/240</Text>
+
+        <Field label="Visible for">
+          {/* The four durations stay one list with one formatting rule, the
+              way they were -- the selector is what changed, not the data. */}
+          <Segmented
+            items={[30,60,120,240].map(value=>({key:value,label:value<60?`${value}m`:`${value/60}h`}))}
+            active={minutes}
+            onChange={setMinutes}
+          />
+        </Field>
+
+        {/*
+          No Public option, and no visibility choice here at all. Who can see a
+          check-in is one setting on your profile -- Settings, "Who can see where
+          you are" -- and it is a ceiling: a check-in can never reach further than
+          it. With no setting value above Friends, a Public button here would be a
+          control that changes nothing, which is worse than no button.
+        */}
+        <Notice
+          tone="scheduled"
+          label="Who will see this"
+          action={
+            <Action
+              kind="quiet"
+              glyph="settings"
+              label="Change your visibility"
+              accessibilityLabel="Change your visibility"
+              onPress={()=>router.push("/settings")}
+            />
+          }
+        >
+          {audienceSentence}
+        </Notice>
+
+        <Notice tone="scheduled" label="Location safety">
+          Only use public places. Xplorer rounds coordinates to roughly
+          neighbourhood-level accuracy and removes this status automatically.
+        </Notice>
+
+        <Action
+          kind="primary"
+          glyph="live"
+          label="Start this check-in"
+          accessibilityLabel="Start this check-in"
+          loading={working}
+          style={styles.submit}
+          onPress={publish}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
-// Riso tokens only. Nothing on this form is "a place exists", "something is
-// scheduled" or a manager's reply/dispute -- those are the only three jobs
-// blue/pink/yellow/green/red have (design-system.md) -- so every control here
-// is plain ink on card/paper, and the active state is an ink fill.
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},content:{padding:18,paddingBottom:70},center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},eyebrow:{color:INK.inkSoft,fontSize:10,fontWeight:"900",letterSpacing:1},title:{color:INK.ink,fontSize:32,fontWeight:"900",marginTop:4},subtitle:{color:INK.inkSoft,lineHeight:21,marginTop:7},errorCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:12,marginTop:14},errorText:{color:INK.ink},label:{color:INK.ink,fontWeight:"900",marginTop:18,marginBottom:8},optional:{color:INK.inkSoft},input:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,color:INK.ink,paddingHorizontal:13,paddingVertical:12},textarea:{minHeight:90},counter:{color:INK.inkSoft,fontSize:10,textAlign:"right",marginTop:4},areaHelp:{color:INK.inkSoft,fontSize:11,lineHeight:16,marginTop:6},wrap:{flexDirection:"row",flexWrap:"wrap",gap:7},chip:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:18,paddingHorizontal:11,paddingVertical:8},chipActive:{backgroundColor:INK.ink},chipText:{color:INK.inkSoft,fontWeight:"800",fontSize:11},chipTextActive:{color:INK.card},placePicker:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:14,padding:10,marginTop:11},placeRow:{flexDirection:"row",alignItems:"center",padding:9,borderRadius:10,marginTop:4},placeRowActive:{borderColor:INK.ink,borderWidth:2},placeText:{flex:1},placeName:{color:INK.ink,fontWeight:"900"},placeAddress:{color:INK.inkSoft,fontSize:10,marginTop:3},check:{color:INK.ink,fontWeight:"900",fontSize:18},locationButton:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:12,padding:13,alignItems:"center",marginTop:10},locationText:{color:INK.ink,fontWeight:"900"},removeLocation:{color:INK.inkSoft,fontWeight:"800",textAlign:"center",paddingVertical:9},durationRow:{flexDirection:"row",gap:7},duration:{flex:1,backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:10,padding:11,alignItems:"center"},durationActive:{backgroundColor:INK.ink},durationText:{color:INK.inkSoft,fontWeight:"900"},durationTextActive:{color:INK.card},changeAudience:{color:INK.ink,fontWeight:"900",marginTop:9,textDecorationLine:"underline"},safetyCard:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:13,marginTop:20},safetyTitle:{color:INK.ink,fontWeight:"900"},safetyText:{color:INK.inkSoft,fontSize:12,lineHeight:18,marginTop:5},submit:{backgroundColor:INK.ink,borderRadius:14,padding:16,alignItems:"center",marginTop:20},submitText:{color:INK.card,fontWeight:"900",fontSize:15},disabled:{opacity:.6}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"},
+  loader:{marginVertical:16},
+
+  chips:{flexDirection:"row",flexWrap:"wrap",gap:8,padding:10},
+  textarea:{minHeight:90},
+  counter:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    letterSpacing:0.8,textAlign:"right",marginTop:-10,marginBottom:8
+  },
+
+  // Selection steps the surface and strengthens the edge. It never fills with a
+  // state ink -- being the place you picked is not a state the place is in.
+  placeRowSelected:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+
+  spacedAction:{marginTop:8},
+  submit:{marginTop:6}
 });

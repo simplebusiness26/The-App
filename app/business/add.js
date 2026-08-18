@@ -1,11 +1,8 @@
 import React,{useState} from "react";
 import {
-  Text,
   TextInput,
-  Pressable,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   ScrollView
 } from "react-native";
 import {supabase} from "../../services/supabase";
@@ -14,7 +11,9 @@ import ListingLocationPicker from "../../components/ListingLocationPicker";
 import ClassificationPicker from "../../components/ClassificationPicker";
 import {useFeedback} from "../../context/FeedbackContext";
 import {UNCLASSIFIED} from "../../utils/taxonomy";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
 import {INK} from "../../utils/tokens";
+import {Action,Field,fieldInputStyle,Screen,ScreenTitle,SectionRule} from "../../components/instrument";
 
 export default function AddBusiness(){
   const {showFeedback}=useFeedback();
@@ -86,41 +85,101 @@ export default function AddBusiness(){
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Add Business</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="NEW BUSINESS"
+          title="Add a business"
+          meta="It goes on the map as soon as it is created, and into your manager dashboard."
+        />
 
-      <TextInput style={styles.input} placeholder="Business Name *" value={name} onChangeText={setName}/>
-      <ClassificationPicker
-        category={category}
-        businessType={businessType}
-        disabled={loading}
-        onChange={({category:nextCategory,businessType:nextType})=>{
-          setCategory(nextCategory);
-          setBusinessType(nextType);
-        }}
-      />
-      <TextInput style={[styles.input,styles.multiline]} placeholder="Description" value={description} onChangeText={setDescription} multiline/>
+        <SectionRule label="The listing"/>
 
-      <ListingLocationPicker onChange={setSelectedLocation}/>
+        <Field label="Business name" required>
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="The Rock House"
+            placeholderTextColor={INK.readoutFaint}
+            value={name}
+            onChangeText={setName}
+          />
+        </Field>
 
-      <TextInput style={styles.input} placeholder="Website" value={website} onChangeText={setWebsite}/>
-      <TextInput style={styles.input} placeholder="Phone" value={phone} onChangeText={setPhone}/>
-      <TextInput style={styles.input} placeholder="Opening Hours" value={openingHours} onChangeText={setOpeningHours}/>
+        <ClassificationPicker
+          category={category}
+          businessType={businessType}
+          disabled={loading}
+          onChange={({category:nextCategory,businessType:nextType})=>{
+            setCategory(nextCategory);
+            setBusinessType(nextType);
+          }}
+        />
 
-      <Pressable style={[styles.button,loading && styles.disabled]} disabled={loading} onPress={addBusiness}>
-        {loading ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Create Business Listing</Text>}
-      </Pressable>
-    </ScrollView>
+        <Field label="Description">
+          <TextInput
+            style={[fieldInputStyle,styles.multiline]}
+            placeholder="What it is, and what somebody should know before coming."
+            placeholderTextColor={INK.readoutFaint}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
+        </Field>
+
+        <SectionRule label="Where it is"/>
+
+        <ListingLocationPicker onChange={setSelectedLocation}/>
+
+        <SectionRule label="How to reach it"/>
+
+        <Field label="Website">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="https://"
+            placeholderTextColor={INK.readoutFaint}
+            value={website}
+            onChangeText={setWebsite}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        </Field>
+
+        <Field label="Phone">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="01424 000000"
+            placeholderTextColor={INK.readoutFaint}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+        </Field>
+
+        <Field label="Opening hours">
+          <TextInput
+            style={fieldInputStyle}
+            placeholder="Mon–Sat 9–5"
+            placeholderTextColor={INK.readoutFaint}
+            value={openingHours}
+            onChangeText={setOpeningHours}
+          />
+        </Field>
+
+        <Action
+          kind="primary"
+          glyph="plus"
+          label="Create this business listing"
+          accessibilityLabel="Create this business listing"
+          loading={loading}
+          onPress={addBusiness}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.card},
-  content:{padding:20,paddingBottom:50},
-  title:{fontSize:30,fontWeight:"bold",marginBottom:20},
-  input:{backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,padding:15,borderRadius:10,marginBottom:15},
-  multiline:{minHeight:100,textAlignVertical:"top"},
-  button:{backgroundColor:INK.ink,padding:16,borderRadius:10,alignItems:"center"},
-  disabled:{opacity:0.6},
-  buttonText:{color:INK.card,fontWeight:"bold"}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  multiline:{minHeight:110}
 });

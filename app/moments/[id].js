@@ -6,7 +6,17 @@ import {supabase} from "../../services/supabase";
 import {useFeedback} from "../../context/FeedbackContext";
 import LikeButton from "../../components/LikeButton";
 import CommentThread from "../../components/CommentThread";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
+import {Action,Chip,Empty,Frame,Glyph,MONO,Notice,Panel,Row,Screen} from "../../components/instrument";
+
+// One Moment, full size.
+//
+// The photograph is the whole point of the screen, so it sits in a Frame -- the
+// viewfinder's bracketed well -- and everything else on the page is quiet
+// around it. The head strip is the same mono plate every panel in this app
+// opens with: what kind of thing this is, and when. The place it was taken at
+// is a Row, because it is a thing you can go to rather than a caption.
 
 const REPORT_REASONS=[
   {key:"spam",label:"Spam"},
@@ -151,157 +161,202 @@ export default function MomentDetail(){
     setShowReport(false);
   }
 
-  if(loading) return <View style={styles.center}><ActivityIndicator size="large" color={INK.blue}/></View>;
-  if(error || !moment) return <View style={styles.center}><Text style={styles.errorTitle}>Moment unavailable</Text><Text style={styles.errorText}>{error}</Text></View>;
+  if(loading){
+    return <Screen style={styles.centre}><ActivityIndicator size="large" color={INK.readoutSoft}/></Screen>;
+  }
+
+  if(error || !moment){
+    return(
+      <Screen style={styles.centre}>
+        <Empty glyph="warn" title="Moment unavailable" instruction={error}/>
+      </Screen>
+    );
+  }
 
   const isOwner=!!user && user.id===moment.user_id;
   const route=listingRoute(moment);
+  const isOfficial=moment.actor_type && moment.actor_type!=="explorer";
 
   return(
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable style={styles.profileRow} onPress={()=>router.push(`/profile/${moment.user_id}`)}>
-        {profile?.profile_photo
-          ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
-          : <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text></View>
-        }
-        <View style={styles.profileText}>
-          {/* An official Moment says the listing's name first and the person
-              who published it second. user_id is still the author -- the
-              profile link below goes to them, not to the listing. */}
-          <Text style={styles.name}>
-            {moment.actor_type && moment.actor_type!=="explorer"
-              ? moment.target_name || profile?.full_name || "Explorer"
-              : profile?.full_name || "Explorer"}
-          </Text>
-          <Text style={styles.date}>
-            {moment.actor_type && moment.actor_type!=="explorer"
-              ? `Official update · ${dateLabel(moment.created_at)}`
-              : dateLabel(moment.created_at)}
-          </Text>
-        </View>
-        {moment.visibility==="friends" && (
-          <Text style={styles.audienceBadge} accessibilityLabel="Visible to friends only">FRIENDS</Text>
-        )}
-      </Pressable>
-
-      <View style={styles.card}>
-        {moment.media_type==="image" ? (
-          <SocialImage uri={moment.media_url} style={styles.media}/>
-        ) : (
-          <Pressable style={styles.videoWrap} onPress={()=>Linking.openURL(moment.media_url)}>
-            {moment.thumbnail_url || moment.target_image_url
-              ? <SocialImage uri={moment.thumbnail_url || moment.target_image_url} style={styles.media}/>
-              : <View style={styles.videoFallback}/>
-            }
-            <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
-            <Text style={styles.duration}>{Math.ceil(Number(moment.duration_seconds || 0))}s</Text>
-          </Pressable>
-        )}
-
-        {!!moment.caption && <Text style={styles.caption}>{moment.caption}</Text>}
-
-        {!!moment.target_name && (
-          <Pressable style={styles.placeCard} disabled={!route} onPress={()=>route && router.push(route)}>
-            {moment.target_image_url ? <SocialImage uri={moment.target_image_url} style={styles.placeImage}/> : <View style={styles.placeFallback}><Text>📍</Text></View>}
-            <View style={styles.placeText}>
-              <Text style={styles.placeEyebrow}>ATTACHED PLACE</Text>
-              <Text style={styles.placeName}>{moment.target_name}</Text>
-            </View>
-            <Text style={styles.placeArrow}>›</Text>
-          </Pressable>
-        )}
-
-        <View style={styles.actions}>
-          <LikeButton targetType="moment" targetId={moment.id} viewerId={user?.id || null} initialCount={likeCount} initialLiked={viewerLiked}/>
-          {!isOwner && <Pressable style={styles.secondaryButton} onPress={()=>setShowReport(current=>!current)}><Text style={styles.secondaryText}>Report</Text></Pressable>}
-          {isOwner && <Pressable style={styles.deleteButton} onPress={()=>setConfirmDelete(true)}><Text style={styles.deleteText}>Delete</Text></Pressable>}
-        </View>
-
-        {showReport && !isOwner && (
-          <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Why are you reporting this Moment?</Text>
-            <View style={styles.reasonRow}>
-              {REPORT_REASONS.map(reason=>(
-                <Pressable key={reason.key} style={[styles.reasonButton,reportReason===reason.key && styles.reasonActive]} onPress={()=>setReportReason(reason.key)}>
-                  <Text style={[styles.reasonText,reportReason===reason.key && styles.reasonActiveText]}>{reason.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.panelActions}>
-              <Pressable style={styles.cancelButton} onPress={()=>setShowReport(false)}><Text style={styles.cancelText}>Cancel</Text></Pressable>
-              <Pressable style={styles.reportButton} disabled={working} onPress={reportMoment}>{working?<ActivityIndicator color={INK.ink} size="small"/>:<Text style={styles.reportText}>Submit report</Text>}</Pressable>
-            </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Panel style={styles.card}>
+          {/* THE HEAD READOUT. What this is and when, in the data face. */}
+          <View style={styles.headRow}>
+            <Text style={styles.headKind}>MOMENT</Text>
+            <View style={styles.headLine}/>
+            {moment.visibility==="friends" && (
+              <View accessibilityLabel="Visible to friends only">
+                <Chip label="Friends" glyph="lock"/>
+              </View>
+            )}
           </View>
-        )}
 
-        {confirmDelete && isOwner && (
-          <View style={styles.deletePanel}>
-            <Text style={styles.panelTitle}>Delete this Moment?</Text>
-            <Text style={styles.panelBody}>Its likes and comments will also be removed. This cannot be undone.</Text>
-            <View style={styles.panelActions}>
-              <Pressable style={styles.cancelButton} onPress={()=>setConfirmDelete(false)}><Text style={styles.cancelText}>Keep Moment</Text></Pressable>
-              <Pressable style={styles.confirmDeleteButton} disabled={working} onPress={deleteMoment}>{working?<ActivityIndicator color={INK.ink} size="small"/>:<Text style={styles.reportText}>Delete permanently</Text>}</Pressable>
+          <Pressable
+            style={styles.profileRow}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${profile?.full_name || "Explorer"}`}
+            onPress={()=>router.push(`/profile/${moment.user_id}`)}
+          >
+            <Frame size={42} round style={styles.avatarFrame}>
+              {profile?.profile_photo
+                ? <Image source={{uri:profile.profile_photo}} style={styles.avatar}/>
+                : <Text style={styles.avatarLetter}>{profile?.full_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+            </Frame>
+            <View style={styles.profileText}>
+              {/* An official Moment says the listing's name first and the person
+                  who published it second. user_id is still the author -- the
+                  profile link below goes to them, not to the listing. */}
+              <Text style={styles.name} numberOfLines={1}>
+                {isOfficial ? moment.target_name || profile?.full_name || "Explorer" : profile?.full_name || "Explorer"}
+              </Text>
+              <Text style={styles.date} numberOfLines={1}>
+                {isOfficial ? `OFFICIAL UPDATE · ${dateLabel(moment.created_at)}` : dateLabel(moment.created_at)}
+              </Text>
             </View>
-          </View>
-        )}
-      </View>
+          </Pressable>
 
-      <CommentThread targetType="moment" targetId={moment.id} ownerId={moment.user_id}/>
-    </ScrollView>
+          {moment.media_type==="image" ? (
+            <Frame style={styles.mediaFrame}>
+              <SocialImage uri={moment.media_url} style={styles.media} resizeMode="cover"/>
+            </Frame>
+          ) : (
+            <Pressable
+              style={styles.videoWrap}
+              accessibilityRole="button"
+              accessibilityLabel="Play this video"
+              onPress={()=>Linking.openURL(moment.media_url)}
+            >
+              <Frame style={styles.mediaFrame}>
+                {moment.thumbnail_url || moment.target_image_url
+                  ? <SocialImage uri={moment.thumbnail_url || moment.target_image_url} style={styles.media} resizeMode="cover"/>
+                  : null}
+              </Frame>
+              <View style={styles.playDial}><Glyph name="play" size={22} colour={INK.readout} weight={1.4}/></View>
+              <Text style={styles.duration}>{Math.ceil(Number(moment.duration_seconds || 0))}S</Text>
+            </Pressable>
+          )}
+
+          {!!moment.caption && <Text style={styles.caption}>{moment.caption}</Text>}
+
+          {!!moment.target_name && (
+            <View style={styles.placeRow}>
+              <Row
+                glyph="pin"
+                title={moment.target_name}
+                sub="Attached place"
+                onPress={route ? ()=>router.push(route) : undefined}
+              />
+            </View>
+          )}
+
+          <View style={styles.actions}>
+            <LikeButton targetType="moment" targetId={moment.id} viewerId={user?.id || null} initialCount={likeCount} initialLiked={viewerLiked}/>
+            {!isOwner && (
+              <Action
+                kind="quiet"
+                glyph="flag"
+                label="Report"
+                style={styles.trailing}
+                onPress={()=>setShowReport(current=>!current)}
+              />
+            )}
+            {isOwner && (
+              <Action
+                kind="quiet"
+                glyph="trash"
+                label="Delete"
+                style={styles.trailing}
+                onPress={()=>setConfirmDelete(true)}
+              />
+            )}
+          </View>
+
+          {showReport && !isOwner && (
+            <View style={styles.panelBlock}>
+              <Text style={styles.panelTitle}>Why are you reporting this Moment?</Text>
+              <View style={styles.reasonRow}>
+                {REPORT_REASONS.map(reason=>(
+                  <Chip
+                    key={reason.key}
+                    label={reason.label}
+                    selected={reportReason===reason.key}
+                    onPress={()=>setReportReason(reason.key)}
+                  />
+                ))}
+              </View>
+              <View style={styles.panelActions}>
+                <Action kind="quiet" label="Cancel" style={styles.panelAction} onPress={()=>setShowReport(false)}/>
+                <Action kind="danger" glyph="flag" label="Submit report" style={styles.panelAction} loading={working} disabled={working} onPress={reportMoment}/>
+              </View>
+            </View>
+          )}
+
+          {confirmDelete && isOwner && (
+            <View style={styles.panelBlock}>
+              <Notice tone="dispute" label="Delete this Moment?">
+                Its likes and comments will also be removed. This cannot be undone.
+              </Notice>
+              <View style={styles.panelActions}>
+                <Action kind="quiet" label="Keep Moment" style={styles.panelAction} onPress={()=>setConfirmDelete(false)}/>
+                <Action kind="danger" glyph="trash" label="Delete permanently" style={styles.panelAction} loading={working} disabled={working} onPress={deleteMoment}/>
+              </View>
+            </View>
+          )}
+        </Panel>
+
+        <CommentThread targetType="moment" targetId={moment.id} ownerId={moment.user_id}/>
+      </ScrollView>
+    </Screen>
   );
 }
 
-const shadow={shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:2};
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:18,paddingBottom:70},
-  center:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  errorTitle:{color:INK.ink,fontSize:22,fontWeight:"900"},
-  errorText:{color:INK.inkSoft,textAlign:"center",marginTop:7},
+  content:{paddingHorizontal:16,paddingTop:14,paddingBottom:24+CREATE_HUB_CLEARANCE},
+  centre:{alignItems:"center",justifyContent:"center",paddingHorizontal:24},
+
+  card:{padding:14},
+
+  headRow:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:12},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+
   profileRow:{flexDirection:"row",alignItems:"center",marginBottom:13},
-  avatar:{width:48,height:48,borderRadius:24,backgroundColor:INK.card},
-  avatarFallback:{width:48,height:48,borderRadius:24,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontWeight:"900",fontSize:19},
-  profileText:{marginLeft:11},
-  name:{color:INK.ink,fontSize:16,fontWeight:"900"},
-  date:{color:INK.inkSoft,fontSize:11,marginTop:3},
-  audienceBadge:{color:INK.card,backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:1.5,borderRadius:99,overflow:"hidden",paddingHorizontal:9,paddingVertical:4,fontSize:9,fontWeight:"900",letterSpacing:1},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:17,padding:12,...shadow},
-  media:{width:"100%",height:420,borderRadius:13,backgroundColor:INK.card},
-  videoWrap:{height:420,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  videoFallback:{position:"absolute",top:0,left:0,right:0,bottom:0,backgroundColor:INK.paper},
-  playCircle:{position:"absolute",width:62,height:62,borderRadius:31,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
-  playIcon:{color:INK.ink,fontSize:25,marginLeft:4},
-  duration:{position:"absolute",right:9,bottom:9,color:INK.ink,backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
-  caption:{color:INK.ink,fontSize:16,lineHeight:23,paddingHorizontal:4,marginTop:14},
-  placeCard:{flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:10,marginTop:14,...shadow},
-  placeImage:{width:50,height:50,borderRadius:10,backgroundColor:INK.card},
-  placeFallback:{width:50,height:50,borderRadius:10,backgroundColor:INK.card,alignItems:"center",justifyContent:"center"},
-  placeText:{flex:1,marginLeft:10},
-  placeEyebrow:{color:INK.card,fontSize:9,fontWeight:"900",letterSpacing:0.7},
-  placeName:{color:INK.card,fontWeight:"900",marginTop:3},
-  placeArrow:{color:INK.card,fontSize:27},
-  actions:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14},
-  secondaryButton:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:9},
-  secondaryText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
-  deleteButton:{marginLeft:"auto",paddingHorizontal:12,paddingVertical:9},
-  deleteText:{color:INK.ink,fontWeight:"900",fontSize:12},
-  panel:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:2,borderRadius:13,padding:13,marginTop:13,...shadow},
-  deletePanel:{backgroundColor:INK.card,borderColor:INK.red,borderWidth:2,borderRadius:13,padding:13,marginTop:13,...shadow},
-  panelTitle:{color:INK.ink,fontSize:14,fontWeight:"900"},
-  panelBody:{color:INK.ink,fontSize:12,lineHeight:18,marginTop:6},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:42,height:42,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:17},
+  profileText:{flex:1,marginLeft:11,minWidth:0},
+  name:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  date:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:4},
+
+  // aspectRatio is Frame's own default sizing; a fixed height needs it out of
+  // the way, and a key set to undefined is dropped by StyleSheet.flatten.
+  mediaFrame:{height:400,alignSelf:"stretch",aspectRatio:undefined},
+  media:{width:"100%",height:"100%"},
+  videoWrap:{alignItems:"center",justifyContent:"center"},
+  playDial:{
+    position:"absolute",width:58,height:58,borderRadius:SHAPE.radius.pill,
+    backgroundColor:"rgba(11,14,18,0.78)",borderWidth:SHAPE.border,borderColor:INK.hairlineStrong,
+    alignItems:"center",justifyContent:"center",paddingLeft:3
+  },
+  duration:{
+    position:"absolute",right:8,bottom:8,...MONO_META,color:INK.readout,
+    backgroundColor:"rgba(11,14,18,0.82)",borderWidth:SHAPE.border,borderColor:INK.hairline,
+    paddingHorizontal:6,paddingVertical:3,borderRadius:SHAPE.radius.control,fontSize:TYPE.data.sizes.sm,overflow:"hidden"
+  },
+
+  caption:{color:INK.readout,fontSize:TYPE.body.sizes.lg,lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,marginTop:14},
+
+  placeRow:{marginTop:14},
+
+  actions:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14,paddingTop:12,borderTopWidth:SHAPE.border,borderTopColor:INK.hairline},
+  trailing:{marginLeft:"auto"},
+
+  panelBlock:{marginTop:14,paddingTop:12,borderTopWidth:SHAPE.border,borderTopColor:INK.hairline},
+  panelTitle:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*TYPE.body.lineHeight},
   reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:10},
-  reasonButton:{borderColor:INK.ink,borderWidth:1.5,borderRadius:18,paddingHorizontal:10,paddingVertical:7,backgroundColor:INK.card},
-  reasonActive:{backgroundColor:INK.blue,borderColor:INK.ink},
-  // Ink on card (unselected has no fill), card on blue (selected) -- never
-  // card text on the same card ground. design-system.md's accessibility floor.
-  reasonText:{color:INK.ink,fontSize:10,fontWeight:"800"},
-  reasonActiveText:{color:INK.card},
   panelActions:{flexDirection:"row",justifyContent:"flex-end",gap:8,marginTop:13},
-  cancelButton:{paddingHorizontal:12,paddingVertical:10},
-  cancelText:{color:INK.inkSoft,fontWeight:"900",fontSize:12},
-  reportButton:{minWidth:120,backgroundColor:INK.red,borderColor:INK.ink,borderWidth:1.5,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
-  confirmDeleteButton:{minWidth:135,backgroundColor:INK.red,borderColor:INK.ink,borderWidth:1.5,borderRadius:10,paddingHorizontal:13,paddingVertical:10,alignItems:"center"},
-  reportText:{color:INK.card,fontWeight:"900",fontSize:12}
+  panelAction:{minWidth:120}
 });

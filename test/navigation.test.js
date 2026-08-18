@@ -14,7 +14,7 @@ const {SafeAreaProvider}=require("react-native-safe-area-context");
 const {FeedbackProvider}=require("../context/FeedbackContext");
 const {NotificationProvider}=require("../context/NotificationContext");
 
-const {TABS,FULL_SCREEN_ROUTES,activeTabKey,isTabBarHidden}=require("../utils/navigation");
+const {TABS,FULL_SCREEN_ROUTES,activeTabKey,isTabBarHidden,isCreateActionHidden}=require("../utils/navigation");
 
 const appDir=path.resolve(__dirname,"..","app");
 
@@ -373,4 +373,35 @@ function wrap(element){
 test("the root path lights the Map tab, because the root IS the map",()=>{
   expect(activeTabKey("/")).toBe("map");
   expect(activeTabKey("")).toBe("map");
+});
+
+// The Create action floats over every route, which is the point of it -- the
+// same action in the same place everywhere. Two kinds of screen are the
+// exception, and both for the same reason: they already have a compose control
+// pinned to the bottom edge, and the floating button physically sat on top of
+// Send.
+describe("where the Create action does not belong",()=>{
+  it("is hidden on the camera, which is already a create screen end to end",()=>{
+    expect(isCreateActionHidden("/camera")).toBe(true);
+  });
+
+  it("is hidden inside a conversation, where a composer already owns the bottom",()=>{
+    expect(isCreateActionHidden("/messages/abc")).toBe(true);
+    expect(isCreateActionHidden("/activity-clubs/message-board/xyz")).toBe(true);
+    expect(isCreateActionHidden("/linkups/board/xyz")).toBe(true);
+  });
+
+  it("stays on the LIST of conversations, which has no composer",()=>{
+    // The distinction is the whole reason the rule matches a prefix and then
+    // checks there is something after it.
+    expect(isCreateActionHidden("/messages")).toBe(false);
+  });
+
+  it("stays everywhere else",()=>{
+    expect(isCreateActionHidden("/")).toBe(false);
+    expect(isCreateActionHidden("/discover")).toBe(false);
+    expect(isCreateActionHidden("/activity-clubs/xyz")).toBe(false);
+    expect(isCreateActionHidden("/linkups/xyz")).toBe(false);
+    expect(isCreateActionHidden("/profile")).toBe(false);
+  });
 });

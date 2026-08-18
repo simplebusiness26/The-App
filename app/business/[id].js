@@ -1,10 +1,10 @@
 import React,{useCallback,useState} from "react";
-import {Text,Pressable,StyleSheet,Linking,View} from "react-native";
+import {StyleSheet,Linking,View} from "react-native";
 import {useFocusEffect,useLocalSearchParams,router} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {loadPlaceReviews} from "../../utils/reviews";
 import {typeLabelForBusiness} from "../../utils/markers";
-import {INK} from "../../utils/tokens";
+import {Action} from "../../components/instrument";
 import {nearestFirst} from "../../utils/geo";
 import PlaceLayout from "../../components/PlaceLayout";
 import MessageButton from "../../components/MessageButton";
@@ -129,12 +129,17 @@ export default function BusinessPage(){
       // The same function the map marker uses, so the page and the pin cannot
       // disagree about what this place is.
       typeLabel={business ? typeLabelForBusiness(business) : ""}
-      verifiedLabel={business?.owner_id ? "✓ VERIFIED BUSINESS" : ""}
+      // The tick is drawn by the layout now -- an emoji tick carried its own
+      // colour and weight onto a two-colour instrument face.
+      verifiedLabel={business?.owner_id ? "VERIFIED BUSINESS" : ""}
       description={business?.description}
       photos={photos}
+      // No emoji in front of a value. The label already says which field this
+      // is, and a pin or a clock glyph stuck to the front of the answer was
+      // saying it a second time in somebody else's house style.
       info={[
-        {label:"ADDRESS",value:business?.address ? `📍 ${business.address}` : ""},
-        {label:"OPENING HOURS",value:business?.opening_hours ? `🕒 ${business.opening_hours}` : ""}
+        {label:"ADDRESS",value:business?.address || ""},
+        {label:"OPENING HOURS",value:business?.opening_hours || ""}
       ]}
       rating={business ? {
         average,
@@ -159,14 +164,14 @@ export default function BusinessPage(){
         )
       } : null}
       ownerAction={isOwner ? (
-        <Pressable
-          style={styles.editButton}
-          accessibilityRole="button"
+        <Action
+          kind="quiet"
+          label="Edit"
+          glyph="edit"
           accessibilityLabel="Edit this business"
+          style={styles.editButton}
           onPress={()=>router.push(`/business/edit/${businessId}`)}
-        >
-          <Text style={styles.editText}>Edit</Text>
-        </Pressable>
+        />
       ) : null}
       actions={business ? (
         <>
@@ -180,25 +185,38 @@ export default function BusinessPage(){
           </View>
           <View style={styles.actionRow}>
             {!!business.phone && (
-              <Pressable style={styles.action} accessibilityRole="button" accessibilityLabel="Call this business" onPress={callBusiness}>
-                <Text style={styles.actionText}>📞 Call</Text>
-              </Pressable>
+              <Action
+                kind="secondary"
+                label="Call"
+                glyph="phone"
+                accessibilityLabel="Call this business"
+                style={styles.action}
+                onPress={callBusiness}
+              />
             )}
             {!!business.website && (
-              <Pressable style={styles.action} accessibilityRole="button" accessibilityLabel="Open the website" onPress={openWebsite}>
-                <Text style={styles.actionText}>🌐 Website</Text>
-              </Pressable>
+              <Action
+                kind="secondary"
+                label="Website"
+                glyph="globe"
+                accessibilityLabel="Open the website"
+                style={styles.action}
+                onPress={openWebsite}
+              />
             )}
           </View>
 
-          <Pressable
-            style={styles.primary}
-            accessibilityRole="button"
+          {/* The one filled control on the page, and the only thing allowed to
+              carry a state ink -- with dark text on it, per the contrast table
+              in docs/design-system.md. */}
+          <Action
+            kind="primary"
+            label="Leave a Business Review"
+            glyph="star"
             accessibilityLabel="Leave a business review"
+            style={styles.primary}
             onPress={()=>router.push(`/business/review/${businessId}`)}
-          >
-            <Text style={styles.primaryText}>⭐ Leave a Business Review</Text>
-          </Pressable>
+          />
 
           {canClaim && !business.owner_id && <ClaimButton businessId={businessId}/>}
         </>
@@ -217,11 +235,8 @@ export default function BusinessPage(){
 const styles=StyleSheet.create({
   messageManagerRow:{marginBottom:10,alignItems:"flex-start"},
   placeActions:{flexDirection:"row",gap:10,flexWrap:"wrap",alignItems:"center"},
-  editButton:{borderWidth:2,borderColor:INK.ink,borderRadius:10,paddingHorizontal:14,paddingVertical:9,marginLeft:10},
-  editText:{color:INK.ink,fontWeight:"800"},
+  editButton:{marginLeft:10,paddingHorizontal:12},
   actionRow:{flexDirection:"row",gap:10,marginBottom:10},
-  action:{flex:1,minHeight:48,justifyContent:"center",alignItems:"center",borderWidth:2,borderColor:INK.ink,borderRadius:12,backgroundColor:INK.card},
-  actionText:{color:INK.ink,fontWeight:"800"},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12,marginBottom:10},
-  primaryText:{color:INK.card,fontWeight:"800"}
+  action:{flex:1},
+  primary:{marginBottom:10}
 });

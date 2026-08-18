@@ -4,12 +4,31 @@ import {router,useFocusEffect} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {useAdminGate} from "../../hooks/useAdminGate";
 import {supabase} from "../../services/supabase";
-import {INK} from "../../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Glyph,
+  MONO,
+  Notice,
+  Panel,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule
+} from "../../components/instrument";
 
 // Admin Dashboard Stage 2: one trustworthy overview, with each editing job
 // kept on the screen that owns it. The dashboard asks PostgREST only for exact
 // row counts. In particular, it never tries to infer a claims.user_id ->
 // profiles relationship: claims.user_id points to auth.users, not profiles.
+//
+// AN ADMIN CONSOLE IS AN INSTRUMENT PANEL, and this is the panel: twelve
+// gauges reading the database, then the tools that act on them. Nothing here is
+// a place, so no state ink appears -- the four queues that need attention step
+// up a surface and strengthen their edge instead of turning blue, which is what
+// the old `claimMetric` did with INK.water, a MAP TERRAIN colour.
+
 const OVERVIEW=[
   {key:"claims",table:"claims",label:"Pending claims",status:"pending",route:"/admin/claims"},
   {key:"capabilityRequests",table:"manager_capability_requests",label:"Access requests",status:"pending",route:"/admin/claims"},
@@ -24,6 +43,51 @@ const OVERVIEW=[
   {key:"geoAreas",table:"geo_areas",label:"Canonical areas",route:"/admin/areas"},
   {key:"auditEntries",table:"admin_audit_log",label:"Audit records",route:"/admin/audit"}
 ];
+
+const NEEDS_ATTENTION=["claims","capabilityRequests","socialReports","safetyReports"];
+
+// One gauge on the panel: what the app measured, then what it measured.
+//
+// The kit's Readout sets the caption above the value, which is right for a
+// strip of two or three. In a grid of twelve the eye scans the numbers first,
+// so this puts the numeral on top -- see the note in the final report; a
+// `Readout` with a settable order would let this go back to the kit.
+function Gauge({value,label,attention,accessibilityLabel,onPress}){
+  return(
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={({pressed})=>[styles.gaugeWrap,pressed && styles.pressed]}
+    >
+      <Panel raised={attention} style={[styles.gauge,attention && styles.gaugeAttention]}>
+        <Text style={styles.gaugeValue}>{value}</Text>
+        <Text style={styles.gaugeLabel} numberOfLines={2}>{label}</Text>
+      </Panel>
+    </Pressable>
+  );
+}
+
+// A tool, as one row of the panel. Row computes its own accessibility label
+// from its text, and these have to keep the exact labels the console was built
+// with, so the Pressable outside carries it.
+function Tool({label,title,detail,glyph,onPress}){
+  return(
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({pressed})=>pressed ? styles.pressed : null}
+    >
+      <Row
+        glyph={glyph}
+        title={title}
+        sub={detail}
+        right={<Glyph name="forward" size={13} colour={INK.readoutFaint}/>}
+      />
+    </Pressable>
+  );
+}
 
 export default function AdminDashboard(){
   const insets=useSafeAreaInsets();
@@ -67,378 +131,184 @@ export default function AdminDashboard(){
 
   if(checking){
     return(
-      <View style={styles.fullState}>
-        <ActivityIndicator size="large" color={INK.ink}/>
+      <Screen style={styles.fullState}>
+        <ActivityIndicator size="large" color={INK.readout}/>
         <Text style={styles.stateText}>Checking admin access…</Text>
-      </View>
+      </Screen>
     );
   }
 
   if(!allowed){
     return(
-      <View style={styles.fullState}>
-        <Text style={styles.deniedTitle}>Admin access required</Text>
-        <Text style={styles.stateText}>
-          {gateError || "An admin account is required to open this screen."}
-        </Text>
-      </View>
+      <Screen>
+        <ScreenTitle eyebrow="Admin" title="Admin access required"/>
+        <View style={styles.body}>
+          <Notice tone="exists" label="Refused">
+            {gateError || "An admin account is required to open this screen."}
+          </Notice>
+        </View>
+      </Screen>
     );
   }
 
   return(
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content,{paddingBottom:Math.max(insets.bottom,24)+32}]}
-    >
-      <Text style={styles.eyebrow}>ADMIN OVERVIEW</Text>
-      <Text style={styles.title}>What needs attention</Text>
-      <Text style={styles.intro}>
-        Live totals from the database, followed by the admin tools that are ready to use.
-      </Text>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          {paddingBottom:Math.max(insets.bottom,24)+CREATE_HUB_CLEARANCE}
+        ]}
+      >
+        <ScreenTitle
+          eyebrow="Admin overview"
+          title="What needs attention"
+          meta="Live totals from the database, followed by the admin tools that are ready to use."
+        />
 
-      {loading ? (
-        <View style={styles.panel}>
-          <ActivityIndicator size="small" color={INK.ink}/>
-          <Text style={styles.panelText}>Loading the latest totals…</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorPanel} accessibilityRole="alert">
-          <Text style={styles.errorTitle}>Overview could not be loaded</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try loading the admin overview again"
-            onPress={load}
-            style={({pressed})=>[styles.primaryButton,pressed && styles.pressed]}
-          >
-            <Text style={styles.primaryButtonText}>Try again</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <View style={styles.metricGrid}>
-            {OVERVIEW.map((item)=>(
-              <Pressable
-                key={item.key}
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${item.label}: ${counts[item.key]}`}
-                onPress={()=>router.push(item.route)}
-                style={({pressed})=>[
-                  styles.metricCard,
-                  ["claims","capabilityRequests","socialReports","safetyReports"].includes(item.key) && styles.claimMetric,
-                  pressed && styles.pressed
-                ]}
+        <View style={styles.body}>
+          {loading ? (
+            <Panel style={styles.panel}>
+              <ActivityIndicator size="small" color={INK.readout}/>
+              <Text style={styles.panelText}>Loading the latest totals…</Text>
+            </Panel>
+          ) : error ? (
+            <View accessibilityRole="alert">
+              <Notice
+                tone="exists"
+                label="Overview could not be loaded"
+                action={
+                  <Action
+                    kind="secondary"
+                    glyph="refresh"
+                    label="Try again"
+                    accessibilityLabel="Try loading the admin overview again"
+                    onPress={load}
+                  />
+                }
               >
-                <Text style={styles.metricNumber}>{counts[item.key]}</Text>
-                <Text style={styles.metricLabel}>{item.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text style={styles.sectionTitle}>Admin tools</Text>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Browse all listings"
-            onPress={()=>router.push("/admin/listings")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Browse all listings</Text>
-              <Text style={styles.toolDetail}>Search businesses, properties, public places, clubs and events.</Text>
+                {error}
+              </Notice>
             </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+          ) : (
+            <>
+              <SectionRule label="Readings" meta={String(OVERVIEW.length)}/>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Review claims and Manager access"
-            onPress={()=>router.push("/admin/claims")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Review claims & Manager access</Text>
-              <Text style={styles.toolDetail}>
-                {`${counts.claims} ${counts.claims===1 ? "claim" : "claims"} and ${counts.capabilityRequests} ${counts.capabilityRequests===1 ? "access request" : "access requests"} are waiting.`}
-              </Text>
-            </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+              <View style={styles.gaugeGrid}>
+                {OVERVIEW.map((item)=>(
+                  <Gauge
+                    key={item.key}
+                    value={counts[item.key]}
+                    label={item.label}
+                    attention={NEEDS_ATTENTION.includes(item.key)}
+                    accessibilityLabel={`Open ${item.label}: ${counts[item.key]}`}
+                    onPress={()=>router.push(item.route)}
+                  />
+                ))}
+              </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Manage clubs and events"
-            onPress={()=>router.push("/admin/activities")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Manage clubs & events</Text>
-              <Text style={styles.toolDetail}>Publish, hide, close or cancel activity with an audit reason.</Text>
-            </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+              <SectionRule label="Admin tools"/>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Review moderation reports"
-            onPress={()=>router.push("/admin/moderation")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Review moderation reports</Text>
-              <Text style={styles.toolDetail}>
-                {`${counts.socialReports+counts.safetyReports} open ${counts.socialReports+counts.safetyReports===1 ? "report" : "reports"} need review.`}
-              </Text>
-            </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+              <Tool
+                glyph="list"
+                label="Browse all listings"
+                title="Browse all listings"
+                detail="Search businesses, properties, public places, clubs and events."
+                onPress={()=>router.push("/admin/listings")}
+              />
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Browse Explorer directory"
-            onPress={()=>router.push("/admin/explorers")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Browse Explorer directory</Text>
-              <Text style={styles.toolDetail}>Inspect account roles and active Manager capabilities without private contact fields.</Text>
-            </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+              <Tool
+                glyph="key"
+                label="Review claims and Manager access"
+                title="Review claims & Manager access"
+                detail={`${counts.claims} ${counts.claims===1 ? "claim" : "claims"} and ${counts.capabilityRequests} ${counts.capabilityRequests===1 ? "access request" : "access requests"} are waiting.`}
+                onPress={()=>router.push("/admin/claims")}
+              />
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Inspect areas and data quality"
-            onPress={()=>router.push("/admin/areas")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Inspect areas & data quality</Text>
-              <Text style={styles.toolDetail}>Find unmatched area and Place values or inconsistent listing ownership without automatic repairs.</Text>
-            </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+              <Tool
+                glyph="calendar"
+                label="Manage clubs and events"
+                title="Manage clubs & events"
+                detail="Publish, hide, close or cancel activity with an audit reason."
+                onPress={()=>router.push("/admin/activities")}
+              />
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="View admin audit history"
-            onPress={()=>router.push("/admin/audit")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>View audit history</Text>
-              <Text style={styles.toolDetail}>{`${counts.auditEntries} recorded admin ${counts.auditEntries===1 ? "decision" : "decisions"}.`}</Text>
-            </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+              <Tool
+                glyph="shield"
+                label="Review moderation reports"
+                title="Review moderation reports"
+                detail={`${counts.socialReports+counts.safetyReports} open ${counts.socialReports+counts.safetyReports===1 ? "report" : "reports"} need review.`}
+                onPress={()=>router.push("/admin/moderation")}
+              />
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Manage public places"
-            onPress={()=>router.push("/admin/public-places")}
-            style={({pressed})=>[styles.toolCard,pressed && styles.pressed]}
-          >
-            <View style={styles.toolCopy}>
-              <Text style={styles.toolTitle}>Manage public places</Text>
-              <Text style={styles.toolDetail}>Add, edit or hide parks, beaches and other public places.</Text>
-            </View>
-            <Text style={styles.arrow} accessibilityElementsHidden>›</Text>
-          </Pressable>
+              <Tool
+                glyph="people"
+                label="Browse Explorer directory"
+                title="Browse Explorer directory"
+                detail="Inspect account roles and active Manager capabilities without private contact fields."
+                onPress={()=>router.push("/admin/explorers")}
+              />
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Refresh admin overview"
-            onPress={load}
-            style={({pressed})=>[styles.refreshButton,pressed && styles.pressed]}
-          >
-            <Text style={styles.refreshText}>Refresh overview</Text>
-          </Pressable>
-        </>
-      )}
-    </ScrollView>
+              <Tool
+                glyph="map"
+                label="Inspect areas and data quality"
+                title="Inspect areas & data quality"
+                detail="Find unmatched area and Place values or inconsistent listing ownership without automatic repairs."
+                onPress={()=>router.push("/admin/areas")}
+              />
+
+              <Tool
+                glyph="clipboard"
+                label="View admin audit history"
+                title="View audit history"
+                detail={`${counts.auditEntries} recorded admin ${counts.auditEntries===1 ? "decision" : "decisions"}.`}
+                onPress={()=>router.push("/admin/audit")}
+              />
+
+              <Tool
+                glyph="pin"
+                label="Manage public places"
+                title="Manage public places"
+                detail="Add, edit or hide parks, beaches and other public places."
+                onPress={()=>router.push("/admin/public-places")}
+              />
+
+              <Action
+                kind="secondary"
+                glyph="refresh"
+                label="Refresh overview"
+                accessibilityLabel="Refresh admin overview"
+                onPress={load}
+                style={styles.refresh}
+              />
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MONO_META={fontFamily:MONO,textTransform:"uppercase",letterSpacing:0.9};
+
 const styles=StyleSheet.create({
-  screen:{
-    flex:1,
-    backgroundColor:INK.paper
-  },
-  content:{
-    paddingHorizontal:20,
-    paddingTop:28
-  },
-  fullState:{
-    flex:1,
-    alignItems:"center",
-    justifyContent:"center",
-    gap:12,
-    padding:32,
-    backgroundColor:INK.paper
-  },
+  scroll:{},
+  body:{paddingHorizontal:16},
+  fullState:{alignItems:"center",justifyContent:"center",gap:12,padding:32},
   stateText:{
-    maxWidth:320,
-    color:INK.inkSoft,
-    fontSize:16,
-    lineHeight:23,
-    textAlign:"center"
+    maxWidth:320,color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,
+    lineHeight:TYPE.body.sizes.md*1.5,textAlign:"center"
   },
-  deniedTitle:{
-    color:INK.ink,
-    fontSize:24,
-    fontWeight:"800"
-  },
-  eyebrow:{
-    color:INK.inkSoft,
-    fontSize:12,
-    fontWeight:"800",
-    letterSpacing:1.4,
-    marginBottom:9
-  },
-  title:{
-    color:INK.ink,
-    fontSize:34,
-    fontWeight:"900",
-    letterSpacing:-1.2,
-    lineHeight:38
-  },
-  intro:{
-    color:INK.inkSoft,
-    fontSize:16,
-    lineHeight:23,
-    marginTop:10,
-    marginBottom:24
-  },
-  panel:{
-    minHeight:150,
-    alignItems:"center",
-    justifyContent:"center",
-    gap:12,
-    borderColor:INK.hair,
-    borderRadius:20,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    padding:24
-  },
-  panelText:{
-    color:INK.inkSoft,
-    fontSize:15
-  },
-  errorPanel:{
-    borderColor:INK.ink,
-    borderRadius:20,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    padding:22
-  },
-  errorTitle:{
-    color:INK.ink,
-    fontSize:21,
-    fontWeight:"800"
-  },
-  errorText:{
-    color:INK.inkSoft,
-    fontSize:15,
-    lineHeight:22,
-    marginTop:8
-  },
-  primaryButton:{
-    alignItems:"center",
-    borderRadius:14,
-    backgroundColor:INK.ink,
-    marginTop:18,
-    paddingHorizontal:18,
-    paddingVertical:14
-  },
-  primaryButtonText:{
-    color:INK.ink,
-    fontSize:16,
-    fontWeight:"800"
-  },
-  metricGrid:{
-    flexDirection:"row",
-    flexWrap:"wrap",
-    gap:10
-  },
-  metricCard:{
-    width:"48%",
-    minHeight:116,
-    justifyContent:"space-between",
-    borderColor:INK.hair,
-    borderRadius:18,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    padding:17
-  },
-  claimMetric:{
-    backgroundColor:INK.water
-  },
-  metricNumber:{
-    color:INK.ink,
-    fontSize:34,
-    fontWeight:"900",
-    letterSpacing:-1
-  },
-  metricLabel:{
-    color:INK.inkSoft,
-    fontSize:14,
-    fontWeight:"700",
-    lineHeight:18
-  },
-  sectionTitle:{
-    color:INK.ink,
-    fontSize:22,
-    fontWeight:"900",
-    marginBottom:12,
-    marginTop:32
-  },
-  toolCard:{
-    minHeight:96,
-    flexDirection:"row",
-    alignItems:"center",
-    borderColor:INK.hair,
-    borderRadius:18,
-    borderWidth:1,
-    backgroundColor:INK.card,
-    marginBottom:10,
-    paddingHorizontal:18,
-    paddingVertical:16
-  },
-  toolCopy:{
-    flex:1,
-    paddingRight:12
-  },
-  toolTitle:{
-    color:INK.ink,
-    fontSize:17,
-    fontWeight:"800"
-  },
-  toolDetail:{
-    color:INK.inkSoft,
-    fontSize:14,
-    lineHeight:19,
-    marginTop:5
-  },
-  arrow:{
-    color:INK.ink,
-    fontSize:34,
-    fontWeight:"300"
-  },
-  refreshButton:{
-    alignItems:"center",
-    borderColor:INK.ink,
-    borderRadius:14,
-    borderWidth:1,
-    marginTop:10,
-    paddingHorizontal:18,
-    paddingVertical:14
-  },
-  refreshText:{
-    color:INK.ink,
-    fontSize:15,
-    fontWeight:"800"
-  },
-  pressed:{
-    opacity:0.68
-  }
+
+  panel:{minHeight:140,alignItems:"center",justifyContent:"center",gap:12,padding:24},
+  panelText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.md},
+
+  gaugeGrid:{flexDirection:"row",flexWrap:"wrap",gap:9},
+  gaugeWrap:{width:"48%"},
+  gauge:{minHeight:96,justifyContent:"space-between",padding:13},
+  gaugeAttention:{borderColor:INK.hairlineStrong},
+  gaugeValue:{color:INK.readout,fontSize:30,fontWeight:"700",letterSpacing:-1},
+  gaugeLabel:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm,marginTop:6},
+
+  refresh:{marginTop:12},
+  pressed:{opacity:0.78}
 });

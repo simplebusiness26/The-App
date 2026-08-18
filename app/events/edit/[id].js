@@ -1,10 +1,7 @@
 import React,{useCallback,useState} from "react";
 import {
-  View,
-  Text,
   StyleSheet,
   ScrollView,
-  Pressable,
   ActivityIndicator,
   Alert
 } from "react-native";
@@ -13,7 +10,9 @@ import {supabase} from "../../../services/supabase";
 import EventFormFields from "../../../components/EventFormFields";
 import {createDefaultEventForm,eventToForm,validateEventForm} from "../../../utils/events";
 import {useFeedback} from "../../../context/FeedbackContext";
+import {CREATE_HUB_CLEARANCE} from "../../../components/CreateHub";
 import {INK} from "../../../utils/tokens";
+import {Action,Notice,Screen,ScreenTitle} from "../../../components/instrument";
 
 export default function EditEvent(){
   const {id}=useLocalSearchParams();
@@ -147,49 +146,66 @@ export default function EditEvent(){
   }
 
   if(loading){
-    return <View style={styles.center}><ActivityIndicator size="large" color={INK.ink}/></View>;
+    return <Screen style={styles.center}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
   }
 
   if(error){
-    return <View style={styles.center}><Text style={styles.error}>{error}</Text></View>;
+    return(
+      <Screen>
+        <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+          <ScreenTitle eyebrow="EDIT EVENT" title="Event unavailable"/>
+          <Notice tone="dispute" label="Not loaded">{error}</Notice>
+        </ScrollView>
+      </Screen>
+    );
   }
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Edit Event</Text>
-      <Text style={styles.subtitle}>Update the public listing, schedule and event status.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+        <ScreenTitle
+          eyebrow="EDIT EVENT"
+          title={form.name?.trim() || "Edit event"}
+          meta="Update the public listing, schedule and event status."
+        />
 
-      <EventFormFields
-        form={form}
-        setForm={setForm}
-        statusOptions={["published","draft","cancelled"]}
-      />
+        <EventFormFields
+          form={form}
+          setForm={setForm}
+          statusOptions={["published","draft","cancelled"]}
+        />
 
-      <Pressable style={[styles.saveButton,(saving || deleting) && styles.disabled]} onPress={saveEvent} disabled={saving || deleting}>
-        {saving ? <ActivityIndicator color={INK.card}/> : <Text style={styles.buttonText}>Save Changes</Text>}
-      </Pressable>
+        <Action
+          kind="primary"
+          glyph="check"
+          label="Save this event"
+          accessibilityLabel="Save this event"
+          loading={saving}
+          disabled={deleting}
+          onPress={saveEvent}
+        />
 
-      <Pressable style={[styles.deleteButton,(saving || deleting) && styles.disabled]} onPress={confirmDelete} disabled={saving || deleting}>
-        <Text style={styles.deleteText}>{deleting ? "Deleting..." : "Delete Event"}</Text>
-      </Pressable>
-    </ScrollView>
+        {/*
+          Delete is a destructive choice, not a manager dispute -- `dispute` is
+          reserved for that one pair (docs/design-system.md), so it stays off the
+          quietest control on the screen. The confirmation dialog is the guard.
+        */}
+        <Action
+          kind="quiet"
+          glyph="trash"
+          label={deleting ? "Deleting…" : "Delete this event"}
+          accessibilityLabel="Delete this event"
+          style={styles.delete}
+          disabled={saving || deleting}
+          onPress={confirmDelete}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},
-  content:{padding:20,paddingBottom:50},
-  center:{flex:1,alignItems:"center",justifyContent:"center",padding:30,backgroundColor:INK.paper},
-  error:{fontSize:17,textAlign:"center",lineHeight:24,color:INK.ink},
-  title:{fontSize:30,fontWeight:"900",color:INK.ink},
-  subtitle:{color:INK.inkSoft,lineHeight:22,marginTop:7,marginBottom:20},
-  saveButton:{backgroundColor:INK.ink,padding:16,borderRadius:12,alignItems:"center"},
-  // Delete is a destructive choice, not a manager dispute -- ink.red is
-  // reserved for that pair alone (design-system.md). An outline in the same
-  // ink border language everything else uses says "different from Save"
-  // without borrowing a colour that means something else.
-  deleteButton:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,padding:15,borderRadius:12,alignItems:"center",marginTop:12},
-  disabled:{opacity:0.55},
-  buttonText:{color:INK.card,fontWeight:"800"},
-  deleteText:{color:INK.ink,fontWeight:"800"}
+  content:{paddingHorizontal:16,paddingBottom:24},
+  center:{alignItems:"center",justifyContent:"center"},
+  delete:{marginTop:12}
 });

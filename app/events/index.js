@@ -1,17 +1,64 @@
 import React,{useCallback,useState} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  ActivityIndicator
-} from "react-native";
+import {View,Text,TextInput,StyleSheet,ScrollView,ActivityIndicator} from "react-native";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../../services/supabase";
 import {formatEventDate,formatEventPrice} from "../../utils/events";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import {
+  Action,
+  Chip,
+  Empty,
+  Field,
+  Glyph,
+  MONO,
+  Notice,
+  Row,
+  Screen,
+  ScreenTitle,
+  SectionRule,
+  fieldInputStyle
+} from "../../components/instrument";
+import {CREATE_HUB_CLEARANCE} from "../../components/CreateHub";
+
+// Events: the dated things. RULES.md is exact about the word -- a club has
+// sessions, an event has a start time, and they are never the same noun.
+//
+// WHAT CHANGED
+//
+// Every event was a 2px-bordered box with a hard offset shadow, a pill for the
+// category, and a calendar emoji in front of the date with a map pin in front
+// of the place. The date -- the single most important thing about a dated thing
+// -- was a bold body line halfway down the box, indistinguishable from the
+// description.
+//
+// Now each event is a Row carrying `scheduled`: the amber state edge that means
+// "something is happening here" everywhere else in this app and on the map, and
+// the countdown sits in the mono meta column where the eye goes first. The list
+// is one measured column instead of a stack of cards, so ten events fit where
+// three did.
+
+// What the app measured about WHEN, short enough for the meta column.
+// "IN 40M" / "TONIGHT 19:30" / "SAT 12 SEP 19:30".
+export function eventClock(value,now=Date.now()){
+  if(!value) return "";
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+
+  const ms=date.getTime()-now;
+  const time=date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+
+  if(ms<=0) return "NOW";
+  if(ms<60*60*1000) return `IN ${Math.max(1,Math.round(ms/60000))}M`;
+  if(ms<6*60*60*1000) return `IN ${Math.round(ms/3600000)}H`;
+
+  const today=new Date(now);
+  if(date.toDateString()===today.toDateString()){
+    return `${date.getHours()>=17?"TONIGHT":"TODAY"} ${time}`;
+  }
+
+  const day=date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  return `${day.toUpperCase()} ${time}`;
+}
 
 export default function Events(){
   const [events,setEvents]=useState([]);
@@ -55,93 +102,100 @@ export default function Events(){
   });
 
   return(
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>WHAT'S ON</Text>
-        <Text style={styles.title}>Upcoming Events</Text>
-        <Text style={styles.subtitle}>Find community days, family activities and local experiences.</Text>
-      </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <ScreenTitle
+          eyebrow="WHAT'S ON"
+          title="Upcoming Events"
+          meta="Find community days, family activities and local experiences."
+        />
 
-      <TextInput
-        style={styles.search}
-        placeholder="Search events or locations"
-        value={query}
-        onChangeText={setQuery}
-      />
+        <View style={styles.body}>
+          <Field label="Search">
+            <TextInput
+              style={fieldInputStyle}
+              placeholder="Search events or locations"
+              placeholderTextColor={INK.readoutFaint}
+              accessibilityLabel="Search events or locations"
+              value={query}
+              onChangeText={setQuery}
+            />
+          </Field>
 
-      {loading && <ActivityIndicator size="large" color={INK.ink} style={styles.loader}/>}
+          {loading && <ActivityIndicator size="large" color={INK.readout} style={styles.loader}/>}
 
-      {!!error && (
-        <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>Events unavailable</Text>
-          <Text style={styles.noticeText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={loadEvents}>
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
+          {!!error && (
+            <Notice
+              tone="dispute"
+              label="EVENTS UNAVAILABLE"
+              action={<Action kind="secondary" label="Try again" glyph="refresh" onPress={loadEvents}/>}
+            >
+              {error}
+            </Notice>
+          )}
+
+          {!loading && !error && (
+            <SectionRule label="Events" meta={String(filtered.length)}/>
+          )}
+
+          {!loading && !error && filtered.length===0 && (
+            <Empty
+              title="No upcoming events found"
+              instruction="Try another search, or check back when new events are published."
+              glyph="calendar"
+            />
+          )}
+
+          {filtered.map(event=>(
+            <Row
+              key={event.id}
+              tone="scheduled"
+              glyph="ticket"
+              title={event.name}
+              sub={event.description}
+              meta={eventClock(event.starts_at)}
+              metaSub={formatEventPrice(event.price).toUpperCase()}
+              onPress={()=>router.push(`/events/${event.id}`)}
+            >
+              <View style={styles.foot}>
+                {!!event.category && <Chip label={event.category} style={styles.chip}/>}
+                <View style={styles.footCell}>
+                  <Glyph name="pin" size={11} colour={INK.readoutFaint}/>
+                  <Text style={styles.footText} numberOfLines={1}>{event.location || event.address}</Text>
+                </View>
+                <View style={styles.footCell}>
+                  <Glyph name="people" size={11} colour={INK.readoutFaint}/>
+                  <Text style={styles.footText} numberOfLines={1}>
+                    {event.capacity ? `${event.capacity} PLACES` : "OPEN CAPACITY"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* The full date, under the countdown that told you whether to
+                  care. Both are measurements, so both are mono. */}
+              <Text style={styles.when} numberOfLines={1}>{formatEventDate(event.starts_at)}</Text>
+            </Row>
+          ))}
         </View>
-      )}
-
-      {!loading && !error && filtered.length===0 && (
-        <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>No upcoming events found</Text>
-          <Text style={styles.noticeText}>Try another search or check back when new events are published.</Text>
-        </View>
-      )}
-
-      {filtered.map(event=>(
-        <Pressable
-          key={event.id}
-          style={styles.card}
-          onPress={()=>router.push(`/events/${event.id}`)}
-        >
-          <View style={styles.badgeRow}>
-            <Text style={styles.category}>{event.category}</Text>
-            <Text style={styles.price}>{formatEventPrice(event.price)}</Text>
-          </View>
-
-          <Text style={styles.eventName}>{event.name}</Text>
-          <Text style={styles.date}>📅 {formatEventDate(event.starts_at)}</Text>
-          <Text style={styles.location}>📍 {event.location || event.address}</Text>
-          {!!event.description && <Text style={styles.description} numberOfLines={3}>{event.description}</Text>}
-
-          <View style={styles.cardFooter}>
-            <Text style={styles.capacity}>{event.capacity ? `${event.capacity} places` : "Open capacity"}</Text>
-            <Text style={styles.viewText}>View event →</Text>
-          </View>
-        </Pressable>
-      ))}
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
-// Riso tokens only. Blue is a state colour ("a place exists") -- it is not a
-// brand accent, so a hero block, a price or a category pill do not get it.
 const styles=StyleSheet.create({
-  container:{flex:1,backgroundColor:INK.paper},
-  content:{padding:20,paddingBottom:50},
-  hero:{padding:2,marginBottom:18},
-  eyebrow:{color:INK.inkSoft,fontSize:11,fontWeight:"900",letterSpacing:1},
-  title:{fontSize:32,fontWeight:"900",color:INK.ink,marginTop:7},
-  subtitle:{fontSize:15,color:INK.inkSoft,lineHeight:22,marginTop:8},
-  search:{backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12,padding:14,marginBottom:18,color:INK.ink},
+  content:{paddingBottom:24+CREATE_HUB_CLEARANCE},
+  body:{paddingHorizontal:16},
   loader:{marginTop:40},
-  notice:{backgroundColor:INK.card,padding:20,borderRadius:14,borderWidth:2,borderColor:INK.ink},
-  noticeTitle:{fontSize:18,fontWeight:"800",marginBottom:7,color:INK.ink},
-  noticeText:{color:INK.ink,lineHeight:21},
-  retryButton:{backgroundColor:INK.ink,padding:12,borderRadius:10,marginTop:14,alignSelf:"flex-start"},
-  retryText:{color:INK.card,fontWeight:"800"},
-  card:{
-    backgroundColor:INK.card,padding:18,borderRadius:16,borderWidth:2,borderColor:INK.ink,marginBottom:16,
-    shadowColor:INK.ink,shadowOffset:{width:3,height:3},shadowOpacity:1,shadowRadius:0,elevation:0
+
+  foot:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:8,marginTop:8},
+  footCell:{flexDirection:"row",alignItems:"center",gap:4,flexShrink:1},
+  footText:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.6,flexShrink:1
   },
-  badgeRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:10},
-  category:{borderWidth:2,borderColor:INK.ink,color:INK.ink,paddingHorizontal:10,paddingVertical:5,borderRadius:20,fontWeight:"800",fontSize:11,overflow:"hidden"},
-  price:{fontWeight:"800",color:INK.ink},
-  eventName:{fontSize:23,fontWeight:"800",marginTop:14,color:INK.ink},
-  date:{fontWeight:"800",color:INK.ink,marginTop:8,lineHeight:20,fontSize:12},
-  location:{color:INK.inkSoft,marginTop:6},
-  description:{color:INK.ink,lineHeight:21,marginTop:12},
-  cardFooter:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,marginTop:16},
-  capacity:{fontSize:13,color:INK.inkSoft,fontWeight:"600"},
-  viewText:{fontWeight:"800",color:INK.ink}
+  chip:{minHeight:24,paddingVertical:3},
+  when:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.8,marginTop:7
+  }
 });

@@ -60,8 +60,22 @@ So the rule is blunt:
 | `Frame` | Media well with viewfinder brackets |
 | `Empty` | Nothing to read — an instruction, not a mood |
 | `Notice` | Errors, gates, warnings — an edge, not a coloured box |
-| `Glyph` | The icon set. 30 stroked icons on the 16×16 grid |
+| `Glyph` | The icon set. 66 stroked icons on the 16×16 grid |
 | `MONO` | The mono family, resolved per platform |
+
+### Escape hatches that already exist
+
+Reach for these before composing a one-off:
+
+- `Row`'s `glyph` takes an icon **name or a rendered node** — an avatar, a real
+  map marker, a thumbnail all fit its leading well.
+- `Row` and `Chip` take an `accessibilityLabel` override, and a `Segmented`
+  item may carry one. Use it when the spoken label should be a fuller sentence
+  than the visible one ("Tonight" → "Show what is happening tonight"). Do **not**
+  wrap a kit control in another `Pressable` to achieve this — that nests two
+  buttons and is worse for everybody.
+- `KeyValue` takes `wrap`, which puts the value on its own line in the body
+  face. Addresses, opening hours and licence lines are genuinely multi-line.
 
 ## The rules, in order of how often they are broken
 

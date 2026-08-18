@@ -11,7 +11,9 @@ import {router} from "expo-router";
 import {supabase} from "../services/supabase";
 import ExplorerReviewForm from "./ExplorerReviewForm";
 import SocialImage from "./SocialImage";
-import {INK} from "../utils/tokens";
+import {CREATE_HUB_CLEARANCE} from "./CreateHub";
+import {INK,SHAPE,TYPE} from "../utils/tokens";
+import {Action,Empty,Frame,Glyph,MONO,Notice,Panel,Screen,ScreenTitle,SectionRule} from "./instrument";
 
 // The Review Composer -- one parameterized component replacing the 5
 // near-identical review-submission screens (business/property/activity_club/
@@ -132,7 +134,7 @@ function RecentPlacePicker({onNavigate,onClose}){
   }
 
   if(state.phase==="loading"){
-    return <View style={styles.centre}><ActivityIndicator size="large" color={INK.ink}/></View>;
+    return <Screen style={styles.centre}><ActivityIndicator size="large" color={INK.exists}/></Screen>;
   }
 
   if(state.phase==="signedOut"){
@@ -145,143 +147,124 @@ function RecentPlacePicker({onNavigate,onClose}){
     // in-progress action" when the action has no address of its own. The
     // contextual path above does not have this problem: ExplorerReviewForm
     // already redirects to /auth/login and back to the same routed URL.
+    //
+    // A gate is a Notice with a scheduled edge, not a page of centred prose:
+    // the instrument says what is blocking and what to do about it.
     return (
-      <View style={styles.centre}>
-        <Text style={styles.gateTitle}>Sign in to write a review</Text>
-        <Text style={styles.gateText}>
-          Reviews are tied to your Explorer profile, so you will need to sign
-          in before writing one.
-        </Text>
-        <Pressable
-          style={styles.gatePrimary}
-          accessibilityRole="button"
-          accessibilityLabel="Log in"
-          onPress={()=>navigateTo("/auth/login",onNavigate)}
-        >
-          <Text style={styles.gatePrimaryText}>Log in</Text>
-        </Pressable>
-        <Pressable
-          style={styles.gateSecondary}
-          accessibilityRole="button"
-          accessibilityLabel="Create account"
-          onPress={()=>navigateTo("/auth/signup",onNavigate)}
-        >
-          <Text style={styles.gateSecondaryText}>Create account</Text>
-        </Pressable>
-      </View>
+      <Screen>
+        <ScrollView contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}>
+          <ScreenTitle eyebrow="REVIEW" title="Sign in to write a review"/>
+          <Notice tone="scheduled" label="Sign in needed">
+            Reviews are tied to your Explorer profile, so you will need to sign
+            in before writing one.
+          </Notice>
+          <Action
+            kind="primary"
+            glyph="key"
+            label="Log in"
+            accessibilityLabel="Log in"
+            onPress={()=>navigateTo("/auth/login",onNavigate)}
+          />
+          <Action
+            kind="secondary"
+            label="Create account"
+            accessibilityLabel="Create account"
+            style={styles.secondAction}
+            onPress={()=>navigateTo("/auth/signup",onNavigate)}
+          />
+        </ScrollView>
+      </Screen>
     );
   }
 
   const places=state.places;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>REVIEW</Text>
-      <Text style={styles.title}>What do you want to review?</Text>
-      <Text style={styles.subtitle}>
-        Pick somewhere you posted from recently, or open the place itself and
-        use "Leave a review" there.
-      </Text>
+    <Screen>
+      <ScrollView
+        contentContainerStyle={[styles.content,{paddingBottom:CREATE_HUB_CLEARANCE+24}]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenTitle
+          eyebrow="REVIEW"
+          title="What do you want to review?"
+          meta={'Pick somewhere you posted from recently, or open the place itself and use "Leave a review" there.'}
+        />
 
-      {!!state.error && <Text style={styles.errorText}>{state.error}</Text>}
+        {!!state.error && <Notice tone="dispute" label="Not loaded">{state.error}</Notice>}
 
-      {places.length===0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Nothing here yet</Text>
-          {/* Empty states are instructions, not moods -- design-system.md. */}
-          <Text style={styles.emptyText}>
-            Post a Moment or a Memory from a business, stay, club, event or
-            public place and it will show up here to review. Or open the
-            place's own page and tap "Leave a review".
-          </Text>
-        </View>
-      ) : places.map((place)=>(
-        <Pressable
-          key={`${place.target_type}:${place.target_id}`}
-          style={styles.row}
-          accessibilityRole="button"
-          accessibilityLabel={`Review ${place.target_name || TYPE_LABEL[place.target_type] || "this place"}`}
-          onPress={()=>{
-            const segment=REVIEW_ROUTE_SEGMENT[place.target_type];
-            if(!segment) return;
-            navigateTo(`/${segment}/review/${place.target_id}`,onNavigate);
-          }}
-        >
-          {/* SocialImage, not a raw Image -- target_image_url is denormalised
-              from the place's own listing photo today, but the field name
-              matches this codebase's private-media convention
-              (scripts/verify-private-media.cjs / test/private-media.test.js),
-              so it goes through the one signing component rather than being a
-              second, unchecked place a bucket going private could silently
-              break. */}
-          <SocialImage uri={place.target_image_url} style={styles.rowImage}/>
-          <View style={styles.rowText}>
-            <Text style={styles.rowName} numberOfLines={1}>{place.target_name || "Xplorer listing"}</Text>
-            <Text style={styles.rowType}>{TYPE_LABEL[place.target_type] || place.target_type}</Text>
-          </View>
-        </Pressable>
-      ))}
+        <SectionRule label="Somewhere you posted from" meta={places.length ? String(places.length) : null}/>
 
-      {!!onClose && (
-        <Pressable style={styles.cancel} accessibilityRole="button" accessibilityLabel="Close" onPress={onClose}>
-          <Text style={styles.cancelText}>Close</Text>
-        </Pressable>
-      )}
-    </ScrollView>
+        {places.length===0 ? (
+          /* Empty states are instructions, not moods -- design-system.md. */
+          <Empty
+            glyph="pin"
+            title="Nothing here yet"
+            instruction={'Post a Moment or a Memory from a business, stay, club, event or public place and it will show up here to review. Or open the place\'s own page and tap "Leave a review".'}
+          />
+        ) : places.map((place)=>(
+          <Pressable
+            key={`${place.target_type}:${place.target_id}`}
+            accessibilityRole="button"
+            accessibilityLabel={`Review ${place.target_name || TYPE_LABEL[place.target_type] || "this place"}`}
+            onPress={()=>{
+              const segment=REVIEW_ROUTE_SEGMENT[place.target_type];
+              if(!segment) return;
+              navigateTo(`/${segment}/review/${place.target_id}`,onNavigate);
+            }}
+          >
+            {/* A list row with a picture in it. The kit's `Row` takes a Glyph on
+                its left, not a media well, so this is composed from `Panel` and
+                `Frame` -- the same two parts components/FeedCard.js builds its
+                own poster row from -- rather than inventing a second card. */}
+            <Panel style={styles.row}>
+              {/* SocialImage, not a raw Image -- target_image_url is denormalised
+                  from the place's own listing photo today, but the field name
+                  matches this codebase's private-media convention
+                  (scripts/verify-private-media.cjs / test/private-media.test.js),
+                  so it goes through the one signing component rather than being a
+                  second, unchecked place a bucket going private could silently
+                  break. */}
+              <Frame size={46}>
+                <SocialImage uri={place.target_image_url} style={styles.rowImage}/>
+              </Frame>
+              <View style={styles.rowText}>
+                <Text style={styles.rowName} numberOfLines={1}>{place.target_name || "Xplorer listing"}</Text>
+                <Text style={styles.rowType} numberOfLines={1}>{TYPE_LABEL[place.target_type] || place.target_type}</Text>
+              </View>
+              <Glyph name="forward" size={13} colour={INK.readoutFaint}/>
+            </Panel>
+          </Pressable>
+        ))}
+
+        {!!onClose && (
+          <Action
+            kind="quiet"
+            label="Close"
+            accessibilityLabel="Close"
+            style={styles.close}
+            onPress={onClose}
+          />
+        )}
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles=StyleSheet.create({
-  screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:22,paddingBottom:60},
-  centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  eyebrow:{color:INK.blue,fontWeight:"800",fontSize:12,letterSpacing:1},
-  title:{color:INK.ink,fontSize:26,fontWeight:"900",marginTop:6},
-  subtitle:{color:INK.inkSoft,fontSize:14,lineHeight:20,marginTop:7,marginBottom:18},
-  errorText:{color:INK.red,fontSize:13,marginBottom:12},
+  content:{paddingHorizontal:16,paddingBottom:24},
+  centre:{alignItems:"center",justifyContent:"center"},
+  secondAction:{marginTop:10},
 
-  emptyCard:{
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    padding:18,
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:0
+  row:{flexDirection:"row",alignItems:"center",gap:12,padding:11,marginBottom:8},
+  rowImage:{width:46,height:46,backgroundColor:INK.inset},
+  rowText:{flex:1,minWidth:0},
+  rowName:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  // What KIND of thing it is, which the app worked out -- so it is mono.
+  rowType:{
+    color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    textTransform:"uppercase",letterSpacing:0.8,marginTop:4
   },
-  emptyTitle:{color:INK.ink,fontSize:17,fontWeight:"800",marginBottom:6},
-  emptyText:{color:INK.inkSoft,fontSize:14,lineHeight:20},
 
-  row:{
-    flexDirection:"row",
-    alignItems:"center",
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12,
-    padding:12,
-    marginBottom:10,
-    shadowColor:INK.ink,
-    shadowOffset:{width:3,height:3},
-    shadowOpacity:1,
-    shadowRadius:0,
-    elevation:0
-  },
-  rowImage:{width:48,height:48,borderRadius:10,marginRight:12,backgroundColor:INK.paper},
-  rowText:{flex:1},
-  rowName:{color:INK.ink,fontSize:16,fontWeight:"800"},
-  rowType:{color:INK.inkSoft,fontSize:11,fontWeight:"700",marginTop:2,textTransform:"uppercase",letterSpacing:0.6},
-
-  cancel:{alignItems:"center",paddingVertical:14,marginTop:6},
-  cancelText:{color:INK.inkSoft,fontWeight:"800",fontSize:14},
-
-  gateTitle:{color:INK.ink,fontSize:22,fontWeight:"900",textAlign:"center"},
-  gateText:{color:INK.inkSoft,fontSize:14,lineHeight:20,textAlign:"center",marginTop:10,marginBottom:20,maxWidth:320},
-  gatePrimary:{backgroundColor:INK.blue,borderColor:INK.ink,borderWidth:2,borderRadius:24,paddingHorizontal:28,paddingVertical:14,minHeight:44,justifyContent:"center"},
-  gatePrimaryText:{color:INK.card,fontWeight:"900",fontSize:15,textAlign:"center"},
-  gateSecondary:{marginTop:10,borderColor:INK.ink,borderWidth:2,borderRadius:24,paddingHorizontal:24,paddingVertical:14,minHeight:44,justifyContent:"center"},
-  gateSecondaryText:{color:INK.ink,fontWeight:"900",fontSize:15,textAlign:"center"}
+  close:{marginTop:10,borderRadius:SHAPE.radius.control}
 });

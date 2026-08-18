@@ -1,5 +1,5 @@
 import React,{useCallback,useState} from "react";
-import {Image,Pressable,StyleSheet,Text,View} from "react-native";
+import {Pressable,StyleSheet,Text,View} from "react-native";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
 import SocialImage from "../../components/SocialImage";
 import {supabase} from "../../services/supabase";
@@ -7,7 +7,8 @@ import {loadPlaceReviews,averageRating} from "../../utils/reviews";
 import PlaceLayout from "../../components/PlaceLayout";
 import EntityFollowButton from "../../components/EntityFollowButton";
 import {publicPlaceTypeLabel} from "../../utils/places";
-import {INK} from "../../utils/tokens";
+import {INK,TYPE} from "../../utils/tokens";
+import {Action,Empty,Frame,MONO,SectionRule} from "../../components/instrument";
 
 // Packet 8e: the page a park has instead of a spelling.
 //
@@ -135,14 +136,15 @@ export default function PublicPlacePage(){
       ) : null}
       actions={place ? (
         <View style={styles.actionStack}>
-          <Pressable
-            style={styles.primary}
-            accessibilityRole="button"
+          {/* The one filled control on the page. A Moment is made by taking a
+              photograph, so the control says so and opens the camera. */}
+          <Action
+            kind="primary"
+            label="Post a Moment here"
+            glyph="camera"
             accessibilityLabel={`Post a Moment at ${place.name}`}
             onPress={()=>router.push(`/camera?target_type=public_place&target_id=${place.id}`)}
-          >
-            <Text style={styles.primaryText}>Post a Moment here</Text>
-          </Pressable>
+          />
 
           {/*
             Parks became reviewable in 20260811140000 and this page has shown
@@ -150,25 +152,25 @@ export default function PublicPlacePage(){
             with. The reviews section said "Been here? Say what it is like." and
             then offered no way to.
           */}
-          <Pressable
-            style={styles.secondary}
-            accessibilityRole="button"
+          <Action
+            kind="secondary"
+            label="Leave a review"
+            glyph="star"
             accessibilityLabel={`Write a review of ${place.name}`}
             onPress={()=>router.push(`/places/review/${place.id}`)}
-          >
-            <Text style={styles.secondaryText}>Leave a review</Text>
-          </Pressable>
+          />
         </View>
       ) : null}
       afterReviews={place ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Moments here</Text>
+          <SectionRule label="Moments here" meta={String(moments.length)}/>
 
           {!moments.length ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>No Moments here yet</Text>
-              <Text style={styles.muted}>Post one from this place and it stays attached to it.</Text>
-            </View>
+            <Empty
+              glyph="camera"
+              title="No Moments here yet"
+              instruction="Post one from this place and it stays attached to it."
+            />
           ) : (
             <View style={styles.momentGrid}>
               {moments.map((moment)=>(
@@ -179,16 +181,19 @@ export default function PublicPlacePage(){
                   accessibilityLabel={moment.caption || "Open this Moment"}
                   onPress={()=>router.push(`/moments/${moment.id}`)}
                 >
-                  {moment.media_type==="image" || moment.thumbnail_url ? (
-                    <SocialImage
-                      uri={moment.thumbnail_url || moment.media_url}
-                      style={styles.momentImage}
-                    />
-                  ) : (
-                    <View style={[styles.momentImage,styles.momentFallback]}>
-                      <Text style={styles.muted}>Video</Text>
-                    </View>
-                  )}
+                  {/* Every picture in this app sits in a bracketed Frame -- the
+                      same well the viewfinder uses, which is what ties a grid of
+                      photographs back to the camera that took them. */}
+                  <Frame ratio={1.36} style={styles.momentFrame}>
+                    {moment.media_type==="image" || moment.thumbnail_url ? (
+                      <SocialImage
+                        uri={moment.thumbnail_url || moment.media_url}
+                        style={styles.momentImage}
+                      />
+                    ) : (
+                      <Text style={styles.momentKind}>VIDEO</Text>
+                    )}
+                  </Frame>
                   {!!moment.caption && <Text style={styles.momentCaption} numberOfLines={2}>{moment.caption}</Text>}
                 </Pressable>
               ))}
@@ -204,36 +209,20 @@ export default function PublicPlacePage(){
   );
 }
 
-const card={
-  backgroundColor:INK.card,
-  borderWidth:2,
-  borderColor:INK.ink,
-  borderRadius:12
-};
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
 
 const styles=StyleSheet.create({
   followRow:{flexDirection:"row",gap:10,marginTop:16,flexWrap:"wrap"},
   actionStack:{gap:10},
-  primary:{minHeight:52,justifyContent:"center",alignItems:"center",backgroundColor:INK.ink,borderRadius:12},
-  primaryText:{color:INK.card,fontWeight:"800"},
-  secondary:{
-    minHeight:52,
-    justifyContent:"center",
-    alignItems:"center",
-    backgroundColor:INK.card,
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:12
-  },
-  secondaryText:{color:INK.ink,fontWeight:"800"},
-  section:{marginTop:24},
-  sectionTitle:{color:INK.ink,fontSize:21,fontWeight:"800",marginBottom:11,letterSpacing:-0.3},
-  emptyCard:{...card,padding:18,alignItems:"center"},
-  emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:5},
-  muted:{color:INK.ink,textAlign:"center",lineHeight:20},
+  section:{marginTop:6},
+
   momentGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},
-  moment:{...card,width:150,padding:8},
-  momentImage:{width:"100%",height:110,borderRadius:8,backgroundColor:INK.hair},
-  momentFallback:{alignItems:"center",justifyContent:"center"},
-  momentCaption:{color:INK.ink,fontSize:12,lineHeight:17,marginTop:7}
+  moment:{width:150},
+  momentFrame:{width:"100%",backgroundColor:INK.inset},
+  momentImage:{width:"100%",height:"100%"},
+  momentKind:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.md},
+  momentCaption:{
+    color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,marginTop:7,paddingHorizontal:2
+  }
 });

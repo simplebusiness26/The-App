@@ -1,9 +1,9 @@
 import React,{useState} from "react";
-import {View,Text,Pressable,StyleSheet} from "react-native";
+import {View,StyleSheet} from "react-native";
 import CommentThread from "./CommentThread";
 import EndorseButton from "./EndorseButton";
 import ManagerReply from "./ManagerReply";
-import {INK} from "../utils/tokens";
+import {Action} from "./instrument";
 
 // The row of actions under a review. One component, used everywhere a review is
 // drawn, so a review cannot be useful-able on one screen and inert on another.
@@ -83,17 +83,22 @@ export default function ReviewActions({
         onChanged={onChanged}
       />
 
-      <Pressable
-        accessibilityRole="button"
+      {/*
+        A machined control, not a 2px pill. `quiet` rather than `secondary`
+        because this sits beside Useful and neither of them is the primary act
+        on a review -- reading it is.
+      */}
+      <Action
+        kind="quiet"
+        glyph="comment"
+        label={showComments ? "Hide comments" : "Comment"}
         accessibilityLabel="Comment on this review"
         style={styles.action}
         onPress={(event)=>{
           event?.stopPropagation?.();
           setShowComments((open)=>!open);
         }}
-      >
-        <Text style={styles.actionText}>{showComments ? "Hide comments" : "Comment"}</Text>
-      </Pressable>
+      />
 
       </View>
 
@@ -119,13 +124,7 @@ export default function ReviewActions({
 const styles=StyleSheet.create({
   row:{flexDirection:"row",alignItems:"center",gap:8,marginTop:12,flexWrap:"wrap"},
   thread:{marginTop:10},
-  action:{
-    borderWidth:2,
-    borderColor:INK.ink,
-    borderRadius:99,
-    paddingHorizontal:14,
-    paddingVertical:6,
-    backgroundColor:INK.card
-  },
-  actionText:{color:INK.ink,fontWeight:"800",fontSize:12}
+  // The kit's Action fills its parent by default; in a wrapping row of small
+  // controls it has to size to its own label instead.
+  action:{alignSelf:"flex-start",paddingHorizontal:12}
 });
