@@ -5,6 +5,7 @@ import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {TABS,activeTabKey,isTabBarHidden,withNext} from "../utils/navigation";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {MONO,TickScale} from "./instrument";
 import {signedIn} from "../utils/permissions";
 
 // The navigation shell, redesigned. Five flat tabs, none raised -- Map ·
@@ -132,6 +133,13 @@ export default function TabBar(){
       accessibilityRole="tablist"
     >
       <View style={[styles.bar,{height:BAR_HEIGHT+insets.bottom,paddingBottom:insets.bottom}]}>
+        {/* THE ETCHED RULE. The bar's top edge is not a plain hairline: it is a
+            ruled scale, the same texture the sheet's grab rail and every screen
+            title carry. It is the cheapest thing that makes the chrome read as
+            part of a machined housing rather than a strip of dark UI. */}
+        <View style={styles.barRule} pointerEvents="none">
+          <TickScale width={320} height={7} count={41} majorEvery={8} colour={INK.hairline}/>
+        </View>
         {TABS.map((tab)=>{
           const isActive=tab.key===active;
           const isLocked=locked(tab);
@@ -149,8 +157,12 @@ export default function TabBar(){
             >
               {/* Active is carried by a bar and by weight as well as by colour,
                   because state is never carried by colour alone. */}
+              {/* THE DETENT. A selector on an instrument sits IN a notch, so
+                  the active tab gets a filled detent block rather than a
+                  floating underline -- and it sits at the top edge, against
+                  the ruled scale, where a pointer would land. */}
               <View style={[styles.marker,isActive && styles.markerActive]}/>
-              <Icon name={tab.glyph} colour={isActive ? INK.readout : INK.readoutSoft}/>
+              <Icon name={tab.glyph} colour={isActive ? INK.readout : INK.readoutFaint}/>
               <Text style={[styles.label,isActive && styles.labelActive]} numberOfLines={1}>
                 {tab.label}
               </Text>
@@ -180,14 +192,24 @@ const styles=StyleSheet.create({
     borderTopWidth:SHAPE.border,
     borderTopColor:INK.hairline
   },
+  barRule:{position:"absolute",top:0,left:0,right:0,alignItems:"center",opacity:0.85},
   // 44px is the tap-target floor even where the visible target is smaller.
-  tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:6},
+  tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:9},
   // WHERE YOU ARE IS NOT A STATE A PLACE IS IN. The active tab is never a
   // state-ink fill: the readout brightens (icon and label to INK.readout) and
   // this indicator steps up to hairlineStrong. Colour is still not the only
   // carrier -- accessibilityState above says it in words.
-  marker:{height:3,width:26,borderRadius:2,backgroundColor:"transparent",marginBottom:5},
-  markerActive:{backgroundColor:INK.hairlineStrong},
-  label:{fontSize:10,marginTop:3,color:INK.readoutSoft,textAlign:"center",paddingHorizontal:2},
+  marker:{
+    position:"absolute",top:0,height:3,width:30,
+    backgroundColor:"transparent"
+  },
+  markerActive:{backgroundColor:INK.readoutSoft},
+  // Mono, uppercase, wide-tracked. These name destinations the app defines,
+  // not sentences a person wrote, so they take the data face like every other
+  // system label in the instrument.
+  label:{
+    fontFamily:MONO,fontSize:9,marginTop:5,color:INK.readoutFaint,
+    textAlign:"center",paddingHorizontal:1,textTransform:"uppercase",letterSpacing:0.7
+  },
   labelActive:{color:INK.readout,fontWeight:"600"}
 });

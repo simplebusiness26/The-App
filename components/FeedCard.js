@@ -5,7 +5,8 @@ import {router} from "expo-router";
 import LikeButton from "./LikeButton";
 import EndorseButton from "./EndorseButton";
 import {reasonsFor} from "../utils/trending";
-import {INK} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Chip,Frame,Glyph,Meter,MONO,Panel} from "./instrument";
 
 // One feed row, lifted out of app/feed.js so it can be memoised.
 //
@@ -44,9 +45,27 @@ export function listingRoute(item){
   return null;
 }
 
+// The poster's face, in a machined frame rather than a soft circle. Every
+// picture in this app sits in a Frame -- the same bracketed well the
+// viewfinder uses -- which is what ties a feed of photographs back to the
+// camera that took them.
 function Avatar({item}){
-  if(item.actor_photo) return <Image source={{uri:item.actor_photo}} style={styles.avatar}/>;
-  return <View style={styles.avatarFallback}><Text style={styles.avatarLetter}>{item.actor_name?.charAt(0)?.toUpperCase() || "E"}</Text></View>;
+  return(
+    <Frame size={40} round style={styles.avatarFrame}>
+      {item.actor_photo
+        ? <Image source={{uri:item.actor_photo}} style={styles.avatar}/>
+        : <Text style={styles.avatarLetter}>{item.actor_name?.charAt(0)?.toUpperCase() || "E"}</Text>}
+    </Frame>
+  );
+}
+
+// What the app knows about this row, set in the data face because the app
+// worked it out: what kind of post it is, and how long ago.
+function kindLabel(item){
+  if(item.item_type==="moment") return "MOMENT";
+  if(item.item_type==="memory") return "MEMORY";
+  if(item.item_type==="review") return "REVIEW";
+  return "FAVOURITE";
 }
 
 function FeedCard({item,viewerId,onOpen,onComments}){
@@ -61,18 +80,28 @@ function FeedCard({item,viewerId,onOpen,onComments}){
   const reasons=reasonsFor(item);
 
   return(
-    <View style={styles.card}>
+    <Panel style={styles.card}>
+      {/* THE HEAD READOUT. A mono strip across the top saying what this is and
+          when -- the same head every panel in the instrument carries, so a
+          feed row, a map sheet and a place page all open the same way. */}
+      <View style={styles.headRow}>
+        <Text style={styles.headKind}>{kindLabel(item)}</Text>
+        <View style={styles.headLine}/>
+        <Text style={styles.headTime}>{timeLabel(item.created_at).toUpperCase()}</Text>
+      </View>
+
       <Pressable style={styles.actorRow} onPress={()=>router.push(`/profile/${item.actor_id}`)}>
         <Avatar item={item}/>
         <View style={styles.actorText}>
-          <Text style={styles.actorName}>{item.actor_name || "Explorer"}</Text>
+          <Text style={styles.actorName} numberOfLines={1}>{item.actor_name || "Explorer"}</Text>
           {/*
             Four kinds now. "kept a Memory" rather than "shared" -- a
             Memory is something somebody keeps, and the word is what
             separates it from a Moment on a feed where both are a photo
-            and a sentence.
+            and a sentence. This half is a sentence about a person, so it
+            stays in the body face while the head strip above stays mono.
           */}
-          <Text style={styles.meta}>{isMoment ? "shared a Moment" : isMemory ? "kept a Memory" : isReview ? "posted a review" : "saved a favourite"} · {timeLabel(item.created_at)}</Text>
+          <Text style={styles.meta} numberOfLines={1}>{isMoment ? "shared a Moment" : isMemory ? "kept a Memory" : isReview ? "posted a review" : "saved a favourite"}</Text>
         </View>
       </Pressable>
 
@@ -85,11 +114,16 @@ function FeedCard({item,viewerId,onOpen,onComments}){
         reasonsFor() returns [] when the row has no source_reasons, which
         is the case until the 8f2 migration is applied. The row simply
         shows nothing rather than breaking or inventing a reason.
+
+        They were filled blue pills. A reason is not a state a place is in,
+        so it gets no state ink at all now -- it is a quiet mono chip, which
+        is also what stopped the top of every card being the brightest thing
+        on the screen.
       */}
-      {reasonsFor(item).length > 0 && (
+      {reasons.length > 0 && (
         <View style={styles.reasonRow}>
           {reasons.map(reason=>(
-            <Text key={reason} style={styles.reason}>{reason}</Text>
+            <Chip key={reason} label={reason} style={styles.reasonChip}/>
           ))}
         </View>
       )}
@@ -97,13 +131,21 @@ function FeedCard({item,viewerId,onOpen,onComments}){
       <Pressable onPress={()=>onOpen(item)}>
         {!!item.caption && <Text style={styles.caption}>{item.caption}</Text>}
 
+        {/* A REVIEW SCORE IS A MEASUREMENT, SO IT IS READ OFF A SCALE.
+            Five repeated ★ glyphs were a count you have to do yourself, in a
+            character whose shape belongs to the system font. A ticked meter
+            with the number beside it is the instrument's answer, and it is
+            legible at a glance at any rating. */}
         {!!item.rating && (
-          <Text style={styles.rating}>{"★".repeat(item.rating)}<Text style={styles.emptyStars}>{"★".repeat(5-item.rating)}</Text></Text>
+          <View style={styles.ratingRow} accessibilityLabel={`Rated ${item.rating} out of 5`}>
+            <Meter value={item.rating} max={5} width={92} tone="exists" label="RATED"/>
+            <Text style={styles.ratingValue}>{item.rating}/5</Text>
+          </View>
         )}
 
         {!!item.target_name && (
-          <View style={styles.targetPill}>
-            <Text style={styles.targetIcon}>📍</Text>
+          <View style={styles.targetRow}>
+            <Glyph name="pin" size={13} colour={INK.readoutFaint}/>
             <Text style={styles.targetText} numberOfLines={1}>{item.target_name}</Text>
           </View>
         )}
@@ -123,15 +165,23 @@ function FeedCard({item,viewerId,onOpen,onComments}){
               ? <SocialImage uri={item.thumbnail_url || item.target_image_url} style={styles.videoPoster} resizeMode="cover"/>
               : <View style={styles.videoFallback}/>
             }
-            <View style={styles.playCircle}><Text style={styles.playIcon}>▶</Text></View>
-            <Text style={styles.duration}>{Math.ceil(Number(item.duration_seconds || 0)) || "≤30"}s</Text>
+            <View style={styles.playCircle}><Glyph name="play" size={20} colour={INK.readout} weight={1.4}/></View>
+            <Text style={styles.duration}>{Math.ceil(Number(item.duration_seconds || 0)) || "≤30"}S</Text>
           </Pressable>
         )}
 
         {!item.media_url && !!item.target_image_url && <SocialImage uri={item.target_image_url} style={styles.media} resizeMode="cover"/>}
       </Pressable>
 
-      {!!item.verified_qr && <Text style={styles.verified}>✓ Verified on-site review</Text>}
+      {/* Verified on-site is a fact the app checked, so it reads as a checked
+          box on the housing rather than a green sticker. `agree` is a
+          manager's colour and never appeared correctly here. */}
+      {!!item.verified_qr && (
+        <View style={styles.verifiedRow}>
+          <Glyph name="check" size={13} colour={INK.readoutSoft} weight={1.8}/>
+          <Text style={styles.verifiedText}>VERIFIED ON-SITE</Text>
+        </View>
+      )}
 
       {(isMoment || isMemory || isReview) && (
         <View style={styles.actionRow}>
@@ -155,15 +205,20 @@ function FeedCard({item,viewerId,onOpen,onComments}){
             />
           )}
           {canComment && (
-            <Pressable style={styles.commentButton} onPress={()=>onComments(item)}>
-              <Text style={styles.commentIcon}>💬</Text>
+            <Pressable style={styles.commentButton} onPress={()=>onComments(item)} accessibilityRole="button" accessibilityLabel="Comments">
+              <Glyph name="comment" size={14} colour={INK.readoutSoft}/>
               <Text style={styles.commentText}>{Number(item.comment_count || 0)}</Text>
             </Pressable>
           )}
-          {!!route && <Pressable style={styles.placeButton} onPress={()=>router.push(route)}><Text style={styles.placeText}>Open place</Text></Pressable>}
+          {!!route && (
+            <Pressable style={styles.placeButton} onPress={()=>router.push(route)} accessibilityRole="button" accessibilityLabel="Open place">
+              <Text style={styles.placeText}>OPEN PLACE</Text>
+              <Glyph name="forward" size={12} colour={INK.readout}/>
+            </Pressable>
+          )}
         </View>
       )}
-    </View>
+    </Panel>
   );
 }
 
@@ -176,35 +231,65 @@ export default React.memo(FeedCard,(before,after)=>(
   before.viewerId===after.viewerId
 ));
 
+const MONO_META={fontFamily:MONO,letterSpacing:0.9,textTransform:"uppercase"};
+
 const styles=StyleSheet.create({
-  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:8},
-  reason:{color:INK.card,backgroundColor:INK.blue,borderRadius:20,paddingHorizontal:9,paddingVertical:4,fontSize:11,fontWeight:"800",overflow:"hidden"},
-  card:{backgroundColor:INK.card,borderColor:INK.ink,borderWidth:1,borderRadius:17,padding:15,marginBottom:13},
+  // A panel, on the housing. The old card carried borderColor:INK.ink -- which
+  // after the palette moved is the near-white READOUT colour, so every feed row
+  // was outlined in white. That is what "recolouring the old design" looks like
+  // when it goes wrong, and it is why this file was rebuilt rather than retinted.
+  card:{padding:14,marginBottom:12},
+
+  headRow:{flexDirection:"row",alignItems:"center",gap:9,marginBottom:12},
+  headKind:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.md},
+  headLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  headTime:{...MONO_META,color:INK.readoutFaint,fontSize:TYPE.data.sizes.sm},
+
   actorRow:{flexDirection:"row",alignItems:"center"},
-  avatar:{width:45,height:45,borderRadius:23,backgroundColor:INK.card},
-  avatarFallback:{width:45,height:45,borderRadius:23,backgroundColor:INK.blue,alignItems:"center",justifyContent:"center"},
-  avatarLetter:{color:INK.card,fontWeight:"900",fontSize:18},
-  actorText:{flex:1,marginLeft:11},
-  actorName:{color:INK.ink,fontSize:15,fontWeight:"900"},
-  meta:{color:INK.inkSoft,fontSize:11,marginTop:3},
-  caption:{color:INK.ink,fontSize:15,lineHeight:22,marginTop:14},
-  rating:{color:INK.ink,fontSize:17,letterSpacing:1,marginTop:12},
-  emptyStars:{color:INK.ink},
-  targetPill:{alignSelf:"flex-start",maxWidth:"100%",flexDirection:"row",alignItems:"center",backgroundColor:INK.blue,borderColor:INK.blue,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:7,marginTop:12},
-  targetIcon:{fontSize:12,marginRight:5},
-  targetText:{color:INK.card,fontWeight:"800",fontSize:12,flexShrink:1},
-  media:{width:"100%",height:280,borderRadius:13,backgroundColor:INK.card,marginTop:13},
-  videoWrap:{height:280,borderRadius:13,overflow:"hidden",backgroundColor:INK.paper,marginTop:13,alignItems:"center",justifyContent:"center"},
+  avatarFrame:{backgroundColor:INK.inset},
+  avatar:{width:40,height:40,borderRadius:SHAPE.radius.pill},
+  avatarLetter:{color:INK.readoutSoft,fontWeight:"700",fontSize:16},
+  actorText:{flex:1,marginLeft:11,minWidth:0},
+  actorName:{color:INK.readout,fontSize:TYPE.display.sizes.sm,fontWeight:"600",letterSpacing:-0.2},
+  meta:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,marginTop:2},
+
+  reasonRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginTop:11},
+  reasonChip:{minHeight:26,paddingVertical:4},
+
+  caption:{color:INK.readout,fontSize:TYPE.body.sizes.lg,lineHeight:TYPE.body.sizes.lg*1.5,marginTop:12},
+
+  ratingRow:{flexDirection:"row",alignItems:"center",gap:10,marginTop:12},
+  ratingValue:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.lg},
+
+  targetRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:11},
+  targetText:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,flexShrink:1},
+
+  media:{width:"100%",height:250,borderRadius:SHAPE.radius.control,backgroundColor:INK.inset,marginTop:12,borderWidth:SHAPE.border,borderColor:INK.hairline},
+  videoWrap:{height:250,borderRadius:SHAPE.radius.control,overflow:"hidden",backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,marginTop:12,alignItems:"center",justifyContent:"center"},
   videoPoster:{width:"100%",height:"100%"},
-  videoFallback:{position:"absolute",inset:0,backgroundColor:INK.paper},
-  playCircle:{position:"absolute",width:58,height:58,borderRadius:29,backgroundColor:"rgba(0,0,0,0.72)",alignItems:"center",justifyContent:"center"},
-  playIcon:{color:INK.ink,fontSize:23,marginLeft:3},
-  duration:{position:"absolute",right:9,bottom:9,color:INK.ink,backgroundColor:"rgba(0,0,0,0.72)",paddingHorizontal:7,paddingVertical:4,borderRadius:7,fontSize:11,fontWeight:"900"},
-  verified:{alignSelf:"flex-start",color:INK.card,backgroundColor:INK.green,borderColor:INK.green,borderWidth:1,borderRadius:20,paddingHorizontal:10,paddingVertical:6,marginTop:12,fontSize:10,fontWeight:"900"},
-  actionRow:{flexDirection:"row",alignItems:"center",gap:9,marginTop:14},
-  commentButton:{flexDirection:"row",alignItems:"center",gap:6,minHeight:38,paddingHorizontal:11,paddingVertical:8,borderRadius:20,backgroundColor:INK.card,borderWidth:1,borderColor:INK.ink},
-  commentIcon:{fontSize:14},
-  commentText:{color:INK.ink,fontWeight:"900",fontSize:12},
-  placeButton:{marginLeft:"auto",paddingHorizontal:10,paddingVertical:9},
-  placeText:{color:INK.blue,fontSize:12,fontWeight:"900"}
+  videoFallback:{position:"absolute",inset:0,backgroundColor:INK.inset},
+  // A ringed dial over the frame, not a black blob: the play control is the
+  // same shape language as the shutter it was filmed with.
+  playCircle:{
+    position:"absolute",width:54,height:54,borderRadius:27,
+    backgroundColor:"rgba(11,14,18,0.78)",borderWidth:SHAPE.border,borderColor:INK.hairlineStrong,
+    alignItems:"center",justifyContent:"center",paddingLeft:3
+  },
+  duration:{
+    position:"absolute",right:8,bottom:8,...MONO_META,color:INK.readout,
+    backgroundColor:"rgba(11,14,18,0.82)",borderWidth:SHAPE.border,borderColor:INK.hairline,
+    paddingHorizontal:6,paddingVertical:3,borderRadius:4,fontSize:TYPE.data.sizes.sm,overflow:"hidden"
+  },
+
+  verifiedRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:12},
+  verifiedText:{...MONO_META,color:INK.readoutSoft,fontSize:TYPE.data.sizes.sm},
+
+  actionRow:{flexDirection:"row",alignItems:"center",gap:8,marginTop:14,paddingTop:12,borderTopWidth:SHAPE.border,borderTopColor:INK.hairline},
+  commentButton:{
+    flexDirection:"row",alignItems:"center",gap:6,minHeight:36,paddingHorizontal:11,paddingVertical:7,
+    borderRadius:SHAPE.radius.control,backgroundColor:INK.panelRaised,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  commentText:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md},
+  placeButton:{marginLeft:"auto",flexDirection:"row",alignItems:"center",gap:6,minHeight:36,paddingHorizontal:10,paddingVertical:8},
+  placeText:{...MONO_META,color:INK.readout,fontSize:TYPE.data.sizes.md,fontWeight:"600"}
 });

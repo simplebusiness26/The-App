@@ -28,6 +28,7 @@ import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {useHeaderClearance} from "./Header";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph} from "./instrument";
 
 // The map screen, once and for both platforms.
 //
@@ -555,6 +556,11 @@ export default function LivingMapScreen(){
           level={sheetLevel}
           onLevelChange={setSheetLevel}
           onClose={handleClosePlace}
+          // The sheet lights its indicator lamp in the state of the pin that
+          // opened it, so the map and the sheet agree at a glance about what
+          // kind of thing this is.
+          tone={tapped.card?.state || tapped.state || "exists"}
+          readout={tapped.card?.typeLabel || "Place"}
           renderContent={(level)=>
             level===PIN_SHEET_LEVELS.PEEK
               ? <PinPeekPreview place={tapped}/>
@@ -577,9 +583,20 @@ function PinPeekPreview({place}){
 
   return(
     <View style={styles.peek}>
+      {/* The category has moved UP into the sheet's own head readout, so Peek
+          is not saying the same word twice in two type faces. What is left is
+          the two things a person actually needs at a glance: what it is
+          called, and where it is. */}
       <Text style={styles.peekName} numberOfLines={1}>{place.name || card.name || "This place"}</Text>
-      {!!card.typeLabel && <Text style={styles.peekType}>{card.typeLabel}</Text>}
-      {!!where && <Text style={styles.peekWhere} numberOfLines={1}>📍 {where}</Text>}
+      {!!where && (
+        <View style={styles.peekWhereRow}>
+          {/* A drawn pin rather than the emoji that used to sit here. An emoji
+              carries somebody else's colour and weight, which on a dark
+              instrument face reads as a sticker stuck to the housing. */}
+          <Glyph name="pin" size={13} colour={INK.readoutFaint}/>
+          <Text style={styles.peekWhere} numberOfLines={1}>{where}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -706,17 +723,9 @@ const styles=StyleSheet.create({
   switchText:{color:INK.readout,fontWeight:"600"},
 
   peek:{paddingTop:2},
-  peekName:{color:INK.readout,fontWeight:"700",fontSize:17},
-  // What kind of place this is -- a category the app assigned, so it is mono.
-  peekType:{
-    color:INK.readoutSoft,
-    fontFamily:MONO,
-    fontSize:TYPE.data.sizes.md,
-    letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md,
-    textTransform:"uppercase",
-    marginTop:3
-  },
-  peekWhere:{color:INK.readoutSoft,fontSize:12,marginTop:8},
+  peekName:{color:INK.readout,fontSize:TYPE.display.sizes.md,fontWeight:"700",letterSpacing:-0.3},
+  peekWhereRow:{flexDirection:"row",alignItems:"center",gap:6,marginTop:7},
+  peekWhere:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,flexShrink:1},
 
   notice:{
     backgroundColor:INK.panel,

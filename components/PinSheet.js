@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef} from "react";
 import {View,Text,Pressable,StyleSheet,Animated,PanResponder,useWindowDimensions} from "react-native";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
+import {Glyph,MONO,TickScale} from "./instrument";
 
 // The map pin bottom sheet -- FINAL_PRODUCT_CONTRACT.md's UX behaviour
 // section: "tapping a pin opens a real pointer-draggable bottom sheet, 3 snap
@@ -86,7 +87,15 @@ export default function PinSheet({
   onClose,
   onOpenFullPage,
   renderContent,
-  children
+  children,
+  // What the tapped thing IS, as a state ink. The sheet is the instrument's
+  // main readout, so it lights an indicator lamp in that state rather than
+  // tinting itself -- see docs/design-system.md, "state inks".
+  tone="exists",
+  // The mono strip along the sheet's head: what kind of thing this is, and
+  // whatever the app measured about it. Falls back to the item's own fields
+  // so a caller that passes nothing still gets a readout rather than a gap.
+  readout
 }){
   const {height:windowHeight}=useWindowDimensions();
   const insets=useSafeAreaInsets();
@@ -184,6 +193,10 @@ export default function PinSheet({
     extrapolate:"clamp"
   });
 
+  const label=readout || item.card?.typeLabel || item.kind || "PLACE";
+  const measured=item.distanceLabel || item.card?.meta || null;
+  const lamp=INK[tone] || INK.exists;
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Transparent -- the map stays visible behind the sheet at every
@@ -200,21 +213,32 @@ export default function PinSheet({
         style={[styles.sheet,{height:liveHeight,paddingBottom:insets.bottom}]}
         accessibilityViewIsModal
       >
-        <View {...panResponder.panHandlers} style={styles.handleArea}>
-          <View style={styles.handle} accessibilityRole="adjustable" accessibilityLabel="Drag to resize"/>
+        {/* THE INDICATOR LAMP. A 2px bar in the state ink across the sheet's
+            top edge, cut short so it reads as a lit segment on a housing
+            rather than a coloured border. This is the only saturated colour
+            the sheet carries; everything inside it stays on the readout
+            greys, so the labels never end up fighting a fill. */}
+        <View style={[styles.lamp,{backgroundColor:lamp}]} pointerEvents="none"/>
 
-          <View style={styles.handleRow}>
-            <Pressable
-              style={styles.fullPageButton}
-              accessibilityRole="button"
-              accessibilityLabel="View full page"
-              onPress={()=>{
-                if(onOpenFullPage){onOpenFullPage();return;}
-                onLevelChange?.(PIN_SHEET_LEVELS.FULL);
-              }}
-            >
-              <Text style={styles.fullPageText}>View full page ▸</Text>
-            </Pressable>
+        <View {...panResponder.panHandlers} style={styles.handleArea}>
+          {/* THE GRAB RAIL, MACHINED. Not a soft pill: a knurled rail --
+              a real tick scale flanked by two hairline bars, so the thing you
+              drag looks like a thing you drag on an instrument. */}
+          <View style={styles.rail} accessibilityRole="adjustable" accessibilityLabel="Drag to resize">
+            <View style={styles.railBar}/>
+            <TickScale width={44} height={8} count={7} majorEvery={3} colour={INK.hairlineStrong}/>
+            <View style={styles.railBar}/>
+          </View>
+
+          {/* THE HEAD READOUT. Mono, uppercase, measured: what kind of thing
+              is under the pin and how far away it is. A person reads this
+              before they read the name, which is why it sits above it. */}
+          <View style={styles.headRow}>
+            <View style={styles.headLeft}>
+              <View style={[styles.headDot,{backgroundColor:lamp}]}/>
+              <Text style={styles.headLabel} numberOfLines={1}>{String(label).toUpperCase()}</Text>
+              {measured?<><View style={styles.headSep}/><Text style={styles.headMeta} numberOfLines={1}>{measured}</Text></>:null}
+            </View>
 
             <Pressable
               style={styles.closeButton}
@@ -223,9 +247,24 @@ export default function PinSheet({
               hitSlop={8}
               onPress={()=>onClose?.()}
             >
-              <Text style={styles.closeText}>×</Text>
+              <Glyph name="close" size={14} colour={INK.readoutSoft}/>
             </Pressable>
           </View>
+
+          <View style={styles.headRule}/>
+
+          <Pressable
+            style={styles.fullPageButton}
+            accessibilityRole="button"
+            accessibilityLabel="View full page"
+            onPress={()=>{
+              if(onOpenFullPage){onOpenFullPage();return;}
+              onLevelChange?.(PIN_SHEET_LEVELS.FULL);
+            }}
+          >
+            <Text style={styles.fullPageText}>VIEW FULL PAGE</Text>
+            <Glyph name="forward" size={13} colour={INK.readout}/>
+          </Pressable>
         </View>
 
         <View style={styles.content}>
@@ -249,40 +288,59 @@ const styles=StyleSheet.create({
     // that carries elevation now that the print offset is gone.
     borderTopWidth:SHAPE.border,
     borderTopColor:SHAPE.edgeHighlight,
+    borderLeftWidth:SHAPE.border,
+    borderRightWidth:SHAPE.border,
+    borderLeftColor:INK.hairline,
+    borderRightColor:INK.hairline,
     // The sheet genuinely floats over the map, which is one of the two things
     // docs/design-system.md still allows a soft ambient shadow for.
     ...SHAPE.shadow.floating,
     overflow:"hidden"
   },
-  handleArea:{paddingTop:8,paddingHorizontal:14,paddingBottom:6},
-  handle:{
-    alignSelf:"center",
-    width:40,
-    height:4,
-    borderRadius:2,
-    backgroundColor:INK.hairlineStrong,
-    marginBottom:8
+  lamp:{position:"absolute",top:0,left:"32%",right:"32%",height:2,borderRadius:1},
+
+  handleArea:{paddingTop:9,paddingHorizontal:14,paddingBottom:10},
+  rail:{flexDirection:"row",alignItems:"center",justifyContent:"center",gap:6,marginBottom:11},
+  railBar:{width:14,height:2,borderRadius:1,backgroundColor:INK.hairlineStrong},
+
+  headRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:10},
+  headLeft:{flexDirection:"row",alignItems:"center",gap:8,flex:1,minWidth:0},
+  headDot:{width:7,height:7,borderRadius:3.5},
+  headLabel:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:1,flexShrink:1
   },
-  handleRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
-  fullPageButton:{
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairlineStrong,
-    borderRadius:SHAPE.radius.pill,
-    paddingHorizontal:14,
-    paddingVertical:7,
-    backgroundColor:INK.panelRaised
-  },
-  fullPageText:{color:INK.readout,fontWeight:"600",fontSize:TYPE.body.sizes.md},
+  headSep:{width:1,height:11,backgroundColor:INK.hairlineStrong},
+  headMeta:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.8,flexShrink:1},
+
   closeButton:{
-    width:34,
-    height:34,
-    borderRadius:17,
+    width:32,
+    height:32,
+    borderRadius:SHAPE.radius.control,
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.panelRaised,
     borderWidth:SHAPE.border,
-    borderColor:INK.hairlineStrong
+    borderColor:INK.hairline
   },
-  closeText:{fontSize:18,fontWeight:"600",color:INK.readout,lineHeight:20},
+
+  headRule:{height:1,backgroundColor:INK.hairline,marginTop:10,marginBottom:10},
+
+  fullPageButton:{
+    flexDirection:"row",
+    alignItems:"center",
+    justifyContent:"center",
+    gap:8,
+    minHeight:38,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panelRaised
+  },
+  fullPageText:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.lg,
+    textTransform:"uppercase",letterSpacing:1,fontWeight:"600"
+  },
+
   content:{flex:1,paddingHorizontal:16}
 });

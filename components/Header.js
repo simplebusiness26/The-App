@@ -11,6 +11,7 @@ import {SafeAreaInsetsContext} from "react-native-safe-area-context";
 import {useNotifications} from "../context/NotificationContext";
 import {isRootScreen} from "../utils/navigation";
 import {INK,SHAPE} from "../utils/tokens";
+import {Glyph,MONO} from "./instrument";
 
 // The header, for the redesigned shell.
 //
@@ -118,7 +119,7 @@ export default function Header(){
             hitSlop={8}
             onPress={goBack}
           >
-            <Text style={styles.icon}>←</Text>
+            <Glyph name="back" size={17} colour={INK.readout} weight={1.7}/>
           </Pressable>
         )}
       </View>
@@ -137,7 +138,10 @@ export default function Header(){
           hitSlop={8}
           onPress={()=>router.push("/notifications")}
         >
-          <Text style={styles.bell}>🔔</Text>
+          {/* Drawn, not an emoji. 🔔 arrives with its own gold-and-brown
+              palette baked in by the platform font, which is the one thing a
+              two-colour instrument face cannot absorb. */}
+          <Glyph name="bell" size={17} colour={INK.readout} weight={1.5}/>
           {unreadCount>0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount>99 ? "99+" : unreadCount}</Text>
@@ -175,10 +179,14 @@ const styles=StyleSheet.create({
   // A chip, not a bare glyph. An arrow drawn straight onto a photograph or a
   // dark map tile is unreadable, and the design system's answer to "readable
   // over anything" is a bordered shape on card -- the same shape a pin uses.
+  // Machined, not round. A 6px control radius is the shape every other control
+  // in the instrument takes; a 20px circle here was the last soft edge left in
+  // the chrome, and it made the header read as a different product from the
+  // panels underneath it.
   chip:{
-    width:40,
-    height:40,
-    borderRadius:20,
+    width:38,
+    height:38,
+    borderRadius:SHAPE.radius.control,
     alignItems:"center",
     justifyContent:"center",
     backgroundColor:INK.panel,
@@ -188,13 +196,7 @@ const styles=StyleSheet.create({
     borderColor:INK.hairlineStrong,
     position:"relative"
   },
-  icon:{
-    fontSize:22,
-    fontWeight:"600",
-    color:INK.readout,
-    lineHeight:26
-  },
-  bell:{fontSize:18},
+
   // The lit readout itself, on the housing -- still not one of the state inks,
   // because a count of unread notifications is not a state a place is in. The
   // ring is the panel behind it, so the badge reads as cut out of the chip.
@@ -212,9 +214,12 @@ const styles=StyleSheet.create({
     borderWidth:SHAPE.border,
     borderColor:INK.panel
   },
+  // Mono: this is a number the app counted, so it takes the data face.
   badgeText:{
     color:INK.ground,
-    fontSize:10,
-    fontWeight:"700"
+    fontFamily:MONO,
+    fontSize:9.5,
+    fontWeight:"700",
+    letterSpacing:0.2
   }
 });
