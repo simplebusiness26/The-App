@@ -190,7 +190,9 @@ export default function Leaderboards(){
             <Text style={styles.rankEyebrow}>WHERE YOU STAND</Text>
             {ownRow ? (
               <View style={styles.rankFigures}>
-                <Readout label="RANK" value={`#${ownRow.rank}`} size="lg"/>
+                <View style={styles.rankCell}>
+                  <Readout label="RANK" value={`#${ownRow.rank}`} size="lg"/>
+                </View>
                 <View style={styles.rankDivider}/>
                 {/*
                   Points and nothing else. The review count used to sit here, and
@@ -201,7 +203,9 @@ export default function Leaderboards(){
                   yours -- get_explorer_score_breakdown() -- and is not on a
                   public board.
                 */}
-                <Readout label={`POINTS THIS ${periodWord}`} value={String(ownRow.points)} size="lg"/>
+                <View style={styles.rankCell}>
+                  <Readout label={`POINTS THIS ${periodWord}`} value={String(ownRow.points)} size="lg"/>
+                </View>
               </View>
             ) : (
               <>
@@ -303,6 +307,9 @@ const styles=StyleSheet.create({
     letterSpacing:1,textTransform:"uppercase"
   },
   rankFigures:{flexDirection:"row",alignItems:"flex-end",gap:16,marginTop:12},
+  // Both readouts share the plate. Without this a long figure runs off the
+  // right-hand edge instead of the pair splitting the width between them.
+  rankCell:{flex:1,minWidth:0},
   rankDivider:{width:1,alignSelf:"stretch",backgroundColor:INK.hairline,marginVertical:2},
   rankInstruction:{
     color:INK.readoutSoft,fontSize:TYPE.body.sizes.md,

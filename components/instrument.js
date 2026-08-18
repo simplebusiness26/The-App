@@ -36,6 +36,10 @@ export const MONO=Platform.select({ios:"Menlo",android:"monospace",default:TYPE.
 export function Readout({label,value,unit,tone="readout",align="left",size="md",valueFirst}){
   const sizes={sm:{v:18,l:TYPE.data.sizes.sm},md:{v:24,l:TYPE.data.sizes.md},lg:{v:34,l:TYPE.data.sizes.md}};
   const s=sizes[size]||sizes.md;
+  // Two lines, not one. A third-width cell in a ReadoutStrip is about eleven
+  // mono characters wide, so REVIEW REPUTATION clamped to REVIEW REPUTATI… --
+  // an instrument whose labels are cut off is not readable, which is the one
+  // thing an instrument has to be.
   const labelNode=<Text key="l" style={[styles.readoutLabel,{fontSize:s.l},valueFirst&&styles.readoutLabelUnder]} numberOfLines={2}>{label}</Text>;
   const valueNode=(
     <View key="v" style={styles.readoutValueRow}>
@@ -414,7 +418,11 @@ export function ScreenTitle({eyebrow,title,meta,right}){
         <Text style={kit.titleText} numberOfLines={2}>{title}</Text>
         {right}
       </View>
-      {meta ? <Text style={kit.titleMeta} numberOfLines={1}>{meta}</Text> : null}
+      {/* NOT CLAMPED. This was numberOfLines={1}, and every lead sentence put
+          here shipped truncated with an ellipsis -- caught by looking at a
+          screenshot, invisible to every test in the repo. A screen's lead
+          sentence is prose; prose wraps. */}
+      {meta ? <Text style={kit.titleMeta}>{meta}</Text> : null}
       <View style={kit.titleRule}>
         <TickScale width={72} height={9} count={9} majorEvery={4} colour={INK.hairlineStrong}/>
         <View style={kit.titleRuleLine}/>
@@ -475,7 +483,14 @@ export function Segmented({items,active,onChange,scroll=false}){
         accessibilityLabel={spoken}
         onPress={()=>onChange?.(key)}
       >
-        <Text style={[kit.segmentText,selected&&kit.segmentTextActive]} numberOfLines={1}>{label}</Text>
+        <View style={kit.segmentRow}>
+          <Text style={[kit.segmentText,selected&&kit.segmentTextActive]} numberOfLines={1}>{label}</Text>
+          {/* A count beside the label -- unread messages, results in a filter.
+              It rides in the same mono face at a smaller size rather than as a
+              coloured badge, because how many is a measurement and not a state
+              a place is in. */}
+          {item.meta!=null?<Text style={[kit.segmentMeta,selected&&kit.segmentMetaActive]}>{item.meta}</Text>:null}
+        </View>
         <View style={[kit.segmentDetent,selected&&kit.segmentDetentActive]}/>
       </Pressable>
     );
@@ -503,7 +518,7 @@ export function Segmented({items,active,onChange,scroll=false}){
 // Mono, uppercase, 44px floor. `primary` is the only thing on a screen allowed
 // to carry a filled state ink, and it takes DARK text on it -- the contrast
 // table in docs/design-system.md is not optional and the gate checks it.
-export function Action({label,onPress,kind="secondary",glyph,disabled,loading,style,accessibilityLabel}){
+export function Action({label,onPress,kind="secondary",glyph,disabled,loading,style,accessibilityLabel,compact}){
   const filled=kind==="primary"||kind==="danger";
   const fill=kind==="primary"?INK.exists:kind==="danger"?INK.dispute:null;
   const text=filled?INK.ground:kind==="quiet"?INK.readoutSoft:INK.readout;
@@ -511,6 +526,7 @@ export function Action({label,onPress,kind="secondary",glyph,disabled,loading,st
     <Pressable
       style={({pressed})=>[
         kit.action,
+        compact&&kit.actionCompact,
         filled?{backgroundColor:fill,borderColor:fill}:kind==="quiet"?kit.actionQuiet:kit.actionSecondary,
         pressed&&kit.actionPressed,
         disabled&&kit.actionDisabled,
@@ -522,8 +538,8 @@ export function Action({label,onPress,kind="secondary",glyph,disabled,loading,st
       accessibilityLabel={accessibilityLabel||label}
       accessibilityState={{disabled:!!(disabled||loading)}}
     >
-      {glyph?<Glyph name={glyph} size={15} colour={text}/>:null}
-      <Text style={[kit.actionText,{color:text}]} numberOfLines={1}>{loading?"WORKING…":label}</Text>
+      {glyph?<Glyph name={glyph} size={compact?13:15} colour={text}/>:null}
+      <Text style={[kit.actionText,compact&&kit.actionTextCompact,{color:text}]} numberOfLines={1}>{loading?"WORKING…":label}</Text>
     </Pressable>
   );
 }
@@ -598,7 +614,10 @@ export function Meter({value=0,max=5,tone="exists",width=140,label,valueLabel}){
 // Inputs sit in an `inset` well, one step BELOW the panel they are on, because
 // the thing you type into should read as cut into the housing rather than
 // stuck on it. The label is mono: it names a field, it is not a sentence.
-export function Field({label,hint,error,children,required,style}){
+// `counter` is a value the app measured about what you are typing -- 41/300,
+// 3 photos left. It rides opposite the hint in the data face, because a hint is
+// something a person wrote and a counter is not.
+export function Field({label,hint,error,children,required,style,counter}){
   return(
     <View style={[kit.field,style]}>
       {label?(
@@ -608,7 +627,14 @@ export function Field({label,hint,error,children,required,style}){
         </View>
       ):null}
       <View style={[kit.fieldWell,!!error&&kit.fieldWellError]}>{children}</View>
-      {error?<Text style={kit.fieldError}>{error}</Text>:hint?<Text style={kit.fieldHint}>{hint}</Text>:null}
+      {(error||hint||counter!=null)?(
+        <View style={kit.fieldFootRow}>
+          {error?<Text style={[kit.fieldError,kit.fieldFootGrow]}>{error}</Text>
+            :hint?<Text style={[kit.fieldHint,kit.fieldFootGrow]}>{hint}</Text>
+            :<View style={kit.fieldFootGrow}/>}
+          {counter!=null?<Text style={kit.fieldCounter}>{counter}</Text>:null}
+        </View>
+      ):null}
     </View>
   );
 }
@@ -654,17 +680,29 @@ export function KeyValue({label,value,tone,wrap}){
 // ---------------------------------------------------------------------------
 // READOUT STRIP — several measurements on one plate.
 // ---------------------------------------------------------------------------
-export function ReadoutStrip({items,style}){
+// A cell may carry `onPress`, which is what a profile's Followers/Following
+// plate needs -- without it that plate had to be rebuilt by hand purely so two
+// of its numbers could be tapped.
+export function ReadoutStrip({items,style,valueFirst}){
   return(
     <Panel style={[kit.strip,style]}>
-      {items.map((item,i)=>(
-        <React.Fragment key={item.label+String(i)}>
-          {i>0?<View style={kit.stripDivider}/>:null}
-          <View style={kit.stripCell}>
-            <Readout label={item.label} value={item.value} unit={item.unit} tone={item.tone} align="center" size="sm"/>
-          </View>
-        </React.Fragment>
-      ))}
+      {items.map((item,i)=>{
+        const Cell=item.onPress?Pressable:View;
+        return(
+          <React.Fragment key={item.label+String(i)}>
+            {i>0?<View style={kit.stripDivider}/>:null}
+            <Cell
+              style={kit.stripCell}
+              onPress={item.onPress}
+              accessibilityRole={item.onPress?"button":undefined}
+              accessibilityLabel={item.onPress?(item.accessibilityLabel||`${item.value} ${item.label}`):undefined}
+            >
+              <Readout label={item.label} value={item.value} unit={item.unit} tone={item.tone}
+                align="center" size="sm" valueFirst={valueFirst||item.valueFirst}/>
+            </Cell>
+          </React.Fragment>
+        );
+      })}
     </Panel>
   );
 }
@@ -674,17 +712,51 @@ export function ReadoutStrip({items,style}){
 // ---------------------------------------------------------------------------
 // Avatars, thumbnails, photos. The brackets tie every picture in the app back
 // to the viewfinder, which is the app's one signature surface.
-export function Frame({children,size,ratio=1,round=false,style}){
+// Sized three ways: `size` (a square, or a rectangle with `ratio`), `height`
+// (full width at a fixed height -- what a media well in a card wants), or
+// neither, in which case it takes its width from the layout and its height from
+// `ratio`. Without the `height` case every fixed-height well had to pass
+// `style={{height:N,aspectRatio:undefined}}` to cancel the default, which is a
+// trick rather than an API.
+export function Frame({children,size,height,ratio=1,round=false,style}){
   return(
     <View style={[
       kit.frame,
       round&&{borderRadius:SHAPE.radius.pill},
-      size?{width:size,height:Math.round(size/ratio)}:{aspectRatio:ratio},
+      size?{width:size,height:Math.round(size/ratio)}:height?{width:"100%",height}:{aspectRatio:ratio},
       style
     ]}>
       {children}
       {!round?<CornerFrame inset={4} length={10} colour={INK.readoutSoft} opacity={0.45}/>:null}
     </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// COUNTER — a thing you can do, and how many people have done it.
+// ---------------------------------------------------------------------------
+// Like, Useful, Follow, Save, Comment. Five files had each grown their own copy
+// of the same twelve-line style block, which is drift starting: the moment one
+// of them is tweaked the row of controls under a post stops matching.
+//
+// Acting is NOT a state ink. Whether you personally liked something is not a
+// state a PLACE is in, so a pressed counter steps up a surface and strengthens
+// its edge, exactly like a selected chip. The glyph carries the meaning and the
+// count stays in the data face, because the app counted it.
+export function Counter({glyph,count,label,acted,onPress,disabled,accessibilityLabel,style}){
+  return(
+    <Pressable
+      style={({pressed})=>[kit.counter,acted&&kit.counterActed,pressed&&kit.counterPressed,disabled&&kit.counterDisabled,style]}
+      onPress={disabled?undefined:onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel||label}
+      accessibilityState={{selected:!!acted,disabled:!!disabled}}
+    >
+      <Glyph name={glyph} size={14} colour={acted?INK.readout:INK.readoutSoft} weight={acted?1.9:1.5}/>
+      {count!=null?<Text style={[kit.counterCount,acted&&kit.counterCountActed]}>{count}</Text>:null}
+      {label?<Text style={[kit.counterLabel,acted&&kit.counterCountActed]} numberOfLines={1}>{label}</Text>:null}
+    </Pressable>
   );
 }
 
@@ -764,10 +836,13 @@ const kit=StyleSheet.create({
   segmentScroll:{flexGrow:0,flexShrink:0},
   segmentScrollContent:{alignItems:"center",paddingHorizontal:12,gap:2},
   segment:{paddingHorizontal:12,paddingTop:10,alignItems:"center",minHeight:SHAPE.tapTarget},
+  segmentRow:{flexDirection:"row",alignItems:"center",gap:5,marginBottom:8},
   segmentText:{
     color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
-    textTransform:"uppercase",letterSpacing:0.8,marginBottom:8
+    textTransform:"uppercase",letterSpacing:0.8
   },
+  segmentMeta:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,opacity:0.85},
+  segmentMetaActive:{color:INK.readoutSoft,opacity:1},
   segmentTextActive:{color:INK.readout},
   segmentDetent:{height:2,alignSelf:"stretch",minWidth:18,backgroundColor:INK.hairline},
   segmentDetentActive:{backgroundColor:INK.hairlineStrong,height:2},
@@ -777,11 +852,16 @@ const kit=StyleSheet.create({
     minHeight:SHAPE.tapTarget,paddingHorizontal:16,
     borderRadius:SHAPE.radius.control,borderWidth:SHAPE.border
   },
+  // Compact keeps the 44px tap floor -- it narrows the padding, never the
+  // target. A button small enough to miss is not a smaller button, it is a
+  // broken one.
+  actionCompact:{paddingHorizontal:11,gap:6},
   actionSecondary:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
   actionQuiet:{backgroundColor:"transparent",borderColor:INK.hairline},
   actionPressed:{opacity:0.78},
   actionDisabled:{opacity:0.45},
   actionText:{fontFamily:MONO,fontSize:TYPE.data.sizes.lg,textTransform:"uppercase",letterSpacing:1,fontWeight:"600"},
+  actionTextCompact:{fontSize:TYPE.data.sizes.md,letterSpacing:0.8},
 
   rowEdge:{marginBottom:8},
   row:{flexDirection:"row",alignItems:"center",gap:11,paddingHorizontal:13,paddingVertical:12,minHeight:56},
@@ -818,8 +898,11 @@ const kit=StyleSheet.create({
     borderRadius:SHAPE.radius.control,overflow:"hidden"
   },
   fieldWellError:{borderColor:INK.dispute},
-  fieldHint:{color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,marginTop:6,lineHeight:TYPE.body.sizes.sm*1.5},
-  fieldError:{color:INK.dispute,fontSize:TYPE.body.sizes.sm,marginTop:6,lineHeight:TYPE.body.sizes.sm*1.5},
+  fieldFootRow:{flexDirection:"row",alignItems:"flex-start",gap:10,marginTop:6},
+  fieldFootGrow:{flex:1},
+  fieldCounter:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.5},
+  fieldHint:{color:INK.readoutFaint,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5},
+  fieldError:{color:INK.dispute,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5},
 
   kv:{flexDirection:"row",alignItems:"center",gap:8,paddingVertical:9},
   kvLabel:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,textTransform:"uppercase",letterSpacing:0.8},
@@ -839,6 +922,21 @@ const kit=StyleSheet.create({
     backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
     borderRadius:SHAPE.radius.control,overflow:"hidden",alignItems:"center",justifyContent:"center"
   },
+
+  counter:{
+    flexDirection:"row",alignItems:"center",gap:6,minHeight:36,
+    paddingHorizontal:11,paddingVertical:7,borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
+  },
+  counterActed:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  counterPressed:{opacity:0.78},
+  counterDisabled:{opacity:0.45},
+  counterCount:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
+  counterLabel:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:0.7
+  },
+  counterCountActed:{color:INK.readout,fontWeight:"600"},
 
   empty:{alignItems:"center",paddingHorizontal:28,paddingVertical:44,gap:10},
   emptyDial:{

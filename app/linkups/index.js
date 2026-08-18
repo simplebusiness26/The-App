@@ -108,7 +108,7 @@ export default function LinkupsIndex(){
         <ScreenTitle
           eyebrow="MEET LOCALLY"
           title="Link-ups"
-          meta="Create something to do, join local Explorers and keep the plan together in a private board."
+          meta="Make a plan, join local Explorers, keep it in a private board."
         />
 
         <View style={styles.body}>

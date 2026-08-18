@@ -206,7 +206,7 @@ export default function LiveDiscovery(){
         <ScreenTitle
           eyebrow="HAPPENING NEARBY"
           title="Live Nearby"
-          meta="Link-ups, public check-ins, events, active clubs and popular places in one view."
+          meta="Link-ups, check-ins, events and clubs in one view."
         />
 
         <View style={styles.body}>

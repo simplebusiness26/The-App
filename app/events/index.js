@@ -56,8 +56,20 @@ export function eventClock(value,now=Date.now()){
     return `${date.getHours()>=17?"TONIGHT":"TODAY"} ${time}`;
   }
 
-  const day=date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  // No weekday out here: the meta column is narrow and "THU, 20 AUG 03:37"
+  // pushed the whole row's text over. The weekday survives in the full date
+  // line under the row.
+  const day=date.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
   return `${day.toUpperCase()} ${time}`;
+}
+
+// True while the countdown is relative ("IN 2H"), which is when the full date
+// under the row is telling you something the meta column has not. Once the meta
+// is itself a date, printing the date twice is just noise.
+function needsFullDate(value,now=Date.now()){
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return false;
+  return date.getTime()-now<6*60*60*1000;
 }
 
 export default function Events(){
@@ -172,8 +184,12 @@ export default function Events(){
               </View>
 
               {/* The full date, under the countdown that told you whether to
-                  care. Both are measurements, so both are mono. */}
-              <Text style={styles.when} numberOfLines={1}>{formatEventDate(event.starts_at)}</Text>
+                  care -- and only while the countdown is relative, so the row
+                  never prints the same date twice. Both are measurements, so
+                  both are mono. */}
+              {needsFullDate(event.starts_at) && (
+                <Text style={styles.when} numberOfLines={1}>{formatEventDate(event.starts_at)}</Text>
+              )}
             </Row>
           ))}
         </View>

@@ -249,10 +249,15 @@ export default function MemoryPage(){
         <ScreenTitle
           eyebrow="MEMORY"
           title={memory.title || "A Memory"}
-          right={<Chip label={phaseLabel(memory)}/>}
         />
 
         <View style={styles.body}>
+        {/* The phase is a reading about this Memory -- live until a date, or
+            archived -- so it is a mono chip on its own line rather than a
+            badge crushed in beside the title. */}
+        <View style={styles.phaseRow}>
+          <Chip label={phaseLabel(memory)}/>
+        </View>
         {!!memory.note && <Text style={styles.note}>{memory.note}</Text>}
 
         {!!memory.target_name && (
@@ -430,6 +435,7 @@ const styles=StyleSheet.create({
   photoFrame:{height:240,alignSelf:"stretch",aspectRatio:undefined},
   photo:{width:"100%",height:"100%"},
 
+  phaseRow:{flexDirection:"row",marginTop:2},
   note:{
     color:INK.readout,fontSize:TYPE.body.sizes.lg,
     lineHeight:TYPE.body.sizes.lg*TYPE.body.lineHeight,marginTop:12

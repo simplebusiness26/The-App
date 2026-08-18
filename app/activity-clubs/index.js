@@ -193,9 +193,10 @@ const styles=StyleSheet.create({
     textTransform:"uppercase",letterSpacing:0.6,flexShrink:1
   },
   chip:{minHeight:24,paddingVertical:3},
+  // No marginLeft:auto -- in a wrapping row that pushes the price onto a line
+  // of its own, right-aligned and orphaned. Measured at 412px.
   price:{
-    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
-    letterSpacing:0.8,marginLeft:"auto"
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.8
   },
 
   rating:{flexDirection:"row",alignItems:"center",gap:8,marginTop:9},

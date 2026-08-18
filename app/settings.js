@@ -108,6 +108,15 @@ const VISIBILITY_CHOICES=[
 export default function Settings(){
   const {showFeedback}=useFeedback();
 
+  // WHO IS SIGNED IN, HELD WHERE THE HANDLERS CAN SEE IT.
+  //
+  // logout(), togglePushMaster() and togglePushCategory() all read `user?.id`,
+  // and `user` was only ever destructured INSIDE load() -- so at runtime every
+  // one of them threw a ReferenceError. Logging out was broken, and so was
+  // every push toggle. No test caught it because they assert on the source
+  // text rather than calling the handlers, and the optional chaining made it
+  // look safe. The session is now held in state and set by load().
+  const [user,setUser]=useState(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [savingPrivacy,setSavingPrivacy]=useState(false);
@@ -142,6 +151,7 @@ export default function Settings(){
 
     const {data:{user}}=await supabase.auth.getUser();
     if(!user){router.replace("/auth/login");return;}
+    setUser(user);
 
     const {data:profile,error:profileError}=await supabase
       .from("profiles")
