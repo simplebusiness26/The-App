@@ -180,9 +180,25 @@ export function Reticle({size=72,colour=INK.scheduled}){
 // Zoom presets, durations, intensity. One continuous motion instead of four
 // separate taps to compare options -- and every tick is still individually
 // tappable, so the gesture is a shortcut and never the only route.
-export function Dial({values,active,onChange,width=232,format=(v)=>String(v)}){
+export function Dial({values,active,onChange,width=232,format=(v)=>String(v),labelEvery}){
   const [dragging,setDragging]=useState(false);
   const idx=Math.max(0,values.indexOf(active));
+
+  // A CROWDED SCALE LABELS ITS MAJORS, NOT EVERY GRADUATION.
+  //
+  // Labels are centred on their own ticks, which is the only honest way to draw
+  // a dial -- but centred labels can then collide with each other, and "50KM"
+  // sitting on top of "25KM" is no more readable than a label pointing at the
+  // wrong tick. A real instrument scale solves this the same way: it numbers
+  // the majors and leaves the minors bare.
+  //
+  // The estimate is deliberately rough (mono is fixed-pitch, roughly 0.62em at
+  // this size, plus a 10px clear gap). Being slightly conservative costs a
+  // label; being optimistic costs a collision, and one of those is a bug.
+  const widest=values.reduce((most,v)=>Math.max(most,String(format(v)).length),0);
+  const needed=widest*TYPE.data.sizes.sm*0.62+10;
+  const fits=values.length>1 ? width/(values.length-1) : width;
+  const stride=labelEvery || Math.max(1,Math.ceil(needed/Math.max(1,fits)));
   const step=values.length>1 ? width/(values.length-1) : width;
   const startIdx=useRef(idx);
 
@@ -328,6 +344,7 @@ const styles=StyleSheet.create({
   // own graduation, so the row only has to be as wide as the scale.
   dialLabels:{height:SHAPE.tapTarget},
   dialCell:{position:"absolute",top:0,width:0,alignItems:"center"},
+  dialBareDetent:{width:3,height:3,borderRadius:1.5,backgroundColor:INK.hairlineStrong,marginTop:4},
   dialHit:{minHeight:SHAPE.tapTarget,minWidth:32,alignItems:"center",justifyContent:"center"},
   dialLabel:{
     color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
