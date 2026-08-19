@@ -67,11 +67,17 @@ export function Readout({label,value,unit,tone="readout",align="left",size="md",
 // section rules. Purely decorative in the sense that it carries no data, but it
 // is the texture that says "this thing measures things".
 export function TickScale({width=200,height=14,count=21,majorEvery=5,colour=INK.hairlineStrong}){
-  const step=count>1 ? width/(count-1) : width;
+  // The end marks are drawn 0.7 in from each edge rather than on it. A 1.4px
+  // stroke centred on x=0 loses half its width to the canvas boundary, so the
+  // first and last graduation rendered thinner than every other major -- which
+  // on a scale reads as the ends being less important, the opposite of true.
+  const inset=0.7;
+  const span=Math.max(0,width-inset*2);
+  const step=count>1 ? span/(count-1) : span;
   const ticks=[];
   for(let i=0;i<count;i++){
     const major=i%majorEvery===0;
-    const x=i*step;
+    const x=inset+i*step;
     ticks.push(
       <Line key={i} x1={x} y1={height} x2={x} y2={major?height*0.25:height*0.62}
         stroke={colour} strokeWidth={major?1.4:1} strokeLinecap="square" opacity={major?1:0.65}/>
@@ -318,7 +324,10 @@ const styles=StyleSheet.create({
   readoutUnit:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,textTransform:"uppercase"},
 
   dialWrap:{alignItems:"center",gap:6},
-  dialLabels:{flexDirection:"row",justifyContent:"space-between"},
+  // A bare row, not a space-between one: every cell positions itself on its
+  // own graduation, so the row only has to be as wide as the scale.
+  dialLabels:{height:SHAPE.tapTarget},
+  dialCell:{position:"absolute",top:0,width:0,alignItems:"center"},
   dialHit:{minHeight:SHAPE.tapTarget,minWidth:32,alignItems:"center",justifyContent:"center"},
   dialLabel:{
     color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
