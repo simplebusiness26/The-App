@@ -10,17 +10,13 @@ import {entityRoute,entityTypeLabel} from "../../utils/places";
 import useKeyboardInset from "../../hooks/useKeyboardInset";
 import {INK} from "../../utils/tokens";
 
-// One conversation.
+// DesignLab production direction: Living Inbox + Warm Flow, with the useful
+// Loren rule preserved: moving around a conversation must never steal the
+// reader's place.
 //
-// Sending goes through send_message, which re-checks the relationship on EVERY
-// message rather than only when the thread was opened: somebody who unfollows,
-// or is blocked, or stops managing the listing the thread is about, stops being
-// able to write to it. That refusal arrives here as an ordinary error and is
-// shown as the sentence the database wrote, because those sentences say what
-// happened and what to do.
-//
-// What was already said stays. Ending a friendship closes the thread; it does
-// not delete a conversation two people had.
+// Sending still goes through send_message, which re-checks permission on EVERY
+// message. Ending a friendship or listing relationship may close future sends;
+// it never erases the conversation that already happened.
 
 export default function Conversation(){
   const params=useLocalSearchParams();
@@ -35,6 +31,7 @@ export default function Conversation(){
   const [loading,setLoading]=useState(true);
   const [sending,setSending]=useState(false);
   const [error,setError]=useState("");
+  const [showLatest,setShowLatest]=useState(false);
   const scroller=useRef(null);
   // Whether the thread has been scrolled to the bottom once for this
   // conversation. Everything after that is the reader's business.
@@ -52,9 +49,6 @@ export default function Conversation(){
     if(!user){router.replace("/auth/login");return;}
     setViewerId(user.id);
 
-    // Row level security decides all three of these. A conversation somebody is
-    // not in returns nothing rather than an error, which is why the screen
-    // checks for absence rather than for a refusal.
     const [conversationResult,memberResult,messageResult]=await Promise.all([
       supabase.from("conversations").select("id,kind,target_type,target_id").eq("id",conversationId).maybeSingle(),
       supabase.from("conversation_members").select("user_id").eq("conversation_id",conversationId),
@@ -95,28 +89,27 @@ export default function Conversation(){
     setSending(false);
 
     if(sendError){
-      // The database's own sentence. It says what happened and what to do --
-      // "you are not friends any more, so this conversation is closed" is more
-      // use than "could not send".
       showFeedback(sendError.message,"error","Not sent");
       return;
     }
 
-    // The draft is cleared only after the database accepted it. A send that
-    // fails above returns with the text still in the box -- losing what
-    // somebody typed because the network blinked is not an acceptable way to
-    // report a network problem.
+    // Keep the draft if the database refuses the send; clear it only after the
+    // message is accepted.
     setDraft("");
     await load();
-    // Sending is the one action that always returns you to the bottom: you
-    // wrote it, you should see it land.
     readingHistory.current=false;
+    setShowLatest(false);
+    scroller.current?.scrollToEnd?.({animated:true});
+  }
+
+  function goLatest(){
+    readingHistory.current=false;
+    setShowLatest(false);
     scroller.current?.scrollToEnd?.({animated:true});
   }
 
   // Opening the keyboard shortens the thread. If the reader was at the bottom,
-  // keep them there -- otherwise the last message slides up behind the composer
-  // at exactly the moment they are about to reply to it.
+  // keep them there. If they deliberately scrolled up, leave them alone.
   useEffect(()=>{
     if(keyboard<=0 || readingHistory.current) return;
     const timer=setTimeout(()=>scroller.current?.scrollToEnd?.({animated:false}),50);
@@ -136,33 +129,43 @@ export default function Conversation(){
     : null;
 
   return(
-    // The keyboard's height, applied as padding on the screen itself. See
-    // hooks/useKeyboardInset.js for why this is not a KeyboardAvoidingView:
-    // the old one had no behaviour on Android at all, and Expo's edge-to-edge
-    // default means the window no longer resizes underneath it, so the keyboard
-    // simply covered the composer.
     <View style={[styles.screen,{paddingBottom:keyboard}]}>
       <View style={styles.header}>
         <Pressable
+          style={styles.back}
           accessibilityRole="button"
-          accessibilityLabel={`Open ${other?.full_name || "this Explorer"}'s profile`}
-          onPress={()=>other?.id && router.push(`/profile/${other.id}`)}
+          accessibilityLabel="Back to messages"
+          onPress={()=>router.back()}
         >
-          <Text style={styles.name}>{other?.full_name || "Explorer"}</Text>
+          <Text style={styles.backText}>‹</Text>
         </Pressable>
 
-        {conversation?.kind==="listing" && (
+        <View style={styles.headerMain}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Open the listing this conversation is about"
-            disabled={!place}
-            onPress={()=>place && router.push(place)}
+            accessibilityLabel={`Open ${other?.full_name || "this Explorer"}'s profile`}
+            onPress={()=>other?.id && router.push(`/profile/${other.id}`)}
           >
-            <Text style={styles.about}>
-              About a {entityTypeLabel(conversation.target_type).toLowerCase()} →
-            </Text>
+            <Text style={styles.name} numberOfLines={1}>{other?.full_name || "Explorer"}</Text>
           </Pressable>
-        )}
+
+          {conversation?.kind==="listing" ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open the listing this conversation is about"
+              disabled={!place}
+              onPress={()=>place && router.push(place)}
+            >
+              <Text style={styles.about} numberOfLines={1}>
+                About a {entityTypeLabel(conversation.target_type).toLowerCase()} →
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.about}>Friend conversation</Text>
+          )}
+        </View>
+
+        <View style={styles.headerBalance}/>
       </View>
 
       <ScrollView
@@ -170,30 +173,32 @@ export default function Conversation(){
         style={styles.thread}
         contentContainerStyle={styles.threadContent}
         keyboardShouldPersistTaps="handled"
-        // Was: scrollToEnd on EVERY content size change. That fires whenever
-        // anything reflows -- an image settling, the keyboard opening, a
-        // re-render -- so scrolling up to read older messages yanked the view
-        // back to the bottom. The thread now settles at the bottom once, and
-        // after that only a message being sent moves it.
         onContentSizeChange={()=>{
           if(settled.current || readingHistory.current) return;
           settled.current=true;
+          setShowLatest(false);
           scroller.current?.scrollToEnd?.({animated:false});
         }}
         onScroll={(event)=>{
           const {layoutMeasurement,contentOffset,contentSize}=event.nativeEvent;
           const fromBottom=contentSize.height-(contentOffset.y+layoutMeasurement.height);
-          // A small margin, because "at the bottom" is never exactly zero.
-          readingHistory.current=fromBottom>80;
+          const reading=fromBottom>80;
+          readingHistory.current=reading;
+          setShowLatest((current)=>current===reading ? current : reading);
         }}
         scrollEventThrottle={64}
       >
         {!messages.length && (
-          <Text style={styles.muted}>
-            {conversation?.kind==="listing"
-              ? "Ask whatever you need to know about this place."
-              : "Say something."}
-          </Text>
+          <View style={styles.emptyThread}>
+            <Text style={styles.emptyTitle}>
+              {conversation?.kind==="listing" ? "Start with the place" : "Start the conversation"}
+            </Text>
+            <Text style={styles.muted}>
+              {conversation?.kind==="listing"
+                ? "Ask whatever you need to know about this place."
+                : "Say something."}
+            </Text>
+          </View>
         )}
 
         {messages.map((message)=>{
@@ -209,6 +214,19 @@ export default function Conversation(){
           );
         })}
       </ScrollView>
+
+      {showLatest && (
+        <View style={styles.latestRow} pointerEvents="box-none">
+          <Pressable
+            style={styles.latest}
+            accessibilityRole="button"
+            accessibilityLabel="Jump to latest message"
+            onPress={goLatest}
+          >
+            <Text style={styles.latestText}>Latest ↓</Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.composer}>
         <TextInput
@@ -228,7 +246,7 @@ export default function Conversation(){
           disabled={!draft.trim() || sending}
           onPress={send}
         >
-          <Text style={styles.sendText}>{sending ? "…" : "Send"}</Text>
+          <Text style={styles.sendText}>{sending ? "…" : "↑"}</Text>
         </Pressable>
       </View>
     </View>
@@ -238,25 +256,32 @@ export default function Conversation(){
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
   centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center",padding:28},
-  header:{paddingHorizontal:16,paddingTop:12,paddingBottom:10,borderBottomWidth:2,borderBottomColor:INK.ink,backgroundColor:INK.card},
-  name:{color:INK.ink,fontSize:19,fontWeight:"900"},
-  about:{color:INK.inkSoft,fontSize:12,fontWeight:"800",marginTop:2},
+  header:{paddingHorizontal:12,paddingTop:10,paddingBottom:10,borderBottomWidth:1,borderBottomColor:INK.hair,backgroundColor:INK.card,flexDirection:"row",alignItems:"center",gap:8},
+  back:{width:44,height:44,borderRadius:22,borderWidth:1,borderColor:INK.hair,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
+  backText:{color:INK.ink,fontSize:31,lineHeight:31,fontWeight:"500",marginTop:-2},
+  headerMain:{flex:1,minWidth:0,alignItems:"center"},
+  headerBalance:{width:44,height:44},
+  name:{color:INK.ink,fontSize:17,fontWeight:"900",maxWidth:240},
+  about:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:2,maxWidth:250},
   thread:{flex:1},
   threadContent:{padding:16,gap:8,paddingBottom:20},
+  emptyThread:{alignSelf:"stretch",backgroundColor:INK.card,borderWidth:1,borderColor:INK.hair,borderRadius:18,padding:16,marginTop:4},
+  emptyTitle:{color:INK.ink,fontSize:15,fontWeight:"900",marginBottom:4},
   muted:{color:INK.inkSoft,fontSize:14,lineHeight:20},
-  bubble:{maxWidth:"82%",borderWidth:2,borderColor:INK.ink,borderRadius:14,paddingHorizontal:13,paddingVertical:9},
-  mine:{alignSelf:"flex-end",backgroundColor:INK.ink},
-  theirs:{alignSelf:"flex-start",backgroundColor:INK.card},
+  bubble:{maxWidth:"82%",borderWidth:1,borderColor:INK.hair,borderRadius:18,paddingHorizontal:13,paddingVertical:10},
+  mine:{alignSelf:"flex-end",backgroundColor:INK.ink,borderBottomRightRadius:7,borderColor:INK.ink},
+  theirs:{alignSelf:"flex-start",backgroundColor:INK.card,borderBottomLeftRadius:7},
   body:{color:INK.ink,fontSize:14,lineHeight:20},
   mineBody:{color:INK.card},
-  // paddingBottom was 96, a hand-tuned clearance for the tab bar. It double
-  // counted: components/TabBar.js renders as a SIBLING of the Stack in
-  // app/_layout.js, so this screen's box already stops above it. The only thing
-  // actually overlapping is the 20px strip the raised centre button rises into,
-  // so 28 clears it with room to spare -- and gives 68px of screen back.
-  composer:{flexDirection:"row",alignItems:"flex-end",gap:9,padding:12,paddingBottom:28,borderTopWidth:2,borderTopColor:INK.ink,backgroundColor:INK.card},
-  input:{flex:1,minHeight:44,maxHeight:120,borderWidth:2,borderColor:INK.hair,borderRadius:12,paddingHorizontal:12,paddingVertical:10,color:INK.ink,backgroundColor:INK.paper,textAlignVertical:"top"},
-  send:{minHeight:44,justifyContent:"center",paddingHorizontal:18,borderRadius:99,backgroundColor:INK.ink},
-  sendOff:{opacity:0.4},
-  sendText:{color:INK.card,fontWeight:"800"}
+  latestRow:{alignItems:"flex-end",paddingHorizontal:12,paddingBottom:6,backgroundColor:INK.paper},
+  latest:{minHeight:40,borderRadius:99,borderWidth:1,borderColor:INK.hair,backgroundColor:INK.card,paddingHorizontal:14,alignItems:"center",justifyContent:"center"},
+  latestText:{color:INK.ink,fontSize:11,fontWeight:"900"},
+  // This remains a normal in-flow composer. The measured keyboard height is
+  // applied to the screen above, so Android cannot cover it and no device offset
+  // is guessed here.
+  composer:{flexDirection:"row",alignItems:"flex-end",gap:8,padding:10,paddingBottom:24,borderTopWidth:2,borderTopColor:INK.hair,backgroundColor:INK.card},
+  input:{flex:1,minHeight:44,maxHeight:120,borderWidth:1,borderColor:INK.hair,borderRadius:18,paddingHorizontal:13,paddingVertical:10,color:INK.ink,backgroundColor:INK.paper,textAlignVertical:"top"},
+  send:{width:44,height:44,alignItems:"center",justifyContent:"center",borderRadius:22,backgroundColor:INK.ink},
+  sendOff:{opacity:0.35},
+  sendText:{color:INK.card,fontSize:20,fontWeight:"900",lineHeight:22}
 });

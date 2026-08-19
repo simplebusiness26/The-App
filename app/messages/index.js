@@ -12,7 +12,11 @@ import {
 } from "../../utils/messageViews";
 import {INK} from "../../utils/tokens";
 
-// The inbox, and three other ways of looking at it.
+// DesignLab production direction: Living Inbox + Warm Flow.
+//
+// The information architecture is the Living Inbox idea: one inbox, explicit
+// views, and context made visible where it helps. Warm Flow supplies the softer
+// hierarchy and surfaces. Neither changes the messaging model below.
 //
 // All | Friends | Managers | Message Boards
 //
@@ -22,23 +26,13 @@ import {INK} from "../../utils/tokens";
 // in which tab live in utils/messageViews.js so they can be tested without
 // rendering anything.
 //
-// TWO KINDS OF CONVERSATION, AND THE DIFFERENCE IS VISIBLE
-//
-//   friend    two Explorers who follow each other
-//   listing   anybody, to whoever manages a place, about that place
-//
-// A manager needs to tell them apart at a glance: one is a friend, one is
-// somebody asking whether the kitchen is still open. A listing thread now wears
-// the listing's NAME, not just its type, and says which side of it you are on.
-//
 // MANAGER IS A CAPABILITY, NOT AN ACCOUNT TYPE. The Managers tab is a filter
 // over conversations about listings. It is not a second inbox, there is no
 // manager account, and the same Explorer appears on both sides of it.
 //
-// BOARDS ARE LISTED, NOT REIMPLEMENTED. get_message_boards() returns the boards
-// the caller is already authorised to read, re-deriving the same conditions the
-// boards' own read policies use. Opening one still goes through that board's
-// policy; this cannot grant access to anything.
+// BOARDS ARE DOORWAYS. They are listed here for quick access and then opened in
+// the board system that already owns them. They are never copied into direct
+// message tables.
 
 function when(value){
   const then=new Date(value).getTime();
@@ -52,6 +46,25 @@ function when(value){
 
 const BOARD_LABEL={linkup:"Link-up",activity_club:"Activity club"};
 
+function viewCopy(view,unread,boards){
+  if(view==="friends") return {
+    title:"Your people",
+    body:unread.friends ? `${unread.friends} unread from friends` : "Caught up with friends"
+  };
+  if(view==="managers") return {
+    title:"Places and managers",
+    body:unread.managers ? `${unread.managers} unread about places` : "Caught up on place conversations"
+  };
+  if(view==="boards") return {
+    title:"Shared spaces",
+    body:boards.length ? `${boards.length} message board${boards.length===1 ? "" : "s"}` : "Boards from Link-ups and Activity Clubs"
+  };
+  return {
+    title:"Everything together",
+    body:unread.all ? `${unread.all} unread direct message${unread.all===1 ? "" : "s"}` : "No unread direct messages"
+  };
+}
+
 export default function Messages(){
   const [rows,setRows]=useState([]);
   const [boards,setBoards]=useState([]);
@@ -64,8 +77,6 @@ export default function Messages(){
     const {data:{user}}=await supabase.auth.getUser();
     if(!user){router.replace("/auth/login");return;}
 
-    // Both in one go. Two round trips, not one per row -- the boards arrive
-    // already filtered to what this Explorer may read.
     const [conversationResult,boardResult]=await Promise.all([
       supabase.rpc("get_conversations"),
       supabase.rpc("get_message_boards")
@@ -79,8 +90,7 @@ export default function Messages(){
       setRows(conversationResult.data || []);
     }
 
-    // A board list that fails must not take the inbox down with it. They are
-    // separate systems and one being unavailable says nothing about the other.
+    // A board list that fails must not take the direct inbox down with it.
     if(boardResult.error){
       setBoardError("Your message boards could not be loaded.");
       setBoards([]);
@@ -101,15 +111,62 @@ export default function Messages(){
     managers:unreadFor("managers",rows)
   }),[rows]);
 
+  // All is still the same direct inbox, but the Living Inbox direction makes
+  // its two meanings visible instead of presenting a flat undifferentiated list.
+  const groups=useMemo(()=>{
+    if(view!=="all") return [{key:view,label:"",rows:visible}];
+    return [
+      {key:"friends",label:"Friends",rows:visible.filter((row)=>row.kind==="friend")},
+      {key:"places",label:"Places",rows:visible.filter((row)=>row.kind==="listing")}
+    ].filter((group)=>group.rows.length>0);
+  },[view,visible]);
+
   if(loading){
     return <View style={styles.centre}><ActivityIndicator size="large" color={INK.ink}/></View>;
   }
 
   const showingBoards=view==="boards";
+  const summary=viewCopy(view,unread,boards);
+
+  function DirectRow({row}){
+    return(
+      <Pressable
+        style={styles.row}
+        accessibilityRole="button"
+        accessibilityLabel={`Open conversation with ${row.other_name}${row.unread_count ? `, ${row.unread_count} unread` : ""}`}
+        onPress={()=>router.push(`/messages/${row.conversation_id}`)}
+      >
+        {row.other_photo
+          ? <Image source={{uri:row.other_photo}} style={styles.avatar}/>
+          : <View style={[styles.avatar,styles.avatarBlank]}><Text style={styles.initial}>{(row.other_name || "E").slice(0,1)}</Text></View>}
+
+        <View style={styles.rowText}>
+          <Text style={styles.name} numberOfLines={1}>{row.other_name}</Text>
+          {row.kind==="listing" && (
+            <Text style={styles.about} numberOfLines={1}>
+              {listingSubtitle(row,entityTypeLabel(row.target_type))}
+            </Text>
+          )}
+          <Text style={styles.preview} numberOfLines={1}>{row.last_message || "No messages yet"}</Text>
+        </View>
+
+        <View style={styles.rowEnd}>
+          <Text style={styles.time}>{when(row.last_message_at)}</Text>
+          {row.unread_count>0 && (
+            <View style={styles.unread}><Text style={styles.unreadText}>{row.unread_count}</Text></View>
+          )}
+        </View>
+      </Pressable>
+    );
+  }
 
   return(
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Messages</Text>
+      <View style={styles.heading}>
+        <Text style={styles.eyebrow}>People · places · plans</Text>
+        <Text style={styles.title}>Messages</Text>
+        <Text style={styles.intro}>One inbox, organised around what the conversation is actually for.</Text>
+      </View>
 
       <ScrollView
         horizontal
@@ -140,6 +197,14 @@ export default function Messages(){
         })}
       </ScrollView>
 
+      <View style={styles.summary} accessibilityRole="summary">
+        <View style={styles.summaryMark}/>
+        <View style={styles.summaryText}>
+          <Text style={styles.summaryTitle}>{summary.title}</Text>
+          <Text style={styles.summaryBody}>{summary.body}</Text>
+        </View>
+      </View>
+
       {!showingBoards && !!error && <View style={styles.card}><Text style={styles.muted}>{error}</Text></View>}
       {showingBoards && !!boardError && <View style={styles.card}><Text style={styles.muted}>{boardError}</Text></View>}
 
@@ -150,7 +215,6 @@ export default function Messages(){
               : view==="managers" ? "No messages about a place yet"
               : "Nothing here yet"}
           </Text>
-          {/* An instruction, not a mood. Both routes in, named. */}
           <Text style={styles.muted}>
             {view==="managers"
               ? "You can message whoever manages a place from its page, about that place. Anything about a business, property, club or event appears here."
@@ -185,97 +249,109 @@ export default function Messages(){
         </View>
       )}
 
-      {showingBoards && boards.map((board)=>(
-        <Pressable
-          key={`${board.board_kind}-${board.board_id}`}
-          style={styles.row}
-          accessibilityRole="button"
-          accessibilityLabel={`Open the ${board.title} board`}
-          onPress={()=>router.push(board.route)}
-        >
-          <View style={[styles.avatar,styles.avatarBlank]}>
-            <Text style={styles.initial}>{(board.title || "B").slice(0,1)}</Text>
+      {showingBoards && !boardError && boards.length>0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>Your boards</Text>
+            <Text style={styles.sectionMeta}>Open the space where the conversation already lives</Text>
           </View>
+          {boards.map((board)=>(
+            <Pressable
+              key={`${board.board_kind}-${board.board_id}`}
+              style={[styles.row,styles.boardRow]}
+              accessibilityRole="button"
+              accessibilityLabel={`Open the ${board.title} board`}
+              onPress={()=>router.push(board.route)}
+            >
+              <View style={[styles.avatar,styles.avatarBlank,styles.boardAvatar]}>
+                <Text style={styles.initial}>{(board.title || "B").slice(0,1)}</Text>
+              </View>
 
-          <View style={styles.rowText}>
-            <Text style={styles.name} numberOfLines={1}>{board.title}</Text>
-            <Text style={styles.about} numberOfLines={1}>
-              {BOARD_LABEL[board.board_kind] || "Board"}{board.subtitle ? ` · ${board.subtitle}` : ""}
-            </Text>
-            <Text style={styles.preview} numberOfLines={1}>{board.last_message || "No messages yet"}</Text>
-          </View>
+              <View style={styles.rowText}>
+                <Text style={styles.name} numberOfLines={1}>{board.title}</Text>
+                <Text style={styles.about} numberOfLines={1}>
+                  {BOARD_LABEL[board.board_kind] || "Board"}{board.subtitle ? ` · ${board.subtitle}` : ""}
+                </Text>
+                <Text style={styles.preview} numberOfLines={1}>{board.last_message || "No messages yet"}</Text>
+              </View>
 
-          <View style={styles.rowEnd}>
-            <Text style={styles.time}>{board.last_message_at ? when(board.last_message_at) : ""}</Text>
-          </View>
-        </Pressable>
-      ))}
+              <View style={styles.rowEnd}>
+                <Text style={styles.time}>{board.last_message_at ? when(board.last_message_at) : ""}</Text>
+                <Text style={styles.openMark}>↗</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
 
-      {!showingBoards && visible.map((row)=>(
-        <Pressable
-          key={row.conversation_id}
-          style={styles.row}
-          accessibilityRole="button"
-          accessibilityLabel={`Open conversation with ${row.other_name}${row.unread_count ? `, ${row.unread_count} unread` : ""}`}
-          onPress={()=>router.push(`/messages/${row.conversation_id}`)}
-        >
-          {row.other_photo
-            ? <Image source={{uri:row.other_photo}} style={styles.avatar}/>
-            : <View style={[styles.avatar,styles.avatarBlank]}><Text style={styles.initial}>{(row.other_name || "E").slice(0,1)}</Text></View>}
-
-          <View style={styles.rowText}>
-            <Text style={styles.name} numberOfLines={1}>{row.other_name}</Text>
-            {row.kind==="listing" && (
-              <Text style={styles.about} numberOfLines={1}>
-                {listingSubtitle(row,entityTypeLabel(row.target_type))}
+      {!showingBoards && !error && groups.map((group)=>(
+        <View key={group.key} style={styles.section}>
+          {view==="all" && (
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>{group.label}</Text>
+              <Text style={styles.sectionMeta}>
+                {group.key==="friends" ? "Direct conversations" : "Conversations about places"}
               </Text>
-            )}
-            <Text style={styles.preview} numberOfLines={1}>{row.last_message || "No messages yet"}</Text>
-          </View>
-
-          <View style={styles.rowEnd}>
-            <Text style={styles.time}>{when(row.last_message_at)}</Text>
-            {row.unread_count>0 && (
-              <View style={styles.unread}><Text style={styles.unreadText}>{row.unread_count}</Text></View>
-            )}
-          </View>
-        </Pressable>
+            </View>
+          )}
+          {group.rows.map((row)=><DirectRow key={row.conversation_id} row={row}/>)}
+        </View>
       ))}
     </ScrollView>
   );
 }
 
-const card={backgroundColor:INK.card,borderWidth:2,borderColor:INK.ink,borderRadius:12};
+const surface={
+  backgroundColor:INK.card,
+  borderWidth:1,
+  borderColor:INK.hair,
+  borderRadius:20
+};
 
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:INK.paper},
-  content:{padding:16,paddingBottom:110},
+  content:{paddingHorizontal:16,paddingTop:12,paddingBottom:110},
   centre:{flex:1,backgroundColor:INK.paper,alignItems:"center",justifyContent:"center"},
-  title:{color:INK.ink,fontSize:30,fontWeight:"900",marginBottom:14},
-  tabs:{flexDirection:"row",gap:8,paddingBottom:14,paddingRight:16},
-  tab:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:14,paddingVertical:9,minHeight:44,backgroundColor:INK.paper},
-  tabActive:{backgroundColor:INK.ink},
+  heading:{paddingTop:4,paddingBottom:4},
+  eyebrow:{color:INK.inkSoft,fontSize:11,fontWeight:"900",letterSpacing:1.1,textTransform:"uppercase"},
+  title:{color:INK.ink,fontSize:34,fontWeight:"900",letterSpacing:-1.4,marginTop:4},
+  intro:{color:INK.inkSoft,fontSize:13,lineHeight:18,marginTop:5,maxWidth:340},
+  tabs:{flexDirection:"row",gap:8,paddingTop:14,paddingBottom:12,paddingRight:16},
+  tab:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:1,borderColor:INK.hair,borderRadius:99,paddingHorizontal:14,paddingVertical:10,minHeight:44,backgroundColor:INK.card},
+  tabActive:{backgroundColor:INK.ink,borderColor:INK.ink},
   tabText:{color:INK.ink,fontWeight:"800",fontSize:13},
   tabTextActive:{color:INK.card},
   tabCount:{minWidth:20,height:20,borderRadius:10,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:5},
   tabCountActive:{backgroundColor:INK.card},
   tabCountText:{color:INK.card,fontSize:10,fontWeight:"900"},
   tabCountTextActive:{color:INK.ink},
-  card:{...card,padding:18},
-  emptyTitle:{color:INK.ink,fontWeight:"800",fontSize:17,marginBottom:6},
+  summary:{...surface,flexDirection:"row",alignItems:"center",gap:11,padding:13,marginBottom:16},
+  summaryMark:{width:10,height:10,borderRadius:5,backgroundColor:INK.ink},
+  summaryText:{flex:1},
+  summaryTitle:{color:INK.ink,fontSize:14,fontWeight:"900"},
+  summaryBody:{color:INK.inkSoft,fontSize:11,marginTop:2},
+  card:{...surface,padding:18,marginBottom:12},
+  emptyTitle:{color:INK.ink,fontWeight:"900",fontSize:17,marginBottom:6},
   muted:{color:INK.inkSoft,fontSize:14,lineHeight:20},
-  button:{marginTop:14,alignSelf:"flex-start",borderWidth:2,borderColor:INK.ink,borderRadius:99,paddingHorizontal:16,paddingVertical:8,backgroundColor:INK.paper},
+  button:{marginTop:14,alignSelf:"flex-start",borderWidth:1,borderColor:INK.ink,borderRadius:99,paddingHorizontal:16,paddingVertical:10,minHeight:44,justifyContent:"center",backgroundColor:INK.paper},
   buttonText:{color:INK.ink,fontWeight:"800"},
-  row:{...card,flexDirection:"row",alignItems:"center",gap:11,padding:11,marginBottom:10},
-  avatar:{width:46,height:46,borderRadius:23,backgroundColor:INK.hair},
+  section:{marginBottom:8},
+  sectionHead:{paddingHorizontal:2,paddingTop:1,paddingBottom:8},
+  sectionTitle:{color:INK.ink,fontSize:12,fontWeight:"900",letterSpacing:0.5,textTransform:"uppercase"},
+  sectionMeta:{color:INK.inkSoft,fontSize:10,marginTop:2},
+  row:{...surface,flexDirection:"row",alignItems:"center",gap:12,padding:12,marginBottom:9,minHeight:76},
+  boardRow:{borderStyle:"dashed"},
+  avatar:{width:46,height:46,borderRadius:23,backgroundColor:INK.hair,borderWidth:1,borderColor:INK.hair},
+  boardAvatar:{borderRadius:14},
   avatarBlank:{alignItems:"center",justifyContent:"center"},
-  initial:{color:INK.ink,fontWeight:"900",fontSize:18},
-  rowText:{flex:1},
-  name:{color:INK.ink,fontWeight:"800",fontSize:15},
-  about:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:1},
-  preview:{color:INK.inkSoft,fontSize:13,marginTop:2},
-  rowEnd:{alignItems:"flex-end",gap:5},
-  time:{color:INK.inkSoft,fontSize:11},
+  initial:{color:INK.ink,fontWeight:"900",fontSize:17},
+  rowText:{flex:1,minWidth:0},
+  name:{color:INK.ink,fontWeight:"900",fontSize:15},
+  about:{color:INK.inkSoft,fontSize:11,fontWeight:"800",marginTop:2},
+  preview:{color:INK.inkSoft,fontSize:13,marginTop:5},
+  rowEnd:{alignItems:"flex-end",alignSelf:"stretch",justifyContent:"space-between",paddingVertical:2},
+  time:{color:INK.inkSoft,fontSize:10},
   unread:{minWidth:22,height:22,borderRadius:11,backgroundColor:INK.ink,alignItems:"center",justifyContent:"center",paddingHorizontal:6},
-  unreadText:{color:INK.card,fontSize:11,fontWeight:"900"}
+  unreadText:{color:INK.card,fontSize:10,fontWeight:"900"},
+  openMark:{color:INK.ink,fontSize:18,fontWeight:"700"}
 });
