@@ -121,6 +121,20 @@ function createHidden(file){
   return HIDDEN_ROUTES.some((r)=>route===r||route.startsWith(r));
 }
 
+// The balanced { ... } that follows an offset -- used to read one whole
+// StyleSheet.create body, which a single-level brace match cannot do because
+// style values are themselves objects.
+function blockBodyFrom(source,from){
+  const open=source.indexOf("{",from);
+  if(open<0) return "";
+  let depth=0;
+  for(let i=open;i<source.length;i++){
+    if(source[i]==="{") depth++;
+    else if(source[i]==="}"){depth--;if(!depth) return source.slice(open,i+1);}
+  }
+  return source.slice(open);
+}
+
 const failures=[];
 function fail(file,rule,line,detail){
   if((EXEMPT[file]||[]).includes(rule)) return;
@@ -167,6 +181,28 @@ for(const file of files){
     }
   });
 
+  // A STYLE REFERENCED FROM ONE SHEET AND DEFINED IN ANOTHER.
+  //
+  // components/instrument.js carries two StyleSheet.create blocks -- the
+  // viewfinder's `styles` and the screen kit's `kit`. Two fixes to the Dial
+  // were written into the wrong one. They compiled, the suite stayed green, the
+  // spec gate stayed full, and the change had no effect at all; worse, the half
+  // that removed the old layout DID match, so the control shipped broken.
+  // React Native resolves an undefined style to nothing and says nothing.
+  //
+  // So: every `sheet.key` a file references must exist in that sheet.
+  for(const match of source.matchAll(/\b(styles|kit)\.([A-Za-z_$][\w$]*)/g)){
+    const [,sheet,key]=match;
+    const block=new RegExp(`\\bconst\\s+${sheet}\\s*=\\s*StyleSheet\\.create\\(`);
+    if(!block.test(source)) continue;
+    const start=source.search(block);
+    const body=blockBodyFrom(source,start);
+    if(!new RegExp(`(^|[\\s{,])${key}\\s*:`,"m").test(body)){
+      const n=source.slice(0,match.index).split("\n").length;
+      fail(file,"style-sheet",n,`${sheet}.${key} is used here but not defined in ${sheet}`);
+    }
+  }
+
   // A screen that scrolls must reserve the Create action's clearance, or its
   // last row sits under a button that floats over every route in the app.
   //
@@ -196,7 +232,8 @@ const RULE_TEXT={
   border:"A border thicker than 1px. SHAPE.border is 1; 2px was the print system.",
   radius:"A hand-typed radius. Use SHAPE.radius — 6 / 10 / 14 / 999.",
   alias:"A compatibility alias. INK.ink is the near-white readout colour now.",
-  clearance:"A scrolling screen with no CREATE_HUB_CLEARANCE in its bottom padding."
+  clearance:"A scrolling screen with no CREATE_HUB_CLEARANCE in its bottom padding.",
+  "style-sheet":"A style referenced from a sheet that does not define it. React Native resolves it to nothing, silently."
 };
 
 if(!failures.length){
