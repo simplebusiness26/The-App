@@ -9,6 +9,10 @@ on:
       - ".env.example"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   report-xplorer:
     runs-on: ubuntu-latest
@@ -16,22 +20,25 @@ jobs:
       GHOSTWRITER_ENDPOINT: https://theghostwriterv2.onrender.com
       GHOSTWRITER_PROJECT_ID: xplorer
       GHOSTWRITER_PROJECT_ORIGIN: existing
-      GHOSTWRITER_INGEST_SECRET: ${{ secrets.GHOSTWRITER_INGEST_SECRET }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 20
 
-      - name: Skip until ingest secret is configured
-        if: ${{ env.GHOSTWRITER_INGEST_SECRET == '' }}
-        run: echo "Ghost Writer reporting is installed but inactive until the GHOSTWRITER_INGEST_SECRET repository secret is added."
+      - name: Select Ghost Writer authentication
+        run: |
+          if [ -n "$GHOSTWRITER_INGEST_SECRET" ]; then
+            echo "Using HMAC authentication."
+          else
+            echo "Using GitHub OIDC authentication."
+          fi
 
       - name: Bootstrap Xplorer introduction from existing history
-        if: ${{ github.event_name == 'workflow_dispatch' && env.GHOSTWRITER_INGEST_SECRET != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: node ghostwriter-bridge.mjs --bootstrap-existing
 
       - name: Report Xplorer commits
-        if: ${{ github.event_name == 'push' && env.GHOSTWRITER_INGEST_SECRET != '' }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync } from "node:fs";
