@@ -1,0 +1,521 @@
+{
+ "source": "runs/the-app/2026-08-17T02-09-27-650Z \u2014 locked blends: architecture blend-morville-cooper, ux blend-wroblewski-clark-map, ui blend-dewith-mengto-pins",
+ "items": [
+  {
+   "id": "cam.shutter",
+   "surface": "Camera",
+   "level": "immediate",
+   "spec": "Shutter (tap=photo, hold=video, per expo-camera's real recordAsync/takePictureAsync split)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "createShutter",
+    "recordAsync",
+    "takePictureAsync"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.flash",
+   "surface": "Camera",
+   "level": "immediate",
+   "spec": "flash-cycle chip (off/auto/on)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "flash",
+    "\\\"auto\\\"",
+    "FLASH_MODES|flashModes|FLASH_CYCLE"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.flip",
+   "surface": "Camera",
+   "level": "immediate",
+   "spec": "flip front/back",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "facing",
+    "front",
+    "back"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.zoomPresets",
+   "surface": "Camera",
+   "level": "immediate",
+   "spec": "4 zoom presets (0.5x/1x/2x/3x)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "ZOOM_STOPS\\s*=\\s*\\[\\s*0\\.5\\s*,\\s*1\\s*,\\s*2\\s*,\\s*3\\s*\\]"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.hubChips",
+   "surface": "Camera",
+   "level": "immediate",
+   "spec": "the 5 capture-hub branch chips below the viewfinder (Moment/Memory/Check-in/Scan/Review) - all one tap away, always visible",
+   "files": [
+    "components/CameraCapture.js",
+    "components/CreateHub.js"
+   ],
+   "must": [
+    "Moment",
+    "Memory",
+    "Check in",
+    "Scan",
+    "Review",
+    "CAPTURE_BRANCHES|captureBranches"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.focusReticle",
+   "surface": "Camera",
+   "level": "contextual",
+   "spec": "Tap-to-focus reticle brackets (appear only where you tap, fade after 1s)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "showFocus",
+    "Reticle",
+    "focusTimer"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.qrFlag",
+   "surface": "Camera",
+   "level": "contextual",
+   "spec": "the in-viewfinder QR-detected flag (only appears once a code is recognized, per expo-camera's onBarcodeScanned)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "onBarcodeScanned",
+    "codeDetected|detectedCode|qrDetected"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.postCapture",
+   "surface": "Camera",
+   "level": "contextual",
+   "spec": "the post-capture Moment/Memory two-chip choice (only appears once a photo exists, photo already attached, no re-upload)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "Post this as a Moment",
+    "Keep this as a Memory"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.tray",
+   "surface": "Camera",
+   "level": "precision",
+   "spec": "A slide-up tray (one chevron tap, doesn't compete for attention at rest)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "precisionTray|PrecisionTray",
+    "chevron|up\\\"|down\\\""
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.zoomDial",
+   "surface": "Camera",
+   "level": "precision",
+   "spec": "a real drag/click zoom dial with tick marks and numeric readout (0.5x-3x, the true expo-camera zoom range)",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "Dial",
+    "readout|Readout"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.lock",
+   "surface": "Camera",
+   "level": "precision",
+   "spec": "focus-and-exposure lock toggle",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "exposureLock|focusLock|aeLock|lockFocus"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.stabilisation",
+   "surface": "Camera",
+   "level": "precision",
+   "spec": "stabilization toggle",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "stabilis|stabiliz"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.silent",
+   "surface": "Camera",
+   "level": "precision",
+   "spec": "silent-record toggle",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "silent|mute"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.defaults",
+   "surface": "Camera",
+   "level": "configuration",
+   "spec": "Grid overlay, save-to-library, default video quality/compression live in Account & Safety > Capture defaults",
+   "files": [
+    "app/settings.js",
+    "utils/capturePreferences.js"
+   ],
+   "must": [
+    "Capture defaults|CAPTURE DEFAULTS",
+    "grid|Grid",
+    "library|Library",
+    "quality|Quality"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "cam.grid",
+   "surface": "Camera",
+   "level": "configuration",
+   "spec": "Grid overlay, honoured by the viewfinder",
+   "files": [
+    "components/CameraCapture.js"
+   ],
+   "must": [
+    "grid|Grid"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.filters",
+   "surface": "Map",
+   "level": "immediate",
+   "spec": "type filter chips",
+   "files": [
+    "components/MapControls.js"
+   ],
+   "must": [
+    "filter"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.listToggle",
+   "surface": "Map",
+   "level": "immediate",
+   "spec": "List toggle",
+   "files": [
+    "components/MapControls.js",
+    "components/LivingMapScreen.js"
+   ],
+   "must": [
+    "list|List"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.livePill",
+   "surface": "Map",
+   "level": "immediate",
+   "spec": "live-nearby pill",
+   "files": [
+    "components/LivingMapScreen.js",
+    "components/MapControls.js"
+   ],
+   "must": [
+    "live|Live"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.recenter",
+   "surface": "Map",
+   "level": "immediate",
+   "spec": "recenter button",
+   "files": [
+    "components/MapControls.js",
+    "components/LivingMapScreen.js"
+   ],
+   "must": [
+    "recenter|Recenter|re-centre|Recentre"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.sheet",
+   "surface": "Map",
+   "level": "immediate",
+   "spec": "Tapping a pin opens Clark's draggable Peek/Half/Full sheet (real pointer-drag with snap thresholds, map always visible behind it)",
+   "files": [
+    "components/PinSheet.js"
+   ],
+   "must": [
+    "PEEK",
+    "HALF",
+    "FULL",
+    "PanResponder"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.longPress",
+   "surface": "Map",
+   "level": "contextual",
+   "spec": "The long-press crosshair reticle and 'Drop a Link-up here' confirm chip (only appear mid-press on empty map)",
+   "files": [
+    "components/LivingMapScreen.js",
+    "components/LivingMap.js",
+    "components/LivingMap.web.js"
+   ],
+   "must": [
+    "Drop a Link-up here",
+    "crosshair|Crosshair|Reticle"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.quickActions",
+   "surface": "Map",
+   "level": "contextual",
+   "spec": "the sheet's quick-action row (Check in here / Directions / Review) only appears once a pin is open",
+   "files": [
+    "components/PlacePanel.js",
+    "components/LivingMapScreen.js"
+   ],
+   "must": [
+    "Check in here",
+    "Directions",
+    "review|Review"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.layersTray",
+   "surface": "Map",
+   "level": "precision",
+   "spec": "A Layers tray (one tap on the map's layers control)",
+   "files": [
+    "components/MapControls.js",
+    "components/LayersTray.js"
+   ],
+   "must": [
+    "Layers|layersTray|LAYERS"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.heatDial",
+   "surface": "Map",
+   "level": "precision",
+   "spec": "a real intensity/timeframe dial for the Moment-density heat ramp (Now->Week, MapLibre's heatmap-intensity/weight paint properties made adjustable)",
+   "files": [
+    "components/MapControls.js",
+    "components/LayersTray.js",
+    "hooks/useLivingMap.js"
+   ],
+   "must": [
+    "heat",
+    "Dial|dial",
+    "WEEK|Week"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.styleSwitch",
+   "surface": "Map",
+   "level": "precision",
+   "spec": "a 3-way map-style switch (MapLibre's real style options)",
+   "files": [
+    "components/MapControls.js",
+    "components/LayersTray.js",
+    "utils/mapProvider.js"
+   ],
+   "must": [
+    "MAP_STYLES",
+    "styleSwitch|STYLE_CHOICES|styleChoices"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.clusterToggle",
+   "surface": "Map",
+   "level": "precision",
+   "spec": "a cluster toggle (MapLibre's built-in cluster:true)",
+   "files": [
+    "components/MapControls.js",
+    "components/LayersTray.js",
+    "components/LivingMap.web.js",
+    "components/LivingMap.js"
+   ],
+   "must": [
+    "cluster"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "map.settings",
+   "surface": "Map",
+   "level": "configuration",
+   "spec": "Default map style, default live-nearby radius, and the OSM/ODbL attribution + licence link live in Account & Safety > Map & location",
+   "files": [
+    "app/settings.js"
+   ],
+   "must": [
+    "Map & location|MAP & LOCATION|Map and location",
+    "OpenStreetMap",
+    "radius|Radius"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.checkin",
+   "surface": "Check in",
+   "level": "scenario",
+   "spec": "From any place detail page 'Check in here' opens the Create hub pre-filled with that place. Activity auto-suggested from the place's category, duration defaults to a pre-selected chip (1h), visibility defaults to Followers. Confirming is a single tap. From the global Create with no context, the nearest place is auto-suggested.",
+   "files": [
+    "app/checkins/create.js"
+   ],
+   "must": [
+    "activityFor|suggestedActivity|activityFromCategory",
+    "60",
+    "followers|Followers",
+    "nearest|Nearest"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.moment",
+   "surface": "Post a Moment",
+   "level": "scenario",
+   "spec": "After capture, a two-chip choice appears with the photo already attached - no re-upload. Caption optional, place auto-tagged from location as a removable chip.",
+   "files": [
+    "app/moments/create.js"
+   ],
+   "must": [
+    "photo",
+    "caption",
+    "remove|Remove"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.review",
+   "surface": "Review Composer",
+   "level": "scenario",
+   "spec": "Reached from any listing's action (type+id pre-filled) or from Create's generic review chip (recently visited places first, search second). Star rating first and the only required field. A QR-verified entry carries a 'Verified visit' badge automatically.",
+   "files": [
+    "components/ReviewComposer.js",
+    "components/ExplorerReviewForm.js"
+   ],
+   "must": [
+    "recent|Recent",
+    "rating",
+    "Verified"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.peekContent",
+   "surface": "Map sheet",
+   "level": "scenario",
+   "spec": "Peek (name, one-line status), Half (blurb, quick actions), Full (the shared listing-detail body)",
+   "files": [
+    "components/LivingMapScreen.js"
+   ],
+   "must": [
+    "PinPeekPreview",
+    "PlacePanel"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.signupMinimal",
+   "surface": "Signup",
+   "level": "scenario",
+   "spec": "Signup asks for name, email and password only - phone deferred to Account & Safety, requested contextually when text alerts are turned on.",
+   "files": [
+    "app/auth/signup.js"
+   ],
+   "must": [
+    "name",
+    "email",
+    "password"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.returnToIntent",
+   "surface": "Auth",
+   "level": "scenario",
+   "spec": "After signing in, the visitor lands back on whatever screen or action they were trying to reach.",
+   "files": [
+    "utils/navigation.js",
+    "app/auth/login.js"
+   ],
+   "must": [
+    "withNext|next"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.managerForms",
+   "surface": "Manager forms",
+   "level": "scenario",
+   "spec": "The 8 manager add/edit screens share one input pattern: location defaults to device position with a draggable pin, category is a chip picker, photos attach inline.",
+   "files": [
+    "components/ListingLocationPicker.js"
+   ],
+   "must": [
+    "draggable|onDragEnd"
+   ],
+   "notes": ""
+  },
+  {
+   "id": "ux.adminInline",
+   "surface": "Admin triage",
+   "level": "scenario",
+   "spec": "Approve/Reject sit inline on the same card - no separate action screen per item - keeping the required Decision Reason field.",
+   "files": [
+    "app/admin/claims.js"
+   ],
+   "must": [
+    "reason|Reason",
+    "Approve",
+    "Reject|Dismiss"
+   ],
+   "notes": ""
+  }
+ ]
+}
