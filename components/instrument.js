@@ -221,20 +221,48 @@ export function Dial({values,active,onChange,width=232,format=(v)=>String(v),lab
         <TickScale width={width} height={16} count={values.length} majorEvery={1}
           colour={dragging?INK.scheduled:INK.hairlineStrong}/>
       </View>
+      {/* EVERY LABEL SITS ON ITS OWN GRADUATION.
+          These were laid out with justifyContent:"space-between", which puts
+          the first label's LEFT edge at 0 and the last one's RIGHT edge at the
+          far end -- so every label's centre drifted from the tick it names, by
+          about 15px at the width the camera's precision tray uses. A dial whose
+          labels do not line up with its own marks is lying about where its
+          stops are, which is the one thing an instrument may not do.
+
+          Each label now hangs off a zero-width cell placed exactly on its
+          graduation. A zero-width column with centred items centres its child
+          on that point whatever the label's own width turns out to be, so
+          "3 DAYS" and "1x" both land true. */}
       <View style={[styles.dialLabels,{width}]}>
-        {values.map((v)=>(
-          // 44px, not 13. The label itself is a 13px line of mono; without real
-          // padding the tap target was the glyph, which is a third of the
-          // accessibility floor. The padding is vertical so the detents stay at
-          // their measured positions along the scale -- moving them sideways
-          // would make the dial lie about where its stops are.
-          <Pressable key={String(v)} onPress={()=>onChange?.(v)}
-            style={styles.dialHit} hitSlop={{top:6,bottom:6,left:8,right:8}}
-            accessibilityRole="button" accessibilityLabel={format(v)}
-            accessibilityState={{selected:v===active}}>
-            <Text style={[styles.dialLabel,v===active&&styles.dialLabelActive]}>{format(v)}</Text>
-          </Pressable>
-        ))}
+        {values.map((v,index)=>{
+          // A CROWDED SCALE LABELS ITS MAJORS, NOT EVERY GRADUATION.
+          // Centred labels can collide, and "50KM" printed on top of "25KM" is
+          // no more readable than a label pointing at the wrong tick. A real
+          // instrument scale numbers the majors and leaves the minors bare.
+          // Always keep the first, the last and the selection: the ends give
+          // the scale its range and the selection is the reading.
+          const labelled=index%stride===0 || index===values.length-1 || v===active;
+          return(
+            <View
+              key={String(v)}
+              style={[styles.dialCell,{left:values.length>1?(width/(values.length-1))*index:width/2}]}
+            >
+              {/* 44px, not 13. The label is a 13px line of mono; without real
+                  padding the tap target was the glyph itself, a third of the
+                  accessibility floor. The padding is vertical so the detents
+                  stay where the scale draws them -- widening them sideways
+                  would move the stops. */}
+              <Pressable onPress={()=>onChange?.(v)}
+                style={styles.dialHit} hitSlop={{top:6,bottom:6,left:10,right:10}}
+                accessibilityRole="button" accessibilityLabel={format(v)}
+                accessibilityState={{selected:v===active}}>
+                {labelled
+                  ? <Text style={[styles.dialLabel,v===active&&styles.dialLabelActive]} numberOfLines={1}>{format(v)}</Text>
+                  : <View style={styles.dialBareDetent}/>}
+              </Pressable>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -342,9 +370,11 @@ const styles=StyleSheet.create({
   dialWrap:{alignItems:"center",gap:6},
   // A bare row, not a space-between one: every cell positions itself on its
   // own graduation, so the row only has to be as wide as the scale.
+  // A bare positioned box, not a flex row: every cell places itself on its own
+  // graduation, so the container only has to be as tall as one tap target.
   dialLabels:{height:SHAPE.tapTarget},
   dialCell:{position:"absolute",top:0,width:0,alignItems:"center"},
-  dialBareDetent:{width:3,height:3,borderRadius:1.5,backgroundColor:INK.hairlineStrong,marginTop:4},
+  dialBareDetent:{width:3,height:3,borderRadius:1.5,backgroundColor:INK.hairlineStrong},
   dialHit:{minHeight:SHAPE.tapTarget,minWidth:32,alignItems:"center",justifyContent:"center"},
   dialLabel:{
     color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,

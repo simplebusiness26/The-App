@@ -27,6 +27,19 @@ export function installMapChromeStyle(){
   const style=document.createElement("style");
   style.setAttribute("data-xplorer-map-chrome","");
   style.textContent=`
+    /* THE LIBRARY'S CONTROLS ARE NOT THE ONLY THING IN THAT CORNER.
+       maplibre anchors its navigation control to the top right, and so does
+       this app's notification bell -- which floats over the map, because the
+       map is full-bleed. They landed on top of each other, and the bell won,
+       so zoom-in was unreachable on the app's main screen. Found by asking the
+       browser what was on top of each control, not by looking: the two are
+       similar sizes and similar colours and the overlap reads as one control.
+
+       HEADER_HEIGHT is 56 in components/Header.js; this clears it plus a gap.
+       Left as a number rather than a token because it is a distance between
+       two chrome elements, not a design spacing step. */
+    .maplibregl-ctrl-top-right{margin-top:64px;}
+
     .maplibregl-ctrl-group{
       background:${INK.panel};
       border:${SHAPE.border}px solid ${INK.hairlineStrong};
