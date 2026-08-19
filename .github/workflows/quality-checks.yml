@@ -109,6 +109,9 @@ jobs:
       - name: Verify the app is built on the instrument, not recoloured
         run: npm run verify:instrument
 
+      - name: Verify every capability the locked design specs name is built
+        run: npm run verify:spec
+
       - name: Verify the native map props exist on the installed MapLibre
         run: npm run verify:nativemap
 
