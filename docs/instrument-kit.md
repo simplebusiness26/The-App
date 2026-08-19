@@ -64,7 +64,7 @@ So the rule is blunt:
 | `Frame` | Media well with viewfinder brackets |
 | `Empty` | Nothing to read — an instruction, not a mood |
 | `Notice` | Errors, gates, warnings — an edge, not a coloured box |
-| `Glyph` | The icon set. 66 stroked icons on the 16×16 grid |
+| `Glyph` | The icon set. 69 stroked marks on the 16×16 grid, drawn to the construction rules written above `GLYPHS` |
 | `MONO` | The mono family, resolved per platform |
 
 ### Escape hatches that already exist

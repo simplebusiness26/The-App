@@ -317,7 +317,10 @@ describe("dropping a Link-up on the map",()=>{
     )[0];
 
     await act(async()=>{renderer.props.onDropPin({latitude:50.822531,longitude:-0.137244});});
-    await act(async()=>{press(tree,"Start a Link-up here").props.onPress();});
+    // The confirm is a chip that says what it does -- "Drop a Link-up here" --
+    // under a crosshair on the spot somebody held. The panel above it still
+    // asks the question ("Start a Link-up here?"); the control answers it.
+    await act(async()=>{press(tree,"Drop a Link-up here").props.onPress();});
 
     // 2 decimal places: about a street, which is what a meeting point is.
     expect(router.push).toHaveBeenCalledWith("/linkups/create?lat=50.82&lng=-0.14");

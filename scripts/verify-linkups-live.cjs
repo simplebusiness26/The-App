@@ -21,6 +21,17 @@ function check(condition,message){
   else failures.push(message);
 }
 
+// Like contains(), but the string may live in any one of several files --
+// for a contract that is about a capability existing, not about which module
+// happens to declare it this month.
+function containsInAny(files,needle,what){
+  const found=files.some((file)=>{
+    const full=path.join(root,file);
+    return fs.existsSync(full) && fs.readFileSync(full,"utf8").includes(needle);
+  });
+  if(!found) issues.push(`${what}: "${needle}" is not declared in any of ${files.join(", ")}`);
+}
+
 function contains(relative,needles){
   const content=read(relative);
   for(const needle of needles){
@@ -72,7 +83,19 @@ contains("app/messages/index.js",['router.push("/linkups")']);
 contains("app/live.js",['router.push("/checkins/create")']);
 // checkins/create is also the Create hub's own "Check in" branch now --
 // reachable from any screen, not only from Live Nearby.
-contains("components/CreateHub.js",['navigate("/checkins/create")']);
+//
+// WHERE THAT BRANCH IS DECLARED MOVED, AND THE GUARANTEE DID NOT.
+// The locked UI spec puts the five capture-hub chips BELOW THE VIEWFINDER, so
+// they are declared once in components/CameraCapture.js as CAPTURE_BRANCHES and
+// the hub routes them through onNavigate. This gate pinned the old location.
+// What it must protect is that Check in is still one tap from the Create hub on
+// any screen -- so it now accepts the branch wherever it is declared, and still
+// fails if it is declared nowhere.
+containsInAny(
+  ["components/CameraCapture.js","components/CreateHub.js"],
+  '/checkins/create',
+  "the Create hub's Check in branch"
+);
 contains("app/settings.js",['router.push("/safety/blocked")']);
 
 contains("components/LinkupForm.js",[

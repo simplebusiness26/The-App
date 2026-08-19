@@ -29,19 +29,17 @@ import {Glyph,MONO} from "./instrument";
 // test (it was Map most places and Camera specifically on /map), which is
 // the thing this hub replaces rather than repeats.
 //
-// WHY MOMENT AND MEMORY ARE NOT CHIPS
+// WHERE THE BRANCH CHIPS LIVE NOW
 //
-// The contract also says "capture first, decide after". A Moment or a
-// Memory cannot exist without a photo or a video -- app/moments/create.js
-// and app/memories/create.js both bounce back to /camera if they are opened
-// with no photo attached. So "one tap away" for those two, honestly, means
-// one tap to reach the camera (zero taps: it is the hub's own default
-// surface) and then the shutter -- which is exactly the choice tray
-// CameraCapture already shows the instant a photo is taken. Drawing Moment
-// and Memory as chips here as well, before there is anything to attach to
-// them, would be a second control offering the same eventual screen with
-// nothing behind it yet -- the placeholder-UI RULES.md forbids. Check in,
-// Scan a code and Review need no photo, so they get real, immediate chips.
+// They were drawn here: three of them, floating at the TOP of the hub over
+// the viewfinder. The locked spec says five, below the viewfinder, all one
+// tap away and always visible -- so the list and the row both moved into
+// components/CameraCapture.js, where the viewfinder they sit under is, and
+// CAPTURE_BRANCHES is the single exported definition both surfaces read.
+//
+// This file keeps exactly one thing about them: Review has no route. The hub
+// draws the composer inside itself so its own chrome stays right, so it
+// claims that branch through onBranch and lets every other one navigate.
 // Native matches a single family name, not a CSS stack -- see the same note in
 // components/HappeningSegments.js.
 // MONO comes from the kit now. This file kept its own Platform.select copy
@@ -101,6 +99,16 @@ export default function CreateHub(){
     router.push(url);
   }
 
+  // Offered every capture-hub branch before the camera acts on it. Only Review
+  // is claimed: it is a view drawn inside this hub rather than a route, because
+  // the generic composer needs a place picker and there is no /reviews screen
+  // to send anybody to. Returning false lets the camera navigate as normal.
+  function takeBranch(branch){
+    if(branch?.view!=="review") return false;
+    setView("review");
+    return true;
+  }
+
   return (
     <>
       <Pressable
@@ -126,7 +134,7 @@ export default function CreateHub(){
       >
         <View style={styles.hub}>
           {view==="camera"
-            ? <CameraCapture onNavigate={navigate}/>
+            ? <CameraCapture onNavigate={navigate} onBranch={takeBranch} overlay/>
             : (
               // The camera is full-bleed by design and the topBar already
               // floats over it, same as components/Header.js does on the real
@@ -154,31 +162,9 @@ export default function CreateHub(){
             </Pressable>
           </View>
 
-          {/* The sibling branches. See the file note above for why Moment and
-              Memory are not drawn here. */}
-          {view==="camera" && (
-            <View style={[styles.tray,{top:insets.top+58}]} pointerEvents="box-none">
-              <Chip label="Check in" onPress={()=>navigate("/checkins/create")}/>
-              <Chip label="Scan a code" onPress={()=>navigate("/scan")}/>
-              <Chip label="Review" onPress={()=>setView("review")}/>
-            </View>
-          )}
         </View>
       </Modal>
     </>
-  );
-}
-
-function Chip({label,onPress}){
-  return (
-    <Pressable
-      style={styles.chip}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-    >
-      <Text style={styles.chipText}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -258,29 +244,4 @@ const styles=StyleSheet.create({
     borderWidth:SHAPE.border,
     borderColor:INK.hairlineStrong
   },
-  tray:{
-    position:"absolute",
-    left:0,
-    right:0,
-    flexDirection:"row",
-    flexWrap:"wrap",
-    justifyContent:"center",
-    gap:8,
-    paddingHorizontal:14
-  },
-  chip:{
-    borderWidth:SHAPE.border,
-    borderColor:INK.hairlineStrong,
-    borderRadius:SHAPE.radius.control,
-    paddingHorizontal:13,
-    paddingVertical:8,
-    minHeight:36,
-    justifyContent:"center",
-    backgroundColor:"rgba(15,18,22,0.68)"
-  },
-  // Mono: these name the app's own branches, not a sentence somebody wrote.
-  chipText:{
-    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
-    textTransform:"uppercase",letterSpacing:0.8
-  }
 });

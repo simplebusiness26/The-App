@@ -166,7 +166,14 @@ test("the paint runs cool to hot and reads the weight off the point",()=>{
   const {HEAT_RAMP}=require("../utils/tokens");
   const paint=heatmapPaint();
 
-  expect(paint["heatmap-weight"]).toEqual(["get","weight"]);
+  // The weight is still read off the point, and it is an EXPRESSION now
+  // rather than a bare get: the heat dial (utils/markers.js, HEAT_TIMEFRAMES)
+  // decides how much of each Moment's attention curve reaches the map, and
+  // MapLibre interpolates it. Bare `["get","weight"]` is what this was before
+  // the dial existed and is the WEEK end of it.
+  const weight=paint["heatmap-weight"];
+  expect(weight[0]).toBe("interpolate");
+  expect(weight[2]).toEqual(["get","weight"]);
 
   const stops=paint["heatmap-color"].slice(5);
   for(let i=0;i<HEAT_RAMP.length;i+=1){

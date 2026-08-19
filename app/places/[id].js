@@ -152,6 +152,21 @@ export default function PublicPlacePage(){
             with. The reviews section said "Been here? Say what it is like." and
             then offered no way to.
           */}
+          {/*
+            "From any place detail page 'Check in here' opens the Create hub
+            pre-filled with that place." The place's id rides along in the link;
+            app/checkins/create.js selects it, suggests an activity from this
+            place's category and fills the broad area from its geo_area, so the
+            screen that opens needs one press and not six.
+          */}
+          <Action
+            kind="secondary"
+            label="Check in here"
+            glyph="pin"
+            accessibilityLabel={`Check in at ${place.name}`}
+            onPress={()=>router.push(`/checkins/create?place=${place.id}`)}
+          />
+
           <Action
             kind="secondary"
             label="Leave a review"

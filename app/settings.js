@@ -17,9 +17,22 @@ import {sendRecoveryEmail} from "../utils/passwordRecovery";
 import {
   ATTRIBUTION,
   ATTRIBUTION_COPYRIGHT,
-  ATTRIBUTION_URL
+  ATTRIBUTION_URL,
+  STYLE_CHOICES
 } from "../utils/mapProvider";
+import {
+  RADIUS_CHOICES,
+  mapPreferences,
+  setMapPreferences
+} from "../utils/mapPreferences";
 import {PUSH_CATEGORIES} from "../utils/pushCategories";
+import {
+  captureCopyIsSupported,
+  defaultCapturePreferences,
+  loadCapturePreferences,
+  saveCapturePreferences,
+  VIDEO_QUALITIES
+} from "../utils/capturePreferences";
 import {
   enablePushOnThisDevice,
   forgetThisDevice,
@@ -32,6 +45,7 @@ import {INK,TYPE,SHAPE} from "../utils/tokens";
 import {
   Action,
   Chip,
+  Dial,
   Field,
   fieldInputStyle,
   KeyValue,
@@ -42,6 +56,7 @@ import {
   Screen,
   ScreenTitle,
   SectionRule,
+  Segmented,
   Toggle,
   TickScale
 } from "../components/instrument";
@@ -118,12 +133,25 @@ export default function Settings(){
   // look safe. The session is now held in state and set by load().
   const [user,setUser]=useState(null);
   const [loading,setLoading]=useState(true);
+
+  // MAP & LOCATION. Two answers a person gives once and never again: which of
+  // the three maps to open on, and how far "near me" reaches. Neither is a fact
+  // about a person and neither decides who may see what, so neither is a
+  // profiles column -- utils/mapPreferences.js says where they are kept and
+  // what that costs.
+  const [mapPrefs,setMapPrefs]=useState(()=>mapPreferences());
+
+  function changeMap(next){
+    setMapPrefs(setMapPreferences(next));
+  }
   const [error,setError]=useState("");
   const [savingPrivacy,setSavingPrivacy]=useState(false);
   const [sendingReset,setSendingReset]=useState(false);
   const [deleteConfirm,setDeleteConfirm]=useState("");
   const [deleting,setDeleting]=useState(false);
   const [pushes,setPushes]=useState(noPushes);
+  // Capture defaults. The viewfinder reads these; this is where they are set.
+  const [captureDefaults,setCaptureDefaults]=useState(defaultCapturePreferences);
   // The word, exactly, and not while a delete is already running.
   const canDelete=deleteConfirm.trim().toUpperCase()==="DELETE" && !deleting;
 
@@ -225,6 +253,9 @@ export default function Settings(){
     // A missing row means every category is off, which is what the database
     // defaults say and what loadPushPreferences returns.
     setPushes(await loadPushPreferences(user.id));
+    // Same rule as the push row: a missing row means the defaults, and the
+    // defaults are what the column defaults say.
+    setCaptureDefaults(await loadCapturePreferences(user.id));
 
     setLoading(false);
   },[]);
@@ -395,6 +426,15 @@ export default function Settings(){
     const updated={...pushes,enabled:true};
     setPushes(updated);
     const saved=await savePushPreferences(user?.id,updated);
+    if(saved.error) showFeedback(saved.error,"error","Not saved");
+  }
+
+  // One writer for all three capture defaults: they live in one row, and three
+  // separate savers would be three chances to write two of them.
+  async function changeCaptureDefault(key,value){
+    const updated={...captureDefaults,[key]:value};
+    setCaptureDefaults(updated);
+    const saved=await saveCapturePreferences(user?.id,updated);
     if(saved.error) showFeedback(saved.error,"error","Not saved");
   }
 
@@ -576,6 +616,60 @@ export default function Settings(){
         />
 
         {/*
+          CAPTURE DEFAULTS.
+
+          The locked spec's configuration rung for the camera: the three
+          decisions somebody makes once and should never be asked about again
+          while they are trying to take a picture. Everything else about the
+          camera is on the camera; these three are here because they are
+          preferences, not controls.
+
+          utils/capturePreferences.js is the only file that reads or writes
+          them, and components/CameraCapture.js obeys all three.
+        */}
+        <SectionRule label="Capture defaults"/>
+
+        <Toggle
+          glyph="grid"
+          label="Grid overlay"
+          hint="Draws a rule-of-thirds grid in the viewfinder. It is never in the picture."
+          value={!!captureDefaults.grid}
+          onChange={(next)=>changeCaptureDefault("grid",next)}
+          accessibilityLabel="Show a grid in the viewfinder"
+        />
+
+        {captureCopyIsSupported() ? (
+          <Toggle
+            glyph="download"
+            label="Keep a copy on this phone"
+            hint="A capture lands in temporary storage the phone can clear. This copies it somewhere it will not be. It does not write to your photo library — that needs a module Xplorer does not include."
+            value={!!captureDefaults.saveToLibrary}
+            onChange={(next)=>changeCaptureDefault("saveToLibrary",next)}
+            accessibilityLabel="Keep a copy of every capture on this phone"
+          />
+        ) : (
+          <Text style={styles.helpText}>
+            Keeping a copy of a capture only works on a phone. In a browser, a
+            Moment or a Memory is uploaded and nothing is kept locally.
+          </Text>
+        )}
+
+        <Field
+          label="Video quality"
+          hint="A phone that cannot record at the size you pick records at the highest it has."
+        >
+          <Segmented
+            items={VIDEO_QUALITIES.map((quality)=>({
+              key:quality.key,
+              label:quality.label,
+              accessibilityLabel:`Record video at ${quality.label}. ${quality.help}`
+            }))}
+            active={captureDefaults.videoQuality}
+            onChange={(next)=>changeCaptureDefault("videoQuality",next)}
+          />
+        </Field>
+
+        {/*
           NOTIFICATIONS TIER.
 
           PUSH NOTIFICATIONS, EVERY ONE OFF UNTIL SOMEBODY TURNS IT ON.
@@ -650,28 +744,66 @@ export default function Settings(){
           deleted, the map has to get its credit back --
           test/map-attribution.test.js is what enforces that.
         */}
-        <TierRule label="Legal"/>
-        <SectionRule label="Privacy and terms"/>
-        <Row
-          glyph="lock"
-          title="Privacy policy"
-          sub="What Xplorer stores, who can see it, and how to get rid of it."
-          onPress={()=>router.push("/legal/privacy")}
-        />
-        <Row
-          glyph="clipboard"
-          title="Terms"
-          sub="What Xplorer is, and what is expected of everybody using it."
-          onPress={()=>router.push("/legal/terms")}
-        />
+        {/*
+          MAP & LOCATION.
+
+          The locked spec's configuration level for the map: the default style,
+          how far "near me" reaches, and the OpenStreetMap credit. All three in
+          one group, because they are one subject -- somebody who has come here
+          to change the map is the person most likely to want to know where the
+          map comes from.
+
+          THE ATTRIBUTION MOVED HERE. IT DID NOT SHRINK.
+
+          The map itself carries no attribution control -- both of MapLibre's
+          are turned off in components/LivingMap.js and LivingMap.web.js. That
+          is only defensible because the credit is still in the app, in two
+          places that cannot be missed: the startup screen shows it for five
+          seconds on every launch, and this section states it permanently with a
+          link to the licence. It is at reading size, on a panel of its own,
+          with the link as a real 44px control. If this section is ever deleted,
+          the map has to get its credit back -- test/map-attribution.test.js is
+          what enforces that.
+        */}
+        <TierRule label="Map & location"/>
+        <SectionRule label="Map defaults"/>
+        <Text style={styles.helpText}>
+          What the map opens on, and how far Live Nearby looks. Changing either
+          takes effect straight away, including on a map already open.
+        </Text>
+
+        <Panel style={styles.mapCard}>
+          <Text style={styles.mapLabel}>DEFAULT MAP STYLE</Text>
+          <Segmented
+            items={STYLE_CHOICES.map((choice)=>({
+              key:choice.key,
+              label:choice.label,
+              accessibilityLabel:`${choice.label} map style. ${choice.sentence}`
+            }))}
+            active={mapPrefs.styleKey}
+            onChange={(next)=>changeMap({styleKey:next})}
+          />
+          <Text style={styles.mapSentence}>
+            {STYLE_CHOICES.find((choice)=>choice.key===mapPrefs.styleKey)?.sentence || ""}
+          </Text>
+        </Panel>
+
+        <Panel style={styles.mapCard}>
+          <Text style={styles.mapLabel}>DEFAULT LIVE-NEARBY RADIUS</Text>
+          <Dial
+            values={RADIUS_CHOICES}
+            active={mapPrefs.radiusKm}
+            onChange={(next)=>changeMap({radiusKm:next})}
+            width={236}
+            format={(value)=>`${value}KM`}
+          />
+          <Text style={styles.mapSentence}>
+            Live Nearby opens looking {mapPrefs.radiusKm}km around you. You can still
+            widen or narrow it on that screen.
+          </Text>
+        </Panel>
 
         <SectionRule label="About and licences"/>
-        {/*
-          NOT FINE PRINT. The whole justification for a clean map is that the
-          credit is legible somewhere a person will actually meet it, so this
-          stays at reading size on a panel of its own with the licence link as a
-          real 44px control rather than an underlined scrap.
-        */}
         <Panel style={styles.licence}>
           <Text style={styles.licenceLabel}>MAP DATA</Text>
           <Text style={styles.licenceText}>{ATTRIBUTION}</Text>
@@ -690,6 +822,21 @@ export default function Settings(){
             <Text style={styles.licenceLinkText}>{ATTRIBUTION_URL}</Text>
           </Pressable>
         </Panel>
+
+        <TierRule label="Legal"/>
+        <SectionRule label="Privacy and terms"/>
+        <Row
+          glyph="lock"
+          title="Privacy policy"
+          sub="What Xplorer stores, who can see it, and how to get rid of it."
+          onPress={()=>router.push("/legal/privacy")}
+        />
+        <Row
+          glyph="clipboard"
+          title="Terms"
+          sub="What Xplorer is, and what is expected of everybody using it."
+          onPress={()=>router.push("/legal/terms")}
+        />
 
         {/*
           ACCOUNT TIER: whether you have manager tools switched on at all,
@@ -973,6 +1120,26 @@ const styles=StyleSheet.create({
   savePrivacy:{marginTop:6},
   spaced:{marginTop:8},
   disabled:{opacity:0.55},
+
+  // MAP & LOCATION. Same panel as the licence below it, so the group reads as
+  // one subject rather than a settings block with a legal notice stapled on.
+  mapCard:{padding:15,marginTop:10},
+  mapLabel:{
+    color:INK.readoutSoft,
+    fontFamily:MONO,
+    fontSize:TYPE.data.sizes.sm,
+    letterSpacing:1,
+    textTransform:"uppercase",
+    marginBottom:11
+  },
+  // A sentence somebody reads back once they have chosen, so it is the body
+  // face. What they chose is a measurement and stays in mono, on the control.
+  mapSentence:{
+    color:INK.readoutSoft,
+    fontSize:TYPE.body.sizes.sm,
+    lineHeight:TYPE.body.sizes.sm*1.5,
+    marginTop:12
+  },
 
   licence:{padding:15},
   licenceLabel:{

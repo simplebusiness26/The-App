@@ -141,6 +141,45 @@ function propsOf(source,component){
 }
 
 // ---------------------------------------------------------------------------
+// The interfaces a props interface inherits from
+// ---------------------------------------------------------------------------
+//
+// `interface FooProps extends BaseProps, PressableSourceProps { ... }`. Each
+// name is looked up across every .d.ts in the package, because the base often
+// lives in types/ rather than beside the component.
+
+function interfaceBody(name){
+  for(const text of definitions.values()){
+    const match=text.match(new RegExp(`interface\\s+${name}\\b[^{]*\\{`));
+    if(!match) continue;
+
+    let index=match.index+match[0].length;
+    let depth=1;
+    const start=index;
+    while(index<text.length && depth>0){
+      if(text[index]==="{") depth+=1;
+      if(text[index]==="}") depth-=1;
+      index+=1;
+    }
+    return text.slice(start,index);
+  }
+  return "";
+}
+
+function baseInterfaces(types){
+  const bodies=[];
+  for(const match of types.matchAll(/interface\s+\w+\s+extends\s+([^{]+)\{/g)){
+    for(const raw of match[1].split(",")){
+      const name=raw.trim().replace(/<.*$/,"");
+      if(!name) continue;
+      const body=interfaceBody(name);
+      if(body) bodies.push(body);
+    }
+  }
+  return bodies;
+}
+
+// ---------------------------------------------------------------------------
 
 let checked=0;
 const problems=[];
@@ -171,12 +210,20 @@ for(const file of SOURCES){
       continue;
     }
 
+    // A props interface may EXTEND another one that lives in a different file --
+    // GeoJSONSourceProps extends PressableSourceProps, which is where onPress
+    // and hitbox are declared. Reading only the component's own .d.ts reported
+    // a real, supported prop as missing, which would have pushed somebody into
+    // deleting working code to get the gate green. So the bases are followed.
+    const searchable=[types,...baseInterfaces(types)];
+
     for(const prop of found){
       if(INHERITED.has(prop)) continue;
       checked+=1;
 
-      // Declared on the props interface, as `name:` or `name?:`.
-      if(new RegExp(`\\b${prop}\\??\\s*:`).test(types)) continue;
+      // Declared on the props interface -- or on one it extends -- as `name:`
+      // or `name?:`.
+      if(searchable.some((text)=>new RegExp(`\\b${prop}\\??\\s*:`).test(text))) continue;
 
       problems.push(`${file}: <${component} ${prop}={...}> -- ${component} has no prop called "${prop}" in the installed version. It will be ignored silently.`);
     }

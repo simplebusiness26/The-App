@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {AccessibilityInfo,ActivityIndicator,Animated,Easing,RefreshControl,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Location from "expo-location";
+import {mapPreferences} from "../utils/mapPreferences";
 import {router,useFocusEffect} from "expo-router";
 import {supabase} from "../services/supabase";
 import {useFeedback} from "../context/FeedbackContext";
@@ -113,7 +114,10 @@ export default function LiveDiscovery(){
   const [areaFilter,setAreaFilter]=useState("");
   const [latitude,setLatitude]=useState(null);
   const [longitude,setLongitude]=useState(null);
-  const [radius,setRadius]=useState(25);
+  // The default a person set in Account & Safety > Map & location. Read once,
+  // as the STARTING position of this screen's own dial -- widening it here is
+  // still a per-visit decision and does not write back.
+  const [radius,setRadius]=useState(()=>mapPreferences().radiusKm);
   const [windowHours,setWindowHours]=useState(24);
   const [type,setType]=useState("all");
   const [items,setItems]=useState([]);

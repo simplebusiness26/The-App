@@ -1,11 +1,11 @@
 import React,{useEffect,useRef,useState} from "react";
 import {AccessibilityInfo,Animated,View,Text,Pressable,StyleSheet} from "react-native";
-import Svg,{Circle,Line,Path} from "react-native-svg";
+import Svg,{Line} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {TABS,activeTabKey,isTabBarHidden,withNext} from "../utils/navigation";
 import {INK,TYPE,SHAPE,MOTION} from "../utils/tokens";
-import {MONO} from "./instrument";
+import {Glyph,MONO} from "./instrument";
 import {signedIn} from "../utils/permissions";
 
 // The navigation shell, redesigned. Five flat tabs, none raised -- Map ·
@@ -34,69 +34,28 @@ import {signedIn} from "../utils/permissions";
 // free would risk exactly the thing the brief protects ("every existing
 // route still reachable").
 
-const BAR_HEIGHT=62;
+// EXPORTED, because the bar floats OVER the routes rather than sitting under
+// them: app/_layout.js draws it as a later sibling of the Stack. A screen with
+// something pinned to its own bottom edge -- the camera console is the one --
+// has to reserve this much or its shutter renders underneath the bar. One
+// answer to "how tall is the tab bar", in the file that draws it.
+export const TAB_BAR_HEIGHT=62;
 
-// Navigation icons, on the same 16x16 canvas as the place markers. Deliberately
-// a separate set from GLYPHS in utils/markers.js: those say what a place is,
-// these say where a tap goes, and collapsing them would tie the map's meaning
-// to the shape of the navigation.
-const ICONS={
-  map:[
-    {path:"M2 4.4 6 2.8v8.8L2 13.2z"},
-    {path:"M6 2.8l4 1.6v8.8l-4-1.6z"},
-    {path:"M10 4.4l4-1.6v8.8l-4 1.6z"}
-  ],
-  // Happening: a compass. What's on, right now or soon -- the needle points
-  // at it rather than naming any one of the five things it now stands for
-  // (For You, Live Now, Events, Clubs, Link-ups).
-  compass:[
-    {circle:[8,8,5.6]},
-    {path:"M10.6 5.4 9.2 9.2 5.4 10.6 6.8 6.8z"}
-  ],
-  // Community: two people, standing for Feed/Explorers/Leaderboard folded
-  // into one destination. A separate drawing from markers.js's "people"
-  // glyph on purpose -- see the file note above.
-  community:[
-    {circle:[5.6,6,2.1]},
-    {path:"M2.2 13.2c0-2 1.5-3.5 3.4-3.5s3.4 1.5 3.4 3.5"},
-    {circle:[11,6.6,1.7]},
-    {path:"M9.6 9.9c1.9 0 3.2 1.3 3.2 3.3"}
-  ],
-  message:[
-    {path:"M2.6 4.2h10.8v6.8H7.4l-3 2.4v-2.4H2.6z"}
-  ],
-  person:[
-    {circle:[8,5.5,2.4]},
-    {path:"M3.4 13.4c0-2.5 2-4.3 4.6-4.3s4.6 1.8 4.6 4.3"}
-  ]
-};
+const BAR_HEIGHT=TAB_BAR_HEIGHT;
 
-function Icon({name,colour,size=22}){
-  return(
-    <Svg width={size} height={size} viewBox="0 0 16 16">
-      {ICONS[name].map((primitive,index)=>primitive.circle
-        ? <Circle
-            key={index}
-            cx={primitive.circle[0]}
-            cy={primitive.circle[1]}
-            r={primitive.circle[2]}
-            fill="none"
-            stroke={colour}
-            strokeWidth={1.5}
-          />
-        : <Path
-            key={index}
-            d={primitive.path}
-            fill="none"
-            stroke={colour}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-      )}
-    </Svg>
-  );
-}
+// THE NAVIGATION MARKS COME FROM THE KIT.
+//
+// There used to be a second icon table here -- a compass rose, two heads, a
+// speech bubble, a map fold -- drawn in this file and nowhere else. It was the
+// reason the tab bar still looked like every other app's tab bar after the
+// glyph set was redrawn: the redraw landed in components/instrument.js and the
+// five icons on every single screen never saw it.
+//
+// docs/instrument-kit.md is explicit that a shape a screen needs goes IN the
+// kit rather than beside it, so the five marks the bar asks for -- map,
+// compass, community, message, person, named in utils/navigation.js -- are
+// GLYPHS entries now, drawn to the construction rules written above that table,
+// and this file just asks for them by name.
 
 // THE GRADUATED SCALE ALONG THE BAR'S TOP EDGE.
 //
@@ -262,7 +221,7 @@ export default function TabBar(){
                   the active tab gets a filled detent block rather than a
                   floating underline -- and it sits at the top edge, against
                   the ruled scale, where a pointer would land. */}
-              <Icon name={tab.glyph} colour={isActive ? INK.readout : INK.readoutFaint}/>
+              <Glyph name={tab.glyph} size={22} colour={isActive ? INK.readout : INK.readoutFaint}/>
               <Text style={[styles.label,isActive && styles.labelActive]} numberOfLines={1}>
                 {tab.label}
               </Text>

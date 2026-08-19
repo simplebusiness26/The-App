@@ -17,6 +17,7 @@
 
 import {classificationLabel,glyphForClassification,UNCLASSIFIED} from "./taxonomy";
 import {INK,HEAT_RAMP} from "./tokens";
+import {BASE_WEIGHT,MAX_WEIGHT} from "./heatmap";
 import {ACTIVITY_STATE_SENTENCE} from "./liveActivity";
 
 // The three inks, and what each one means. These are the design system's, not
@@ -453,6 +454,75 @@ export function clusterAppearance(count){
   };
 }
 
+// HOW A CLUSTER IS PAINTED WHEN MAPLIBRE IS THE ONE COUNTING IT.
+//
+// clusterAppearance() above describes one circle the APP drew, at a size the
+// app worked out. This describes the same circle as MapLibre style layers, for
+// the built-in clustering on a `cluster:true` GeoJSON source -- which computes
+// the groups itself, as the camera moves, and so cannot be handed a size per
+// circle. The size becomes an expression on `point_count` instead.
+//
+// It is here, and not in either renderer, for the reason every appearance in
+// this file is: a renderer draws, it does not decide what a colour means
+// (test/living-map-cross-platform.test.js bans the state inks in both of them).
+//
+// The count is a symbol layer because there is nothing else to put a number
+// into on a style layer. "Noto Sans Bold" is the face the map's own style
+// bundles -- see assets/map/instrument-dark.json -- so it is the one face that
+// is certain to be there; the app's own mono is not on the tile server.
+export function clusterPaint(){
+  const look=clusterAppearance(0);
+
+  return{
+    // The group: one circle, growing with what is in it, and never big enough
+    // to be mistaken for the heat wash underneath.
+    circle:{
+      "circle-color":look.fill,
+      "circle-stroke-color":look.border,
+      "circle-stroke-width":1,
+      "circle-radius":["interpolate",["linear"],["get","point_count"],2,19,40,30]
+    },
+    // The number on it. Size is never the only carrier of meaning.
+    countLayout:{
+      "text-field":["get","point_count_abbreviated"],
+      "text-font":["Noto Sans Bold"],
+      "text-size":13,
+      "text-allow-overlap":true
+    },
+    countPaint:{"text-color":look.ink},
+    // A point the built-in clustering left on its own -- supercluster does not
+    // group a lone pin. It keeps its own state ink, carried on the feature, so
+    // colour still means what it means at this zoom.
+    lone:{
+      "circle-color":["get","fill"],
+      "circle-stroke-color":["get","border"],
+      "circle-stroke-width":1,
+      "circle-radius":9
+    }
+  };
+}
+
+// A place, as a feature the clustering source can eat. The marker descriptor is
+// already worked out by this file; this only flattens the two values a style
+// layer can read back out of a feature.
+export function clusterFeature(place){
+  const marker=place?.card?.marker || place?.marker || {};
+  return{
+    type:"Feature",
+    properties:{fill:marker.fill || INK.panel,border:marker.border || INK.hairlineStrong},
+    geometry:{type:"Point",coordinates:[Number(place.longitude),Number(place.latitude)]}
+  };
+}
+
+export function clusterPoints(places){
+  return{
+    type:"FeatureCollection",
+    features:(places || [])
+      .filter((place)=>Number.isFinite(Number(place?.latitude)) && Number.isFinite(Number(place?.longitude)))
+      .map(clusterFeature)
+  };
+}
+
 // HOW THE HEAT IS PAINTED.
 //
 // This replaces heatAppearance(), which described one flat yellow circle per
@@ -470,16 +540,69 @@ export function clusterAppearance(count){
 // the busiest point on screen. The first stop MUST be transparent or the whole
 // map is tinted -- Snapchat's is a wash over the busy parts, not a filter over
 // the world.
-export function heatmapPaint({opacity=0.55,radius=34,intensity=1}={}){
+// ---------------------------------------------------------------------------
+// THE HEAT DIAL: NOW -> WEEK
+// ---------------------------------------------------------------------------
+//
+// The locked spec asks for "a real intensity/timeframe dial for the
+// Moment-density heat ramp (Now->Week), MapLibre's heatmap-intensity/weight
+// paint properties made adjustable". Both of those properties are real and both
+// are genuinely driven from here.
+//
+// WHAT THE TIMEFRAME HONESTLY MEANS, AND WHAT IT DOES NOT
+//
+// get_moment_heat() (20260814000000) returns a position and one number --
+// `attention` -- per live public Moment. It carries NO timestamp, deliberately:
+// the less a layer every Explorer can see carries, the less it can leak. So the
+// dial cannot filter the source by age, and pretending it does would be a lie
+// drawn in colour.
+//
+// What it can do, and does, is choose WHICH QUESTION the wash answers, because
+// attention is itself an accumulation:
+//
+//   NOW   every live Moment counts the same -- one. The wash is where people
+//         are POSTING, and a single very popular post cannot own the map.
+//   WEEK  each Moment counts for the attention it has gathered over its life,
+//         which is what "this has been busy" means.
+//
+// The detents in between blend the two, and `heatmap-intensity` rises as the
+// dial moves towards NOW because a flat weight puts less energy into the field
+// and the busy patches would otherwise wash out.
+//
+// Neither renderer knows any of this. They pass the timeframe key through and
+// get paint back, exactly as they do for a pin's ink.
+export const HEAT_TIMEFRAMES=[
+  {key:"now",label:"NOW",share:0,intensity:1.7,sentence:"Where Moments are being posted right now."},
+  {key:"day",label:"DAY",share:0.35,intensity:1.35,sentence:"Posting, with some weight on what people are looking at."},
+  {key:"3d",label:"3 DAYS",share:0.7,intensity:1.05,sentence:"Mostly what has gathered attention."},
+  {key:"week",label:"WEEK",share:1,intensity:0.8,sentence:"Everything live, weighted by the attention it has gathered."}
+];
+
+export const DEFAULT_HEAT_TIMEFRAME="day";
+
+export function heatTimeframe(key){
+  return HEAT_TIMEFRAMES.find((entry)=>entry.key===key)
+    || HEAT_TIMEFRAMES.find((entry)=>entry.key===DEFAULT_HEAT_TIMEFRAME);
+}
+
+export function heatmapPaint({opacity=0.55,radius=34,intensity,timeframe}={}){
   const colour=["interpolate",["linear"],["heatmap-density"],0,"rgba(0,0,0,0)"];
   for(const stop of HEAT_RAMP) colour.push(stop.at,stop.colour);
+
+  const frame=heatTimeframe(timeframe);
+  // The top of the weight range at this setting. At NOW it is 1, so every
+  // Moment contributes exactly the same however popular it is; at WEEK it is
+  // the full curve utils/heatmap.js computed.
+  const top=1+frame.share*(MAX_WEIGHT-BASE_WEIGHT);
 
   return{
     "heatmap-color":colour,
     // Each Moment's own contribution, from utils/heatmap.js. A public Moment
-    // counts for existing; attention adds on a curve.
-    "heatmap-weight":["get","weight"],
-    "heatmap-intensity":intensity,
+    // counts for existing; attention adds on a curve -- and the dial decides
+    // how much of that curve reaches the map. A real MapLibre expression, so
+    // the interpolation happens in the renderer rather than in a re-fetch.
+    "heatmap-weight":["interpolate",["linear"],["get","weight"],BASE_WEIGHT,1,MAX_WEIGHT,top],
+    "heatmap-intensity":intensity ?? frame.intensity,
     // In pixels, so a blob is the same size on screen at every zoom -- which is
     // what makes zooming out gather the map into hotspots rather than shrink
     // them into specks.

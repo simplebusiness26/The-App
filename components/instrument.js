@@ -370,76 +370,128 @@ const styles=StyleSheet.create({
 // ---------------------------------------------------------------------------
 // Emoji were standing in for icons across the app. An emoji is somebody else's
 // design: it carries its own colour, its own weight and its own house style,
-// and on a dark instrument face it reads as a sticker. These are stroked on the
-// same 16x16 canvas as the map markers and the tab icons, so everything drawn
-// in this app comes off one grid.
+// and on a dark instrument face it reads as a sticker.
+//
+// Replacing them with a CONVENTIONAL stroked set was only half the job, and the
+// product owner said so: "the icons are still the same". A compass rose for
+// Happening, a magnifier for search, two heads for Community — that is the
+// icon set every app has, sitting on a face that is meant to read as a machined
+// instrument. It was a fidelity upgrade, not a design decision.
+//
+// So the set is redrawn from the design's own vocabulary: ticks, hairline
+// rules, brackets, apertures, dials and reticles. An icon here is an ETCHED
+// MARK ON A HOUSING, not a friendly pictogram of an object.
+//
+// THE CONSTRUCTION RULES — draw the next icon this way
+//
+//  1. CANVAS 16x16, LIVE AREA 2.8-13.2. Nothing is drawn outside that 10.4
+//     square; the margin is the plate the mark is engraved into.
+//  2. ONE BASELINE, y=12.8, and one cap line, y=3.2. Anything that stands —
+//     a person, a building, a chart, a plinth — sits ON 12.8, which is where
+//     the cap height of the mono label beside it also sits. That is what makes
+//     a glyph and its label read as one line rather than two objects.
+//  3. ONE STROKE WEIGHT. Every mark is stroked at the weight the caller passes
+//     (1.5 by default) and nothing is ever filled. Emphasis comes from how many
+//     marks there are, never from a heavier or doubled line.
+//  4. ANGLES ARE 0, 90 OR 45 DEGREES ONLY. Every diagonal in this table is an
+//     exact 45 — chevrons, the check, the scriber, the envelope flap, the
+//     needle. A freehand angle is what makes a set look drawn rather than
+//     machined.
+//  5. RADII COME FROM ONE LADDER: 1.1 dot · 1.8 detent · 2.4 collar ·
+//     3.2 dial · 4.2 lens · 5.2 bezel. A ring that is none of these is a ring
+//     somebody eyeballed.
+//  6. TICKS ARE ~2 UNITS and MINIMUM CLEAR GAP IS 2.4. Two strokes closer than
+//     that merge into a smudge at 13px, which is the size these are actually
+//     read at. Test at 13, not at 100.
+//  7. AT MOST SIX SUBPATHS. Detail that cannot survive 13px is not detail, it
+//     is noise.
+//  8. THE VOCABULARY IS FIXED: bezel (a reading), tick (a graduation), rule (an
+//     etched line), bracket (a frame), plinth (a housing), wedge (a direction),
+//     aperture (a fix). Compose a new icon out of those seven, not out of a
+//     picture of the thing.
+//
+// The five navigation marks are the load-bearing ones — they are on every
+// screen — and each takes a different primitive so the bar reads as five
+// controls rather than five drawings: map is a bracketed frame around an
+// aperture (the view you look through at the world), Happening is a dial with a
+// needle, Community is three stations, Messages is a channel between two
+// brackets, Me is a station on its plinth. components/TabBar.js draws them from
+// here; there is no second copy.
 const GLYPHS={
-  back:      [{d:"M10 3 5 8l5 5"}],
-  forward:   [{d:"M6 3l5 5-5 5"}],
-  up:        [{d:"M3 10l5-5 5 5"}],
-  down:      [{d:"M3 6l5 5 5-5"}],
-  close:     [{d:"M4 4l8 8"},{d:"M12 4l-8 8"}],
-  plus:      [{d:"M8 3.5v9"},{d:"M3.5 8h9"}],
-  minus:     [{d:"M3.5 8h9"}],
-  check:     [{d:"M3.5 8.5 6.5 11.5 12.5 4.5"}],
-  bell:      [{d:"M4.4 11.2V7.6a3.6 3.6 0 0 1 7.2 0v3.6"},{d:"M3 11.2h10"},{d:"M6.8 13a1.4 1.4 0 0 0 2.4 0"}],
-  search:    [{c:[7.2,7.2,4.2]},{d:"M10.4 10.4 13.4 13.4"}],
-  pin:       [{d:"M8 14s4.6-4.4 4.6-7.6A4.6 4.6 0 0 0 3.4 6.4C3.4 9.6 8 14 8 14z"},{c:[8,6.4,1.7]}],
-  clock:     [{c:[8,8,5.4]},{d:"M8 4.8V8l2.4 1.5"}],
-  calendar:  [{d:"M2.8 4.4h10.4v9H2.8z"},{d:"M2.8 7h10.4"},{d:"M5.4 2.6v2.4"},{d:"M10.6 2.6v2.4"}],
-  people:    [{c:[5.6,6,2.1]},{d:"M2.2 13.2c0-2 1.5-3.5 3.4-3.5s3.4 1.5 3.4 3.5"},{c:[11,6.6,1.7]},{d:"M9.6 9.9c1.9 0 3.2 1.3 3.2 3.3"}],
-  person:    [{c:[8,5.5,2.4]},{d:"M3.4 13.4c0-2.5 2-4.3 4.6-4.3s4.6 1.8 4.6 4.3"}],
-  camera:    [{d:"M2.6 5.2h2.6l1-1.6h3.6l1 1.6h2.6v7.6H2.6z"},{c:[8,8.6,2.4]}],
-  star:      [{d:"M8 2.6 9.7 6.2l3.9.5-2.8 2.7.7 3.9L8 11.5l-3.5 1.8.7-3.9L2.4 6.7l3.9-.5z"}],
-  heart:     [{d:"M8 13.2S2.6 10 2.6 6.4a2.9 2.9 0 0 1 5.4-1.5 2.9 2.9 0 0 1 5.4 1.5c0 3.6-5.4 6.8-5.4 6.8z"}],
-  comment:   [{d:"M2.6 4.2h10.8v6.8H7.4l-3 2.4v-2.4H2.6z"}],
-  share:     [{c:[12,4,1.8]},{c:[4,8,1.8]},{c:[12,12,1.8]},{d:"M5.6 7.1 10.4 4.9"},{d:"M5.6 8.9 10.4 11.1"}],
-  lock:      [{d:"M4.4 7.2h7.2v6H4.4z"},{d:"M6 7.2V5.4a2 2 0 0 1 4 0v1.8"}],
-  filter:    [{d:"M2.6 4h10.8L9.2 8.6v4l-2.4 1.4V8.6z"}],
-  map:       [{d:"M2 4.4 6 2.8v8.8L2 13.2z"},{d:"M6 2.8l4 1.6v8.8l-4-1.6z"},{d:"M10 4.4l4-1.6v8.8l-4 1.6z"}],
-  edit:      [{d:"M10.6 2.8 13.2 5.4 5.6 13H3v-2.6z"}],
-  trash:     [{d:"M3.4 4.6h9.2"},{d:"M4.8 4.6V3.2h6.4v1.4"},{d:"M4.4 4.6 5 13.4h6l.6-8.8"}],
-  info:      [{c:[8,8,5.6]},{d:"M8 7.2v4"},{d:"M8 5.1v.6"}],
-  warn:      [{d:"M8 2.6 14 13H2z"},{d:"M8 6.6v3.2"},{d:"M8 11.2v.6"}],
-  send:      [{d:"M13.4 2.6 2.6 7l4.4 1.8L8.8 13z"}],
-  qr:        [{d:"M2.8 2.8h4v4h-4z"},{d:"M9.2 2.8h4v4h-4z"},{d:"M2.8 9.2h4v4h-4z"},{d:"M9.2 9.2v1.8"},{d:"M11.6 13.2h1.6"}],
-  play:      [{d:"M5.4 3.4 12 8l-6.6 4.6z"}],
-  live:      [{c:[8,8,2.2]},{d:"M4.2 4.2a5.4 5.4 0 0 0 0 7.6"},{d:"M11.8 4.2a5.4 5.4 0 0 1 0 7.6"}],
-  home:      [{d:"M2.6 7.6 8 3l5.4 4.6"},{d:"M4.2 8.8v4.6h7.6V8.8"}],
-  bookmark:  [{d:"M4.2 2.8h7.6v10.4L8 10.6l-3.8 2.6z"}],
-  ticket:    [{d:"M2.6 5.4h10.8v2a1.4 1.4 0 0 0 0 2.8v2H2.6v-2a1.4 1.4 0 0 0 0-2.8z"},{d:"M8.6 5.9v1.4"},{d:"M8.6 8.9v1.4"}],
-  tag:       [{d:"M2.8 2.8h5l6 6-5 5-6-6z"},{c:[5.4,5.4,1.1]}],
-  building:  [{d:"M3.4 13.4V3.6h6.2v9.8"},{d:"M9.6 6.6h3v6.8"},{d:"M5.2 5.8h2.6"},{d:"M5.2 8.2h2.6"},{d:"M5.2 10.6h2.6"}],
-  bed:       [{d:"M2.6 12.6V6"},{d:"M2.6 8.8h10.8v3.8"},{d:"M13.4 8.8a2.4 2.4 0 0 0-2.4-2.4H7.2v2.4"},{c:[4.9,7,1.2]}],
-  ring:      [{c:[8,8,5.4]},{c:[8,8,2.2]}],
-  flag:      [{d:"M4 13.4V3"},{d:"M4 3.4h7.6l-1.6 2.6 1.6 2.6H4"}],
-  block:     [{c:[8,8,5.4]},{d:"M4.2 11.8 11.8 4.2"}],
-  shield:    [{d:"M8 2.6 13 4.4v3.8c0 3-2.2 4.6-5 5.4-2.8-.8-5-2.4-5-5.4V4.4z"}],
-  key:       [{c:[5,8,2.4]},{d:"M7.4 8h6"},{d:"M11.4 8v2.2"},{d:"M13.4 8v1.6"}],
-  card:      [{d:"M2.6 4.4h10.8v7.2H2.6z"},{d:"M2.6 7h10.8"},{d:"M4.6 9.6h2.6"}],
-  chart:     [{d:"M2.8 13.2h10.4"},{d:"M4.6 13.2V8.6"},{d:"M8 13.2V4.6"},{d:"M11.4 13.2V10"}],
-  list:      [{d:"M5.6 4.4h7.8"},{d:"M5.6 8h7.8"},{d:"M5.6 11.6h7.8"},{d:"M2.8 4.4h.6"},{d:"M2.8 8h.6"},{d:"M2.8 11.6h.6"}],
+  // --- travel and assent: chevrons cut at exactly 45 degrees -----------------
+  back:      [{d:"M9.6 3.6 5.2 8l4.4 4.4"}],
+  forward:   [{d:"M6.4 3.6 10.8 8l-4.4 4.4"}],
+  up:        [{d:"M3.6 9.6 8 5.2l4.4 4.4"}],
+  down:      [{d:"M3.6 6.4 8 10.8l4.4-4.4"}],
+  close:     [{d:"M4.4 4.4 11.6 11.6"},{d:"M11.6 4.4 4.4 11.6"}],
+  plus:      [{d:"M8 3.2v9.6"},{d:"M3.2 8h9.6"}],
+  minus:     [{d:"M3.2 8h9.6"}],
+  check:     [{d:"M3.2 8.4 6.8 12l6.4-6.4"}],
+
+  // --- the five navigation marks -------------------------------------------
+  map:       [{d:"M2.8 6V2.8h3.2"},{d:"M10 2.8h3.2V6"},{d:"M13.2 10v3.2H10"},{d:"M6 13.2H2.8V10"},{c:[8,8,1.8]}],
+  compass:   [{c:[8,8,5.2]},{c:[8,8,1.3]},{d:"M9 7 11.6 4.4"},{d:"M7 9 5.6 10.4"}],
+  community: [{c:[4.4,5.2,2]},{c:[11.6,5.2,2]},{c:[8,11.2,2]}],
+  message:   [{d:"M6 3.6H3.2v8.8H6"},{d:"M10 3.6h2.8v8.8H10"},{d:"M6.4 6.8h3.2"},{d:"M6.4 9.2h3.2"}],
+  person:    [{c:[8,5.8,2.4]},{d:"M4.4 12.8v-2h7.2v2"}],
+  people:    [{c:[4.8,5.6,1.8]},{c:[11.2,5.6,1.8]},{d:"M2.8 12.8v-2h10.4v2"}],
+
+  // --- readings -------------------------------------------------------------
+  bell:      [{d:"M4.4 11.2V7.6a3.6 3.6 0 0 1 7.2 0v3.6"},{d:"M2.8 11.2h10.4"},{d:"M8 11.2v1.8"}],
+  search:    [{c:[7,7,4.2]},{d:"M10 10 13.2 13.2"}],
+  pin:       [{c:[8,5.8,2.4]},{d:"M8 12.8 4.4 9.2h7.2z"}],
+  clock:     [{c:[8,8,5.2]},{d:"M8 4.4V8h2.8"}],
+  calendar:  [{d:"M2.8 4.4h10.4v8.4H2.8z"},{d:"M2.8 7.2h10.4"},{d:"M5.6 2.8v2.8"},{d:"M10.4 2.8v2.8"}],
+  camera:    [{d:"M2.8 5.2h10.4v7.6H2.8z"},{c:[8,9,2.4]},{d:"M6 5.2V3.6h4v1.6"}],
+  star:      [{d:"M8 2.8 9.8 6.6l4 .6-2.9 2.8.7 4L8 12.1l-3.6 1.9.7-4-2.9-2.8 4-.6z"}],
+  heart:     [{d:"M8 12.8 3.6 8.4a2.8 2.8 0 0 1 4.4-3.4 2.8 2.8 0 0 1 4.4 3.4z"}],
+  comment:   [{d:"M2.8 3.6h10.4v6.8H7.2l-2.8 2.8v-2.8H2.8z"},{d:"M5.2 7h5.6"}],
+  share:     [{c:[11.6,4.4,1.8]},{c:[4.4,8,1.8]},{c:[11.6,11.6,1.8]},{d:"M6 7.2 10 5.2"},{d:"M6 8.8 10 10.8"}],
+  lock:      [{d:"M4.2 7.2h7.6v5.6H4.2z"},{d:"M5.8 7.2V5.6a2.2 2.2 0 0 1 4.4 0v1.6"},{d:"M8 9.2v1.6"}],
+  filter:    [{d:"M2.8 3.6h10.4L9.2 7.6v5.2H6.8V7.6z"}],
+  edit:      [{d:"M10 3.2 12.8 6 6 12.8H3.2V10z"}],
+  trash:     [{d:"M2.8 4.8h10.4"},{d:"M5.6 4.8V3.2h4.8v1.6"},{d:"M4.4 4.8v8h7.2v-8"},{d:"M6.8 7.2v3.2"},{d:"M9.2 7.2v3.2"}],
+  info:      [{c:[8,8,5.2]},{d:"M8 7.2v3.2"},{d:"M8 5.2v1"}],
+  warn:      [{d:"M8 3.2 13.2 12.8H2.8z"},{d:"M8 6.8v3"},{d:"M8 11.4v1"}],
+  send:      [{d:"M13.2 2.8 2.8 8l4.4 1.6 1.6 4.4z"}],
+  qr:        [{d:"M2.8 2.8h4.4v4.4H2.8z"},{d:"M8.8 2.8h4.4v4.4H8.8z"},{d:"M2.8 8.8h4.4v4.4H2.8z"},{d:"M8.8 8.8v2.4"},{d:"M11.6 13.2h1.6"}],
+  play:      [{d:"M5.6 3.6 12 8l-6.4 4.4z"}],
+  live:      [{c:[8,8,2.2]},{d:"M4.3 4.3a5.2 5.2 0 0 0 0 7.4"},{d:"M11.7 4.3a5.2 5.2 0 0 1 0 7.4"}],
+  home:      [{d:"M3.2 8 8 3.2l4.8 4.8"},{d:"M4.8 9.2v3.6h6.4V9.2"}],
+  bookmark:  [{d:"M4.4 3.2h7.2v9.6L8 10.4l-3.6 2.4z"}],
+  ticket:    [{d:"M2.8 5.2h10.4v2a1.4 1.4 0 0 0 0 2.8v2.8H2.8V10a1.4 1.4 0 0 0 0-2.8z"},{d:"M8.4 5.6v1.4"},{d:"M8.4 9.4v1.4"}],
+  tag:       [{d:"M2.8 2.8h5.6l4.8 4.8-5.6 5.6-4.8-4.8z"},{c:[5.2,5.2,1.1]}],
+  building:  [{d:"M3.2 12.8V3.2h6.4v9.6"},{d:"M9.6 6.8h3.2v6"},{d:"M5.2 5.6h2.4"},{d:"M5.2 8h2.4"},{d:"M5.2 10.4h2.4"}],
+  bed:       [{d:"M2.8 12.8V6.4"},{d:"M2.8 8.8h10.4v4"},{d:"M13.2 8.8a2.4 2.4 0 0 0-2.4-2.4H7.2v2.4"},{c:[4.8,6.8,1.2]}],
+  ring:      [{c:[8,8,5.2]},{c:[8,8,2.2]}],
+  flag:      [{d:"M4 12.8V3.2"},{d:"M4 3.6h7.6L9.6 6.4l2 2.8H4"}],
+  block:     [{c:[8,8,5.2]},{d:"M4.4 11.6 11.6 4.4"}],
+  shield:    [{d:"M8 3.2 12.8 4.8v3.6c0 2.8-2 4.4-4.8 5.2-2.8-.8-4.8-2.4-4.8-5.2V4.8z"}],
+  key:       [{c:[5.2,8,2.4]},{d:"M7.6 8h5.6"},{d:"M10.4 8v2.4"},{d:"M12.8 8v1.6"}],
+  card:      [{d:"M2.8 4.4h10.4v7.2H2.8z"},{d:"M2.8 7h10.4"},{d:"M4.8 9.2h2.4"}],
+  chart:     [{d:"M2.8 12.8h10.4"},{d:"M4.8 12.8V8.8"},{d:"M8 12.8V4.8"},{d:"M11.2 12.8V9.6"}],
+  list:      [{d:"M5.6 4.4h7.6"},{d:"M5.6 8h7.6"},{d:"M5.6 11.6h7.6"},{d:"M2.8 4.4h1"},{d:"M2.8 8h1"},{d:"M2.8 11.6h1"}],
   grid:      [{d:"M2.8 2.8h4.4v4.4H2.8z"},{d:"M8.8 2.8h4.4v4.4H8.8z"},{d:"M2.8 8.8h4.4v4.4H2.8z"},{d:"M8.8 8.8h4.4v4.4H8.8z"}],
-  refresh:   [{d:"M13 8a5 5 0 1 1-1.6-3.7"},{d:"M13.4 2.8v3.2h-3.2"}],
-  external:  [{d:"M7 3.4H3.4v9.2h9.2V9"},{d:"M9.4 2.8h3.8v3.8"},{d:"M13.2 2.8 7.8 8.2"}],
-  mail:      [{d:"M2.6 4.4h10.8v7.2H2.6z"},{d:"m2.6 4.8 5.4 4 5.4-4"}],
-  phone:     [{d:"M5.4 2.8h5.2v10.4H5.4z"},{d:"M7.2 11.4h1.6"}],
-  globe:     [{c:[8,8,5.4]},{d:"M2.6 8h10.8"},{d:"M8 2.6c1.6 1.8 2.4 3.6 2.4 5.4S9.6 11.6 8 13.4C6.4 11.6 5.6 9.8 5.6 8S6.4 4.4 8 2.6z"}],
-  upload:    [{d:"M8 11.4V3.2"},{d:"M4.8 6.4 8 3.2l3.2 3.2"},{d:"M2.8 13.2h10.4"}],
-  download:  [{d:"M8 3.2v8.2"},{d:"M4.8 8.2 8 11.4l3.2-3.2"},{d:"M2.8 13.2h10.4"}],
-  image:     [{d:"M2.6 3.6h10.8v8.8H2.6z"},{c:[5.6,6.4,1.2]},{d:"m2.8 11 3.6-3.2 2.6 2.4 2-1.8 2.4 2.2"}],
-  video:     [{d:"M2.6 4.6h7.4v6.8H2.6z"},{d:"m10 8 3.4-2.2v4.4z"}],
-  mic:       [{d:"M8 2.6a1.8 1.8 0 0 1 1.8 1.8v3.2a1.8 1.8 0 0 1-3.6 0V4.4A1.8 1.8 0 0 1 8 2.6z"},{d:"M4.6 7.6a3.4 3.4 0 0 0 6.8 0"},{d:"M8 11v2.4"}],
-  target:    [{c:[8,8,5.2]},{c:[8,8,1.6]},{d:"M8 1.6v1.8"},{d:"M8 12.6v1.8"},{d:"M1.6 8h1.8"},{d:"M12.6 8h1.8"}],
-  sliders:   [{d:"M3.4 4.6h9.2"},{d:"M3.4 11.4h9.2"},{c:[6,4.6,1.5]},{c:[10.2,11.4,1.5]}],
-  sort:      [{d:"M4.6 3.4v9.2"},{d:"M2.6 10.6 4.6 12.6l2-2"},{d:"M11.4 12.6V3.4"},{d:"M9.4 5.4 11.4 3.4l2 2"}],
+  refresh:   [{d:"M13 8a5 5 0 1 1-1.6-3.7"},{d:"M13.2 3.2v3.2H10"}],
+  external:  [{d:"M7.2 3.2H3.2v9.6h9.6V8.8"},{d:"M9.6 3.2h3.6v3.6"},{d:"M13.2 3.2 8 8.4"}],
+  mail:      [{d:"M2.8 4.4h10.4v7.2H2.8z"},{d:"M2.8 4.4 8 9.6l5.2-5.2"}],
+  phone:     [{d:"M5.2 2.8h5.6v10.4H5.2z"},{d:"M7.2 11.2h1.6"}],
+  globe:     [{c:[8,8,5.2]},{d:"M2.8 8h10.4"},{d:"M8 2.8c1.6 1.8 2.4 3.6 2.4 5.2s-.8 3.4-2.4 5.2c-1.6-1.8-2.4-3.6-2.4-5.2s.8-3.4 2.4-5.2z"}],
+  upload:    [{d:"M8 11.6V3.2"},{d:"M4.8 6.4 8 3.2l3.2 3.2"},{d:"M2.8 12.8h10.4"}],
+  download:  [{d:"M8 3.2v8.4"},{d:"M4.8 8.4 8 11.6l3.2-3.2"},{d:"M2.8 12.8h10.4"}],
+  image:     [{d:"M2.8 3.6h10.4v8.8H2.8z"},{c:[5.6,6.4,1.2]},{d:"M3.2 11.6 6.8 8l2.4 2.4 2-2 2 2"}],
+  video:     [{d:"M2.8 4.8h7.2v6.4H2.8z"},{d:"M10 8 13.2 5.6v4.8z"}],
+  mic:       [{d:"M8 2.8a1.8 1.8 0 0 1 1.8 1.8v3.2a1.8 1.8 0 0 1-3.6 0V4.6A1.8 1.8 0 0 1 8 2.8z"},{d:"M4.8 7.6a3.2 3.2 0 0 0 6.4 0"},{d:"M8 10.8v2"}],
+  target:    [{c:[8,8,4.8]},{c:[8,8,1.6]},{d:"M8 2.8v2"},{d:"M8 11.2v2"},{d:"M2.8 8h2"},{d:"M11.2 8h2"}],
+  sliders:   [{d:"M2.8 5.6h10.4"},{d:"M2.8 10.4h10.4"},{c:[6,5.6,1.8]},{c:[10,10.4,1.8]}],
+  sort:      [{d:"M4.8 3.2v9.6"},{d:"M2.8 10.8 4.8 12.8l2-2"},{d:"M11.2 12.8V3.2"},{d:"M9.2 5.2 11.2 3.2l2 2"}],
   more:      [{c:[3.6,8,1.1]},{c:[8,8,1.1]},{c:[12.4,8,1.1]}],
-  award:     [{c:[8,6,3.4]},{d:"M6 9.2 5 13.4l3-1.6 3 1.6-1-4.2"}],
-  gift:      [{d:"M2.8 6.6h10.4v2.2H2.8z"},{d:"M3.8 8.8h8.4v4.6H3.8z"},{d:"M8 6.6v6.8"},{d:"M8 6.6C6.4 6.6 5 6 5 4.8s1.6-1.4 3 1.8c1.4-3.2 3-2.6 3-1.4S9.6 6.6 8 6.6z"}],
-  clipboard: [{d:"M4.4 3.6h7.2v9.8H4.4z"},{d:"M6.2 3.6V2.6h3.6v1"},{d:"M6.4 7h3.2"},{d:"M6.4 9.6h3.2"}],
-  eye:       [{d:"M1.8 8s2.4-4 6.2-4 6.2 4 6.2 4-2.4 4-6.2 4-6.2-4-6.2-4z"},{c:[8,8,1.9]}],
-  eyeOff:    [{d:"M3.2 4.6C2.2 5.6 1.8 8 1.8 8s2.4 4 6.2 4c1.2 0 2.2-.4 3.1-.9"},{d:"M6.4 4.2A6 6 0 0 1 8 4c3.8 0 6.2 4 6.2 4a11 11 0 0 1-1.9 2.2"},{d:"M2.8 2.8 13.2 13.2"}],
-  settings:  [{c:[8,8,2.2]},{d:"M8 1.8v1.8"},{d:"M8 12.4v1.8"},{d:"M1.8 8h1.8"},{d:"M12.4 8h1.8"},{d:"M3.6 3.6 4.9 4.9"},{d:"M11.1 11.1l1.3 1.3"},{d:"M12.4 3.6 11.1 4.9"},{d:"M4.9 11.1 3.6 12.4"}]
+  award:     [{c:[8,6,3.2]},{d:"M6 8.8 5.2 12.8 8 11.2l2.8 1.6-.8-4"}],
+  gift:      [{d:"M2.8 6.4h10.4v2.4H2.8z"},{d:"M4 8.8v4h8v-4"},{d:"M8 6.4v6.4"},{d:"M8 6.4 6 4.4"},{d:"M8 6.4 10 4.4"}],
+  clipboard: [{d:"M4.4 3.6h7.2v9.2H4.4z"},{d:"M6.4 3.6V2.8h3.2v.8"},{d:"M6.4 7h3.2"},{d:"M6.4 9.6h3.2"}],
+  eye:       [{d:"M2.8 8s2.2-3.6 5.2-3.6S13.2 8 13.2 8s-2.2 3.6-5.2 3.6S2.8 8 2.8 8z"},{c:[8,8,1.8]}],
+  eyeOff:    [{d:"M3.6 5.2C2.8 6.2 2.8 8 2.8 8s2.2 3.6 5.2 3.6c1 0 1.9-.4 2.6-.9"},{d:"M6.4 4.6A5 5 0 0 1 8 4.4c3 0 5.2 3.6 5.2 3.6a11 11 0 0 1-1.6 2"},{d:"M3.2 3.2 12.8 12.8"}],
+  settings:  [{c:[8,8,2.4]},{d:"M8 2.8v1.6"},{d:"M8 11.6v1.6"},{d:"M2.8 8h1.6"},{d:"M11.6 8h1.6"},{d:"M4.3 4.3 5.4 5.4"},{d:"M10.6 10.6 11.7 11.7"},{d:"M11.7 4.3 10.6 5.4"},{d:"M5.4 10.6 4.3 11.7"}]
 };
 
 export function Glyph({name,size=16,colour=INK.readoutSoft,weight=1.5}){

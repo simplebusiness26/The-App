@@ -2,6 +2,7 @@ import React from "react";
 import {View,Text,TextInput,Pressable,ScrollView,StyleSheet} from "react-native";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
 import {Glyph,MONO} from "./instrument";
+import LayersTray from "./LayersTray";
 
 // The map's controls, out of the way until somebody wants them.
 //
@@ -27,7 +28,7 @@ import {Glyph,MONO} from "./instrument";
 // hooks/useLivingMap.js exactly as before; this is the surface they are drawn
 // on and it could be swapped for another without the map noticing.
 
-export const PANELS={NONE:null,SEARCH:"search",FILTERS:"filters"};
+export const PANELS={NONE:null,SEARCH:"search",FILTERS:"filters",LAYERS:"layers"};
 
 export default function MapControls({
   open,
@@ -55,7 +56,33 @@ export default function MapControls({
   // panel toggle -- pressing it leaves the map rather than opening a sheet
   // over it, so it calls straight through rather than going via `onOpen`.
   // This file still decides nothing: the screen owns the actual navigation.
-  onOpenList
+  onOpenList,
+
+  // ---------------------------------------------------------------------------
+  // The three controls the locked spec's ladder puts at the map's PRECISION
+  // level, plus the two it puts at the immediate one. Every value and setter
+  // arrives from outside for the same reason the filters do: this is a surface,
+  // not a second brain (scripts/verify-living-map.cjs holds that line).
+  // ---------------------------------------------------------------------------
+
+  // Back to where the Explorer is. The screen owns the permission ask and the
+  // camera; this is the button.
+  onRecenter,
+  recentring=false,
+
+  // The live-nearby pill: how many things are happening around somebody right
+  // now, and the way through to the screen that lists them.
+  liveCount=0,
+  onOpenLive,
+
+  // The Layers tray's own three.
+  heatTimeframe,
+  onHeatTimeframe,
+  styleKey,
+  onStyleKey,
+  clustered,
+  onClustered,
+  clusterNote
 }){
   const toggle=(panel)=>onOpen?.(open===panel ? PANELS.NONE : panel);
 
@@ -98,6 +125,64 @@ export default function MapControls({
           </Pressable>
         )}
 
+        {/*
+          THE LAYERS TRAY, BEHIND ONE TAP.
+          The map's precision level: the heat dial, the style switch and the
+          cluster toggle. A toggle like the other two panels -- it is never on
+          screen at rest, because three controls permanently over a map is the
+          furniture this whole row exists to have removed.
+        */}
+        <Pressable
+          style={[styles.chip,open===PANELS.LAYERS && styles.chipOpen]}
+          accessibilityRole="button"
+          accessibilityState={{selected:open===PANELS.LAYERS}}
+          accessibilityLabel={open===PANELS.LAYERS ? "Hide the map layers" : "Map layers"}
+          hitSlop={8}
+          onPress={()=>toggle(PANELS.LAYERS)}
+        >
+          <Glyph name="grid" size={17} colour={open===PANELS.LAYERS ? INK.readout : INK.readoutSoft} weight={1.6}/>
+        </Pressable>
+
+        {/*
+          RECENTRE. Not a panel: it does one thing and there is nothing to hide
+          again. The permission ask and the camera belong to the screen, which
+          is why this only calls out.
+        */}
+        {!!onRecenter && (
+          <Pressable
+            style={[styles.chip,recentring && styles.chipOpen]}
+            accessibilityRole="button"
+            accessibilityState={{busy:!!recentring}}
+            accessibilityLabel="Recenter the map on where you are"
+            hitSlop={8}
+            disabled={recentring}
+            onPress={onRecenter}
+          >
+            <Glyph name="target" size={17} colour={recentring ? INK.readout : INK.readoutSoft} weight={1.6}/>
+          </Pressable>
+        )}
+
+        {/*
+          THE LIVE-NEARBY PILL.
+          Not a filter and not a toggle: a reading, with a door under it. It
+          says how many things are happening around somebody right now and
+          opens the screen that lists them -- which the map had no way of
+          reaching at all. It only draws itself when there is something to
+          count, because a pill reading zero is furniture.
+        */}
+        {liveCount>0 && !!onOpenLive && (
+          <Pressable
+            style={styles.livePill}
+            accessibilityRole="button"
+            accessibilityLabel={`${liveCount} happening nearby. Open Live Nearby.`}
+            hitSlop={8}
+            onPress={onOpenLive}
+          >
+            <Glyph name="live" size={13} colour={INK.scheduled} weight={1.7}/>
+            <Text style={styles.liveText}>LIVE {liveCount}</Text>
+          </Pressable>
+        )}
+
         {/* What is currently narrowed, so a filter left on is never invisible.
             A map quietly hiding two thirds of itself is worse than a chip. */}
         {open===PANELS.NONE && !!activeLabel({typeFilters,typeFilter,historical}) && (
@@ -131,6 +216,20 @@ export default function MapControls({
             </Pressable>
           )}
         </View>
+      )}
+
+      {open===PANELS.LAYERS && (
+        <LayersTray
+          showHeat={showHeat}
+          onShowHeat={onShowHeat}
+          heatTimeframe={heatTimeframe}
+          onHeatTimeframe={onHeatTimeframe}
+          styleKey={styleKey}
+          onStyleKey={onStyleKey}
+          clustered={clustered}
+          onClustered={onClustered}
+          clusterNote={clusterNote}
+        />
       )}
 
       {open===PANELS.FILTERS && (
@@ -232,7 +331,7 @@ function activeLabel({typeFilters,typeFilter,historical}){
 
 const styles=StyleSheet.create({
   wrap:{position:"absolute",left:10,right:10,zIndex:10},
-  chips:{flexDirection:"row",alignItems:"center",gap:8},
+  chips:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:8},
   // MACHINED, NOT WHITE CIRCLES.
   //
   // These were 40px circles with a 2px INK.ink border -- and after the palette
@@ -270,6 +369,26 @@ const styles=StyleSheet.create({
     color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
     textTransform:"uppercase",letterSpacing:0.8
   },
+  // A READING WITH A DOOR UNDER IT. The state ink is the glyph and the edge,
+  // never a fill -- "something is happening nearby" is a state of the world,
+  // and a filled pill would make its own label unreadable.
+  livePill:{
+    flexDirection:"row",
+    alignItems:"center",
+    gap:6,
+    minHeight:30,
+    paddingHorizontal:10,
+    borderRadius:SHAPE.radius.control,
+    backgroundColor:INK.panelRaised,
+    borderWidth:SHAPE.border,
+    borderColor:INK.hairlineStrong,
+    ...SHAPE.shadow.floating
+  },
+  liveText:{
+    color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:0.8
+  },
+
   panel:{
     marginTop:8,
     backgroundColor:INK.panel,

@@ -28,7 +28,11 @@ import {bubblesAt,BUBBLE_MS} from "../utils/liveBubbles";
 import {TIME_WINDOWS} from "../utils/liveActivity";
 import {useHeaderClearance} from "./Header";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Action,Glyph,MONO,Notice} from "./instrument";
+import {Action,Glyph,MONO,Notice,Reticle} from "./instrument";
+import {DEFAULT_HEAT_TIMEFRAME} from "../utils/markers";
+import {DEFAULT_STYLE_KEY} from "../utils/mapProvider";
+import {mapPreferences,onMapPreferences} from "../utils/mapPreferences";
+import {askForLocation} from "../utils/permissions";
 
 // The map screen, once and for both platforms.
 //
@@ -60,6 +64,35 @@ export const MEMORY_MODE_PLACE_OPACITY=0.25;
 // last April is the live map leaking into the one that replaced it.
 const MEMORIES_MODE_MAP={clusters:[],bubbles:[]};
 
+// WHAT THE CLUSTER TOGGLE HONESTLY DOES, SAID ON THE CONTROL ITSELF.
+//
+// The grouping is the map library's own -- `cluster:true` on a GeoJSON source,
+// on both platforms, verified against the installed native binding. What it
+// cannot do on either platform is tell JavaScript which pins it decided to
+// leave standing alone, and utils/liveBubbles.js needs exactly that: a bubble
+// may only float over a pin somebody can see. So the split between "grouped"
+// and "on its own" is still worked out here, in utils/mapClusters.js, and the
+// map draws the groups it is handed. A person turning this off gets every pin,
+// at every zoom, which is the thing the control is for.
+//
+// The wording names no provider. utils/mapProvider.js is the only file in the
+// app allowed to, and test/map-attribution.test.js holds that line on this
+// screen in particular -- a product name in a sentence a person reads is how a
+// provider stops being swappable.
+const CLUSTER_NOTE="Grouped by the map's own clustering. Off shows every pin at every zoom.";
+
+// Where the crosshair goes. The renderers report where a finger was, and a
+// platform that does not gets the middle of the screen rather than a mark in
+// the corner -- 36 is half the reticle, so the point sits under its centre.
+const RETICLE_HALF=36;
+
+function reticleAt(dropped){
+  if(!Number.isFinite(dropped?.x) || !Number.isFinite(dropped?.y)){
+    return{left:"50%",top:"50%",marginLeft:-RETICLE_HALF,marginTop:-RETICLE_HALF};
+  }
+  return{left:dropped.x-RETICLE_HALF,top:dropped.y-RETICLE_HALF};
+}
+
 export default function LivingMapScreen(){
   const map=useLivingMap();
   // The header floats OVER the map now rather than sitting above it -- that bar
@@ -73,7 +106,11 @@ export default function LivingMapScreen(){
   // time this screen re-renders -- which, with the bubble rotation, is every
   // few seconds.
   const params=useLocalSearchParams();
-  const [focus]=useState(()=>{
+  // Settable now, because RECENTRE writes to it too -- see handleRecenter. It
+  // still starts from the Discover card's coordinates and is still never fed
+  // back into the camera as a controlled prop; each write is one imperative
+  // move, which is what the `stamp` is for.
+  const [focus,setFocus]=useState(()=>{
     const latitude=Number(Array.isArray(params.lat) ? params.lat[0] : params.lat);
     const longitude=Number(Array.isArray(params.lng) ? params.lng[0] : params.lng);
     return Number.isFinite(latitude) && Number.isFinite(longitude) ? {latitude,longitude} : null;
@@ -127,9 +164,36 @@ export default function LivingMapScreen(){
   // it. See utils/memoryTimeline.js.
   const [historical,setHistorical]=useState(false);
   const [at,setAt]=useState(null);
-  // Which of the two control panels is open, if either. Both closed to start
+  // Which of the three control panels is open, if any. All closed to start
   // with: the map is the point and the controls are not.
   const [panel,setPanel]=useState(PANELS.NONE);
+
+  // ---------------------------------------------------------------------------
+  // The precision level: the Layers tray's three controls
+  // ---------------------------------------------------------------------------
+  //
+  // These are the map's own state rather than the hook's, because none of them
+  // changes WHAT is on the map -- they change how it is drawn. hooks/
+  // useLivingMap.js answers "what is there"; this answers "how am I looking at
+  // it", and keeping the two apart is what stops a style switch triggering a
+  // re-read of every business in the county.
+  //
+  // The style and the radius have defaults a person sets once, in Settings
+  // (utils/mapPreferences.js). The map opens on theirs and follows a change
+  // made while it is open, which is why this subscribes rather than reading
+  // once.
+  const [styleKey,setStyleKey]=useState(()=>mapPreferences().styleKey || DEFAULT_STYLE_KEY);
+  const [heatTimeframe,setHeatTimeframe]=useState(DEFAULT_HEAT_TIMEFRAME);
+  // Grouping on. Off draws every pin individually at every zoom, which is what
+  // somebody wants when they are looking for one particular place and the map
+  // keeps swallowing it into a number.
+  const [grouped,setGrouped]=useState(true);
+
+  useEffect(()=>onMapPreferences((next)=>setStyleKey(next.styleKey)),[]);
+
+  // RECENTRE: the permission ask, and what to say when the answer is no.
+  const [recentring,setRecentring]=useState(false);
+  const [locationRefusal,setLocationRefusal]=useState("");
 
   const candidates=useMemo(()=>candidatesFrom({
     places:map.places,
@@ -149,9 +213,15 @@ export default function LivingMapScreen(){
   // The live layer is deliberately NOT clustered. There is little of it, it is
   // the half worth looking at, and collapsing a Link-up into a count would hide
   // the thing the map exists to show.
+  //
+  // The toggle is in the Layers tray. Off, nothing is grouped: `clusterPins` is
+  // not asked, every place is a single, and MapLibre's clustering source in the
+  // renderers is handed nothing to group.
   const clustered=useMemo(
-    ()=>clusterPins(map.places,{zoom:viewport?.zoom}),
-    [map.places,viewport?.zoom]
+    ()=>(grouped
+      ? clusterPins(map.places,{zoom:viewport?.zoom})
+      : {clusters:[],singles:map.places}),
+    [map.places,viewport?.zoom,grouped]
   );
 
   const clusters=useMemo(
@@ -232,7 +302,47 @@ export default function LivingMapScreen(){
     });
   },[]);
 
-  const handleDropPin=useCallback((at)=>setDropped(linkupLocationFrom(at)),[]);
+  // WHAT A LONG PRESS ACTUALLY PRODUCES.
+  //
+  // The rounded point, for the Link-up, AND the place on the screen it was
+  // held -- so the crosshair can be drawn on the spot rather than in the middle
+  // of the map. Neither renderer knows what a reticle is; both report where the
+  // finger was and this decides what to draw there.
+  const handleDropPin=useCallback((at)=>{
+    const point=linkupLocationFrom(at);
+    if(!point) return;
+    setDropped({
+      ...point,
+      x:Number.isFinite(Number(at?.x)) ? Number(at.x) : null,
+      y:Number.isFinite(Number(at?.y)) ? Number(at.y) : null
+    });
+  },[]);
+
+  // RECENTRE, and the one place on this screen that asks for a location.
+  //
+  // The ask goes through utils/permissions.js, which is the app's single
+  // permission point -- the same module that answers every "may this person do
+  // this" question. It is called from inside this handler and nowhere else: a
+  // permission prompt that appears because a screen opened is the one people
+  // refuse for ever.
+  //
+  // A refusal is not an error. The map keeps working, exactly where it was, and
+  // says in a sentence what happened and where to change it.
+  const handleRecenter=useCallback(async()=>{
+    setRecentring(true);
+    setLocationRefusal("");
+
+    const answer=await askForLocation();
+
+    setRecentring(false);
+    if(!answer.position){
+      setLocationRefusal(answer.refusal);
+      return;
+    }
+
+    // A stamp, so pressing it twice from the same spot moves the camera twice.
+    setFocus({...answer.position,stamp:Date.now()});
+  },[]);
   const handleUnavailable=useCallback((why)=>setMapFailed(why || "unavailable"),[]);
   const handleSelectPlace=useCallback((place)=>{
     setOpenKey(place.card?.key || null);
@@ -377,6 +487,22 @@ export default function LivingMapScreen(){
           showHeat={map.showHeat}
           onShowHeat={map.setShowHeat}
           onOpenList={()=>router.push("/places")}
+
+          /* THE IMMEDIATE LEVEL'S TWO MISSING CONTROLS. */
+          onRecenter={handleRecenter}
+          recentring={recentring}
+          liveCount={map.activity.length}
+          onOpenLive={()=>router.push("/live")}
+
+          /* THE PRECISION LEVEL, behind the layers control. */
+          heatTimeframe={heatTimeframe}
+          onHeatTimeframe={setHeatTimeframe}
+          styleKey={styleKey}
+          onStyleKey={setStyleKey}
+          clustered={grouped}
+          onClustered={setGrouped}
+          clusterNote={CLUSTER_NOTE}
+
           historical={historical}
           onHistorical={(next)=>{
             setHistorical(next);
@@ -422,49 +548,98 @@ export default function LivingMapScreen(){
         onSelectActivity={handleSelectActivity}
         onDropPin={handleDropPin}
         onUnavailable={handleUnavailable}
+        styleKey={styleKey}
+        heatTimeframe={heatTimeframe}
       />
 
       {/*
         PRESS AND HOLD THE MAP TO START A LINK-UP THERE.
-        It asks first. A long press is easy to do by accident while panning,
-        and sending somebody to a form they did not ask for is worse than one
-        extra tap. The point is ROUNDED before it is offered -- a meeting point
-        is a corner of a park, not a doorstep -- and the sheet says so in words
-        rather than leaving somebody to assume.
+
+        WHAT THIS USED TO BE, AND WHY IT CHANGED
+
+        A card at the bottom of the screen, a long way from the spot somebody
+        had actually held, saying "Start a Link-up here?" -- and "here" was
+        wherever their finger had been, unmarked. The locked UX asks for the
+        thing that was missing: a CROSSHAIR on the point, drawn only mid-press,
+        and a confirm chip beside it.
+
+        It still asks first. A long press is easy to do by accident while
+        panning, and sending somebody to a form they did not ask for is worse
+        than one extra tap. The point is ROUNDED before it is offered -- a
+        meeting point is a corner of a park, not a doorstep -- and the confirm
+        says so in words rather than leaving somebody to assume.
       */}
       {!!dropped && (
-        <View style={styles.dropCard}>
-          {/* The head strip every panel over this map opens with: what the app
-              is asking about, then the etched rule. */}
-          <View style={styles.headRow}>
-            <Text style={styles.headKind}>DROPPED PIN</Text>
-            <View style={styles.headLine}/>
+        <>
+          {/* THE CROSSHAIR, on the spot. The kit's own reticle, the same one
+              the camera puts where you tap to focus -- one shape for "this
+              exact point", wherever it appears. Never tappable: it is a mark,
+              and the confirm is the control. */}
+          <View
+            style={[styles.reticle,reticleAt(dropped)]}
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Reticle size={72} colour={INK.scheduled}/>
           </View>
-          <Text style={styles.dropTitle}>Start a Link-up here?</Text>
-          <Text style={styles.dropText}>
-            The spot is rounded to about a street, not the exact point you held.
-          </Text>
-          <View style={styles.dropRow}>
-            <Action
-              kind="quiet"
-              label="Not here"
-              accessibilityLabel="Not here"
-              style={styles.dropButton}
-              onPress={()=>setDropped(null)}
-            />
-            <Action
-              kind="primary"
-              label="Start a Link-up"
-              glyph="plus"
-              accessibilityLabel="Start a Link-up here"
-              style={styles.dropButton}
-              onPress={()=>{
-                const at=dropped;
-                setDropped(null);
-                router.push(`/linkups/create?lat=${at.latitude}&lng=${at.longitude}`);
-              }}
-            />
+
+          <View style={styles.dropCard}>
+            {/* The head strip every panel over this map opens with: what the app
+                is asking about, then the etched rule. */}
+            <View style={styles.headRow}>
+              <Text style={styles.headKind}>DROPPED PIN</Text>
+              <View style={styles.headLine}/>
+            </View>
+            <Text style={styles.dropTitle}>Start a Link-up here?</Text>
+            <Text style={styles.dropText}>
+              The spot is rounded to about a street, not the exact point you held.
+            </Text>
+            <View style={styles.dropRow}>
+              <Action
+                kind="quiet"
+                label="Not here"
+                accessibilityLabel="Not here"
+                style={styles.dropButton}
+                onPress={()=>setDropped(null)}
+              />
+              <Action
+                kind="primary"
+                label="Drop a Link-up here"
+                glyph="plus"
+                accessibilityLabel="Drop a Link-up here"
+                style={styles.dropButton}
+                onPress={()=>{
+                  const at=dropped;
+                  setDropped(null);
+                  router.push(`/linkups/create?lat=${at.latitude}&lng=${at.longitude}`);
+                }}
+              />
+            </View>
           </View>
+        </>
+      )}
+
+      {/* A REFUSED LOCATION IS NOT A BROKEN MAP.
+          The map is exactly where it was; this says what happened and where to
+          change it, and gets out of the way when it is read. */}
+      {!!locationRefusal && (
+        <View style={styles.refusal}>
+          <Notice
+            tone="scheduled"
+            label="NO LOCATION"
+            action={
+              <Action
+                kind="quiet"
+                label="OK"
+                compact
+                accessibilityLabel="Close the location message"
+                onPress={()=>setLocationRefusal("")}
+              />
+            }
+          >
+            {locationRefusal}
+          </Notice>
         </View>
       )}
 
@@ -678,6 +853,12 @@ const styles=StyleSheet.create({
   // The controls float over the map; components/MapControls.js draws them and
   // this only positions them clear of the header.
   top:{position:"absolute",width:"100%",zIndex:10,padding:10},
+
+  // The crosshair sits ON the map, above every pin and under the confirm, and
+  // is never in the way of a tap: it is a mark, not a control.
+  reticle:{position:"absolute",width:72,height:72,zIndex:29},
+
+  refusal:{position:"absolute",left:14,right:14,bottom:96,zIndex:31},
 
   dropCard:{
     position:"absolute",

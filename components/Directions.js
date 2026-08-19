@@ -35,7 +35,12 @@ import {Action,MONO,Notice,Panel,Readout} from "./instrument";
 // of them stops the map or the screen underneath from working -- see the note
 // in utils/routing/index.js about failure being a value.
 
-export default function Directions({destination,destinationName,onRoute}){
+// `startSignal` is a counter a CALLER increments to ask for the route without
+// pressing this panel's own button -- the map sheet's quick-action row does it,
+// so "Directions" one tap from a pin is the same request as "Get directions"
+// further down the same panel rather than a second implementation of it. A
+// number rather than a boolean, so asking twice in a row is two requests.
+export default function Directions({destination,destinationName,onRoute,startSignal=0}){
   const [mode,setMode]=useState(DEFAULT_TRAVEL_MODE);
   const [route,setRoute]=useState(null);
   const [working,setWorking]=useState(false);
@@ -92,6 +97,16 @@ export default function Directions({destination,destinationName,onRoute}){
     setWorking(false);
     publish(answer);
   },[mode,destination,publish]);
+
+  // Asked for from outside. Deliberately skips the first render: mounting a
+  // place panel must not fire a location prompt nobody asked for.
+  const asked=useRef(startSignal);
+
+  useEffect(()=>{
+    if(startSignal===asked.current) return;
+    asked.current=startSignal;
+    go(mode);
+  },[startSignal,go,mode]);
 
   const clear=useCallback(()=>{
     abort.current?.abort?.();

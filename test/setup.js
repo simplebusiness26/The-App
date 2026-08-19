@@ -114,8 +114,18 @@ jest.mock("expo-router",()=>{
 
 jest.mock("expo-location",()=>({
   requestForegroundPermissionsAsync:jest.fn(()=>Promise.resolve({status:"denied"})),
+  // The READ, as opposed to the ask. app/checkins/create.js uses it to suggest
+  // the nearest place when somebody has already granted location, without
+  // turning the act of opening a screen into a permission prompt -- so the
+  // default here is the same "not granted" a fresh install sees.
+  getForegroundPermissionsAsync:jest.fn(()=>Promise.resolve({granted:false,status:"denied"})),
   getCurrentPositionAsync:jest.fn(()=>Promise.resolve({coords:{latitude:0,longitude:0}})),
-  reverseGeocodeAsync:jest.fn(()=>Promise.resolve([]))
+  reverseGeocodeAsync:jest.fn(()=>Promise.resolve([])),
+  // The real module's accuracy enum. Without it every caller that passes
+  // {accuracy:Location.Accuracy.Balanced} -- which is all of them -- throws on
+  // the argument before the mocked call is ever reached, and any screen that
+  // wraps its fix in a try/catch swallows that as "no location available".
+  Accuracy:{Lowest:1,Low:2,Balanced:3,High:4,Highest:5,BestForNavigation:6}
 }));
 
 jest.mock("expo-image-picker",()=>({

@@ -47,6 +47,10 @@ import {Action,Frame,Glyph,Meter,MONO,SectionRule} from "./instrument";
 
 export default function PlacePanel({place,onClose,onRoute,embedded=false}){
   const [rating,setRating]=useState(null);
+  // The quick-action row's "Directions" asks the Directions panel below for a
+  // route rather than drawing a second one. A counter, so asking twice is two
+  // requests -- see the note on startSignal in components/Directions.js.
+  const [routeAsk,setRouteAsk]=useState(0);
 
   useEffect(()=>{
     let alive=true;
@@ -78,6 +82,24 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
   // profile" button already uses -- /business/b1 -> /business/review/b1 --
   // so this needs no second lookup table for what a kind is called.
   const reviewRoute=card.route ? card.route.replace(/\/([^/]+)$/,"/review/$1") : null;
+
+  // WHAT "CHECK IN HERE" CARRIES.
+  //
+  // The check-in screen is about PUBLIC places -- a check-in broadcasts where
+  // somebody is, and a business has no say in whether that happens at its
+  // address, which is why app/checkins/create.js narrowed to parks and public
+  // places. So a pin's type and id are passed for the case where the place IS
+  // one of those, and the name and position are passed for every case, because
+  // that screen accepts a typed place with a position and this saves somebody
+  // typing back in the name of the thing they just tapped.
+  const checkinRoute=[
+    "/checkins/create?",
+    `placeType=${encodeURIComponent(place.kind || "")}`,
+    `&placeId=${encodeURIComponent(place.id || "")}`,
+    `&placeName=${encodeURIComponent(name)}`,
+    `&lat=${encodeURIComponent(place.latitude ?? "")}`,
+    `&lng=${encodeURIComponent(place.longitude ?? "")}`
+  ].join("");
 
   return(
     // `embedded`: components/PinSheet.js's Half/Full content area already
@@ -169,6 +191,59 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
 
         {!!summary && <Text style={styles.summary}>{summary}</Text>}
 
+        {/*
+          THE QUICK-ACTION ROW.
+
+          The locked UX puts three things at the map sheet's Half snap point --
+          Check in here, Directions, Leave a review -- and they exist ONLY once
+          a pin is open, which is what this panel is. They were not built: the
+          panel had "Open profile" and a review button in a column, and getting
+          from a pin to a check-in meant leaving the map, finding the Create
+          hub, and typing the place's name back in.
+
+          Each one carries the place with it rather than dropping somebody at an
+          empty form:
+
+            Check in here    the place's type, id, name and position, so the
+                             check-in opens already about this place
+            Directions       asks the Directions panel below for the route, so
+                             there is one implementation of it and not two
+            Leave a review   the Review Composer's own contextual route, which
+                             is type + id -- /business/review/b1 -- so the form
+                             opens knowing what is being reviewed
+        */}
+        <View style={styles.quick}>
+          <Action
+            kind="secondary"
+            compact
+            label="Check in here"
+            glyph="pin"
+            style={styles.quickAction}
+            accessibilityLabel={`Check in at ${name}`}
+            onPress={()=>router.push(checkinRoute)}
+          />
+          <Action
+            kind="secondary"
+            compact
+            label="Directions"
+            glyph="map"
+            style={styles.quickAction}
+            accessibilityLabel={`Directions to ${name}`}
+            onPress={()=>setRouteAsk((asked)=>asked+1)}
+          />
+          {!!reviewRoute && (
+            <Action
+              kind="secondary"
+              compact
+              label="Leave a review"
+              glyph="star"
+              style={styles.quickAction}
+              accessibilityLabel={`Leave a review for ${name}`}
+              onPress={()=>router.push(reviewRoute)}
+            />
+          )}
+        </View>
+
         <View style={styles.actions}>
           <Action
             kind="primary"
@@ -177,18 +252,6 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
             accessibilityLabel={`Open ${place.name || "this place"}`}
             onPress={()=>card.route && router.push(card.route)}
           />
-
-          {/* One tap from the map to the review form -- the map's own quick-
-              action, not only the one on the full listing page. */}
-          {!!reviewRoute && (
-            <Action
-              kind="secondary"
-              label="Leave a review"
-              glyph="star"
-              accessibilityLabel={`Leave a review for ${place.name || "this place"}`}
-              onPress={()=>router.push(reviewRoute)}
-            />
-          )}
         </View>
 
         {/*
@@ -202,6 +265,7 @@ export default function PlacePanel({place,onClose,onRoute,embedded=false}){
           destination={{latitude:place.latitude,longitude:place.longitude}}
           destinationName={place.name || card.name || "this place"}
           onRoute={onRoute}
+          startSignal={routeAsk}
         />
       </ScrollView>
     </View>
@@ -263,6 +327,12 @@ const styles=StyleSheet.create({
   where:{color:INK.readoutSoft,fontSize:TYPE.body.sizes.sm,lineHeight:TYPE.body.sizes.sm*1.5,flexShrink:1},
   // A summary is a sentence somebody wrote, so it stays in the body face.
   summary:{color:INK.readout,fontSize:TYPE.body.sizes.md,lineHeight:TYPE.body.sizes.md*1.5,marginTop:9},
+
+  // Three controls on one line, each a real 44px target -- Action's `compact`
+  // narrows the padding and never the tap target. They wrap rather than shrink
+  // below a readable label, because a quick action nobody can read is not one.
+  quick:{flexDirection:"row",flexWrap:"wrap",gap:8,marginTop:14},
+  quickAction:{flexGrow:1,flexBasis:"30%"},
 
   actions:{gap:9,marginTop:14}
 });

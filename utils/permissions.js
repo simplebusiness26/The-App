@@ -1,3 +1,4 @@
+import * as Location from "expo-location";
 import {supabase} from "../services/supabase";
 
 // The one place that answers "may this person do this".
@@ -61,7 +62,8 @@ export const REFUSALS={
   ADMIN_UNKNOWN:"Your admin access could not be confirmed.",
   MANAGES_NOTHING:"This screen is for managing a place, club or event you already manage. Request the tools from the manager dashboard first.",
   MANAGES_UNKNOWN:"Whether you manage anything could not be confirmed. Try again in a moment.",
-  CAPABILITY_UNKNOWN:"Whether you have these tools could not be confirmed. Try again in a moment."
+  CAPABILITY_UNKNOWN:"Whether you have these tools could not be confirmed. Try again in a moment.",
+  NO_LOCATION:"Xplorer needs your location to do that. Turn it on for Xplorer in your phone or browser settings."
 };
 
 // Every answer below has the same three fields, and the split between the last
@@ -117,4 +119,53 @@ export async function hasManagerCapability(capability){
 
   if(error) return{allowed:false,error:REFUSALS.CAPABILITY_UNKNOWN,refusal:""};
   return{allowed:data===true,error:"",refusal:""};
+}
+
+// ---------------------------------------------------------------------------
+// The device's own permission: where you are
+// ---------------------------------------------------------------------------
+//
+// The questions above are about a PERSON'S standing in the product and are all
+// answered in the database. This one is answered by the phone or the browser,
+// and it is here for the same reason they are: so there is one place that asks,
+// one wording when the answer is no, and no screen inventing its own.
+//
+// It is only ever called from inside an explicit action -- a button somebody
+// pressed that says what it does. Never on mount, never on render, never in a
+// useEffect that runs because a screen opened. A permission prompt nobody asked
+// for is the thing people press "no" to for ever.
+//
+// It returns a POSITION or a refusal, never an exception. A denied permission,
+// a device with the radio off and a fix that never arrives are the same event
+// as far as any caller is concerned: there is no position, and here is the
+// sentence to show.
+//
+// Nothing is stored. The coordinate is handed back to the caller and this
+// module keeps no copy.
+//
+// Three older surfaces still ask expo-location directly, each inside its own
+// action: components/AddLocation.js (attaching a place to a post),
+// components/Directions.js (the origin of a route) and app/checkins/create.js.
+// They predate this function and are pinned in place by their own gates --
+// scripts/verify-place-follows.cjs names AddLocation as the one asker for
+// posts. New callers come here.
+export async function askForLocation(){
+  try{
+    const permission=await Location.requestForegroundPermissionsAsync();
+    if(permission?.status!=="granted"){
+      return{granted:false,position:null,error:"",refusal:REFUSALS.NO_LOCATION};
+    }
+
+    const fix=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});
+    const latitude=Number(fix?.coords?.latitude);
+    const longitude=Number(fix?.coords?.longitude);
+
+    if(!Number.isFinite(latitude) || !Number.isFinite(longitude)){
+      return{granted:true,position:null,error:"",refusal:REFUSALS.NO_LOCATION};
+    }
+
+    return{granted:true,position:{latitude,longitude},error:"",refusal:""};
+  }catch{
+    return{granted:false,position:null,error:"",refusal:REFUSALS.NO_LOCATION};
+  }
 }

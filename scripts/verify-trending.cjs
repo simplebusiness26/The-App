@@ -148,7 +148,16 @@ check(
 );
 
 check(
-  /reasonsFor\(item\)\.length\s*>\s*0/.test(feed),
+  // THE GUARANTEE IS THE GUARD, NOT ITS SPELLING.
+  //
+  // This pinned the literal reasonsFor(item).length > 0. The card now computes
+  // the list once into `reasons` and guards on that -- which is the same
+  // guarantee and strictly better code, because the old spelling called
+  // reasonsFor twice per row per render, allocating a Set and running a sort
+  // each time, on a virtualised list. Either spelling passes; a card with no
+  // guard at all still fails.
+  (/reasonsFor\(item\)\.length\s*>\s*0/.test(feed)
+    || /const\s+(\w+)\s*=\s*reasonsFor\(item\)[\s\S]*\{\s*\1\.length\s*>\s*0/.test(feed)),
   `${FEED}: does not guard on an empty reason list — every row has none until the 8f2 migration is applied`
 );
 

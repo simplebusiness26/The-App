@@ -1,14 +1,14 @@
-import React,{useEffect,useRef} from "react";
-import {View,Text,Pressable,StyleSheet} from "react-native";
+import React,{useEffect,useMemo,useRef} from "react";
+import {View,StyleSheet} from "react-native";
 import {Map,Camera,Marker,GeoJSONSource,Layer} from "@maplibre/maplibre-react-native";
 import PlaceMarker from "./PlaceMarker";
 import LiveBubble from "./LiveBubble";
 import {mapConfiguration} from "../utils/mapProvider";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
-import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM} from "../utils/mapZoom";
+import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM,ZOOM_CLOSE} from "../utils/mapZoom";
+import {CLUSTER_CELL_PX} from "../utils/mapClusters";
 import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
-import {heatmapPaint} from "../utils/markers";
-import {SHAPE} from "../utils/tokens";
+import {clusterPaint,clusterPoints,heatmapPaint} from "../utils/markers";
 
 // The native renderer: MapLibre on Android and iOS.
 //
@@ -62,9 +62,16 @@ function MapLibreMap({
   onSelectPlace,
   onSelectActivity,
   onSelectBubble,
-  onDropPin
+  onDropPin,
+  // Which of the three published styles the map is drawing. A KEY, never a URL
+  // or a style object: utils/mapProvider.js is the only file allowed to know
+  // what one of these resolves to.
+  styleKey,
+  // Which question the heat wash is answering, Now -> Week. Handed straight to
+  // utils/markers.js, which owns what the ramp MEANS; this file only draws.
+  heatTimeframe
 }){
-  const config=mapConfiguration();
+  const config=mapConfiguration({styleKey});
   const camera=useRef(null);
   // The last zoom the map reported, so a cluster tap knows what to add to.
   // Reading it back off the camera is not possible on native; it is only ever
@@ -77,7 +84,11 @@ function MapLibreMap({
   // handing it a new `center` prop would drag the map back there on every
   // render, which is the bug initialViewState exists to avoid -- so this is one
   // imperative move, made when the target changes and never again.
-  const focusKey=focus ? `${focus.latitude},${focus.longitude}` : null;
+  // The stamp is what makes RECENTRING work. Without it, pressing recenter a
+  // second time from the same spot changes nothing about this string, the
+  // effect does not run, and the button appears broken to the one person most
+  // likely to press it twice -- somebody who has panned away and wants back.
+  const focusKey=focus ? `${focus.latitude},${focus.longitude},${focus.stamp || ""}` : null;
 
   useEffect(()=>{
     if(!focusKey) return;
@@ -92,6 +103,29 @@ function MapLibreMap({
   // so the move is made here and the screen is only told it happened.
   // `initialViewState` is untouched -- the camera stays UNCONTROLLED, which is
   // what stops a re-render dragging the map back to Brighton.
+  // THE GROUPING IS MAPLIBRE'S OWN.
+  //
+  // `cluster:true` on a GeoJSON source is the built-in clustering: the map
+  // computes the groups itself as the camera moves, and redraws them without a
+  // round trip through React. Checked against the installed package rather than
+  // assumed -- GeoJSONSourceProps declares cluster, clusterRadius,
+  // clusterMinPoints and clusterMaxZoom on v11 -- and drawn from the same paint
+  // the web renderer uses, so the two platforms cannot drift.
+  //
+  // What is fed in is the places components/LivingMapScreen.js has already
+  // decided are grouped rather than standing alone. That split is the app's,
+  // and it has to be, because utils/liveBubbles.js may only float a bubble over
+  // a pin drawn on its own -- a fact that lives in JavaScript and that no
+  // clustering source on either platform can report back.
+  //
+  // Turn the cluster toggle off and the screen sends no groups at all, so this
+  // source does not exist and every pin is drawn individually at every zoom.
+  const grouped=useMemo(
+    ()=>clusterPoints(clusters.flatMap((cluster)=>cluster.members || [])),
+    [clusters]
+  );
+  const paint=clusterPaint();
+
   function openCluster(cluster){
     camera.current?.flyTo({
       center:[Number(cluster.longitude),Number(cluster.latitude)],
@@ -146,9 +180,21 @@ function MapLibreMap({
       // It is how a Link-up gets dropped where somebody is looking rather than
       // where a business happens to be.
       onLongPress={(event)=>{
-        const point=event?.nativeEvent?.payload?.geometry?.coordinates;
+        const payload=event?.nativeEvent?.payload;
+        const point=payload?.geometry?.coordinates;
         if(!point) return;
-        onDropPin?.({longitude:point[0],latitude:point[1]});
+        // WHERE ON THE SCREEN, as well as where on the earth. The confirm step
+        // draws a crosshair reticle on the spot somebody held, and a reticle
+        // that cannot be positioned is a reticle in the middle of the map
+        // pointing at nothing. MapLibre Native puts the screen point on the
+        // press feature's properties; components/LivingMapScreen.js falls back
+        // to the centre of the screen when a platform does not report one.
+        onDropPin?.({
+          longitude:point[0],
+          latitude:point[1],
+          x:payload?.properties?.screenPointX,
+          y:payload?.properties?.screenPointY
+        });
       }}
       /*
         TAP A WARM PATCH TO SEE WHAT IS IN IT.
@@ -276,7 +322,11 @@ function MapLibreMap({
           <Layer
             id="xplorer-heat"
             type="heatmap"
-            paint={heatmapPaint({radius:HEAT_RADIUS_PX,opacity:heatOpacityAt(level.current)})}
+            paint={heatmapPaint({
+              radius:HEAT_RADIUS_PX,
+              opacity:heatOpacityAt(level.current),
+              timeframe:heatTimeframe
+            })}
           />
         </GeoJSONSource>
       )}
@@ -287,24 +337,40 @@ function MapLibreMap({
         Drawn from the same descriptor the web renderer uses, so a cluster is
         the same circle with the same number on both platforms.
       */}
-      {clusters.map((cluster)=>(
-        <Marker key={cluster.key} id={cluster.key} lngLat={[cluster.longitude,cluster.latitude]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={cluster.label}
-            onPress={()=>openCluster(cluster)}
-            style={[styles.cluster,{
-              width:cluster.size,
-              height:cluster.size,
-              borderRadius:cluster.size/2,
-              backgroundColor:cluster.fill,
-              borderColor:cluster.border
-            }]}
-          >
-            <Text style={[styles.clusterCount,{color:cluster.ink}]}>{cluster.count}</Text>
-          </Pressable>
-        </Marker>
-      ))}
+      {!!grouped.features.length && (
+        <GeoJSONSource
+          id="xplorer-clusters"
+          data={grouped}
+          cluster
+          clusterRadius={CLUSTER_CELL_PX}
+          clusterMaxZoom={Math.floor(ZOOM_CLOSE)}
+          onPress={(event)=>{
+            const point=event?.nativeEvent?.payload?.geometry?.coordinates;
+            if(!point) return;
+            openCluster({longitude:point[0],latitude:point[1]});
+          }}
+        >
+          <Layer
+            id="xplorer-cluster-lone"
+            type="circle"
+            filter={["!",["has","point_count"]]}
+            paint={paint.lone}
+          />
+          <Layer
+            id="xplorer-cluster-circle"
+            type="circle"
+            filter={["has","point_count"]}
+            paint={paint.circle}
+          />
+          <Layer
+            id="xplorer-cluster-count"
+            type="symbol"
+            filter={["has","point_count"]}
+            layout={paint.countLayout}
+            paint={paint.countPaint}
+          />
+        </GeoJSONSource>
+      )}
 
       {places.map((place)=>(
         <Marker
@@ -395,13 +461,10 @@ function MapLibreMap({
   );
 }
 
+// The cluster circle used to be a <Marker> with a <Pressable> and a <Text> in
+// it, sized and coloured here from a descriptor. It is a style layer now --
+// MapLibre's own clustering draws it -- so there is no view to style, and the
+// only style left in this file is the map filling its parent.
 const styles=StyleSheet.create({
-  map:{flex:1},
-  // Shape only. The colour comes from the cell, which utils/markers.js decided
-  // -- this file is not allowed to know what yellow means, for the same reason
-  // it is not allowed to know what a pin's ink means.
-  heat:{borderWidth:SHAPE.border},
-  // 1px, with the rest of the system. The 2px print register is gone.
-  cluster:{borderWidth:SHAPE.border,alignItems:"center",justifyContent:"center"},
-  clusterCount:{fontWeight:"700",fontSize:13}
+  map:{flex:1}
 });

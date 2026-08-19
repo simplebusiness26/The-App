@@ -6,9 +6,10 @@ import "maplibre-gl/dist/maplibre-gl.css";
 // a light-theme zoom control; see components/mapChrome.web.js.
 import {installMapChromeStyle} from "./mapChrome.web";
 import {mapConfiguration} from "../utils/mapProvider";
-import {glyphPrimitives,heatmapPaint} from "../utils/markers";
+import {clusterPaint,clusterPoints,glyphPrimitives,heatmapPaint} from "../utils/markers";
 import {DEFAULT_CENTRE} from "../hooks/useLivingMap";
-import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM} from "../utils/mapZoom";
+import {CLUSTER_ZOOM_STEP,FOCUS_ZOOM,ZOOM_CLOSE} from "../utils/mapZoom";
+import {CLUSTER_CELL_PX} from "../utils/mapClusters";
 import {heatOpacityAt,HEAT_RADIUS_PX} from "../utils/heatmap";
 import {INK,SHAPE} from "../utils/tokens";
 
@@ -219,24 +220,17 @@ function bubbleElement(bubble,onPress){
 // It also cannot be tapped, because there is no element to tap. Opening what is
 // under a warm patch is a click on the MAP now, handled in the setup effect.
 
-// A cluster: one circle with a count in it, standing for the pins underneath.
-// utils/markers.js decided what it looks like -- see the note there about why it
-// is not one of the three inks.
-function clusterElement(cluster,onPress){
-  const element=document.createElement("button");
-  element.type="button";
-  element.setAttribute("aria-label",cluster.label || "Several places here");
-  element.style.cssText=[
-    `width:${cluster.size}px`,`height:${cluster.size}px`,`border-radius:${cluster.size/2}px`,
-    `background:${cluster.fill}`,`border:2px solid ${cluster.border}`,
-    `color:${cluster.ink}`,"font-weight:900","font-size:13px",
-    "display:flex","align-items:center","justify-content:center","padding:0","cursor:pointer"
-  ].join(";");
-  element.textContent=String(cluster.count);
-
-  element.addEventListener("click",(event)=>{event.stopPropagation();onPress?.(cluster);});
-  return element;
-}
+// A cluster is a STYLE LAYER here, not a DOM element.
+//
+// clusterElement() used to build one absolutely-positioned button per group,
+// from a count the app had worked out in JavaScript. The locked spec asks for
+// MapLibre's built-in clustering instead -- `cluster:true` on the GeoJSON
+// source -- which computes the groups in the map, as the camera moves, and
+// redraws them without going back through React at all.
+//
+// The appearance is still Xplorer's: utils/markers.js hands over the paint, the
+// same paint the native renderer uses, and this file does not know what any of
+// those colours mean.
 
 export default function LivingMap({
   places=[],
@@ -258,32 +252,32 @@ export default function LivingMap({
   onSelectActivity,
   onSelectBubble,
   onDropPin,
-  onUnavailable
+  onUnavailable,
+  // A style KEY, never a URL: utils/mapProvider.js is the only file allowed to
+  // know what one resolves to.
+  styleKey,
+  // Which question the heat wash answers, Now -> Week. utils/markers.js turns
+  // it into paint; this file only hands it over.
+  heatTimeframe
 }){
   const host=useRef(null);
   const map=useRef(null);
   const drawn=useRef([]);
-  const config=mapConfiguration();
+  const config=mapConfiguration({styleKey});
 
-  // THE STYLE IS AN OBJECT NOW, NOT A URL.
+  // THE STYLE IS AN OBJECT NOW, NOT A URL, AND IT CAN CHANGE.
   //
-  // utils/mapProvider.js's DEFAULT_STYLE is assets/map/instrument-dark.json --
-  // a full MapLibre style spec, because the provider publishes only light
-  // styles and the Field Instrument system needs a dark map. maplibre-gl's
-  // `style` option takes a StyleSpecification as happily as a URL, so the
-  // constructor call below is unchanged.
+  // utils/mapProvider.js's instrument style is a full MapLibre style spec,
+  // because the provider publishes only light styles and the Field Instrument
+  // system needs a dark map. maplibre-gl takes a StyleSpecification as happily
+  // as a URL, so the constructor call below is unchanged.
   //
-  // The EFFECT DEPENDENCY is the part that had to change. It was
-  // `[config.styleUrl]`, and the effect's cleanup calls map.remove() -- so the
-  // moment that value stops being referentially stable, the whole MapLibre
-  // instance is destroyed and rebuilt on every render. It happens to be stable
-  // today (the JSON is a module import, so it is the same object each time),
-  // which means the bug would not appear now and would appear the first time
-  // anyone built the style rather than importing it. So the dependency is a
-  // primitive derived from it instead, and cannot churn.
-  const styleKey=typeof config.styleUrl==="string"
-    ? config.styleUrl
-    : `style:${config.styleUrl?.name || "inline"}`;
+  // What changed is that the style is now a CHOICE. It used to be the setup
+  // effect's only dependency -- and that effect's cleanup calls map.remove(),
+  // so switching the style would have destroyed and rebuilt the whole map,
+  // throwing away the position and zoom somebody had just set. The map is built
+  // once now, with no dependencies at all, and a style change goes through
+  // setStyle() in its own effect below, which is what that method is for.
 
   // THE CALLBACKS ARE HELD IN A REF, AND THE MAP IS BUILT ONCE.
   //
@@ -324,7 +318,15 @@ export default function LivingMap({
     // -- so the two platforms ask for it the same way even though the event
     // arrives under a different name.
     map.current.on("contextmenu",(event)=>{
-      handlers.current.onDropPin?.({longitude:event.lngLat.lng,latitude:event.lngLat.lat});
+      // The screen point as well as the coordinate: the confirm step draws a
+      // crosshair reticle where the finger was, and a reticle with nowhere to
+      // be is a reticle in the middle of the map pointing at nothing.
+      handlers.current.onDropPin?.({
+        longitude:event.lngLat.lng,
+        latitude:event.lngLat.lat,
+        x:event.point?.x,
+        y:event.point?.y
+      });
     });
 
     // WHERE THE MAP IS LOOKING, REPORTED UP.
@@ -384,13 +386,13 @@ export default function LivingMap({
       map.current?.remove();
       map.current=null;
     };
-    // The style identity only, as a primitive -- see the note beside styleKey.
-    // `centre` and `zoom` are the STARTING position and re-reading them would
-    // drag the map back to Brighton on every change, which is the same reason
-    // the native renderer uses initialViewState rather than a controlled
-    // camera.
+    // BUILT ONCE. `centre` and `zoom` are the STARTING position and re-reading
+    // them would drag the map back to Brighton on every change, which is the
+    // same reason the native renderer uses initialViewState rather than a
+    // controlled camera. The style is not here either: changing it must not
+    // tear the map down -- see the setStyle effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[styleKey]);
+  },[]);
 
   // The route is a STYLE LAYER, not a marker -- a line of a thousand points
   // cannot be a DOM element the way a pin can. Source and layers are created
@@ -441,7 +443,9 @@ export default function LivingMap({
   // SENT HERE FROM DISCOVER, WITH SOMETHING TO LOOK AT. One imperative move
   // when the target changes -- see the note in components/LivingMap.js about
   // why the camera stays uncontrolled.
-  const focusKey=focus ? `${focus.latitude},${focus.longitude}` : null;
+  // The stamp is what makes pressing recenter twice work -- see the note in
+  // components/LivingMap.js.
+  const focusKey=focus ? `${focus.latitude},${focus.longitude},${focus.stamp || ""}` : null;
 
   useEffect(()=>{
     if(!focusKey || !map.current) return;
@@ -470,7 +474,7 @@ export default function LivingMap({
         id:"xplorer-heat",
         type:"heatmap",
         source:"xplorer-heat",
-        paint:heatmapPaint({radius:HEAT_RADIUS_PX})
+        paint:heatmapPaint({radius:HEAT_RADIUS_PX,timeframe:heatTimeframe})
       });
     }
 
@@ -479,40 +483,105 @@ export default function LivingMap({
     // underneath answer "what is happening here". See utils/heatmap.js.
     if(instance.getLayer("xplorer-heat")){
       instance.setPaintProperty("xplorer-heat","heatmap-opacity",heatOpacityAt(instance.getZoom()));
+      // The dial's two real paint properties, re-applied rather than the layer
+      // being torn down and rebuilt -- see utils/markers.js for what NOW and
+      // WEEK actually change.
+      const repaint=heatmapPaint({radius:HEAT_RADIUS_PX,timeframe:heatTimeframe});
+      instance.setPaintProperty("xplorer-heat","heatmap-weight",repaint["heatmap-weight"]);
+      instance.setPaintProperty("xplorer-heat","heatmap-intensity",repaint["heatmap-intensity"]);
     }
-  },[heat]);
+  },[heat,heatTimeframe]);
+
+  // MAPLIBRE'S OWN CLUSTERING, on its own source.
+  //
+  // `cluster:true` is the built-in engine: the map groups the points itself as
+  // the camera moves. What is fed in is the places the screen has already
+  // decided are grouped rather than standing alone -- that split has to stay in
+  // JavaScript, because utils/liveBubbles.js may only float a bubble over a pin
+  // drawn on its own and no clustering source on either platform reports that
+  // back. Turn the cluster toggle off and no groups arrive, so the source holds
+  // nothing and every pin is drawn individually at every zoom.
+  const drawClusters=useCallback(()=>{
+    const instance=map.current;
+    if(!instance || !instance.isStyleLoaded?.()) return;
+
+    const data=clusterPoints(clusters.flatMap((cluster)=>cluster.members || []));
+
+    if(instance.getSource("xplorer-clusters")){
+      instance.getSource("xplorer-clusters").setData(data);
+      return;
+    }
+
+    const paint=clusterPaint();
+
+    instance.addSource("xplorer-clusters",{
+      type:"geojson",
+      data,
+      cluster:true,
+      clusterRadius:CLUSTER_CELL_PX,
+      clusterMaxZoom:Math.floor(ZOOM_CLOSE)
+    });
+    instance.addLayer({
+      id:"xplorer-cluster-lone",
+      type:"circle",
+      source:"xplorer-clusters",
+      filter:["!",["has","point_count"]],
+      paint:paint.lone
+    });
+    instance.addLayer({
+      id:"xplorer-cluster-circle",
+      type:"circle",
+      source:"xplorer-clusters",
+      filter:["has","point_count"],
+      paint:paint.circle
+    });
+    instance.addLayer({
+      id:"xplorer-cluster-count",
+      type:"symbol",
+      source:"xplorer-clusters",
+      filter:["has","point_count"],
+      layout:paint.countLayout,
+      paint:paint.countPaint
+    });
+
+    // One tap on a group moves the camera in, exactly as the old DOM circle
+    // did. The zoom is the renderer's business; the screen is only told it
+    // happened, in case it has a panel to close.
+    instance.on("click","xplorer-cluster-circle",(event)=>{
+      const feature=event.features?.[0];
+      const point=feature?.geometry?.coordinates;
+      if(!point) return;
+      event.originalEvent?.stopPropagation?.();
+      instance.flyTo({
+        center:point,
+        zoom:Math.min(18,(instance.getZoom() || 12)+CLUSTER_ZOOM_STEP),
+        duration:600
+      });
+      onSelectCluster?.(feature);
+    });
+  },[clusters,onSelectCluster]);
+
+  // A STYLE CHANGE IS setStyle(), NOT A NEW MAP.
+  //
+  // Swapping the style throws away every source and layer this file added, so
+  // the sources have to be rebuilt afterwards -- which is what `styledata`
+  // announces. The markers are DOM and survive untouched.
+  useEffect(()=>{
+    const instance=map.current;
+    if(!instance) return;
+    instance.setStyle(config.styleUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[styleKey]);
 
   const draw=useCallback(()=>{
     if(!map.current) return;
 
     drawRoute();
     drawHeat();
+    drawClusters();
 
     for(const marker of drawn.current) marker.remove();
     drawn.current=[];
-
-    // Clusters stand in for the places underneath them, so they are drawn
-    // INSTEAD of those pins, not as well -- `places` is already only what
-    // utils/mapClusters.js left as singles.
-    // Tapping one moves the camera in. The camera is the renderer's -- the
-    // screen has no way to reach it and should not grow one -- so the move
-    // happens here and the screen is told, in case it wants to close a panel.
-    const openCluster=(cluster)=>{
-      map.current?.flyTo({
-        center:[Number(cluster.longitude),Number(cluster.latitude)],
-        zoom:Math.min(18,(map.current.getZoom() || 12)+CLUSTER_ZOOM_STEP),
-        duration:600
-      });
-      onSelectCluster?.(cluster);
-    };
-
-    for(const cluster of clusters){
-      drawn.current.push(
-        new maplibregl.Marker({element:clusterElement(cluster,openCluster)})
-          .setLngLat([Number(cluster.longitude),Number(cluster.latitude)])
-          .addTo(map.current)
-      );
-    }
 
     for(const place of places){
       const element=pinElement(place.card?.marker,()=>onSelectPlace?.(place));
@@ -562,12 +631,16 @@ export default function LivingMap({
           .addTo(map.current)
       );
     }
-  },[places,placeOpacity,activity,clusters,pins,bubbles,drawRoute,drawHeat,onSelectPlace,onSelectActivity,onSelectBubble,onSelectCluster]);
+  },[places,placeOpacity,activity,pins,bubbles,drawRoute,drawHeat,drawClusters,onSelectPlace,onSelectActivity,onSelectBubble]);
 
   useEffect(()=>{
     if(!map.current) return;
     if(map.current.isStyleLoaded()) draw();
     else map.current.once("load",draw);
+    // Every style swap empties the map of the sources this file owns, so they
+    // are rebuilt when the new one lands.
+    map.current.on("styledata",draw);
+    return()=>{map.current?.off?.("styledata",draw);};
   },[draw]);
 
   return(

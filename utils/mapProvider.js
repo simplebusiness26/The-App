@@ -78,6 +78,43 @@ export const MAP_STYLES={
 
 export const DEFAULT_STYLE=MAP_STYLES.instrument;
 
+// THE THREE-WAY STYLE SWITCH.
+//
+// MAP_STYLES holds four entries; a switch on the map offers three, because a
+// three-way selector a person can read at a glance is worth more than a fourth
+// option nobody asked for. `instrument` is first and is the default -- it is
+// the winning design's own map and the reason assets/map/instrument-dark.json
+// exists. The other two are the provider's real published styles, so this is a
+// choice between three maps that genuinely render differently, not three names
+// for one.
+//
+// The key is what travels. Nothing outside this file may hold a style OBJECT
+// or a URL: a screen passes "instrument" | "quiet" | "standard" around and asks
+// styleFor() at the last moment, which is what keeps the provider named here
+// and nowhere else.
+export const STYLE_CHOICES=[
+  {key:"instrument",label:"Instrument",sentence:"Xplorer's own dark map. The default."},
+  {key:"quiet",label:"Quiet",sentence:"A pale, low-contrast map."},
+  {key:"standard",label:"Standard",sentence:"A full-colour map with more detail."}
+];
+
+export const DEFAULT_STYLE_KEY="instrument";
+
+export function isStyleKey(key){
+  return STYLE_CHOICES.some((choice)=>choice.key===key);
+}
+
+export function styleLabel(key){
+  return STYLE_CHOICES.find((choice)=>choice.key===key)?.label || STYLE_CHOICES[0].label;
+}
+
+// A key in, a style the renderer can hand straight to MapLibre out. An unknown
+// key falls back to the instrument rather than throwing: a stale preference
+// must not be able to leave somebody with no map.
+export function styleFor(key){
+  return MAP_STYLES[key] || DEFAULT_STYLE;
+}
+
 // The full wording, for the permanent notice in Settings.
 export const ATTRIBUTION="OpenFreeMap © OpenMapTiles Data from OpenStreetMap";
 
@@ -96,9 +133,10 @@ export const ATTRIBUTION_URL="https://www.openstreetmap.org/copyright";
 
 // Everything a renderer needs to start, in one object, so a platform renderer
 // never reaches past this for configuration.
-export function mapConfiguration(){
+export function mapConfiguration({styleKey}={}){
   return{
-    styleUrl:DEFAULT_STYLE,
+    styleUrl:styleFor(styleKey),
+    styleKey:isStyleKey(styleKey) ? styleKey : DEFAULT_STYLE_KEY,
     attribution:ATTRIBUTION,
     // Neither of these is a key. There is nothing to authenticate with, which
     // is the point: no billing, no card, no account.

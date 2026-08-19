@@ -1,5 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {
+  AccessibilityInfo,
+  Animated,
   View,
   Text,
   Image,
@@ -10,12 +12,32 @@ import {
 } from "react-native";
 import {CameraView,useCameraPermissions,useMicrophonePermissions} from "expo-camera";
 import {router,useFocusEffect,useLocalSearchParams} from "expo-router";
+import {supabase} from "../services/supabase";
 import {extractQrCode} from "../utils/qr";
 import {mediaKindFromUri} from "../utils/socialMedia";
 import {createShutter,MAX_RECORDING_SECONDS} from "../utils/shutter";
+import {
+  defaultCapturePreferences,
+  keepACopy,
+  loadCapturePreferences
+} from "../utils/capturePreferences";
+import {SafeAreaInsetsContext} from "react-native-safe-area-context";
 import {useHeaderClearance} from "./Header";
+import {TAB_BAR_HEIGHT} from "./TabBar";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {Aperture,ProgressRing,CornerFrame,Reticle,Dial,MONO} from "./instrument";
+import {
+  Aperture,
+  Chip,
+  CornerFrame,
+  Dial,
+  Glyph,
+  MONO,
+  ProgressRing,
+  Readout,
+  Reticle,
+  SectionRule,
+  Toggle
+} from "./instrument";
 
 // The camera. One viewfinder, three outcomes.
 //
@@ -23,10 +45,6 @@ import {Aperture,ProgressRing,CornerFrame,Reticle,Dial,MONO} from "./instrument"
 // hub's default surface (components/CreateHub.js) AND the standalone /camera
 // route -- one implementation, so pressing the shutter cannot behave
 // differently depending on which door you came in through.
-//
-// app/camera.js is now a three-line wrapper that renders this with no props,
-// which is exactly what it did before this file existed -- nothing about the
-// /camera route's behaviour changes.
 //
 // WHY QR SCANNING IS NOT A MODE
 //
@@ -59,15 +77,140 @@ import {Aperture,ProgressRing,CornerFrame,Reticle,Dial,MONO} from "./instrument"
 // -- otherwise the hub's chrome would sit on top of the screen this view is
 // trying to hand off to.
 //
+// `onBranch(branch)`, when supplied, is offered every capture-hub branch tap
+// first and may claim it by returning true. Only the Review branch is ever
+// claimed: the hub draws the composer inside itself, and there is no generic
+// /reviews route to send anybody to.
+//
 // `presetTargetType`/`presetTargetId`, when supplied, override the
 // `target_type`/`target_id` URL params app/places/[id].js and similar pages
 // already push onto /camera for a "post a Moment here" launch. The Create
 // hub never supplies them -- it is reachable from any screen, not contingent
 // on one, so it has no place to attach by construction.
-export default function CameraCapture({onNavigate,presetTargetType,presetTargetId}){
+
+// ---------------------------------------------------------------------------
+// THE CAPTURE HUB'S FIVE BRANCHES
+// ---------------------------------------------------------------------------
+// The locked spec: "the 5 capture-hub branch chips below the viewfinder
+// (Moment/Memory/Check-in/Scan/Review) - all one tap away, always visible".
+//
+// It was three chips, at the TOP of the screen, drawn by components/
+// CreateHub.js -- so two of the five were unreachable in one tap and the row
+// sat over the viewfinder rather than under it. One exported list now, read by
+// this file and by the hub, because a second copy is how a branch starts
+// existing on one surface and not the other.
+//
+// Moment and Memory route to the screens that make one. Those screens bounce
+// back here when they are opened with nothing attached, which is the honest
+// behaviour for "capture first, decide after" -- the chip is a way IN to the
+// branch, not a claim that a Moment can exist without a picture.
+export const CAPTURE_BRANCHES=[
+  {key:"moment",label:"Moment",route:"/moments/create",spoken:"Post a Moment"},
+  {key:"memory",label:"Memory",route:"/memories/create",spoken:"Keep a Memory"},
+  {key:"checkin",label:"Check in",route:"/checkins/create",spoken:"Check in somewhere"},
+  {key:"scan",label:"Scan",route:"/scan",spoken:"Scan or type a code"},
+  {key:"review",label:"Review",view:"review",spoken:"Write a review"}
+];
+
+// ---------------------------------------------------------------------------
+// FLASH
+// ---------------------------------------------------------------------------
+// expo-camera's `flash` prop takes 'off' | 'auto' | 'on' (and 'screen', which
+// is a front-camera-only trick and not a stop on this cycle). One chip cycles
+// them in that order, which is the order every phone camera uses.
+export const FLASH_CYCLE=["off","auto","on"];
+
+const FLASH_LABEL={off:"FLASH OFF",auto:"FLASH AUTO",on:"FLASH ON"};
+const FLASH_SPOKEN={off:"off",auto:"automatic",on:"on"};
+
+function nextFlash(mode){
+  return FLASH_CYCLE[(FLASH_CYCLE.indexOf(mode)+1)%FLASH_CYCLE.length];
+}
+
+// ---------------------------------------------------------------------------
+// ZOOM
+// ---------------------------------------------------------------------------
+// The four presets the spec names, and the finer detents the tray's dial adds
+// between them.
+export const ZOOM_STOPS=[0.5,1,2,3];
+export const ZOOM_DIAL_STOPS=[0.5,1,1.5,2,2.5,3];
+
+// expo-camera's `zoom` is "a value between 0 and 1 being a percentage of the
+// device's max zoom" -- NOT a magnification factor. So the face speaks in the
+// stops a person recognises and this table is the only place that maps them.
+//
+// 0.5x AND 1x BOTH MAP TO 0, AND THAT IS THE HONEST ANSWER.
+//
+// zoom:0 is the widest field of view the current camera session can give. There
+// is no way to ask expo-camera 57 for a wider one on Android -- it exposes no
+// lens picker -- so on a phone whose session already runs on the ultra-wide,
+// 0.5x is what zoom:0 looks like, and on a phone without one it is 1x and the
+// two stops show the same picture. On iOS there IS a documented way to do
+// better: `selectedLens`, fed by the lens names onAvailableLensesChanged
+// reports, so 0.5x asks for the ultra-wide lens by name when the device has
+// one. See lensFor() below.
+//
+// The 2x and 3x values are a calibration, not a measurement: "a percentage of
+// max zoom" means the same fraction is a different factor on every phone.
+const ZOOM_TO_PROP={0.5:0,1:0,2:0.25,3:0.45};
+
+// Anything between two anchors is interpolated, so the tray's half stops move
+// the camera rather than only the readout.
+export function zoomPropFor(factor){
+  const anchors=Object.keys(ZOOM_TO_PROP).map(Number).sort((a,b)=>a-b);
+  if(factor<=anchors[0]) return ZOOM_TO_PROP[anchors[0]];
+  if(factor>=anchors[anchors.length-1]) return ZOOM_TO_PROP[anchors[anchors.length-1]];
+
+  for(let i=0;i<anchors.length-1;i++){
+    const low=anchors[i];
+    const high=anchors[i+1];
+    if(factor>=low && factor<=high){
+      const span=high-low;
+      const along=span===0 ? 0 : (factor-low)/span;
+      return ZOOM_TO_PROP[low]+(ZOOM_TO_PROP[high]-ZOOM_TO_PROP[low])*along;
+    }
+  }
+  return 0;
+}
+
+// iOS reports its physical lenses through onAvailableLensesChanged; the
+// ultra-wide is the only one worth asking for by name, and only for 0.5x.
+// Android reports nothing here and gets undefined, which leaves expo-camera on
+// the device's default lens.
+export function lensFor(factor,lenses){
+  if(factor>=1 || !Array.isArray(lenses)) return undefined;
+  return lenses.find((lens)=>/ultrawide/i.test(String(lens)));
+}
+
+// ---------------------------------------------------------------------------
+// THE QR FLAG
+// ---------------------------------------------------------------------------
+// Long enough to be seen and read, short enough that nobody waits for it. The
+// screen used to navigate the instant a code resolved, so the only evidence the
+// camera had seen anything was the page you suddenly found yourself on.
+export const QR_FLAG_DWELL_MS=900;
+
+// A first guess only. The tray measures its own contents on layout and animates
+// to THAT -- a hard-coded height clipped the silent-record toggle clean off the
+// bottom, which is exactly the class of bug a screenshot finds and a passing
+// test does not.
+const TRAY_HEIGHT_GUESS=300;
+
+export default function CameraCapture({onNavigate,onBranch,overlay,presetTargetType,presetTargetId}){
   // The header floats over the viewfinder now rather than sitting above it, so
   // the hint clears the floating chips instead of starting at the top edge.
   const clearHeader=useHeaderClearance();
+  // WHAT IS UNDERNEATH THE CONSOLE.
+  //
+  // components/TabBar.js floats over every route -- it is a later sibling of
+  // the Stack in app/_layout.js, not a container around it -- so on the
+  // standalone /camera route the bottom 62px plus the home indicator belong to
+  // the tab bar, and a shutter drawn at the bottom edge is a shutter nobody can
+  // press. In the Create hub there is no bar to clear: the hub is a full-screen
+  // Modal drawn above it. Same context read Header.js uses, so this works with
+  // or without a SafeAreaProvider above it.
+  const insets=React.useContext(SafeAreaInsetsContext);
+  const bottomClearance=(insets?.bottom || 0)+(overlay ? 0 : TAB_BAR_HEIGHT);
   const params=useLocalSearchParams();
   const [permission,requestPermission]=useCameraPermissions();
   // Sound, as agreed with the owner: a silent video of a gig or a busy pub
@@ -83,15 +226,77 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
   // APERTURE CONSOLE STATE
   // ---------------------------------------------------------------------------
   // The design system's camera is an instrument face, so the controls it draws
-  // have to be backed by real camera capability -- never painted on. All three
-  // of these map onto documented expo-camera props (`zoom` 0-1, `mode`, and the
-  // recording ceiling in utils/shutter.js).
-  //
-  // ZOOM. expo-camera takes 0-1, not a magnification factor, so the dial shows
-  // the presets a person understands and this maps them.
-  const ZOOM_STOPS=[1,2,3,5];
-  const ZOOM_TO_PROP={1:0,2:0.25,3:0.45,5:0.7};
+  // have to be backed by real camera capability -- never painted on. Every one
+  // of these maps onto a documented expo-camera prop: `flash`, `zoom`,
+  // `autofocus`, `videoStabilizationMode`, `mute`, `videoQuality`, `mode`, and
+  // the recording ceiling in utils/shutter.js.
+  const [flash,setFlash]=useState("off");
   const [zoom,setZoom]=useState(1);
+  const [lenses,setLenses]=useState(null);
+
+  // THE PRECISION TRAY. Shut, it is one small chevron; open, it is the four
+  // controls an expert reaches for and nobody else needs to see.
+  const [trayOpen,setTrayOpen]=useState(false);
+  const [focusLock,setFocusLock]=useState(false);
+  // expo-camera's own default for videoStabilizationMode is 'auto', so this
+  // starts on and turning it OFF is the change -- the toggle never claims to
+  // have switched something on that was already running.
+  const [stabilised,setStabilised]=useState(true);
+  // Sound stays ON by default: that is the owner's decision, recorded above and
+  // still the default. This is the override for the times a recording should be
+  // silent, not a reversal of it.
+  const [silent,setSilent]=useState(false);
+
+  // Capture defaults, from Account & Safety. The viewfinder reads them; it does
+  // not ask about them.
+  const [preferences,setPreferences]=useState(defaultCapturePreferences);
+  useEffect(()=>{
+    let alive=true;
+    (async()=>{
+      try{
+        const {data}=await supabase.auth.getUser();
+        const loaded=await loadCapturePreferences(data?.user?.id);
+        if(alive) setPreferences(loaded);
+      }catch{
+        // Defaults already stand. A camera must open whether or not a
+        // preferences read succeeded.
+      }
+    })();
+    return()=>{alive=false;};
+  },[]);
+
+  // The tray slides. AccessibilityInfo decides whether it slides or simply is:
+  // the same rule the kit's Lamp follows, and the same reason -- motion is
+  // information here, not decoration, so reduce-motion removes the travel
+  // rather than the tray.
+  const [reducedMotion,setReducedMotion]=useState(false);
+  useEffect(()=>{
+    let alive=true;
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((on)=>{if(alive) setReducedMotion(!!on);})
+      .catch(()=>{});
+    return()=>{alive=false;};
+  },[]);
+
+  const trayLift=useRef(new Animated.Value(0)).current;
+  const [trayHeight,setTrayHeight]=useState(TRAY_HEIGHT_GUESS);
+  // Where the tray already is. Without this the effect runs an animation to 0
+  // on mount -- a state update nothing asked for, on every screen that draws a
+  // camera -- and re-runs it every time the reduce-motion answer arrives.
+  const trayAt=useRef(0);
+  useEffect(()=>{
+    const target=trayOpen ? 1 : 0;
+    if(trayAt.current===target) return;
+    trayAt.current=target;
+
+    Animated.timing(trayLift,{
+      toValue:target,
+      duration:reducedMotion ? 0 : 180,
+      // Height and translate together: a tray that only faded would leave the
+      // console jumping to its new height in one frame.
+      useNativeDriver:false
+    }).start();
+  },[trayOpen,reducedMotion,trayLift]);
 
   // FOCUS RETICLE. Where the last tap landed, in screen coordinates, so the
   // brackets can be drawn there and faded out again.
@@ -135,6 +340,15 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
   // Once a code has been read, stop reading. Without this the same code fires
   // the handler on every frame and pushes the same screen dozens of times.
   const [handledCode,setHandledCode]=useState(false);
+  // What the camera saw, shown in the viewfinder before anything navigates.
+  const [detectedCode,setDetectedCode]=useState("");
+  const codeTimer=useRef(null);
+  useEffect(()=>()=>clearTimeout(codeTimer.current),[]);
+
+  // The Review branch has no route of its own. In the Create hub it is a view
+  // the hub swaps in (so its own chrome stays right); on the standalone
+  // /camera route nothing else can draw it, so this does.
+  const [composer,setComposer]=useState(false);
 
   // Coming back to this screen -- from the code it just scanned, or from the
   // Moment it just started -- has to give a live camera again, not the frozen
@@ -143,6 +357,8 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
   // same state for free.
   useFocusEffect(useCallback(()=>{
     setHandledCode(false);
+    setDetectedCode("");
+    clearTimeout(codeTimer.current);
     setPhoto(null);
     setError("");
     setMode("picture");
@@ -155,14 +371,35 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
     router.push(url);
   }
 
+  function openBranch(branch){
+    // The hub gets first refusal, because Review is drawn inside it.
+    if(onBranch && onBranch(branch)) return;
+    if(branch.route){navigate(branch.route);return;}
+    setComposer(true);
+  }
+
   function onBarcode({data}){
     if(handledCode || photo) return;
 
     const code=extractQrCode(data);
     if(!code) return;   // Not one of ours. Say nothing and keep looking.
 
+    // The flag first, the navigation after. A screen that changes under you
+    // with no explanation is the camera keeping to itself what it just read.
     setHandledCode(true);
-    navigate(`/qr/${encodeURIComponent(code)}`);
+    setDetectedCode(code);
+    clearTimeout(codeTimer.current);
+    codeTimer.current=setTimeout(()=>{
+      navigate(`/qr/${encodeURIComponent(code)}`);
+    },QR_FLAG_DWELL_MS);
+  }
+
+  // A capture lands in the cache directory, which the OS may sweep. Account &
+  // Safety > Capture defaults decides whether a copy is kept somewhere it will
+  // not be. A failed copy is reported and never loses the capture.
+  async function keepIfAsked(uri){
+    const {error:copyError}=await keepACopy(uri,preferences);
+    if(copyError) setError(copyError);
   }
 
   async function takePhoto(){
@@ -175,6 +412,7 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
       const taken=await cameraRef.current.takePictureAsync({quality:0.8});
       if(!taken?.uri) throw new Error("The camera returned no picture.");
       setPhoto(taken);
+      await keepIfAsked(taken.uri);
     }catch(cameraError){
       setError(cameraError.message || "The photo could not be taken.");
     }
@@ -233,7 +471,10 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
         // recordAsync resolves when stopRecording is called OR when maxDuration
         // is reached -- the same promise for both, which is why the button does
         // not decide what happens next.
-        if(alive && taken?.uri) setPhoto(taken);
+        if(alive && taken?.uri){
+          setPhoto(taken);
+          keepIfAsked(taken.uri);
+        }
       })
       .catch((recordError)=>{
         if(alive) setError(recordError?.message || "The video could not be recorded.");
@@ -259,7 +500,10 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
     // to take a photograph is the kind of thing that gets an app deleted. A
     // refusal is not fatal -- expo-camera records without sound, and saying so
     // beats a recording that silently has none.
-    if(microphone && !microphone.granted){
+    //
+    // And not asked at all when the silent-record toggle is on: there is no
+    // honest reason to ask for a microphone the recording will not use.
+    if(!silent && microphone && !microphone.granted){
       const answer=await requestMicrophone();
       if(!answer?.granted) setError("Recording without sound — microphone access was not given.");
     }
@@ -294,6 +538,16 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
       .join("");
 
     navigate(`${destination}?photo=${encodeURIComponent(photo.uri)}${carried}`);
+  }
+
+  if(composer){
+    // Only reachable on the standalone /camera route: the Create hub claims the
+    // Review branch itself through onBranch, because it has its own chrome to
+    // put around the composer. Required here rather than at the top of the file
+    // so the hub's own import stays the only one in the common path.
+    // eslint-disable-next-line global-require
+    const ReviewComposer=require("./ReviewComposer").default;
+    return <ReviewComposer onNavigate={navigate} onClose={()=>setComposer(false)}/>;
   }
 
   if(!permission){
@@ -389,143 +643,335 @@ export default function CameraCapture({onNavigate,presetTargetType,presetTargetI
   // ---------------------------------------------------------------------------
   // The viewfinder
   // ---------------------------------------------------------------------------
+  const trayOpening=trayLift.interpolate({inputRange:[0,1],outputRange:[0,trayHeight]});
+  const trayShift=trayLift.interpolate({inputRange:[0,1],outputRange:[trayHeight/3,0]});
+  // expo-camera's video-only controls are native capture settings. The web
+  // implementation has no recorder at all, so they are disabled there and say
+  // why rather than pretending to hold a setting nothing will read.
+  const nativeOnly=Platform.OS==="ios" || Platform.OS==="android";
+
   return(
     <View style={styles.screen}>
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing={facing}
-        mode={mode}
-        // expo-camera's zoom is 0-1, not a magnification factor. The dial speaks
-        // in the stops a person recognises; this is the only place that maps.
-        zoom={ZOOM_TO_PROP[zoom] ?? 0}
-        // ALWAYS ON, in both modes. A QR code is unambiguous and nobody points
-        // a phone at one by accident, so making it a mode would mean guessing
-        // wrong half the time. It is switched off only once a code has been
-        // read, or the same code fires the handler on every frame.
-        barcodeScannerSettings={{barcodeTypes:["qr"]}}
-        onBarcodeScanned={handledCode || recording ? undefined : onBarcode}
-      />
-
       {/*
-        THE APERTURE CONSOLE.
+        THE VIEWFINDER, AND THEN THE CONSOLE UNDER IT.
 
-        expo-camera ships zero capture chrome (confirmed in the Capability
-        Research Pack), so every pixel above the feed is ours to author -- and
-        the winning design asked for an instrument face rather than a bare
-        button. What follows is that face: a viewfinder frame, mono readouts of
-        what the camera is actually doing, a focus reticle where you tapped, a
-        zoom dial with real detents, and a shutter that shows how much of the
-        recording ceiling you have used.
-
-        Every control here is backed by a documented expo-camera capability.
-        Nothing is decorative.
+        The feed used to be the whole screen with every control floating on top
+        of it, which is how the capture-hub branches ended up drawn over the
+        picture at the top of the screen. The spec puts them BELOW the
+        viewfinder, so the viewfinder now ends where the console starts and the
+        console is a real row in the column rather than an overlay.
       */}
-
-      {/* Tap anywhere on the feed to focus. Drawn where the finger landed. */}
-      <Pressable
-        style={StyleSheet.absoluteFill}
-        accessibilityLabel="Tap to focus"
-        onPress={(event)=>{
-          const {locationX,locationY}=event.nativeEvent;
-          showFocus(locationX,locationY);
-        }}
-      />
-
-      <CornerFrame inset={16} length={28} colour={INK.readoutSoft} opacity={0.45}/>
-
-      {focusPoint ? (
-        <View pointerEvents="none" style={{position:"absolute",left:focusPoint.x-36,top:focusPoint.y-36}}>
-          <Reticle size={72} colour={INK.scheduled}/>
-        </View>
-      ) : null}
-
-      {/* Readouts: what the instrument is set to, in the face's own language. */}
-      <View pointerEvents="none" style={[styles.readoutRow,{top:clearHeader+8}]}>
-        <Text style={styles.readoutChip}>{recording ? "REC" : "PHOTO"}</Text>
-        <Text style={styles.readoutChip}>{`${zoom}×`}</Text>
-        <Text style={styles.readoutChip}>{facing==="back" ? "REAR" : "FRONT"}</Text>
-        {recording ? (
-          <Text style={[styles.readoutChip,styles.readoutLive]}>
-            {`${Math.ceil(MAX_RECORDING_SECONDS*(1-holdProgress))}S LEFT`}
-          </Text>
-        ) : null}
-      </View>
-
-      <View pointerEvents="none" style={[styles.hintWrap,{top:clearHeader+44}]}>
-        <Text style={styles.hint}>
-          {recording
-            ? "Let go to stop."
-            : "Press for a photo, hold to record. A Xplorer QR code opens itself."}
-        </Text>
-      </View>
-
-      {!!error && (
-        <View pointerEvents="none" style={styles.errorWrap}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* Zoom, as a dial with detents rather than four separate buttons. */}
-      <View style={styles.dialRow}>
-        <Dial
-          values={ZOOM_STOPS}
-          active={zoom}
-          onChange={setZoom}
-          width={224}
-          format={(v)=>`${v}×`}
+      <View style={styles.viewfinder}>
+        <CameraView
+          ref={cameraRef}
+          style={styles.camera}
+          facing={facing}
+          mode={mode}
+          // Every one of these is a documented expo-camera prop, set from a
+          // control on this face or from Capture defaults. Nothing here is
+          // decorative.
+          flash={flash}
+          zoom={zoomPropFor(zoom)}
+          selectedLens={lensFor(zoom,lenses)}
+          onAvailableLensesChanged={({lenses:available})=>setLenses(available)}
+          // Focus-and-exposure lock. expo-camera's `autofocus` is documented as
+          // "autofocus once and then lock the focus" for 'on'. Exposure is NOT
+          // separately exposed by expo-camera 57 -- there is no AE-lock prop --
+          // so this locks focus and the tray's label says exactly that instead
+          // of claiming a lock the library cannot give.
+          autofocus={focusLock ? "on" : "off"}
+          videoStabilizationMode={stabilised ? "auto" : "off"}
+          // Silent recording. In expo-camera 57 `mute` is a prop on CameraView
+          // rather than an option to recordAsync -- the recorder reads it when
+          // the recording starts.
+          mute={silent}
+          videoQuality={preferences.videoQuality}
+          // ALWAYS ON, in both modes. A QR code is unambiguous and nobody points
+          // a phone at one by accident, so making it a mode would mean guessing
+          // wrong half the time. It is switched off only once a code has been
+          // read, or the same code fires the handler on every frame.
+          barcodeScannerSettings={{barcodeTypes:["qr"]}}
+          onBarcodeScanned={handledCode || recording ? undefined : onBarcode}
         />
+
+        {/*
+          THE APERTURE CONSOLE.
+
+          expo-camera ships zero capture chrome (confirmed in the Capability
+          Research Pack), so every pixel above the feed is ours to author -- and
+          the winning design asked for an instrument face rather than a bare
+          button. What follows is that face: a viewfinder frame, mono readouts of
+          what the camera is actually doing, a focus reticle where you tapped, a
+          rule-of-thirds grid when the preference asks for one, and a flag that
+          says the moment a code is recognised.
+        */}
+
+        {/* Tap anywhere on the feed to focus. Drawn where the finger landed. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          accessibilityLabel="Tap to focus"
+          onPress={(event)=>{
+            const {locationX,locationY}=event.nativeEvent;
+            showFocus(locationX,locationY);
+          }}
+        />
+
+        {/*
+          THE GRID, drawn only when Capture defaults asks for it.
+
+          Rule of thirds: two lines each way, hairline, at the same weight as
+          every other etched line in the system. The kit has no grid part --
+          composed here rather than added to components/instrument.js, which is
+          not mine to edit.
+        */}
+        {preferences.grid ? (
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <View style={[styles.gridLine,styles.gridColumn,styles.gridOneThird]}/>
+            <View style={[styles.gridLine,styles.gridColumn,styles.gridTwoThirds]}/>
+            <View style={[styles.gridLine,styles.gridRow,styles.gridRowOneThird]}/>
+            <View style={[styles.gridLine,styles.gridRow,styles.gridRowTwoThirds]}/>
+          </View>
+        ) : null}
+
+        <CornerFrame inset={16} length={28} colour={INK.readoutSoft} opacity={0.45}/>
+
+        {focusPoint ? (
+          <View pointerEvents="none" style={{position:"absolute",left:focusPoint.x-36,top:focusPoint.y-36}}>
+            <Reticle size={72} colour={INK.scheduled}/>
+          </View>
+        ) : null}
+
+        {/* Readouts: what the instrument is set to, in the face's own language. */}
+        <View pointerEvents="none" style={[styles.readoutRow,{top:clearHeader+8}]}>
+          <Text style={styles.readoutChip}>{recording ? "REC" : "PHOTO"}</Text>
+          <Text style={styles.readoutChip}>{`${zoom}×`}</Text>
+          <Text style={styles.readoutChip}>{facing==="back" ? "REAR" : "FRONT"}</Text>
+          {recording ? (
+            <Text style={[styles.readoutChip,styles.readoutLive]}>
+              {`${Math.ceil(MAX_RECORDING_SECONDS*(1-holdProgress))}S LEFT`}
+            </Text>
+          ) : null}
+        </View>
+
+        <View pointerEvents="none" style={[styles.hintWrap,{top:clearHeader+44}]}>
+          <Text style={styles.hint}>
+            {recording
+              ? "Let go to stop."
+              : "Press for a photo, hold to record. A Xplorer QR code opens itself."}
+          </Text>
+        </View>
+
+        {/*
+          THE CODE FLAG. Only ever on screen once onBarcodeScanned has resolved
+          a Xplorer code -- the contextual rung of the ladder, drawn inside the
+          viewfinder because that is where the thing it is reporting on is.
+        */}
+        {detectedCode ? (
+          <View pointerEvents="none" style={styles.codeFlagWrap}>
+            <View style={styles.codeFlag}>
+              <Glyph name="qr" size={15} colour={INK.scheduled}/>
+              <Text style={styles.codeFlagLabel}>CODE FOUND</Text>
+              <Text style={styles.codeFlagValue} numberOfLines={1}>{detectedCode}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {!!error && (
+          <View pointerEvents="none" style={styles.errorWrap}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {/*
+          THE IMMEDIATE RUNG: flash and the four zoom presets, on the face
+          itself, over the bottom of the feed where a thumb already is.
+        */}
+        {/*
+          Gone while the tray is open, rather than riding up on top of it: at
+          412x915 the two rows together left a 120px viewfinder and drove the
+          chips into the readouts. The tray carries the same zoom on its dial
+          while it is open, so nothing is out of reach -- and this is a case
+          where the honest fix was to draw less, not to squeeze more in.
+        */}
+        {!trayOpen ? (
+        <View style={styles.faceRow}>
+          <Chip
+            label={FLASH_LABEL[flash]}
+            selected={flash!=="off"}
+            style={[styles.faceChip,flash!=="off" && styles.faceChipOn]}
+            accessibilityLabel={`Flash is ${FLASH_SPOKEN[flash]}. Tap to set the flash to ${FLASH_SPOKEN[nextFlash(flash)]}.`}
+            onPress={()=>setFlash(nextFlash(flash))}
+          />
+          {ZOOM_STOPS.map((stop)=>(
+            <Chip
+              key={String(stop)}
+              label={`${stop}×`}
+              selected={zoom===stop}
+              style={[styles.faceChip,zoom===stop && styles.faceChipOn]}
+              accessibilityLabel={`Zoom to ${stop} times`}
+              onPress={()=>setZoom(stop)}
+            />
+          ))}
+        </View>
+        ) : null}
+
+        {/*
+          THE PRECISION TRAY. At rest it is one small chevron and nothing else:
+          the spec's own words are that it "doesn't compete for attention at
+          rest". Open, it holds the four controls an expert reaches for.
+        */}
+        <Animated.View
+          style={[styles.precisionTray,{height:trayOpening}]}
+          pointerEvents={trayOpen ? "auto" : "none"}
+          accessibilityElementsHidden={!trayOpen}
+          importantForAccessibility={trayOpen ? "auto" : "no-hide-descendants"}
+        >
+          {/*
+            Absolutely positioned against the clipper's BOTTOM edge, so it keeps
+            its natural height while the container animates from zero -- a
+            normal child would be squashed by the clipper it is sliding out of --
+            and so it slides up from under the chevron rather than down from
+            nowhere. onLayout reports that natural height back, which is what
+            the container animates to.
+          */}
+          <Animated.View
+            style={[styles.precisionTrayBody,{transform:[{translateY:trayShift}]}]}
+            onLayout={(event)=>{
+              const measured=Math.round(event.nativeEvent.layout.height);
+              if(measured>0 && measured!==trayHeight) setTrayHeight(measured);
+            }}
+          >
+            <SectionRule label="Precision"/>
+
+            <View style={styles.dialRow}>
+              <Readout label="ZOOM" value={`${zoom}×`} size="sm"/>
+              <Dial
+                values={ZOOM_DIAL_STOPS}
+                active={zoom}
+                onChange={setZoom}
+                width={196}
+                format={(v)=>`${v}×`}
+              />
+            </View>
+
+            <Toggle
+              label="Lock focus"
+              sub={nativeOnly
+                ? "Holds focus. expo-camera has no separate exposure lock."
+                : "Only on a phone."}
+              value={focusLock}
+              disabled={!nativeOnly}
+              onChange={setFocusLock}
+              accessibilityLabel="Lock the focus"
+            />
+
+            <Toggle
+              label="Stabilisation"
+              sub={nativeOnly
+                ? "Steadies a recording. On is expo-camera's own default."
+                : "Only on a phone. A browser cannot record video."}
+              value={stabilised}
+              disabled={!nativeOnly}
+              onChange={setStabilised}
+              accessibilityLabel="Steady the recording"
+            />
+
+            <Toggle
+              label="Record silently"
+              sub={nativeOnly
+                ? "Sound is on by default. This is the override."
+                : "Only on a phone. A browser cannot record video."}
+              value={silent}
+              disabled={!nativeOnly}
+              onChange={setSilent}
+              accessibilityLabel="Record without sound"
+            />
+          </Animated.View>
+        </Animated.View>
       </View>
 
-      <View style={styles.controls}>
-        <Pressable
-          style={styles.sideButton}
-          accessibilityRole="button"
-          accessibilityLabel="Type a QR code by hand"
-          onPress={()=>navigate("/scan")}
-        >
-          <Text style={styles.sideText}>Type a code</Text>
-        </Pressable>
-
-        {/*
-          ONE BUTTON. onPressIn/onPressOut rather than onPress and onLongPress:
-          React Native fires onPress on release AS WELL as onLongPress on some
-          platforms, so a hold would leave a stray photograph behind every
-          recording. utils/shutter.js decides which of the two happened.
-        */}
-        {/*
-          The shutter, as an aperture. Rings close as a recording runs and the
-          progress ring reports how much of the real 15s ceiling is spent -- the
-          question the old bare circle never answered.
-        */}
-        <View style={styles.shutterWell}>
-          <Aperture size={118} open={recording ? 1-holdProgress*0.55 : 1} colour={INK.hairlineStrong}/>
-          <ProgressRing size={92} stroke={3} progress={recording ? holdProgress : 0} colour={INK.scheduled}/>
+      {/* ------------------------------------------------------------------
+          THE CONSOLE, below the viewfinder.
+          ------------------------------------------------------------------ */}
+      <View style={[styles.console,{paddingBottom:bottomClearance}]}>
+        <View style={styles.chevronRow}>
           <Pressable
-            style={[styles.shutter,taking && styles.shutterBusy,recording && styles.shutterRecording]}
+            style={styles.chevron}
             accessibilityRole="button"
-            accessibilityLabel="Press for a photo, hold to record a video"
-            disabled={taking}
-            onPressIn={()=>{shutter.current.pressIn();startHoldClock();}}
-            onPressOut={()=>{shutter.current.pressOut();stopHoldClock();}}
+            accessibilityState={{expanded:trayOpen}}
+            accessibilityLabel={trayOpen ? "Close the precision controls" : "Open the precision controls"}
+            onPress={()=>setTrayOpen((open)=>!open)}
           >
-            <View style={[styles.shutterInner,recording && styles.shutterInnerRecording]}/>
+            <Glyph name={trayOpen ? "down" : "up"} size={16} colour={INK.readoutSoft}/>
           </Pressable>
         </View>
 
-        <Pressable
-          style={styles.sideButton}
-          accessibilityRole="button"
-          accessibilityLabel="Switch between the front and back camera"
-          onPress={()=>setFacing((current)=>current==="back" ? "front" : "back")}
-        >
-          <Text style={styles.sideText}>Flip</Text>
-        </Pressable>
-      </View>
+        {/*
+          THE FIVE BRANCHES, below the viewfinder and always visible. One tap
+          each, from the list every surface shares.
+        */}
+        <View style={styles.branchRow}>
+          {CAPTURE_BRANCHES.map((branch)=>(
+            <Chip
+              key={branch.key}
+              label={branch.label}
+              style={styles.branchChip}
+              accessibilityLabel={branch.spoken}
+              onPress={()=>openBranch(branch)}
+            />
+          ))}
+        </View>
 
-      {Platform.OS==="web" && (
-        <Text style={styles.webNote}>Browser camera access depends on the browser and its site permissions.</Text>
-      )}
+        <View style={styles.controls}>
+          <Pressable
+            style={styles.sideButton}
+            accessibilityRole="button"
+            accessibilityLabel="Type a QR code by hand"
+            onPress={()=>navigate("/scan")}
+          >
+            <Text style={styles.sideText}>Type a code</Text>
+          </Pressable>
+
+          {/*
+            ONE BUTTON. onPressIn/onPressOut rather than onPress and onLongPress:
+            React Native fires onPress on release AS WELL as onLongPress on some
+            platforms, so a hold would leave a stray photograph behind every
+            recording. utils/shutter.js decides which of the two happened.
+          */}
+          {/*
+            The shutter, as an aperture. Rings close as a recording runs and the
+            progress ring reports how much of the real 15s ceiling is spent -- the
+            question the old bare circle never answered.
+          */}
+          <View style={styles.shutterWell}>
+            <Aperture size={118} open={recording ? 1-holdProgress*0.55 : 1} colour={INK.hairlineStrong}/>
+            <ProgressRing size={92} stroke={3} progress={recording ? holdProgress : 0} colour={INK.scheduled}/>
+            <Pressable
+              style={[styles.shutter,taking && styles.shutterBusy,recording && styles.shutterRecording]}
+              accessibilityRole="button"
+              accessibilityLabel="Press for a photo, hold to record a video"
+              disabled={taking}
+              onPressIn={()=>{shutter.current.pressIn();startHoldClock();}}
+              onPressOut={()=>{shutter.current.pressOut();stopHoldClock();}}
+            >
+              <View style={[styles.shutterInner,recording && styles.shutterInnerRecording]}/>
+            </Pressable>
+          </View>
+
+          <Pressable
+            style={styles.sideButton}
+            accessibilityRole="button"
+            accessibilityLabel="Switch between the front and back camera"
+            onPress={()=>setFacing((current)=>current==="back" ? "front" : "back")}
+          >
+            <Text style={styles.sideText}>Flip</Text>
+          </Pressable>
+        </View>
+
+        {Platform.OS==="web" && (
+          <Text style={styles.webNote}>Browser camera access depends on the browser and its site permissions.</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -534,8 +980,19 @@ const styles=StyleSheet.create({
   // The viewfinder ground is the deepest surface in the system -- the well.
   screen:{flex:1,backgroundColor:INK.inset},
   centre:{flex:1,backgroundColor:INK.inset,alignItems:"center",justifyContent:"center",padding:24},
+  viewfinder:{flex:1,overflow:"hidden"},
   camera:{flex:1},
   preview:{flex:1},
+
+  // The rule-of-thirds grid. Hairlines at the same weight as every other etched
+  // line, at a third and two thirds each way.
+  gridLine:{position:"absolute",backgroundColor:INK.readoutSoft,opacity:0.3},
+  gridColumn:{top:0,bottom:0,width:SHAPE.border},
+  gridRow:{left:0,right:0,height:SHAPE.border},
+  gridOneThird:{left:"33.33%"},
+  gridTwoThirds:{left:"66.66%"},
+  gridRowOneThird:{top:"33.33%"},
+  gridRowTwoThirds:{top:"66.66%"},
 
   // Readouts sit along the top of the face. Mono, uppercase, wide-tracked --
   // the instrument's own language for "what am I set to".
@@ -550,16 +1007,39 @@ const styles=StyleSheet.create({
     paddingHorizontal:8,paddingVertical:4,overflow:"hidden"
   },
   readoutLive:{color:INK.ground,backgroundColor:INK.scheduled,borderColor:INK.scheduled},
-  // The dial sits above the shutter row, clear of the thumb's path to it.
-  //
-  // 176, NOT 150. `controls` below is absolutely positioned at bottom:0 and
-  // measures 158px tall, so at 150 the dial's labels landed at y 690-703 and
-  // the controls row started at 695 -- an 8px overlap, and because controls is
-  // later in the tree it painted on top and swallowed a tap on the lower half
-  // of every zoom stop. Found by asking the browser what was actually on top of
-  // each control, not by looking: an 8px overlap is invisible in a screenshot
-  // and perfectly obvious to a finger.
-  dialRow:{position:"absolute",left:0,right:0,bottom:176,alignItems:"center"},
+
+  // The code flag: centred in the frame, because the thing it reports on is in
+  // the frame. Scheduled ink, which is the system's "this is live right now".
+  codeFlagWrap:{position:"absolute",left:0,right:0,top:"42%",alignItems:"center"},
+  codeFlag:{
+    flexDirection:"row",alignItems:"center",gap:8,
+    backgroundColor:"rgba(11,14,18,0.82)",
+    borderWidth:SHAPE.border,borderColor:INK.scheduled,
+    borderRadius:SHAPE.radius.control,
+    paddingHorizontal:12,paddingVertical:9,maxWidth:"86%"
+  },
+  codeFlagLabel:{
+    color:INK.scheduled,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:1
+  },
+  codeFlagValue:{
+    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,flexShrink:1
+  },
+
+  // The immediate rung, over the bottom of the feed: flash, then the four zoom
+  // presets. Chips rather than a dial, because a preset is a tap and the dial
+  // in the tray is the drag.
+  faceRow:{
+    position:"absolute",left:0,right:0,bottom:12,
+    flexDirection:"row",justifyContent:"center",flexWrap:"wrap",gap:6,paddingHorizontal:12
+  },
+  // 44, not the kit's 32: this is a one-handed control over a live image.
+  faceChip:{minHeight:44,backgroundColor:"rgba(11,14,18,0.68)"},
+  // Selection is a step UP a surface, never a state ink -- the kit's rule 5.
+  // Over a live image that step has to be made in the smoked glass itself,
+  // because the kit's panelRaised would go opaque over the picture.
+  faceChipOn:{backgroundColor:"rgba(30,37,46,0.86)"},
+
   // The well is what makes the shutter read as a lens rather than a button:
   // the aperture rings and progress ring are centred on the same point.
   shutterWell:{width:118,height:118,alignItems:"center",justifyContent:"center"},
@@ -575,7 +1055,7 @@ const styles=StyleSheet.create({
     textAlign:"center"
   },
 
-  errorWrap:{position:"absolute",bottom:150,left:16,right:16,alignItems:"center"},
+  errorWrap:{position:"absolute",bottom:76,left:16,right:16,alignItems:"center"},
   // Dark text on the dispute ink, per docs/design-system.md's contrast table --
   // the state inks are bright on this housing and take dark text, never light.
   errorText:{
@@ -590,22 +1070,47 @@ const styles=StyleSheet.create({
     textAlign:"center"
   },
 
+  // The console: everything below the viewfinder, in the housing's own surface
+  // rather than floating over the picture.
+  console:{backgroundColor:INK.panel,borderTopWidth:SHAPE.border,borderTopColor:SHAPE.edgeHighlight},
+
+  // AN OVERLAY, NOT A ROW. As a row in the console it shrank the viewfinder to
+  // a strip and drove the flash and zoom chips into the readouts at the top --
+  // found by opening it in a browser at 412x915 and looking, not by a test. It
+  // slides up over the bottom of the live image instead, the way the rest of
+  // this face already works, and the chips ride up on top of it.
+  precisionTray:{
+    position:"absolute",left:0,right:0,bottom:0,
+    overflow:"hidden",
+    backgroundColor:INK.panel,
+    borderTopWidth:SHAPE.border,borderTopColor:SHAPE.edgeHighlight
+  },
+  precisionTrayBody:{position:"absolute",left:0,right:0,bottom:0,paddingHorizontal:14,paddingBottom:8},
+  dialRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,paddingVertical:6},
+
+  chevronRow:{alignItems:"center"},
+  // One small control at rest, and still a 44px target.
+  chevron:{
+    width:56,height:44,alignItems:"center",justifyContent:"center"
+  },
+
+  branchRow:{
+    flexDirection:"row",flexWrap:"wrap",justifyContent:"center",gap:6,paddingHorizontal:12,paddingBottom:8
+  },
+  branchChip:{minHeight:44},
+
   controls:{
-    position:"absolute",
-    bottom:0,
-    left:0,
-    right:0,
     flexDirection:"row",
     alignItems:"center",
     justifyContent:"space-between",
     paddingHorizontal:24,
-    paddingVertical:20
+    paddingBottom:16
   },
   // Side controls are panel chips, not shouted labels -- the shutter is the one
   // thing on this face that should draw the eye.
   sideButton:{
     minWidth:88,minHeight:44,alignItems:"center",justifyContent:"center",
-    backgroundColor:"rgba(11,14,18,0.62)",
+    backgroundColor:INK.panelRaised,
     borderWidth:SHAPE.border,borderColor:INK.hairline,
     borderRadius:SHAPE.radius.control,paddingHorizontal:10
   },
@@ -692,12 +1197,10 @@ const styles=StyleSheet.create({
   secondaryText:{color:INK.readout,fontWeight:"600",fontSize:15},
 
   webNote:{
-    position:"absolute",
-    bottom:96,
-    left:16,
-    right:16,
     color:INK.readoutSoft,
     fontSize:11,
-    textAlign:"center"
+    textAlign:"center",
+    paddingHorizontal:16,
+    paddingBottom:10
   }
 });
