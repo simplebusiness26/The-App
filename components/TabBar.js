@@ -1,11 +1,11 @@
-import React from "react";
-import {View,Text,Pressable,StyleSheet} from "react-native";
-import Svg,{Circle,Path} from "react-native-svg";
+import React,{useEffect,useRef,useState} from "react";
+import {AccessibilityInfo,Animated,View,Text,Pressable,StyleSheet} from "react-native";
+import Svg,{Circle,Line,Path} from "react-native-svg";
 import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {TABS,activeTabKey,isTabBarHidden,withNext} from "../utils/navigation";
-import {INK,TYPE,SHAPE} from "../utils/tokens";
-import {MONO,TickScale} from "./instrument";
+import {INK,TYPE,SHAPE,MOTION} from "../utils/tokens";
+import {MONO} from "./instrument";
 import {signedIn} from "../utils/permissions";
 
 // The navigation shell, redesigned. Five flat tabs, none raised -- Map ·
@@ -98,6 +98,46 @@ function Icon({name,colour,size=22}){
   );
 }
 
+// THE GRADUATED SCALE ALONG THE BAR'S TOP EDGE.
+//
+// Drawn here rather than with the kit's TickScale because this rule is not
+// texture: its major graduations have to land on the five destinations, and
+// TickScale spaces its majors by a fixed interval. A scale whose marks do not
+// line up with the things they measure is decoration pretending to be an
+// instrument, which is the exact failure this redesign exists to correct.
+function NavigationScale({width,count}){
+  if(!width || !count) return null;
+  const step=width/count;
+  const minorsPerStep=4;
+  const marks=[];
+
+  for(let position=0;position<count;position++){
+    // The major: the centre of a destination, and where the detent settles.
+    marks.push({x:position*step+step/2,major:true});
+    // The minors: an even run between one destination and the next, so the eye
+    // reads a continuous scale rather than five separated markers.
+    for(let minor=1;minor<minorsPerStep;minor++){
+      marks.push({x:position*step+(step/minorsPerStep)*minor-step/(minorsPerStep*2),major:false});
+    }
+  }
+
+  return(
+    <View style={styles.barRule} pointerEvents="none">
+      <Svg width={width} height={8}>
+        {marks.map((mark,index)=>(
+          <Line
+            key={index}
+            x1={mark.x} x2={mark.x}
+            y1={0} y2={mark.major?8:4}
+            stroke={mark.major?INK.hairlineStrong:INK.hairline}
+            strokeWidth={1}
+          />
+        ))}
+      </Svg>
+    </View>
+  );
+}
+
 export default function TabBar(){
   const pathname=usePathname();
   const insets=useSafeAreaInsets();
@@ -108,6 +148,13 @@ export default function TabBar(){
   // they reach for something that needs one.
   const [account,setAccount]=React.useState({known:false,signedIn:false});
 
+  // The bar's real width, measured rather than assumed: the scale's graduations
+  // and the detent's travel are both computed from it, and a hard-coded 320
+  // would put the marks in the wrong place on every device but one.
+  const [barWidth,setBarWidth]=useState(0);
+  const [reducedMotion,setReducedMotion]=useState(false);
+  const travel=useRef(new Animated.Value(0)).current;
+
   React.useEffect(()=>{
     let active=true;
     signedIn().then(({user})=>{
@@ -116,9 +163,38 @@ export default function TabBar(){
     return()=>{active=false;};
   },[pathname]);
 
-  if(isTabBarHidden(pathname)) return null;
+  useEffect(()=>{
+    let alive=true;
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((on)=>{if(alive) setReducedMotion(!!on);})
+      .catch(()=>{});
+    return()=>{alive=false;};
+  },[]);
 
   const active=activeTabKey(pathname);
+  const activeIndex=TABS.findIndex((tab)=>tab.key===active);
+  const hidden=isTabBarHidden(pathname);
+
+  // THE DETENT SETTLES ON ITS GRADUATION.
+  //
+  // This effect has to sit ABOVE the early return: a hook that runs on some
+  // renders and not others is the classic way a screen starts throwing after a
+  // route change, and the tab bar unmounts itself on full-screen routes.
+  useEffect(()=>{
+    if(!barWidth || activeIndex<0) return;
+    const to=(barWidth/TABS.length)*activeIndex;
+    if(reducedMotion){
+      travel.setValue(to);
+      return;
+    }
+    Animated.timing(travel,{
+      toValue:to,
+      duration:MOTION.standard,
+      useNativeDriver:true
+    }).start();
+  },[barWidth,activeIndex,reducedMotion,travel]);
+
+  if(hidden) return null;
 
   // Until the session has been read, treat a person as signed in. Guessing the
   // other way would send somebody who IS logged in to the log-in screen for the
@@ -132,14 +208,39 @@ export default function TabBar(){
       style={[styles.container,{height:BAR_HEIGHT+insets.bottom}]}
       accessibilityRole="tablist"
     >
-      <View style={[styles.bar,{height:BAR_HEIGHT+insets.bottom,paddingBottom:insets.bottom}]}>
-        {/* THE ETCHED RULE. The bar's top edge is not a plain hairline: it is a
-            ruled scale, the same texture the sheet's grab rail and every screen
-            title carry. It is the cheapest thing that makes the chrome read as
-            part of a machined housing rather than a strip of dark UI. */}
-        <View style={styles.barRule} pointerEvents="none">
-          <TickScale width={320} height={7} count={41} majorEvery={8} colour={INK.hairline}/>
-        </View>
+      <View
+        style={[styles.bar,{height:BAR_HEIGHT+insets.bottom,paddingBottom:insets.bottom}]}
+        onLayout={(event)=>setBarWidth(event.nativeEvent.layout.width)}
+      >
+        {/* THE SCALE THIS SELECTOR RUNS ALONG.
+            It used to be a decorative run of evenly spaced ticks -- texture,
+            saying nothing. A graduation that lands nowhere in particular is
+            ornament, and this design does not do ornament: a rule on an
+            instrument is a SCALE, and its major marks are the positions the
+            selector can occupy. So the majors are computed to land exactly on
+            the five destinations' centres, with minors between them, and the
+            indicator below settles on a major. The navigation now reads as one
+            graduated control rather than as five buttons that happen to sit in
+            a row. */}
+        <NavigationScale width={barWidth} count={TABS.length}/>
+
+        {/* THE TRAVELLING DETENT.
+            A selector on an instrument does not blink from one position to the
+            next -- it MOVES along its scale, and watching it move is how you
+            learn the scale is one thing. 140ms is MOTION.standard from the
+            design system, and reduce-motion drops it to an instant jump,
+            because liveness is the only thing this app animates by right. */}
+        {barWidth>0 && activeIndex>=0 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.detent,
+              {width:barWidth/TABS.length,transform:[{translateX:travel}]}
+            ]}
+          >
+            <View style={styles.detentMark}/>
+          </Animated.View>
+        ) : null}
         {TABS.map((tab)=>{
           const isActive=tab.key===active;
           const isLocked=locked(tab);
@@ -161,7 +262,6 @@ export default function TabBar(){
                   the active tab gets a filled detent block rather than a
                   floating underline -- and it sits at the top edge, against
                   the ruled scale, where a pointer would land. */}
-              <View style={[styles.marker,isActive && styles.markerActive]}/>
               <Icon name={tab.glyph} colour={isActive ? INK.readout : INK.readoutFaint}/>
               <Text style={[styles.label,isActive && styles.labelActive]} numberOfLines={1}>
                 {tab.label}
@@ -192,18 +292,20 @@ const styles=StyleSheet.create({
     borderTopWidth:SHAPE.border,
     borderTopColor:INK.hairline
   },
-  barRule:{position:"absolute",top:0,left:0,right:0,alignItems:"center",opacity:0.85},
+  barRule:{position:"absolute",top:0,left:0,right:0,opacity:0.9},
+  // THE DETENT. A selector on an instrument sits IN a notch cut into its
+  // scale, so this is a solid block seated against the rule -- not a floating
+  // underline hovering near it. It is the width of one destination and it
+  // travels between them.
+  detent:{position:"absolute",top:0,left:0,height:9,alignItems:"center",justifyContent:"flex-start"},
+  detentMark:{width:34,height:3,backgroundColor:INK.readout},
   // 44px is the tap-target floor even where the visible target is smaller.
-  tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:9},
-  // WHERE YOU ARE IS NOT A STATE A PLACE IS IN. The active tab is never a
-  // state-ink fill: the readout brightens (icon and label to INK.readout) and
-  // this indicator steps up to hairlineStrong. Colour is still not the only
-  // carrier -- accessibilityState above says it in words.
-  marker:{
-    position:"absolute",top:0,height:3,width:30,
-    backgroundColor:"transparent"
-  },
-  markerActive:{backgroundColor:INK.readoutSoft},
+  tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:13},
+  // WHERE YOU ARE IS NOT A STATE A PLACE IS IN. The active destination is
+  // never a state-ink fill: the readout brightens (icon and label to
+  // INK.readout) and the detent above seats itself on that graduation. Colour
+  // is still not the only carrier -- accessibilityState says it in words, and
+  // the detent says it in position.
   // Mono, uppercase, wide-tracked. These name destinations the app defines,
   // not sentences a person wrote, so they take the data face like every other
   // system label in the instrument.
