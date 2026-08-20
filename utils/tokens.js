@@ -1,191 +1,159 @@
-// XPLORER — FIELD INSTRUMENT
+// XPLORER — THE RISO INSTRUMENT
 //
-// The design system chosen by the DesignLab tournament (de With's "instrument"
-// concept, with Meng To's frosted-glass map pins grafted on). It SUPERSEDES the
-// riso-print system that used to live here and in docs/design-system.md.
+// Every value in this file is transcribed from the artifact the product owner
+// chose at the end of the UI tournament:
 //
-// THE IDEA, IN ONE SENTENCE
-// Xplorer is a precision field instrument for reading your local area: a calm
-// dark housing so the map and its readings are the only lit things on screen,
-// hairline etched rules instead of printed borders, and measured data set in
-// mono because an instrument is read, not just looked at.
+//   runs/the-app/2026-08-17T02-09-27-650Z/rounds/ui/blend-dewith-mengto-pins
 //
-// WHAT CHANGED FROM THE OLD SYSTEM, AND WHY
-// The riso system was warm paper, flat inks, 2px black borders on everything and
-// hard 3px offset shadows -- a printed flyer. It was coherent, but it made every
-// surface shout equally and left no room for "this reading is live". The
-// instrument inverts that: the housing recedes to near-black, borders drop to a
-// 1px etched hairline, elevation comes from layered surface tones rather than
-// print offset, and saturated colour is spent only on state -- what a place IS,
-// and whether something is happening there right now.
+// That entry's own thesis, in its own words: "The current riso-print system,
+// EVOLVED into an instrument: the calm three-ink print language stays the floor
+// everywhere, while the camera and map -- the app's two genuinely technical
+// surfaces -- gain tick-mark dials, focus reticles and layer trays drawn in the
+// same disciplined ink, so expert control reads as mechanically trustworthy
+// rather than bolted on."
 //
-// COMPATIBILITY
-// The INK export keeps every key the old palette had, so no import breaks while
-// screens migrate. Those old keys now carry instrument values (paper is dark,
-// ink is the light readout). New, semantically honest names sit alongside them
-// -- prefer INK.exists over INK.blue, INK.hairline over INK.hair in new code.
+// READ THAT AGAIN BEFORE CHANGING ANYTHING HERE.
 //
-// THE ONE RULE WORTH KEEPING FROM BEFORE
-// Saturated colour means something. exists/scheduled/offer say what state a
-// PLACE is in and appear on the map. agree/dispute are a manager's two answers
-// to a review and appear nowhere near the map. The heat ramp says how many
-// PEOPLE are posting, and lives on exactly one layer. Never spend these
-// decoratively -- a nice heading is not a state.
+// The print language is the FLOOR, not the thing being replaced. Warm paper,
+// flat inks, a real ink border and a hard offset shadow are the design. The
+// instrument is what the camera and the map GAIN on top of it -- dials with
+// tick marks, focus reticles, layer trays -- drawn in the same ink.
+//
+// A previous pass threw the print system away and built a near-black app with
+// cyan and violet, on the reasoning that a redesign must not keep the
+// incumbent's visual language. That reasoning was right in general and wrong
+// here, because the winning entry IS the incumbent's language evolved -- it is
+// what was chosen. Three passes were rejected before anyone opened the artifact
+// and compared. So: the artifact is the specification. Where this file and a
+// memory of the design disagree, open the artifact.
+//
+// THE ONE RULE ABOUT COLOUR
+// Saturated ink means something. blue/pink/yellow say what state a PLACE is in
+// and appear on the map. green/red are a manager's two answers to a review and
+// appear nowhere near it. The heat ramp says how many PEOPLE are posting and
+// lives on exactly one layer. Never spend an ink decoratively.
 
 export const INK = {
-  // ---- Surfaces: the housing -------------------------------------------
-  // Cool graphite, not warm paper. Four steps so depth reads without shadows.
-  ground: "#0F1216",        // app background, map housing
-  panel: "#161B22",         // cards, sheets, rows
-  panelRaised: "#1E252E",   // nested cards, raised chrome, pressed states
-  inset: "#0B0E12",         // inputs, wells, the viewfinder ground
+  // ---- The print surface -------------------------------------------------
+  // Newsprint, not white, and deliberately unconditional on the viewer's
+  // theme: the artifact commits to one look.
+  paper: "#E7E8E1",        // app background, map ground
+  card: "#F3F3ED",         // cards, sheets, rows, the tab bar
+  ink: "#16181C",          // text, and EVERY border
+  inkSoft: "#63686F",      // secondary text, inactive controls
+  hair: "#C9CBC2",         // the one lighter rule, for dividers inside a card
 
-  // ---- Lines: the etched rule ------------------------------------------
-  // 1px hairlines replace the old 2px ink border. This is the single biggest
-  // visual difference from the print system and the reason the UI reads as
-  // machined rather than stamped.
-  hairline: "#262E38",
-  hairlineStrong: "#38424E",
+  // ---- The three state inks: what a place IS -----------------------------
+  blue: "#2B4BE8",         // a place exists — business, property, park
+  pink: "#FF3D6E",         // something is happening here — session, event, live
+  yellow: "#FFC61A",       // a time-bound offer, expires itself
 
-  // ---- Text: the backlit readout ---------------------------------------
-  readout: "#E8EDF2",       // primary text
-  readoutSoft: "#97A3B2",   // secondary text, metadata
-  readoutFaint: "#8390A0",  // tertiary, mono captions, disabled
+  // ---- The manager's two answers -----------------------------------------
+  green: "#1E7A4C",        // a manager agreeing with a review
+  red: "#C2321F",          // a manager disputing one
 
-  // ---- State inks: what a place IS -------------------------------------
-  // Cool = static fact, warm = live and temporal. Only these three appear on
-  // the map as pin colour, and never for decoration.
-  exists: "#4CC9E8",        // a place exists — business, property, park
-  scheduled: "#FFAB2E",     // something is happening here — session, event, live
-  offer: "#A78BFA",         // a time-bound offer, expires itself
+  // ---- Map terrain --------------------------------------------------------
+  water: "#BFD1CF",
+  park: "#C2CFAF",
 
-  // ---- Map terrain ------------------------------------------------------
-  // Desaturated near to the housing so the state inks stay the brightest thing
-  // on the map. The dark map style in utils/mapProvider.js is built from these.
-  water: "#10202C",
-  park: "#142218",
-  land: "#12161C",
-  road: "#1C2430",
-
-  // ---- The manager's two answers ---------------------------------------
-  // Exactly two jobs: a manager agreeing with a review, and disputing one. They
-  // appear together or not at all, never on the map, never as generic
-  // success/error. Admin approve/reject uses `exists`, not these.
-  agree: "#3FBF7F",
-  dispute: "#F2555A",
-
-  // ---- Compatibility aliases -------------------------------------------
-  // Old keys, instrument values. Kept so nothing breaks mid-migration.
-  paper: "#0F1216",         // was warm paper; now the housing
-  card: "#161B22",
-  ink: "#E8EDF2",           // was near-black on light; now light on dark
-  inkSoft: "#97A3B2",
-  hair: "#262E38",
-  blue: "#4CC9E8",          // -> exists
-  pink: "#FFAB2E",          // -> scheduled
-  yellow: "#A78BFA",        // -> offer
-  green: "#3FBF7F",         // -> agree
-  red: "#F2555A"            // -> dispute
+  // ---- Semantic aliases ---------------------------------------------------
+  // Added while the app was briefly built on a dark palette; kept because they
+  // say what a colour MEANS rather than what it looks like, which is the better
+  // name. They resolve to the artifact's inks.
+  ground: "#E7E8E1",       // -> paper
+  panel: "#F3F3ED",        // -> card
+  panelRaised: "#FFFFFF",  // a card lifted off the page
+  inset: "#E7E8E1",        // a well cut into a card reads as the paper below it
+  hairline: "#16181C",     // an edge is INK in this system, not a grey line
+  hairlineStrong: "#16181C",
+  readout: "#16181C",      // -> ink
+  readoutSoft: "#63686F",  // -> inkSoft
+  readoutFaint: "#63686F",
+  exists: "#2B4BE8",       // -> blue
+  scheduled: "#FF3D6E",    // -> pink
+  offer: "#FFC61A",        // -> yellow
+  agree: "#1E7A4C",        // -> green
+  dispute: "#C2321F",      // -> red
+  land: "#E7E8E1",
+  road: "#D8D9D2"
 };
 
-// THE HEAT RAMP, AND WHY IT IS STILL NOT ONE OF THE STATE INKS.
-//
-// The owner asked for a continuous wash running cool to hot as more public
-// Moments are posted in an area. That still needs a ramp: flat steps read as
-// categories, and one colour at five opacities cannot show quiet vs packed at a
-// glance. Re-keyed for the dark housing -- the old ramp's mid greens and yellows
-// glowed against dark and pulled attention off the pins.
-//
-// It exists for exactly one layer. Never a pin, a border, text or a background.
-// The state inks say what a PLACE is; this says how many PEOPLE are posting.
-// Different questions, so they never share a colour.
+// THE HEAT RAMP. A continuous wash for public Moment density, cool to hot.
+// One layer only: never a pin, a border, text or a background. The state inks
+// say what a PLACE is; this says how many PEOPLE are posting.
 export const HEAT_RAMP = [
-  { at: 0.0, colour: "#22346E" },  // barely anything
-  { at: 0.3, colour: "#16717F" },  // some
-  { at: 0.5, colour: "#2A9457" },  // busy
-  { at: 0.75, colour: "#C89A22" }, // very busy
-  { at: 1.0, colour: "#E0543A" }   // the hottest thing on screen
+  { at: 0.0, colour: "#1D3F8F" },
+  { at: 0.3, colour: "#17A2B8" },
+  { at: 0.5, colour: "#3FBF5F" },
+  { at: 0.75, colour: "#F5B324" },
+  { at: 1.0, colour: "#E8571F" }
 ];
 
-// THE FACES, BY THE NAME THE APP LOADS THEM UNDER.
+// TYPE — the artifact's three faces.
 //
-// React Native matches ONE family name -- a CSS stack means nothing to it -- and
-// on Android a weight is a separate file, not a property. So each weight the
-// design actually uses is loaded under its own name in app/_layout.js and named
-// here, and a style picks the face it wants rather than asking for a weight and
-// hoping the platform synthesises one.
-//
-// Before these were bundled, TYPE.*.family was a CSS stack that every platform
-// quietly fell out of: system-ui for display and body, Menlo or the Android
-// monospace default for data. The mono/sans split is the strongest signal that
-// this app is an instrument, and it was shipping as whatever the device had.
-export const FONT={
-  display:"InterTight-Bold",          // screen titles, place names, stat numerals
-  displaySoft:"InterTight-SemiBold",  // row titles, anything display at body size
-  body:"Inter-Regular",               // everything a person wrote
-  bodyMedium:"Inter-Medium",
-  bodyStrong:"Inter-SemiBold",
-  mono:"JetBrainsMono-Regular",       // everything the app measured
-  monoMedium:"JetBrainsMono-Medium"
+// Archivo for display, Instrument Sans for body, Martian Mono for data. The
+// mono/sans split is the tell that makes the app read as an instrument: if a
+// person wrote it, Instrument Sans. If the app measured it, Martian Mono.
+export const FONT = {
+  display: "Archivo-Bold",
+  displaySoft: "Archivo-SemiBold",
+  body: "InstrumentSans-Regular",
+  bodyMedium: "InstrumentSans-Medium",
+  bodyStrong: "InstrumentSans-SemiBold",
+  mono: "MartianMono-Regular",
+  monoMedium: "MartianMono-Medium"
 };
 
-// What app/_layout.js hands to useFonts(). Kept beside the names so a face can
-// never be referenced under a key that was never loaded.
-export const FONT_FILES={
-  "InterTight-Bold":require("../assets/fonts/InterTight-Bold.ttf"),
-  "InterTight-SemiBold":require("../assets/fonts/InterTight-SemiBold.ttf"),
-  "Inter-Regular":require("../assets/fonts/Inter-Regular.ttf"),
-  "Inter-Medium":require("../assets/fonts/Inter-Medium.ttf"),
-  "Inter-SemiBold":require("../assets/fonts/Inter-SemiBold.ttf"),
-  "JetBrainsMono-Regular":require("../assets/fonts/JetBrainsMono-Regular.ttf"),
-  "JetBrainsMono-Medium":require("../assets/fonts/JetBrainsMono-Medium.ttf")
+export const FONT_FILES = {
+  "Archivo-Bold": require("../assets/fonts/Archivo-Bold.ttf"),
+  "Archivo-SemiBold": require("../assets/fonts/Archivo-SemiBold.ttf"),
+  "InstrumentSans-Regular": require("../assets/fonts/InstrumentSans-Regular.ttf"),
+  "InstrumentSans-Medium": require("../assets/fonts/InstrumentSans-Medium.ttf"),
+  "InstrumentSans-SemiBold": require("../assets/fonts/InstrumentSans-SemiBold.ttf"),
+  "MartianMono-Regular": require("../assets/fonts/MartianMono-Regular.ttf"),
+  "MartianMono-Medium": require("../assets/fonts/MartianMono-Medium.ttf")
 };
 
-// TYPE — three faces, three jobs, same discipline as before, new voices.
-//
-// The mono/sans split is the tell that makes the app feel like an instrument:
-// if a human wrote it, it is Body. If the app measured it, it is Data. That
-// rule survived the redesign because it was the old system's best idea.
 export const TYPE = {
-  display: {
-    family: "InterTight-Bold",
-    tracking: -0.02,
-    sizes: { xl: 30, lg: 22, md: 17, sm: 15 }
-  },
-  body: {
-    family: "Inter-Regular",
-    sizes: { lg: 15, md: 13.5, sm: 12.5 },
-    lineHeight: 1.5
-  },
-  // Everything the system measured: distance, time, counts, status, category,
-  // coordinates. Uppercase, wide tracking, small.
-  data: {
-    family: "JetBrainsMono-Regular",
-    tracking: 0.08,
-    sizes: { lg: 12, md: 10.5, sm: 9.5 }
-  }
+  display: { family: FONT.display, tracking: -0.01, sizes: { xl: 30, lg: 26, md: 18, sm: 15 } },
+  body: { family: FONT.body, sizes: { lg: 14.5, md: 13.5, sm: 12.5 }, lineHeight: 1.5 },
+  // The artifact sets mono at 10.5px with .06em tracking, uppercase.
+  data: { family: FONT.mono, tracking: 0.06, sizes: { lg: 11.5, md: 10.5, sm: 9 } }
 };
 
-// SHAPE — machined, not printed.
+// SHAPE — printed, not machined.
+//
+// The border is INK and it is thick: 1.5px on most things, 2px on the ones that
+// carry weight (a pin, a button, the tab bar's top edge, a sheet). Elevation is
+// a HARD OFFSET SHADOW in ink -- the print register -- never a soft blur.
 export const SHAPE = {
-  radius: { control: 6, card: 10, sheet: 14, pill: 999, pin: 999 },
-  // One hairline, everywhere. The old system's 2px ink border is gone.
-  border: 1,
-  // Elevation is layering plus a 1px top highlight, like a bevelled panel edge.
-  // No hard offset shadow -- that belonged to the print system.
-  edgeHighlight: "rgba(255,255,255,0.06)",
+  radius: { control: 9, card: 14, sheet: 20, pill: 999, pin: 999 },
+  border: 1.5,
+  borderStrong: 2,
   shadow: {
-    // Reserved for genuinely floating things (sheets, the Create action).
-    floating: { shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 }
+    // 3px 3px 0 ink, and its smaller sibling. Written as React Native shadow
+    // props AND kept as the raw offset, because a hard shadow needs
+    // shadowRadius:0 and full opacity to stay a print register rather than
+    // becoming a blur.
+    hard: { shadowColor: "#16181C", shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 3, height: 3 }, elevation: 0 },
+    hardSm: { shadowColor: "#16181C", shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 2, height: 2 }, elevation: 0 },
+    // The one genuinely floating thing: the map sheet over the map.
+    floating: { shadowColor: "#16181C", shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: -2 }, elevation: 0 }
   },
-  focusRing: { width: 2, color: "#4CC9E8", offset: 2 },
-  tapTarget: 44
+  // Kept for the kit's bevel highlight; on paper there is no bevel, so it is
+  // transparent rather than a white line nobody asked for.
+  edgeHighlight: "transparent",
+  focusRing: { width: 2, color: "#2B4BE8", offset: 2 },
+  tapTarget: 44,
+  // The pin, transcribed exactly: 34px, 2px ink border, the state ink at 82%
+  // over a real blur so the map reads through it.
+  pin: { size: 34, border: 2, fillOpacity: 0.82, blur: 7 }
 };
 
-// MOTION — precise and damped. An instrument responds; it does not perform.
+// MOTION — the artifact's own timings.
 export const MOTION = {
-  instant: 90,    // press feedback, toggles
-  standard: 140,  // most transitions
-  sheet: 320,     // the map sheet's snap, spring-eased
-  easing: "cubic-bezier(.2,.8,.2,1)"
+  instant: 90,
+  standard: 180,   // .18s, the pin's press transition
+  sheet: 320,      // .32s, the sheet's snap
+  easing: "cubic-bezier(.2,.9,.3,1)"
 };

@@ -1,230 +1,192 @@
-# Design system — Field Instrument
+# Design system — The riso instrument
 
-> **Superseded the riso-print system on 2026-08-17.** This document is the
-> output of the DesignLab tournament: the "instrument" concept (de With) with
-> frosted-glass map pins (Meng To), chosen by the product owner. The previous
-> riso system — warm paper, flat inks, 2px black borders, hard offset shadows —
-> is prior art. It is not a fallback, and nothing in this app should be styled
-> back toward it. If you find older guidance that disagrees with this file,
-> this file wins.
+> **This document is a transcription, not an interpretation.** Every value below
+> is read out of the artifact the product owner chose at the end of the UI
+> tournament:
+> `runs/the-app/2026-08-17T02-09-27-650Z/rounds/ui/blend-dewith-mengto-pins/artifact.html`
+> Where this file and a memory of the design disagree, **open the artifact.**
 
-The look is a **precision field instrument**: a calm dark housing, so the map
-and its readings are the only lit things on screen. Hairline etched rules
-instead of printed borders. Measured data set in mono, because an instrument is
-read, not just looked at.
+The winning entry's own thesis, in its own words:
 
-One sentence to hold onto: **the housing recedes, the readings glow.**
+> The current riso-print system, **evolved** into an instrument: the calm
+> three-ink print language **stays the floor everywhere**, while the camera and
+> the map — the app's two genuinely technical surfaces — gain tick-mark dials,
+> focus reticles and layer trays drawn in the same disciplined ink, so expert
+> control reads as mechanically trustworthy rather than bolted on.
 
-## Why this replaced the print system
+Read that twice before changing anything here.
 
-The riso system was coherent, and its best idea survives here (see Type). But it
-made every surface shout equally — a 2px black border and a hard offset shadow
-on every card, chip and pin — which left no visual room for *this reading is
-live right now*. That is the one thing a local-discovery app most needs to say.
+**The print language is the floor, not the thing being replaced.** Warm paper,
+flat inks, a real ink border and a hard offset shadow *are* the design. The
+instrument is what the camera and the map **gain on top of it** — dials with
+tick marks, focus reticles, layer trays — drawn in the same ink.
 
-The instrument inverts it. The housing drops to near-black and holds no
-decoration. Borders become a 1px hairline. Elevation comes from layered surface
-tones, not print offset. Saturated colour is spent only on state.
+## Why this document says that so loudly
+
+An earlier pass threw the print system away and built a near-black app with
+cyan, amber and violet, reasoning that a redesign must not preserve the
+incumbent's visual language. That reasoning is right in general and was wrong
+here, because **the winning entry is the incumbent's language evolved** — that
+is what was chosen and why it won.
+
+It then became self-reinforcing: this document was rewritten to declare riso
+"superseded", a dark component kit was built, and a verification gate was
+written that counted riso colours as *incumbent pixels* and failed on them. For
+three passes the tooling policed the wrong design and reported "zero incumbent
+pixels" as proof of success. Nobody opened the artifact and compared until the
+product owner had rejected the work three times.
+
+So: the artifact is the specification. Not a summary of it, not this file.
 
 ## Colour
 
-Never introduce a colour outside this list. If something needs a new colour, the
-design is wrong. (That rule was right in the old system; only its subject
-changed.)
+Fixed, and deliberately unconditional on the viewer's theme — the artifact
+commits to one look: newsprint.
 
-### Surfaces — the housing
-
-| Token | Hex | Used for |
-|---|---|---|
-| `ground` | `#0F1216` | App background, map housing |
-| `panel` | `#161B22` | Cards, sheets, rows |
-| `panelRaised` | `#1E252E` | Nested cards, raised chrome, pressed states |
-| `inset` | `#0B0E12` | Inputs, wells, the camera viewfinder ground |
-
-Four steps, so depth reads without a single shadow.
-
-### Lines — the etched rule
+### The print surface
 
 | Token | Hex | Used for |
 |---|---|---|
-| `hairline` | `#262E38` | Every card, chip, row, control edge — at **1px** |
-| `hairlineStrong` | `#38424E` | Emphasis, active control edge, dial tracks |
+| `paper` | `#E7E8E1` | App background, map ground |
+| `card` | `#F3F3ED` | Cards, sheets, rows, the tab bar |
+| `ink` | `#16181C` | Text, and **every border** |
+| `inkSoft` | `#63686F` | Secondary text, inactive controls |
+| `hair` | `#C9CBC2` | The one lighter rule, for dividers *inside* a card |
 
-**1px, not 2px.** This is the single biggest visual difference from the print
-system, and the reason the UI reads as machined rather than stamped. A 2px
-border anywhere is a bug.
+An edge in this system is **ink**, not a grey line. That is the single biggest
+difference from a conventional dark UI and the reason the app reads as printed.
 
-### Text — the backlit readout
-
-| Token | Hex | Used for |
-|---|---|---|
-| `readout` | `#E8EDF2` | Primary text |
-| `readoutSoft` | `#97A3B2` | Secondary text, metadata |
-| `readoutFaint` | `#8390A0` | Tertiary, mono captions, disabled |
-
-Slightly cool white, never pure `#FFF` — an instrument's readout is lit, not
-blown out.
-
-### State inks — what a place IS
+### The three state inks — what a place IS
 
 | Token | Hex | Meaning |
 |---|---|---|
-| `exists` | `#4CC9E8` | A place exists — business, property, park |
-| `scheduled` | `#FFAB2E` | Something is happening here — club session, event, live check-in |
-| `offer` | `#A78BFA` | A time-bound offer. Always expires itself |
+| `blue` | `#2B4BE8` | A place exists — business, property, park |
+| `pink` | `#FF3D6E` | Something is happening here — session, event, live |
+| `yellow` | `#FFC61A` | A time-bound offer. Always expires itself |
 
-**Cool means a static fact, warm means live and temporal.** That is the whole
-logic, and it is why `scheduled` is the warmest thing on the map.
-
-These three are the only saturated colours that appear on the map, and they are
-never decorative — not for a nice heading, not for a hover tint, not for a brand
-flourish. An active tab is a place you are, not a state a place is in, so the
-navigation uses none of them as fill.
-
-### Map terrain
-
-| Token | Hex | Used for |
-|---|---|---|
-| `land` | `#12161C` | Map land |
-| `water` | `#10202C` | Water |
-| `park` | `#142218` | Green space |
-| `road` | `#1C2430` | Roads |
-
-Desaturated and close to the housing, so the state inks stay the brightest thing
-on the map. The dark map style is built from these in `utils/mapProvider.js`.
+These three are the only saturated colours on the map, and they are never
+decorative — not for a heading, not for a hover tint, not for a brand flourish.
 
 ### The manager's two answers
 
 | Token | Hex | Meaning |
 |---|---|---|
-| `agree` | `#3FBF7F` | A manager replying to a review |
-| `dispute` | `#F2555A` | A manager disputing one |
+| `green` | `#1E7A4C` | A manager replying to a review |
+| `red` | `#C2321F` | A manager disputing one |
 
-Exactly two jobs. They appear together or not at all. **Never on the map, never
-as a generic success/error colour, and never for admin approve/reject** — admin
-decisions use `exists` and an outline, because approving a claim is not the same
-act as a manager answering a customer.
+Exactly two jobs. Never on the map, never as a generic success/error colour, and
+never for admin approve/reject — an admin decision uses `blue` and an outline,
+because approving a claim is not the same act as a manager answering a customer.
+
+### Map terrain
+
+| Token | Hex |
+|---|---|
+| `water` | `#BFD1CF` |
+| `park` | `#C2CFAF` |
+| `road` | `#D8D9D2` |
+
+Soft washes on paper, so the inked pins stay the sharpest thing on the map. The
+road tone is the artifact's own page border — the lightest mark that still reads
+as a drawn line on newsprint.
 
 ### The heat ramp
 
 | Token | Hex | Density |
 |---|---|---|
-| `heat-1` | `#22346E` | Barely anything |
-| `heat-2` | `#16717F` | Some |
-| `heat-3` | `#2A9457` | Busy |
-| `heat-4` | `#C89A22` | Very busy |
-| `heat-5` | `#E0543A` | The hottest thing on screen |
+| `heat-1` | `#1D3F8F` | Barely anything |
+| `heat-2` | `#17A2B8` | Some |
+| `heat-3` | `#3FBF5F` | Busy |
+| `heat-4` | `#F5B324` | Very busy |
+| `heat-5` | `#E8571F` | The hottest thing on screen |
 
-A continuous wash for public Moment density. It exists for exactly one layer:
-never a pin, a border, text or a background. Re-keyed for the dark housing — the
-old ramp's mid greens glowed against dark and pulled attention off the pins.
-
-Capped at 55% opacity and faded out as you zoom in, so pins keep their contrast.
-The state inks say what a **place** is; this says how many **people** are
-posting. Different questions, so they never share a colour.
+One layer, never a pin, a border, text or a background. The state inks say what
+a **place** is; this says how many **people** are posting.
 
 ## Type
 
-Three faces, three jobs. Never use one for another's job.
+| Face | Job |
+|---|---|
+| **Archivo** | Display — screen titles, place names, stat numerals |
+| **Instrument Sans** | Body — everything a person wrote |
+| **Martian Mono** | Data — everything the app measured. Uppercase, `0.06em`, 10.5px |
 
-**Inter Tight** — display. Screen titles, place names, buttons, stat numerals.
-`letter-spacing: -0.02em`. Tight and neutral; the instrument's engraved labels.
+**If a human typed it, Instrument Sans. If the app computed it, Martian Mono.**
+That split is what makes the app read as an instrument rather than a page.
 
-**Inter** — body. Everything a person wrote: reviews, descriptions, control
-labels, help text. 12.5–15px, 1.5 line height.
+## Shape — printed, not machined
 
-**JetBrains Mono** — data. Everything the system measured: distance, times,
-counts, status, category, coordinates. Uppercase, `letter-spacing: 0.08em`,
-9.5–12px.
-
-**The mono/sans split is the old system's best idea and it survives unchanged:**
-if a human typed it, it is Inter. If the app computed it, it is JetBrains Mono.
-Do not blur that line — it is what makes the app feel like an instrument rather
-than a page.
-
-## Surfaces and elevation
-
-- Every card, chip, row and control has a **1px `hairline` border**.
-- Radius: 6px controls, 10px cards, 14px sheets, 99px pills, 50% pins.
-- **Elevation is layering, not shadow.** Move up a surface step
-  (`panel` → `panelRaised`) and add a 1px top highlight
-  (`rgba(255,255,255,.06)`) for a bevelled panel edge.
-- A soft ambient shadow is reserved for genuinely floating things — the map
-  sheet, the Create action. **No hard offset shadows.** Those belonged to the
-  print system.
+- **Borders are ink and they are thick.** `1.5px` on most things; `2px` on the
+  ones that carry weight — a pin, a button, the tab bar's top edge, a sheet.
+- **Radius:** 9px controls, 14px cards, 20px sheets, 999px pills, 50% pins.
+- **Elevation is a hard offset shadow in ink** — `3px 3px 0` and its `2px 2px 0`
+  sibling. Never a blur. A blurred shadow is the thing this system is not.
+- **A pressed control slides into its own shadow** (`translate(1.5px, 1.5px)`,
+  shadow removed). That is what a printed block does when you push it.
 
 ## Pins — the signature
 
-A pin is a state, and now also a lens.
+- 34px circle, **2px ink border**, glyph centred.
+- Fill is the state ink at **82% over a real blur** (`blur(7px) saturate(170%)`),
+  so the map reads *through* the pin. This is the Meng To graft, and it is the
+  one place the hard-edged register deliberately softens — the map is where you
+  look through the interface at the world.
+- **Which glyph ink is per-ink, not a rule with one branch.** Blue is dark
+  enough to take white; pink and yellow are not and take ink:
 
-- 34px circle, 1px hairline border, glyph centred.
-- Fill is the state ink at **~82% opacity over a real blur** (`expo-blur`
-  `BlurView` on native), so the map reads *through* the pin instead of being
-  covered by it. This is the Meng To graft, and it is the one place the
-  instrument's hard-edged discipline deliberately softens — the map is where
-  you look *through* the interface at the world.
-- **Cyan** — a place that exists. **Amber** — something scheduled here.
-  **Violet** — an offer running.
-- **Dashed hairline, `panel` fill** — unclaimed. An invitation, not an error.
-- **Overprint** — a place hosting something: a second `scheduled` disc offset
-  `translate(4px, -4px)` behind. `react-native-svg` has no blend mode, so this
-  is an opacity approximation on native; the intent is a doubled reading, two
-  facts about one point.
+  | Fill | Glyph |
+  |---|---|
+  | `blue` | `#FFFFFF` |
+  | `pink` | `ink` |
+  | `yellow` | `ink` |
+  | unclaimed (`card` at 70%, dashed border) | `inkSoft` |
 
-The glass pin is the memorable thing in this design. Everything else stays quiet
-so it lands. Don't add a second signature.
+- **Overprint** — a place hosting something gets a second `pink` disc offset
+  behind it. `react-native-svg` has no blend mode, so native falls back to an
+  opacity approximation; the intent is two facts about one point.
+
+## Navigation
+
+The tab bar is `card` with a **2px ink top border**. Five destinations, each an
+icon over a mono uppercase label at 8.5px / `0.08em`. **The active destination
+is `blue`**, with its label in `ink`.
 
 ## Motion
 
-Precise and damped. An instrument responds; it does not perform.
-
-- 90ms press feedback. 140ms standard transition. 320ms spring for the map
-  sheet's snap between Peek/Half/Full.
+- 90ms press, 180ms standard, 320ms for the sheet's snap between Peek/Half/Full.
 - No parallax, no ambient animation, no staggered reveals.
-- The one exception: a slow pulse on a genuinely live reading (an active
-  check-in, a session happening now). Liveness is the app's whole point, so it
-  gets the only moving thing on screen.
-- `prefers-reduced-motion` / reduce-motion disables all of it.
+- One exception: a slow pulse on a genuinely live reading. Liveness is the app's
+  whole point, so it gets the only moving thing on screen.
+- `prefers-reduced-motion` disables all of it.
 
 ## Copy
 
 - Explorers, not users. Managers, not owners. Sessions for clubs, events for
-  dated things. Full lexicon is in RULES.md — binding on UI copy too.
+  dated things. The full lexicon is in `RULES.md` and binds UI copy too.
 - Sentence case everywhere except mono data labels.
-- Buttons say what happens: "Save this club", not "Submit". The button name
-  survives into the confirmation.
-- Empty states are instructions, not moods. "Nobody manages this yet. Scan the
-  QR inside to claim it." — not "Nothing here."
+- Buttons say what happens: "Save this club", not "Submit".
+- Empty states are instructions, not moods.
 - Privacy controls read as sentences about people: "Nobody can see where you
   are." Never "Location sharing: disabled."
-- No exclamation marks. No "Oops". Errors say what happened and what to do next.
+- No exclamation marks. No "Oops".
 
 ## Accessibility floor
 
-- Visible focus ring: 2px `exists`, 2px offset.
-- **Which text on which ground.** The state inks are bright colours on a dark
-  housing, which inverts the old system's rule: they take **dark** text, never
-  white.
+- Visible focus ring: 2px `blue`, 2px offset.
+- **Which text on which ground:**
 
-  | ground | light `readout` text | dark `ground` text |
+  | Ground | `ink` text | `paper`/white text |
   | --- | --- | --- |
-  | `ground` `#0F1216` | ✅ | ❌ |
-  | `panel` `#161B22` | ✅ | ❌ |
-  | `panelRaised` `#1E252E` | ✅ | ❌ |
-  | `exists` `#4CC9E8` | ❌ | ✅ |
-  | `scheduled` `#FFAB2E` | ❌ | ✅ |
-  | `offer` `#A78BFA` | ❌ | ✅ |
-  | `agree` `#3FBF7F` | ❌ | ✅ |
-  | `dispute` `#F2555A` | ❌ | ✅ |
+  | `paper` `#E7E8E1` | ✅ | ❌ |
+  | `card` `#F3F3ED` | ✅ | ❌ |
+  | `blue` `#2B4BE8` | ❌ | ✅ |
+  | `pink` `#FF3D6E` | ✅ | ❌ |
+  | `yellow` `#FFC61A` | ✅ | ❌ |
+  | `green` `#1E7A4C` | ❌ | ✅ |
+  | `red` `#C2321F` | ❌ | ✅ |
 
-  So: `readout` on every housing surface; dark `ground` text on every filled
-  state colour.
-- A filled state colour is not the only way to show selection. A selected chip
-  may mark itself with a `hairlineStrong` edge and a `panelRaised` fill, which
-  avoids restyling every label inside it — the failure mode where a fill lands
-  and the labels inside it become unreadable.
-- `scripts/verify-contrast.cjs` checks this on every push. It reads the real hex
-  values out of `utils/tokens.js` and does the sums. Fix the pair, not the gate.
+- `scripts/verify-contrast.cjs` checks this on every push against the real hex
+  values in `utils/tokens.js`. Fix the pair, not the gate.
 - Every pin needs a text label available to screen readers; colour is never the
   only carrier of state.
 - Minimum tap target 44px even where the visible pin is 34px.

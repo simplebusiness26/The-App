@@ -5,7 +5,7 @@ import {router,usePathname} from "expo-router";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import {TABS,activeTabKey,isTabBarHidden,withNext} from "../utils/navigation";
 import {INK,TYPE,SHAPE,MOTION} from "../utils/tokens";
-import {Glyph,MONO} from "./instrument";
+import {Glyph,MONO,MONO_MEDIUM} from "./instrument";
 import {signedIn} from "../utils/permissions";
 
 // The navigation shell, redesigned. Five flat tabs, none raised -- Map ·
@@ -88,7 +88,7 @@ function NavigationScale({width,count}){
             key={index}
             x1={mark.x} x2={mark.x}
             y1={0} y2={mark.major?8:4}
-            stroke={mark.major?INK.hairlineStrong:INK.hairline}
+            stroke={mark.major?INK.ink:INK.hair}
             strokeWidth={1}
           />
         ))}
@@ -247,9 +247,11 @@ const styles=StyleSheet.create({
     alignItems:"flex-start",
     // Chrome sits one step above the housing, separated by an etched hairline
     // rather than the old 2px print register.
-    backgroundColor:INK.panel,
-    borderTopWidth:SHAPE.border,
-    borderTopColor:INK.hairline
+    // The artifact's .tabbar: card stock with a 2px INK top border. Not a
+    // hairline -- the bar is a printed edge across the bottom of the page.
+    backgroundColor:INK.card,
+    borderTopWidth:SHAPE.borderStrong,
+    borderTopColor:INK.ink
   },
   barRule:{position:"absolute",top:0,left:0,right:0,opacity:0.9},
   // THE DETENT. A selector on an instrument sits IN a notch cut into its
@@ -257,7 +259,7 @@ const styles=StyleSheet.create({
   // underline hovering near it. It is the width of one destination and it
   // travels between them.
   detent:{position:"absolute",top:0,left:0,height:9,alignItems:"center",justifyContent:"flex-start"},
-  detentMark:{width:34,height:3,backgroundColor:INK.readout},
+  detentMark:{width:34,height:3,backgroundColor:INK.blue},
   // 44px is the tap-target floor even where the visible target is smaller.
   tab:{flex:1,minHeight:52,alignItems:"center",justifyContent:"flex-start",paddingTop:13},
   // WHERE YOU ARE IS NOT A STATE A PLACE IS IN. The active destination is
@@ -269,8 +271,10 @@ const styles=StyleSheet.create({
   // not sentences a person wrote, so they take the data face like every other
   // system label in the instrument.
   label:{
-    fontFamily:MONO,fontSize:9,marginTop:5,color:INK.readoutFaint,
+    fontFamily:MONO,fontSize:8.5,marginTop:5,color:INK.inkSoft,
     textAlign:"center",paddingHorizontal:1,textTransform:"uppercase",letterSpacing:0.7
   },
-  labelActive:{color:INK.readout,fontWeight:"600"}
+  // The artifact marks the active destination in BLUE -- .tab.active
+  // {color:var(--ink-blue)} -- with the label itself back in ink.
+  labelActive:{color:INK.ink,fontFamily:MONO_MEDIUM}
 });

@@ -382,22 +382,25 @@ const styles=StyleSheet.create({
   },
   dialLabelActive:{color:INK.scheduled},
 
+  // THE PRINTED CARD. Card stock, a real ink border, and a hard offset shadow
+  // -- the print register, not a blur. overflow stays visible so the shadow is
+  // not clipped off by the card's own bounds.
   panel:{
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.card,overflow:"hidden"
+    backgroundColor:INK.card,borderWidth:SHAPE.border,borderColor:INK.ink,
+    borderRadius:SHAPE.radius.card,
+    ...SHAPE.shadow.hardSm
   },
   panelRaised:{backgroundColor:INK.panelRaised},
-  panelEdge:{
-    position:"absolute",top:0,left:0,right:0,height:1,
-    backgroundColor:SHAPE.edgeHighlight
-  },
+  // There is no bevel on paper. Kept as a no-op so callers do not have to
+  // learn a new shape.
+  panelEdge:{position:"absolute",top:0,left:0,right:0,height:0},
 
   sectionRule:{flexDirection:"row",alignItems:"center",gap:10,marginTop:22,marginBottom:10},
   sectionLabel:{
     color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
     textTransform:"uppercase",letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md
   },
-  sectionLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  sectionLine:{flex:1,height:1,backgroundColor:INK.hair},
   sectionMeta:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm},
 
   stateEdge:{
@@ -688,8 +691,12 @@ export function Segmented({items,active,onChange,scroll=false}){
 // table in docs/design-system.md is not optional and the gate checks it.
 export function Action({label,onPress,kind="secondary",glyph,disabled,loading,style,accessibilityLabel,compact}){
   const filled=kind==="primary"||kind==="danger";
-  const fill=kind==="primary"?INK.exists:kind==="danger"?INK.dispute:null;
-  const text=filled?INK.ground:kind==="quiet"?INK.readoutSoft:INK.readout;
+  const fill=kind==="primary"?INK.blue:kind==="danger"?INK.red:null;
+  // WHICH TEXT ON A FILLED INK. On paper the inks are saturated and dark
+  // enough to take paper-coloured type -- blue and red both do. The artifact
+  // prints white on ink-blue and keeps ink on yellow; docs/design-system.md
+  // carries the full table and scripts/verify-contrast.cjs checks it.
+  const text=filled?INK.paper:kind==="quiet"?INK.inkSoft:INK.ink;
   return(
     <Pressable
       style={({pressed})=>[
@@ -936,7 +943,7 @@ export function Toggle({label,sub,hint,value,onChange,onPress,disabled,glyph,acc
           then pick one of those" has one column of marks rather than two
           different alignments. */}
       <View style={[kit.toggleBox,value&&kit.toggleBoxOn]}>
-        {value?<Glyph name="check" size={13} colour={INK.readout} weight={2}/>:null}
+        {value?<Glyph name="check" size={13} colour={INK.paper} weight={2}/>:null}
       </View>
       {glyph?<View style={kit.rowGlyph}><Glyph name={glyph} size={17} colour={INK.readoutSoft}/></View>:null}
       <View style={kit.toggleBody}>
@@ -1103,22 +1110,26 @@ const kit=StyleSheet.create({
   },
   titleMeta:{color:INK.readoutSoft,fontFamily:FONT.body,fontSize:TYPE.body.sizes.md,marginTop:5,lineHeight:TYPE.body.sizes.md*1.5},
   titleRule:{flexDirection:"row",alignItems:"flex-end",marginTop:12,marginBottom:4},
-  titleRuleLine:{flex:1,height:1,backgroundColor:INK.hairline,marginBottom:0},
+  titleRuleLine:{flex:1,height:1,backgroundColor:INK.hair,marginBottom:0},
 
+  // A PILL, AND SELECTION FILLS WITH INK.
+  // The artifact's .chip is a pill with an ink border on card, and .chip.active
+  // is solid ink with paper-coloured type. On a print surface a filled chip is
+  // legible and obvious; the surface-step trick belonged to the dark build.
   chip:{
-    flexDirection:"row",alignItems:"center",gap:6,
-    minHeight:32,paddingHorizontal:11,paddingVertical:6,
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.control
+    flexDirection:"row",alignItems:"center",gap:5,
+    minHeight:34,paddingHorizontal:13,paddingVertical:8,
+    backgroundColor:INK.card,borderWidth:SHAPE.border,borderColor:INK.ink,
+    borderRadius:SHAPE.radius.pill
   },
-  chipSelected:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  chipSelected:{backgroundColor:INK.ink,borderColor:INK.ink},
   chipDisabled:{opacity:0.45},
   chipDot:{width:6,height:6,borderRadius:3},
   chipText:{
-    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
-    textTransform:"uppercase",letterSpacing:0.7
+    color:INK.ink,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    textTransform:"uppercase",letterSpacing:TYPE.data.tracking*TYPE.data.sizes.md
   },
-  chipTextSelected:{color:INK.readout,fontFamily:MONO_MEDIUM},
+  chipTextSelected:{color:INK.paper,fontFamily:MONO_MEDIUM},
   chipTextDisabled:{color:INK.readoutFaint},
 
   segmentBar:{flexDirection:"row",alignItems:"stretch",paddingHorizontal:12,gap:2},
@@ -1136,18 +1147,24 @@ const kit=StyleSheet.create({
   segmentDetent:{height:2,alignSelf:"stretch",minWidth:18,backgroundColor:INK.hairline},
   segmentDetentActive:{backgroundColor:INK.hairlineStrong,height:2},
 
+  // The artifact's .btn: a 2px ink border, the 9px control radius, and the
+  // small hard shadow. Every button in this system is a printed block.
   action:{
-    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:8,
-    minHeight:SHAPE.tapTarget,paddingHorizontal:16,
-    borderRadius:SHAPE.radius.control,borderWidth:SHAPE.border
+    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:6,
+    minHeight:SHAPE.tapTarget,paddingHorizontal:18,
+    borderRadius:SHAPE.radius.control,borderWidth:SHAPE.borderStrong,
+    borderColor:INK.ink,
+    ...SHAPE.shadow.hardSm
   },
   // Compact keeps the 44px tap floor -- it narrows the padding, never the
   // target. A button small enough to miss is not a smaller button, it is a
   // broken one.
   actionCompact:{paddingHorizontal:11,gap:6},
-  actionSecondary:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
-  actionQuiet:{backgroundColor:"transparent",borderColor:INK.hairline},
-  actionPressed:{opacity:0.78},
+  actionSecondary:{backgroundColor:INK.card,borderColor:INK.ink},
+  actionQuiet:{backgroundColor:"transparent",borderColor:INK.ink},
+  // Pressed, the block slides into its own shadow -- the artifact's
+  // .chip-icon:active. That is what a printed control does when you push it.
+  actionPressed:{transform:[{translateX:1.5},{translateY:1.5}],shadowOpacity:0},
   actionDisabled:{opacity:0.45},
   actionText:{fontFamily:MONO_MEDIUM,fontSize:TYPE.data.sizes.lg,textTransform:"uppercase",letterSpacing:1},
   actionTextCompact:{fontSize:TYPE.data.sizes.md,letterSpacing:0.8},
@@ -1155,13 +1172,17 @@ const kit=StyleSheet.create({
   rowEdge:{marginBottom:8},
   row:{flexDirection:"row",alignItems:"center",gap:11,paddingHorizontal:13,paddingVertical:12,minHeight:56},
   rowStandalone:{
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.card,marginBottom:8
+    backgroundColor:INK.card,borderWidth:SHAPE.border,borderColor:INK.ink,
+    borderRadius:SHAPE.radius.card,marginBottom:10,
+    ...SHAPE.shadow.hardSm
   },
   rowNested:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  // The artifact's .chip-icon: a 34px ink-bordered disc with its own small
+  // hard shadow. Every leading mark in a list is one of these.
   rowGlyph:{
-    width:34,height:34,borderRadius:SHAPE.radius.control,alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+    width:34,height:34,borderRadius:SHAPE.radius.pill,alignItems:"center",justifyContent:"center",
+    backgroundColor:INK.card,borderWidth:SHAPE.border,borderColor:INK.ink,
+    shadowColor:INK.ink,shadowOpacity:1,shadowRadius:0,shadowOffset:{width:1.5,height:1.5}
   },
   rowBody:{flex:1,minWidth:0},
   rowTitle:{color:INK.readout,fontFamily:FONT.displaySoft,fontSize:TYPE.display.sizes.sm,letterSpacing:-0.2},
@@ -1183,10 +1204,10 @@ const kit=StyleSheet.create({
   fieldLabel:{color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,textTransform:"uppercase",letterSpacing:0.9},
   fieldRequired:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.9},
   fieldWell:{
-    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    backgroundColor:INK.card,borderWidth:SHAPE.border,borderColor:INK.ink,
     borderRadius:SHAPE.radius.control,overflow:"hidden"
   },
-  fieldWellError:{borderColor:INK.dispute},
+  fieldWellError:{borderColor:INK.red,borderWidth:SHAPE.borderStrong},
   fieldFootRow:{flexDirection:"row",alignItems:"flex-start",gap:10,marginTop:6},
   fieldFootGrow:{flex:1},
   fieldCounter:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:0.5},
@@ -1195,7 +1216,7 @@ const kit=StyleSheet.create({
 
   kv:{flexDirection:"row",alignItems:"center",gap:8,paddingVertical:9},
   kvLabel:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,textTransform:"uppercase",letterSpacing:0.8},
-  kvLine:{flex:1,height:1,backgroundColor:INK.hairline},
+  kvLine:{flex:1,height:1,backgroundColor:INK.hair},
   kvValue:{color:INK.readout,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
   kvStack:{paddingVertical:9,gap:6},
   kvStackHead:{flexDirection:"row",alignItems:"center",gap:8},
@@ -1205,19 +1226,20 @@ const kit=StyleSheet.create({
 
   strip:{flexDirection:"row",alignItems:"stretch",paddingVertical:12},
   stripCell:{flex:1,alignItems:"center",paddingHorizontal:6},
-  stripDivider:{width:1,backgroundColor:INK.hairline,marginVertical:2},
+  stripDivider:{width:1,backgroundColor:INK.hair,marginVertical:2},
 
   frame:{
-    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline,
+    backgroundColor:INK.card,borderWidth:SHAPE.border,borderColor:INK.ink,
     borderRadius:SHAPE.radius.control,overflow:"hidden",alignItems:"center",justifyContent:"center"
   },
 
   counter:{
-    flexDirection:"row",alignItems:"center",gap:6,minHeight:36,
-    paddingHorizontal:11,paddingVertical:7,borderRadius:SHAPE.radius.control,
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline
+    flexDirection:"row",alignItems:"center",gap:5,minHeight:36,
+    paddingHorizontal:12,paddingVertical:8,borderRadius:SHAPE.radius.pill,
+    backgroundColor:INK.card,borderWidth:SHAPE.border,borderColor:INK.ink,
+    shadowColor:INK.ink,shadowOpacity:1,shadowRadius:0,shadowOffset:{width:1.5,height:1.5}
   },
-  counterActed:{backgroundColor:INK.panelRaised,borderColor:INK.hairlineStrong},
+  counterActed:{backgroundColor:INK.ink,borderColor:INK.ink},
   // Compact narrows the padding and never the 36px height -- a control small
   // enough to miss is not a smaller control, it is a broken one.
   counterCompact:{paddingHorizontal:8,gap:5},
@@ -1239,9 +1261,9 @@ const kit=StyleSheet.create({
   toggleBox:{
     width:26,height:26,borderRadius:SHAPE.radius.control,marginTop:1,
     alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+    backgroundColor:INK.card,borderWidth:SHAPE.borderStrong,borderColor:INK.ink
   },
-  toggleBoxOn:{borderColor:INK.readoutSoft},
+  toggleBoxOn:{backgroundColor:INK.ink},
 
   choice:{
     flexDirection:"row",alignItems:"flex-start",gap:11,
@@ -1253,10 +1275,10 @@ const kit=StyleSheet.create({
   choiceMark:{
     width:20,height:20,borderRadius:10,marginTop:2,
     alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.inset,borderWidth:SHAPE.border,borderColor:INK.hairline
+    backgroundColor:INK.card,borderWidth:SHAPE.borderStrong,borderColor:INK.ink
   },
-  choiceMarkOn:{borderColor:INK.readoutSoft},
-  choiceDot:{width:8,height:8,borderRadius:4,backgroundColor:INK.readout},
+  choiceMarkOn:{borderColor:INK.blue},
+  choiceDot:{width:8,height:8,borderRadius:4,backgroundColor:INK.blue},
   counterCountInert:{color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.md,letterSpacing:0.5},
   counterPressed:{opacity:0.78},
   counterDisabled:{opacity:0.45},
@@ -1265,16 +1287,17 @@ const kit=StyleSheet.create({
     color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
     textTransform:"uppercase",letterSpacing:0.7
   },
-  counterCountActed:{color:INK.readout,fontFamily:MONO_MEDIUM},
+  counterCountActed:{color:INK.paper,fontFamily:MONO_MEDIUM},
 
   empty:{alignItems:"center",paddingHorizontal:28,paddingVertical:44,gap:10},
   emptyDial:{
     width:56,height:56,borderRadius:28,alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.panel,borderWidth:SHAPE.border,borderColor:INK.hairline,marginBottom:4
+    backgroundColor:INK.card,borderWidth:SHAPE.borderStrong,borderColor:INK.ink,marginBottom:4,
+    shadowColor:INK.ink,shadowOpacity:1,shadowRadius:0,shadowOffset:{width:2,height:2}
   },
   emptyDialRing:{
     position:"absolute",top:6,left:6,right:6,bottom:6,borderRadius:22,
-    borderWidth:SHAPE.border,borderColor:INK.hairline,opacity:0.6
+    borderWidth:1,borderColor:INK.hair
   },
   emptyTitle:{color:INK.readout,fontFamily:FONT.display,fontSize:TYPE.display.sizes.md,textAlign:"center",letterSpacing:-0.3},
   emptyInstruction:{color:INK.readoutSoft,fontFamily:FONT.body,fontSize:TYPE.body.sizes.md,textAlign:"center",lineHeight:TYPE.body.sizes.md*1.5},

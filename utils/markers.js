@@ -45,9 +45,9 @@ export const MARKER_STATES={
 };
 
 const MARKER_STATE_INK={
-  [MARKER_STATES.EXISTS]:INK.exists,
-  [MARKER_STATES.SCHEDULED]:INK.scheduled,
-  [MARKER_STATES.OFFER]:INK.offer
+  [MARKER_STATES.EXISTS]:INK.blue,
+  [MARKER_STATES.SCHEDULED]:INK.pink,
+  [MARKER_STATES.OFFER]:INK.yellow
 };
 
 const MARKER_STATE_SENTENCE={
@@ -180,8 +180,21 @@ export function glyphPrimitives(name){
 // inks; the product describes four event states. Words carry the difference the
 // colour cannot, which is the accessibility floor's position anyway.
 function buildMarker({glyph,state,typeSentence,claimed,stateSentence,hosting}){
-  const fill=claimed ? MARKER_STATE_INK[state] : INK.panel;
-  const glyphInk=claimed ? INK.ground : INK.readout;
+  const fill=claimed ? MARKER_STATE_INK[state] : INK.card;
+  // WHICH GLYPH INK, TRANSCRIBED FROM THE ARTIFACT.
+  //
+  //   .pin-blue   { background:rgba(43,75,232,.82); color:#fff; }
+  //   .pin-pink   { background:rgba(255,61,110,.82); color:var(--ink); }
+  //   .pin-yellow { background:rgba(255,198,26,.82); color:var(--ink); }
+  //   .pin-dashed { background:rgba(243,243,237,.7); color:var(--ink-soft); }
+  //
+  // Blue is dark enough to take white; pink and yellow are not, and take ink.
+  // This is a per-ink answer, not a rule with one branch -- a previous pass
+  // collapsed it to "all filled inks take dark text", which is right on a dark
+  // housing and wrong on this one.
+  const glyphInk=!claimed
+    ? INK.inkSoft
+    : state===MARKER_STATES.EXISTS ? "#FFFFFF" : INK.ink;
 
   return {
     glyph,
@@ -193,7 +206,9 @@ function buildMarker({glyph,state,typeSentence,claimed,stateSentence,hosting}){
     // white ring. A claimed pin's edge is the housing itself, which reads as
     // the pin being cut out of the map; an unclaimed one keeps the dashed
     // hairline the design system asks for.
-    border:claimed ? INK.ground : INK.hairlineStrong,
+    // Every pin carries the same 2px ink border, claimed or not; the dashed
+    // one differs only in its border STYLE. The artifact draws no other edge.
+    border:INK.ink,
     borderStyle:claimed ? "solid" : "dashed",
     // design-system.md's overprint: "a place hosting something". It is a second
     // channel rather than a fourth ink, which is how the map can show "happening
@@ -393,9 +408,9 @@ export function markerForMoment(){
 // paper casing did on the light one, with the ground swapped.
 export function routeAppearance(){
   return {
-    colour:INK.readout,
+    colour:INK.ink,
     width:5,
-    casingColour:INK.ground,
+    casingColour:INK.paper,
     casingWidth:9,
     label:"Your route"
   };
@@ -414,20 +429,20 @@ export function routeAppearance(){
 // only for an Event that is actually happening. It is a decision, not drift.
 export function bubbleAppearance(){
   return {
-    card:INK.panel,
-    ink:INK.readout,
-    blank:INK.hairline
+    card:INK.card,
+    ink:INK.ink,
+    blank:INK.hair
   };
 }
 
 export function celebrationPieces(){
   return [
-    {x:-26,y:-30,spin:"120deg",colour:INK.exists},
-    {x:-9,y:-40,spin:"-90deg",colour:INK.scheduled},
-    {x:10,y:-38,spin:"200deg",colour:INK.offer},
-    {x:26,y:-26,spin:"-140deg",colour:INK.exists},
-    {x:-18,y:-16,spin:"70deg",colour:INK.offer},
-    {x:18,y:-14,spin:"-40deg",colour:INK.scheduled}
+    {x:-26,y:-30,spin:"120deg",colour:INK.blue},
+    {x:-9,y:-40,spin:"-90deg",colour:INK.pink},
+    {x:10,y:-38,spin:"200deg",colour:INK.yellow},
+    {x:26,y:-26,spin:"-140deg",colour:INK.blue},
+    {x:-18,y:-16,spin:"70deg",colour:INK.yellow},
+    {x:18,y:-14,spin:"-40deg",colour:INK.pink}
   ];
 }
 
@@ -444,9 +459,9 @@ export function clusterAppearance(count){
   const many=Math.max(0,Number(count) || 0);
 
   return{
-    fill:INK.panel,
-    border:INK.hairlineStrong,
-    ink:INK.readout,
+    fill:INK.card,
+    border:INK.ink,
+    ink:INK.ink,
     // 38px to 60px across. Big enough to read a two-digit number, never big
     // enough to be mistaken for the heat wash underneath it.
     size:Math.min(60,38+Math.min(many,40)*0.6),

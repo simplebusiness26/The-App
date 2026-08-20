@@ -52,25 +52,27 @@ const HOST="https://tiles.openfreemap.org";
 // THE DARK MAP IS OURS, THE TILES ARE STILL THEIRS.
 //
 // The Field Instrument system (docs/design-system.md) needs a dark map: the
-// housing recedes so the readings glow. OpenFreeMap publishes only light styles
-// -- positron, liberty, bright -- so none of them can be the default any more.
+// The winning artifact's map is PAPER: warm newsprint ground, soft water and
+// park washes, ink-bordered pins on top. OpenFreeMap publishes light styles --
+// positron, liberty, bright -- but none of them is this paper, so the default
+// is authored here.
 //
 // A MapLibre style is only paint over a vector tile source, and the style spec
-// is ours to author. assets/map/instrument-dark.json is derived from positron's
-// own 55-layer OpenMapTiles schema with terrain recoloured to the instrument's
-// land/water/park/road tokens, pointing at the SAME openmaptiles vector source,
-// sprite and glyphs the provider serves. So we get a dark base without
-// self-hosting tiles, and their schema keeps working.
+// is ours to author. assets/map/riso-paper.json is derived from positron's own
+// 55-layer OpenMapTiles schema with the terrain recoloured to the artifact's
+// paper / water / park / road values, pointing at the SAME openmaptiles vector
+// source, sprite and glyphs the provider serves. So the app gets its own paper
+// base without self-hosting tiles, and their schema keeps working.
 //
 // Nothing about the licence changes: the data is still OpenStreetMap's and the
 // attribution obligation below is untouched.
 //
 // The provider's light styles stay listed as a fallback if the local style ever
 // fails to parse.
-import instrumentDark from "../assets/map/instrument-dark.json";
+import risoPaper from "../assets/map/riso-paper.json";
 
 export const MAP_STYLES={
-  instrument:instrumentDark,
+  instrument:risoPaper,
   quiet:`${HOST}/styles/positron`,
   standard:`${HOST}/styles/liberty`,
   bright:`${HOST}/styles/bright`
@@ -83,7 +85,7 @@ export const DEFAULT_STYLE=MAP_STYLES.instrument;
 // MAP_STYLES holds four entries; a switch on the map offers three, because a
 // three-way selector a person can read at a glance is worth more than a fourth
 // option nobody asked for. `instrument` is first and is the default -- it is
-// the winning design's own map and the reason assets/map/instrument-dark.json
+// the winning design's own map and the reason assets/map/riso-paper.json
 // exists. The other two are the provider's real published styles, so this is a
 // choice between three maps that genuinely render differently, not three names
 // for one.

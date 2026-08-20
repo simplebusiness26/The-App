@@ -38,23 +38,31 @@ const BASE=process.env.APP_BASE||"http://127.0.0.1:8081";
 const PROJECT_REF=process.env.SUPABASE_REF||"yzpthslwsvesgndzdqai";
 const VIEWPORT={width:412,height:915};
 
-// The Field Instrument palette, as the pixels a screenshot should contain.
+// THE RISO INSTRUMENT PALETTE — the pixels a screenshot should contain.
+// Transcribed from the chosen artifact's :root block, same as utils/tokens.js.
 const PALETTE={
-  ground:[0x0F,0x12,0x16], panel:[0x16,0x1B,0x22], panelRaised:[0x1E,0x25,0x2E],
-  inset:[0x0B,0x0E,0x12], hairline:[0x26,0x2E,0x38], hairlineStrong:[0x38,0x42,0x4E],
-  readout:[0xE8,0xED,0xF2], readoutSoft:[0x97,0xA3,0xB2], readoutFaint:[0x83,0x90,0xA0],
-  exists:[0x4C,0xC9,0xE8], scheduled:[0xFF,0xAB,0x2E], offer:[0xA7,0x8B,0xFA]
+  paper:[0xE7,0xE8,0xE1], card:[0xF3,0xF3,0xED], white:[0xFF,0xFF,0xFF],
+  ink:[0x16,0x18,0x1C], inkSoft:[0x63,0x68,0x6F], hair:[0xC9,0xCB,0xC2],
+  road:[0xD8,0xD9,0xD2], water:[0xBF,0xD1,0xCF], park:[0xC2,0xCF,0xAF],
+  blue:[0x2B,0x4B,0xE8], pink:[0xFF,0x3D,0x6E], yellow:[0xFF,0xC6,0x1A],
+  green:[0x1E,0x7A,0x4C], red:[0xC2,0x32,0x1F]
 };
 // The incumbent riso palette. A single one of these on screen is a failure:
 // it means the old design survived the redesign somewhere.
-// risoInk (#1A1A1A) is deliberately NOT in this list. It is a near-black, and a
-// shadow over the instrument's own ground blends to within a few points of it --
-// so it reports constantly and means nothing. The four that remain are
-// unmistakable: a warm paper, a flat blue, a hot pink and a signal yellow. None
-// of them can be arrived at by accident on a dark housing.
+// WHAT MUST NOT BE ON SCREEN.
+//
+// This list used to hold the riso print colours, on the belief that the
+// redesign replaced them. It had that exactly backwards: the winning artifact
+// IS riso, evolved, and for three passes this gate reported "zero incumbent
+// pixels" as proof of success while the app rendered a design nobody chose.
+//
+// So it now names the DARK build that was shipped by mistake. If any of these
+// appears, some screen is still carrying the near-black housing. None of them
+// can be arrived at by accident on newsprint.
 const INCUMBENT={
-  risoPaper:[0xF5,0xF1,0xE8], risoBlue:[0x2F,0x5C,0xE5],
-  risoPink:[0xFF,0x48,0x8B], risoYellow:[0xFF,0xD1,0x02]
+  darkGround:[0x0F,0x12,0x16], darkPanel:[0x16,0x1B,0x22], darkRaised:[0x1E,0x25,0x2E],
+  darkReadout:[0xE8,0xED,0xF2], darkCyan:[0x4C,0xC9,0xE8], darkAmber:[0xFF,0xAB,0x2E],
+  darkViolet:[0xA7,0x8B,0xFA]
 };
 
 function near(px,ref,tol){return Math.abs(px[0]-ref[0])<=tol&&Math.abs(px[1]-ref[1])<=tol&&Math.abs(px[2]-ref[2])<=tol;}

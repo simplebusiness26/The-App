@@ -984,11 +984,15 @@ const styles=StyleSheet.create({
   camera:{flex:1},
   preview:{flex:1},
 
-  // The rule-of-thirds grid. Hairlines at the same weight as every other etched
-  // line, at a third and two thirds each way.
-  gridLine:{position:"absolute",backgroundColor:INK.readoutSoft,opacity:0.3},
-  gridColumn:{top:0,bottom:0,width:SHAPE.border},
-  gridRow:{left:0,right:0,height:SHAPE.border},
+  // The rule-of-thirds grid, at a third and two thirds each way.
+  //
+  // ONE PIXEL, AND PAPER-COLOURED -- not SHAPE.border and not an ink. This is
+  // the one line in the app that is NOT a printed border: it lies over a live
+  // photograph, where an ink rule would read as part of the picture. It is a
+  // guide, so it is the thinnest visible line in the light the viewfinder is.
+  gridLine:{position:"absolute",backgroundColor:INK.paper,opacity:0.3},
+  gridColumn:{top:0,bottom:0,width:1},
+  gridRow:{left:0,right:0,height:1},
   gridOneThird:{left:"33.33%"},
   gridTwoThirds:{left:"66.66%"},
   gridRowOneThird:{top:"33.33%"},
@@ -999,31 +1003,50 @@ const styles=StyleSheet.create({
   readoutRow:{
     position:"absolute",left:16,right:16,flexDirection:"row",gap:8,alignItems:"center"
   },
+  // The artifact's "PHOTO · HOLD FOR VIDEO" pill: solid ink, paper mono inside,
+  // sitting on the dark feed. Solid rather than translucent for the same reason
+  // as the code flag below -- a rgba ground is invisible to the contrast gate.
   readoutChip:{
-    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
+    color:INK.paper,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
     textTransform:"uppercase",letterSpacing:1,
-    backgroundColor:"rgba(11,14,18,0.62)",
-    borderWidth:SHAPE.border,borderColor:INK.hairline,borderRadius:SHAPE.radius.control,
-    paddingHorizontal:8,paddingVertical:4,overflow:"hidden"
+    backgroundColor:INK.ink,
+    borderWidth:SHAPE.border,borderColor:INK.ink,borderRadius:SHAPE.radius.pill,
+    paddingHorizontal:10,paddingVertical:5,overflow:"hidden"
   },
-  readoutLive:{color:INK.ground,backgroundColor:INK.scheduled,borderColor:INK.scheduled},
+  // Recording. Pink is the ink for "this is live right now", and pink takes INK
+  // type, not paper -- see the per-ink table in docs/design-system.md. That is
+  // the artifact's own rule and the reason .pin-pink carries color:var(--ink).
+  readoutLive:{color:INK.ink,backgroundColor:INK.pink,borderColor:INK.ink},
 
   // The code flag: centred in the frame, because the thing it reports on is in
   // the frame. Scheduled ink, which is the system's "this is live right now".
   codeFlagWrap:{position:"absolute",left:0,right:0,top:"42%",alignItems:"center"},
   codeFlag:{
     flexDirection:"row",alignItems:"center",gap:8,
-    backgroundColor:"rgba(11,14,18,0.82)",
-    borderWidth:SHAPE.border,borderColor:INK.scheduled,
+    // OVER THE VIEWFINDER, THE INK AND THE PAPER SWAP.
+    //
+    // The viewfinder is the one dark surface in this design, because it is a
+    // photograph. The artifact draws its chrome over that feed as SOLID INK
+    // pills with paper-coloured mono inside -- "PHOTO · HOLD FOR VIDEO", the
+    // zoom presets, the corner controls. So this flag is one of those, with the
+    // yellow ink reserved for its border the way the artifact reserves it for
+    // the focus reticle.
+    //
+    // Solid rather than translucent on purpose: a rgba() ground cannot be
+    // resolved by scripts/verify-contrast.cjs, which then walks up to the
+    // screen behind and compares the text against PAPER -- and pink on paper is
+    // 2.77:1. An unreadable pair the gate cannot see is worse than one it can.
+    backgroundColor:INK.ink,
+    borderWidth:SHAPE.borderStrong,borderColor:INK.yellow,
     borderRadius:SHAPE.radius.control,
     paddingHorizontal:12,paddingVertical:9,maxWidth:"86%"
   },
   codeFlagLabel:{
-    color:INK.scheduled,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
+    color:INK.paper,fontFamily:MONO,fontSize:TYPE.data.sizes.md,
     textTransform:"uppercase",letterSpacing:1
   },
   codeFlagValue:{
-    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,flexShrink:1
+    color:INK.hair,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,flexShrink:1
   },
 
   // The immediate rung, over the bottom of the feed: flash, then the four zoom
