@@ -6,7 +6,7 @@ import {loadPlaceReviews} from "../../utils/reviews";
 import {shortClock,needsFullDate} from "../../utils/clock";
 import {useFeedback} from "../../context/FeedbackContext";
 import {CLUB_TYPE_LABEL} from "../../utils/markers";
-import {INK,TYPE} from "../../utils/tokens";
+import {INK,TYPE,SHAPE} from "../../utils/tokens";
 import {
   Action,
   Empty,
@@ -434,7 +434,7 @@ const styles=StyleSheet.create({
   },
   noteField:{marginTop:12,marginBottom:12},
   noteInput:{minHeight:80,textAlignVertical:"top",paddingTop:11},
-  noteBox:{borderTopWidth:1,borderTopColor:INK.hairline,marginTop:11,paddingTop:9},
+  noteBox:{borderTopWidth:SHAPE.border,borderTopColor:INK.hairline,marginTop:11,paddingTop:9},
   noteLabel:{
     color:INK.readoutFaint,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,letterSpacing:1
   },

@@ -80,7 +80,13 @@ function contrast(foreground,background){
 const BODY=4.5;
 const LARGE=3;
 
-function resolve(value){
+function resolve(value,context){
+  if(context){
+    if(context.locals && context.locals[value]) value=context.locals[value];
+    const blended=composite(value,context.backdrop);
+    if(blended) return blended;
+    if(/^"?rgba?\(/.test(String(value))) return null;
+  }
   const token=value.match(/^INK\.(\w+)$/);
   if(token) return TOKENS[token[1]] || null;
   const named=value.replace(/"/g,"").toLowerCase();
@@ -112,13 +118,68 @@ const files=[];
   }
 })(path.join(root,"components"));
 
-const VALUE=`INK\\.\\w+|"#[0-9A-Fa-f]{3,6}"|"white"|"black"`;
+const VALUE=`INK\\.\\w+|"#[0-9A-Fa-f]{3,6}"|"white"|"black"|"rgba?\\([^")]*\\)"|[A-Z][A-Z0-9_]{2,}`;
+
+// ---------------------------------------------------------------------------
+// TRANSLUCENT GROUNDS, AND THE BACKDROP A FILE DECLARES FOR THEM.
+//
+// A chip drawn over the camera viewfinder is filled rgba(231,232,225,.14) --
+// paper at 14%, the artifact's own value. There is no hex to compare against:
+// what a reader actually sees is that tint composited over whatever is behind
+// it, and the thing behind it is a photograph.
+//
+// This gate used to give up on those and walk up to the nearest ancestor with
+// a solid colour, which on the camera screen is the paper screen ground -- so
+// it reported paper-on-paper, 1.00:1, for text that is in fact paper on a
+// near-black viewfinder at about 11:1. The build's response was to redraw the
+// chrome as solid ink so the gate could read it. That is the gate rewriting
+// the design, which is exactly backwards.
+//
+// So a file may declare what its translucent chrome is drawn over:
+//
+//   // @contrast-backdrop INK.ink
+//
+// and a translucent ground is composited over that before judging. The
+// declaration is a claim about the screen and is reviewable as one -- it names
+// a token, it lives next to the code, and a wrong one shows up the moment
+// anybody looks at the screenshot.
+function backdropFor(source){
+  const declared=source.match(/@contrast-backdrop\s+(INK\.\w+|#[0-9A-Fa-f]{3,6})/);
+  if(!declared) return null;
+  return resolve(declared[1].startsWith("#") ? `"${declared[1]}"` : declared[1]);
+}
+
+// `const VF_GLASS="rgba(231,232,225,0.14)"` -- a colour named once and used six
+// times is still a colour.
+function localColours(source){
+  const table={};
+  for(const m of source.matchAll(/const\s+([A-Z][A-Z0-9_]{2,})\s*=\s*("(?:#[0-9A-Fa-f]{3,6}|rgba?\([^")]*\))")/g)){
+    table[m[1]]=m[2];
+  }
+  return table;
+}
+
+function composite(value,backdrop){
+  const m=String(value).replace(/"/g,"").match(/^rgba?\(([^)]*)\)$/);
+  if(!m) return null;
+  const parts=m[1].split(",").map((n)=>Number(n.trim()));
+  if(parts.length<3) return null;
+  const alpha=parts.length>3 ? parts[3] : 1;
+  if(!backdrop) return null;
+  const base=backdrop.replace("#","");
+  const over=[0,1,2].map((i)=>{
+    const under=parseInt(base.slice(i*2,i*2+2),16);
+    return Math.round(parts[i]*alpha+under*(1-alpha));
+  });
+  return `#${over.map((n)=>n.toString(16).padStart(2,"0")).join("")}`;
+}
 
 const failures=[];
 let pairs=0;
 
 for(const file of files){
   const source=fs.readFileSync(path.join(root,file),"utf8");
+  const context={backdrop:backdropFor(source),locals:localColours(source)};
 
   // A style block is the innermost { ... } with no braces inside it, which is
   // what StyleSheet.create entries and inline style objects both look like.
@@ -129,8 +190,8 @@ for(const file of files){
     const foreground=block.match(new RegExp(`\\bcolor\\s*:\\s*(${VALUE})`));
     if(!background || !foreground) continue;
 
-    const ground=resolve(background[1]);
-    const text=resolve(foreground[1]);
+    const ground=resolve(background[1],context);
+    const text=resolve(foreground[1],context);
     // transparent resolves to null: there is no pair to judge, because what is
     // behind it is whatever the parent painted.
     if(!ground || !text) continue;
@@ -179,6 +240,7 @@ function blockFor(source,name){
 
 for(const file of files){
   const source=fs.readFileSync(path.join(root,file),"utf8");
+  const context={backdrop:backdropFor(source),locals:localColours(source)};
   const paints=(name)=>{
     const block=blockFor(source,name);
     return !!block && new RegExp(`backgroundColor\\s*:\\s*(${VALUE})`).test(block);
@@ -204,8 +266,8 @@ for(const file of files){
     const backgroundMatch=outer.match(new RegExp(`backgroundColor\\s*:\\s*(${VALUE})`));
     if(!foregroundMatch || !backgroundMatch) continue;
 
-    const text=resolve(foregroundMatch[1]);
-    const ground=resolve(backgroundMatch[1]);
+    const text=resolve(foregroundMatch[1],context);
+    const ground=resolve(backgroundMatch[1],context);
     if(!text || !ground) continue;
 
     pairs+=1;

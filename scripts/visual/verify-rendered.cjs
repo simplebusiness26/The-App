@@ -551,8 +551,13 @@ function samplePng(buf){
       for(let x=0;x<w;x+=6){
         const px=[line[x*channels],line[x*channels+1],line[x*channels+2]];
         total++;
-        for(const [name,ref] of Object.entries(PALETTE)) if(near(px,ref,10)){counts[name]=(counts[name]||0)+1;break;}
-        for(const [name,ref] of Object.entries(INCUMBENT)) if(near(px,ref,6)){incumbent++;incumbentNames[name]=(incumbentNames[name]||0)+1;break;}
+        // The winning system gets first claim on every pixel. Some incumbent
+        // colours sit within a few units of a winning one (the old darkPanel
+        // #161B22 is six units from the riso ink #16181C), so scoring
+        // incumbent first reports the new design's own text as a relapse.
+        let claimed=false;
+        for(const [name,ref] of Object.entries(PALETTE)) if(near(px,ref,10)){counts[name]=(counts[name]||0)+1;claimed=true;break;}
+        if(!claimed) for(const [name,ref] of Object.entries(INCUMBENT)) if(near(px,ref,6)){incumbent++;incumbentNames[name]=(incumbentNames[name]||0)+1;break;}
       }
     }
     line.copy(prev);

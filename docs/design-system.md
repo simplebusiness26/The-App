@@ -126,7 +126,13 @@ That split is what makes the app read as an instrument rather than a page.
 
 ## Pins — the signature
 
-- 34px circle, **2px ink border**, glyph centred.
+- 34px circle, **2px ink border**, **a mono capital centred** — not a picture.
+  `B` business · `P` property · `C` club · `E` event · `L` public place, plus
+  `K` link-up, `H` an explorer here now and `M` a Memory for the things the
+  artifact's demo never had to draw. 12px at a 34px pin, tracking 0.
+  The category drawing (a cup, a leaf, a bag) still exists on the marker and is
+  still drawn by cards and rows at sizes where it reads; it is only the pin face
+  that is typographic.
 - Fill is the state ink at **82% over a real blur** (`blur(7px) saturate(170%)`),
   so the map reads *through* the pin. This is the Meng To graft, and it is the
   one place the hard-edged register deliberately softens — the map is where you
@@ -134,7 +140,7 @@ That split is what makes the app read as an instrument rather than a page.
 - **Which glyph ink is per-ink, not a rule with one branch.** Blue is dark
   enough to take white; pink and yellow are not and take ink:
 
-  | Fill | Glyph |
+  | Fill | Letter |
   |---|---|
   | `blue` | `#FFFFFF` |
   | `pink` | `ink` |
@@ -147,9 +153,21 @@ That split is what makes the app read as an instrument rather than a page.
 
 ## Navigation
 
-The tab bar is `card` with a **2px ink top border**. Five destinations, each an
-icon over a mono uppercase label at 8.5px / `0.08em`. **The active destination
-is `blue`**, with its label in `ink`.
+The tab bar is `card`, 64px tall, with a **2px ink top border**. Five equal
+destinations, each a 19px icon over a mono uppercase label at 8.5px / `0.08em`.
+**The active destination's icon is `blue`**, with its label in `ink` and a
+medium weight.
+
+Nothing else. There is no scale along the top edge and no travelling indicator —
+both were built, and neither is in the artifact.
+
+### Icons
+
+The icon set is transcribed from the artifact's own `ic()` table: a 20-unit box,
+`fill:none`, `stroke:currentColor`, **1.6** weight, round caps and joins. The
+five navigation marks are a ringed aperture (Map), an eight-ray burst
+(Happening), two figures (Community), a speech bubble (Messages) and one figure
+(Me). `components/instrument.js` holds them and nothing draws its own.
 
 ## Motion
 

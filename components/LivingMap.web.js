@@ -528,6 +528,15 @@ export default function LivingMap({
       filter:["!",["has","point_count"]],
       paint:paint.lone
     });
+    // The type letter on a lone pin, so the tiles say what the React pins say.
+    instance.addLayer({
+      id:"xplorer-cluster-lone-label",
+      type:"symbol",
+      source:"xplorer-clusters",
+      filter:["!",["has","point_count"]],
+      layout:paint.loneLabel,
+      paint:paint.loneLabelPaint
+    });
     instance.addLayer({
       id:"xplorer-cluster-circle",
       type:"circle",

@@ -5,19 +5,35 @@
 Read both before touching a screen. They exist because the first attempt at this
 redesign failed in a specific, avoidable way, and the failure is worth naming.
 
-## The failure this document prevents
+## The two failures this document prevents
 
-The first pass swapped the palette in `utils/tokens.js` from warm paper to a
-dark housing, and every screen picked the new values up automatically. The
-result was the old app, dark. Same rounded cards, same filled pills, same emoji,
-same 2px borders — recoloured. Every test passed. The design system file said
-"Field Instrument". Nothing on screen was one.
+**The first**: a pass swapped the palette in `utils/tokens.js` and every screen
+picked the new values up automatically. The result was the old app, recoloured.
+Same rounded cards, same filled pills, same emoji, same borders. Every test
+passed and nothing on screen had changed shape.
 
 **A design system is not a palette.** Tick scales, dials with detents, readouts,
 reticles, etched rules, machined controls, bracketed frames — that is geometry,
 and geometry has to be built. `components/instrument.js` is where it is built.
 A screen that imports `INK` and lays out its own Views is a screen that will
 drift straight back to the shape it had before.
+
+**The second, which cost more**: having learned that lesson, the build then
+*designed*. It invented a near-black "field instrument" housing, an icon set on
+a 16-unit grid with its own eight-rule doctrine, and a graduated scale along the
+tab bar — all coherent, all carefully argued in comments, and none of it the
+design that won the tournament. The winning artifact is a LIGHT riso print
+system. Three gates were green the whole time, because each one measured
+conformance to the build's own assumptions rather than to the artifact.
+
+> **The winning artifact is the design. This kit is a transcription of it, not
+> an interpretation of it.**
+>
+> `runs/the-app/2026-08-17T02-09-27-650Z/rounds/ui/blend-dewith-mengto-pins/artifact.html`
+>
+> Where this document, `docs/design-system.md`, a code comment or a memory of
+> the design disagrees with that file, **open the file**. It is right and the
+> other thing is a bug.
 
 So the rule is blunt:
 
@@ -108,33 +124,38 @@ signal that the app is an instrument, and it is the easiest one to blur.
 **3. 1px, never 2px.** `SHAPE.border` is 1. A 2px border is the print system.
 The one exception is `StateEdge`'s left edge, which is 2px on purpose.
 
-**4. Radius comes from `SHAPE.radius`.** 6 controls, 10 cards, 14 sheets, 999
-pills and pins. A hand-typed `borderRadius:17` or `borderRadius:23` is the old
-card shape surviving; there are no other radii.
+**4. Radius comes from `SHAPE.radius`.** 9 controls, 14 cards, 20 sheets, 999
+pills and pins — the artifact's `--r-ctl`, `--r-card`, `--r-sheet`, `--r-pill`.
+A hand-typed `borderRadius:17` is somebody eyeballing it.
 
-**5. Selection does not fill with a state ink.** `exists`, `scheduled` and
-`offer` mean *what a place is*. Being the selected tab, the chosen filter or the
-active segment is not a state a place is in. Selection = step up a surface
-(`panel` → `panelRaised`) + `hairlineStrong` edge + brightened label. This also
-sidesteps the failure where a fill lands and every label inside becomes
-unreadable.
+**5. Selection fills with ink.** The artifact's `.chip.selected` takes a solid
+`--ink` fill with `--paper` text; `Chip` and `Toggle` do exactly that. This is
+the opposite of what this document said during the dark build, where selection
+was a surface step — a rule that made sense on a housing with surface steps to
+take. On paper there is one surface and selection is a printed block.
 
-**6. Filled colour takes dark text.** Every state ink is a bright colour on a
-dark housing, so text on top of one is `INK.ground`, never `readout`. The table
-is in `docs/design-system.md` and `scripts/verify-contrast.cjs` checks it on
-every push. Fix the pair, not the gate.
+**6. Which ink takes which text is per-ink, not a rule with one branch.** Blue
+is dark enough to carry white; pink and yellow are not and carry `INK.ink`; an
+unclaimed dashed face carries `INK.inkSoft`. The table is in
+`docs/design-system.md` and `scripts/verify-contrast.cjs` checks it on every
+push. Fix the pair, not the gate. ("All filled inks take dark text" is right on
+a dark housing and wrong on this one — it shipped once.)
 
-**7. Elevation is a surface step plus a 1px top highlight.** `Panel` does it.
-Hard offset shadows belonged to the print system. `SHAPE.shadow.floating` is
-reserved for two things: the map sheet and the Create action.
+**7. Elevation is a hard offset shadow.** `SHAPE.shadow.hard` (3,3) and
+`hardSm` (2,2), zero blur, full opacity, in ink — a printed block sitting off
+the page, not a glow. `Panel` and `Action` do it; a pressed `Action` slides into
+its own shadow. `SHAPE.shadow.floating` is reserved for the map sheet and the
+Create action. Blurred shadows are not in this design at all.
 
-**8. Never use the compatibility aliases in new work.** `INK.paper`, `INK.card`,
-`INK.ink`, `INK.inkSoft`, `INK.hair`, `INK.blue`, `INK.pink`, `INK.yellow`,
-`INK.green`, `INK.red` exist only so nothing broke mid-migration. `INK.ink` in
-particular is now the near-white **readout** colour — `borderColor:INK.ink` put
-a white outline around every feed card for a while, which is exactly what
-recolouring-instead-of-rebuilding looks like when it goes wrong. Use
-`exists`/`scheduled`/`offer`/`readout`/`hairline` and say what you mean.
+**8. `INK.paper`, `INK.card`, `INK.ink`, `INK.inkSoft`, `INK.hair`, `INK.blue`,
+`INK.pink`, `INK.yellow` are the design's real names** — they are the
+artifact's own `--paper`, `--card`, `--ink`, `--ink-soft`, `--hair`,
+`--ink-blue`, `--ink-pink`, `--ink-yellow`, transcribed. Use them freely. This
+document, and `scripts/verify-instrument.cjs`, spent a while calling them
+"compatibility aliases" left over from a migration and banning them in new
+work — which meant the gate was failing the design for being itself. The
+semantic names (`exists`/`scheduled`/`offer`/`readout`/`hairline`) are still
+there and still worth using where a value means a *state* rather than a colour.
 
 **9. A horizontal `ScrollView` in a flex column must carry
 `flexGrow:0, flexShrink:0`,** and its content container `alignItems:"center"`.

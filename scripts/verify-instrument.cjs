@@ -37,8 +37,7 @@ const SCAN=["app","components"];
 const EXEMPT={
   // The kit defines the shapes, so it is the one place the raw values live.
   "components/instrument.js":["radius","border","alias"],
-  // Compatibility aliases are declared here by definition.
-  "utils/tokens.js":["alias"],
+  "utils/tokens.js":["alias","border"],
   // The shutter's ring is a drawn control, not a panel edge -- see the note
   // beside it. Every other border in this file is a hairline.
   "components/CameraCapture.js":["border"]
@@ -74,9 +73,17 @@ const EMOJI=/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{1F
 const GLYPH_CHARS=/[⌕≡▤★☆▶✕✓✖◉●]/;
 const LONE_TIMES=/>\s*×\s*<|["'`]\s*×\s*["'`]/;
 
-// The print system's register. SHAPE.border is 1; the only 2px edge in the
-// design is StateEdge's left rule, which the kit draws.
-const HARD_BORDER=/border(?:Top|Right|Bottom|Left)?Width\s*:\s*[2-9]/;
+// A BORDER WIDTH TYPED AS A NUMBER.
+//
+// This used to say "anything thicker than 1px is the print system". In the
+// design that actually won, a 2px ink border IS the system -- it is what a pin,
+// a button, a sheet and the tab bar's top edge all carry. So the rule is no
+// longer about thickness; it is about the number being TYPED rather than taken
+// from SHAPE.border (1.5) or SHAPE.borderStrong (2), which is how the two
+// weights stay two weights instead of drifting into five.
+// A typed border WEIGHT. `borderWidth: 0` is not a weight -- it is a border
+// being explicitly removed -- so it is allowed.
+const HARD_BORDER=/border(?:Top|Right|Bottom|Left)?Width\s*:\s*(?!0\s*[,}\n])\d/;
 
 // Radius comes from SHAPE.radius -- 6 controls, 10 cards, 14 sheets, 999 pills.
 // A hand-typed number is the old card shape surviving a recolour.
@@ -87,10 +94,20 @@ const ALLOWED_RADIUS=new Set([0,1,2,3,4]); // hairlines, ticks, tiny dots
 // shutter, an avatar -- so the rule is about rectangles with invented corners.
 const SIZE_IN_BLOCK=/(?:width|height|size)\s*:\s*(\d+)/g;
 
-// The compatibility aliases. INK.ink in particular is the near-white readout
-// colour now: borderColor:INK.ink drew a white outline around every feed card
-// and a white ring around every pin on the map.
-const ALIAS=/INK\.(paper|card|ink|inkSoft|hair|blue|pink|yellow|green|red)\b/;
+// THIS RULE IS RETIRED, AND THE REASON MATTERS.
+//
+// It used to ban INK.paper, INK.ink, INK.blue and friends as "compatibility
+// aliases" left over from the print system, on the belief that the redesign
+// replaced that system. It had it backwards: the winning artifact IS the print
+// system evolved, and those are its real token names, transcribed from its own
+// :root block. The rule was flagging the design for being itself.
+//
+// Left as an empty matcher rather than deleted, so this note stays next to the
+// mistake. The semantic names added during the dark build -- ground, panel,
+// readout, exists -- are kept as aliases in utils/tokens.js because they say
+// what a colour MEANS, which is the better name; both spellings resolve to the
+// artifact's values, so neither is a defect.
+const ALIAS=/(?!)/;
 
 // The innermost { ... } containing an offset -- the same definition of "a style
 // block" scripts/verify-contrast.cjs uses.
@@ -229,9 +246,9 @@ for(const f of failures) (byRule[f.rule]=byRule[f.rule]||[]).push(f);
 const RULE_TEXT={
   emoji:"Emoji. Use <Glyph name=\"…\"/> — there are 66 icons; check GLYPH_NAMES.",
   "glyph-char":"A typographic character standing in for an icon. Use <Glyph/>.",
-  border:"A border thicker than 1px. SHAPE.border is 1; 2px was the print system.",
+  border:"A typed border width. Use SHAPE.border (1.5) or SHAPE.borderStrong (2).",
   radius:"A hand-typed radius. Use SHAPE.radius — 6 / 10 / 14 / 999.",
-  alias:"A compatibility alias. INK.ink is the near-white readout colour now.",
+
   clearance:"A scrolling screen with no CREATE_HUB_CLEARANCE in its bottom padding.",
   "style-sheet":"A style referenced from a sheet that does not define it. React Native resolves it to nothing, silently."
 };

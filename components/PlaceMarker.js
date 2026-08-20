@@ -1,9 +1,8 @@
 import React from "react";
 import {View} from "react-native";
 import {BlurView} from "expo-blur";
-import Svg,{Circle,G,Path} from "react-native-svg";
-import {glyphPrimitives} from "../utils/markers";
-import {SHAPE} from "../utils/tokens";
+import Svg,{Circle,Text as SvgText} from "react-native-svg";
+import {SHAPE,FONT} from "../utils/tokens";
 
 // The pin, per design-system.md: 34px circle, 1px hairline border, icon centred
 // at 16px. Colour comes from the marker descriptor and means state; the glyph
@@ -107,7 +106,6 @@ function geometry(overprint){
 export default function PlaceMarker({marker,size=CANVAS,tapFloor=true}){
   if(!marker) return null;
 
-  const primitives=glyphPrimitives(marker.glyph) || [];
   const overprint=marker.overprint===true;
   const box=geometry(overprint);
 
@@ -153,10 +151,11 @@ export default function PlaceMarker({marker,size=CANVAS,tapFloor=true}){
           below. */}
       <BlurView
         intensity={BLUR_INTENSITY}
-        // Dark, because the housing and the map under it are dark now. A light
-        // tint milked the state ink and lifted the terrain behind the pin,
-        // which is the opposite of "the housing recedes, the readings glow".
-        tint="dark"
+        // Light, because the housing and the map under it are paper. A dark
+        // tint here was correct for the near-black build this replaced and is
+        // simply wrong now: it muddied every ink and put a grey bruise under
+        // each pin on a bright map.
+        tint="light"
         style={{
           position:"absolute",
           left:discLeft,
@@ -192,35 +191,45 @@ export default function PlaceMarker({marker,size=CANVAS,tapFloor=true}){
           // translucently and blurred. The border stays a crisp Svg stroke.
           fill="none"
           stroke={marker.border}
-          // 1px, per docs/design-system.md. A 2px border is a bug now.
-          strokeWidth={SHAPE.border}
+          // .pin { border: var(--bw2) solid var(--ink) } -- 2px, the artifact's
+          // strong weight. This said 1px for a while, carrying a note that "a
+          // 2px border is a bug now": that was true of the dark housing this
+          // design replaced, where a heavy ring around a glowing disc read as a
+          // halo. On paper the pin is a printed disc and its edge is a printed
+          // edge.
+          strokeWidth={SHAPE.borderStrong}
           // An unclaimed place is an invitation, not an error. The dash is the
           // only thing that says so visually; marker.label says it in words.
           strokeDasharray={marker.borderStyle==="dashed" ? [3.4,2.6] : undefined}
         />
 
-        <G x={box.glyphOffsetX} y={box.glyphOffset}>
-          {primitives.map((primitive,index)=>primitive.circle
-            ? <Circle
-                key={index}
-                cx={primitive.circle[0]}
-                cy={primitive.circle[1]}
-                r={primitive.circle[2]}
-                fill={primitive.fill ? marker.glyphInk : "none"}
-                stroke={marker.glyphInk}
-                strokeWidth={1.6}
-              />
-            : <Path
-                key={index}
-                d={primitive.path}
-                fill="none"
-                stroke={marker.glyphInk}
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-          )}
-        </G>
+        {/* THE FACE IS A LETTER.
+
+            renderMap() in the artifact puts one mono capital on the disc, at
+            12px on a 34px pin, tracking 0 -- B for a business, P for a
+            property, C for a club, E for an event, L for a public place. The
+            size is written as a ratio of the pin so a 34px map pin and a 22px
+            list-row avatar both land on the artifact's proportion.
+
+            A category drawing used to go here instead. It carried more per pin
+            and it is not what won: at 34px on a moving map a six-subpath mark
+            is a smudge, and a letter is not. The drawing is still in the
+            marker (`glyph`) and still drawn by cards and rows at sizes where
+            it reads. */}
+        <SvgText
+          x={box.cx}
+          y={box.cy}
+          fill={marker.glyphInk}
+          fontFamily={FONT.mono}
+          fontSize={box.box*(12/34)}
+          textAnchor="middle"
+          // Optical centring: a cap sits on its baseline, so the box has to
+          // come down by roughly a third of its height to look centred in the
+          // disc rather than measured into it.
+          dy={box.box*(12/34)*0.35}
+        >
+          {marker.letter || "L"}
+        </SvgText>
       </Svg>
     </View>
     </View>

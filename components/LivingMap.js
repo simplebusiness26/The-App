@@ -356,6 +356,15 @@ function MapLibreMap({
             filter={["!",["has","point_count"]]}
             paint={paint.lone}
           />
+          {/* The type letter on a lone pin, so the tiles say what the React
+              pins say. */}
+          <Layer
+            id="xplorer-cluster-lone-label"
+            type="symbol"
+            filter={["!",["has","point_count"]]}
+            layout={paint.loneLabel}
+            paint={paint.loneLabelPaint}
+          />
           <Layer
             id="xplorer-cluster-circle"
             type="circle"

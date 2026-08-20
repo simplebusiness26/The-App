@@ -425,143 +425,142 @@ const styles=StyleSheet.create({
 // it here first. Never inline a one-off.
 
 // ---------------------------------------------------------------------------
-// GLYPH — the icon set.
+// GLYPH — the icon set, transcribed from the winning artifact.
 // ---------------------------------------------------------------------------
-// Emoji were standing in for icons across the app. An emoji is somebody else's
-// design: it carries its own colour, its own weight and its own house style,
-// and on a dark instrument face it reads as a sticker.
+// The source of truth is one function in one file:
 //
-// Replacing them with a CONVENTIONAL stroked set was only half the job, and the
-// product owner said so: "the icons are still the same". A compass rose for
-// Happening, a magnifier for search, two heads for Community — that is the
-// icon set every app has, sitting on a face that is meant to read as a machined
-// instrument. It was a fidelity upgrade, not a design decision.
+//   runs/the-app/2026-08-17T02-09-27-650Z/rounds/ui/blend-dewith-mengto-pins/
+//     artifact.html  ->  function ic(name, size)
 //
-// So the set is redrawn from the design's own vocabulary: ticks, hairline
-// rules, brackets, apertures, dials and reticles. An icon here is an ETCHED
-// MARK ON A HOUSING, not a friendly pictogram of an object.
+// That table is the design that won the UI round. Every mark it defines is
+// reproduced below path for path, on its own grid, in its own header:
 //
-// THE CONSTRUCTION RULES — draw the next icon this way
+//   viewBox 0 0 20 20 · fill none · stroke currentColor · stroke-width 1.6
+//   · stroke-linecap round · stroke-linejoin round
 //
-//  1. CANVAS 16x16, LIVE AREA 2.8-13.2. Nothing is drawn outside that 10.4
-//     square; the margin is the plate the mark is engraved into.
-//  2. ONE BASELINE, y=12.8, and one cap line, y=3.2. Anything that stands —
-//     a person, a building, a chart, a plinth — sits ON 12.8, which is where
-//     the cap height of the mono label beside it also sits. That is what makes
-//     a glyph and its label read as one line rather than two objects.
-//  3. ONE STROKE WEIGHT. Every mark is stroked at the weight the caller passes
-//     (1.5 by default) and nothing is ever filled. Emphasis comes from how many
-//     marks there are, never from a heavier or doubled line.
-//  4. ANGLES ARE 0, 90 OR 45 DEGREES ONLY. Every diagonal in this table is an
-//     exact 45 — chevrons, the check, the scriber, the envelope flap, the
-//     needle. A freehand angle is what makes a set look drawn rather than
-//     machined.
-//  5. RADII COME FROM ONE LADDER: 1.1 dot · 1.8 detent · 2.4 collar ·
-//     3.2 dial · 4.2 lens · 5.2 bezel. A ring that is none of these is a ring
-//     somebody eyeballed.
-//  6. TICKS ARE ~2 UNITS and MINIMUM CLEAR GAP IS 2.4. Two strokes closer than
-//     that merge into a smudge at 13px, which is the size these are actually
-//     read at. Test at 13, not at 100.
-//  7. AT MOST SIX SUBPATHS. Detail that cannot survive 13px is not detail, it
-//     is noise.
-//  8. THE VOCABULARY IS FIXED: bezel (a reading), tick (a graduation), rule (an
-//     etched line), bracket (a frame), plinth (a housing), wedge (a direction),
-//     aperture (a fix). Compose a new icon out of those seven, not out of a
-//     picture of the thing.
+// WHY THIS IS A TRANSCRIPTION AND NOT A DESIGN
 //
-// The five navigation marks are the load-bearing ones — they are on every
-// screen — and each takes a different primitive so the bar reads as five
-// controls rather than five drawings: map is a bracketed frame around an
-// aperture (the view you look through at the world), Happening is a dial with a
-// needle, Community is three stations, Messages is a channel between two
-// brackets, Me is a station on its plinth. components/TabBar.js draws them from
-// here; there is no second copy.
+// It used to be a design. There was an invented set here, drawn on a 16-unit
+// grid to an eight-rule doctrine about bezels and graduations, and it was
+// coherent, and it was not the icons the commissioner chose. The five
+// navigation marks are on every screen in the app, so getting them from
+// somewhere other than the artifact meant the whole product read as a
+// different design however carefully the colours matched. If a mark here and
+// a mark in the artifact ever disagree, the artifact is right and this file
+// is a bug.
+//
+// The app needs marks the artifact never had to draw -- it has no calendar
+// screen, no chart, no audit trail. Those are kept, rebased arithmetically
+// from the old 16-unit grid onto this 20-unit one (x1.25, arc flags left
+// alone) so they sit at the same optical weight as the transcribed ones
+// instead of rendering 25% small next to them.
 const GLYPHS={
-  // --- travel and assent: chevrons cut at exactly 45 degrees -----------------
-  back:      [{d:"M9.6 3.6 5.2 8l4.4 4.4"}],
-  forward:   [{d:"M6.4 3.6 10.8 8l-4.4 4.4"}],
-  up:        [{d:"M3.6 9.6 8 5.2l4.4 4.4"}],
-  down:      [{d:"M3.6 6.4 8 10.8l4.4-4.4"}],
-  close:     [{d:"M4.4 4.4 11.6 11.6"},{d:"M11.6 4.4 4.4 11.6"}],
-  plus:      [{d:"M8 3.2v9.6"},{d:"M3.2 8h9.6"}],
-  minus:     [{d:"M3.2 8h9.6"}],
-  check:     [{d:"M3.2 8.4 6.8 12l6.4-6.4"}],
+  // --- transcribed from the artifact, path for path ------------------------
+  back:      [{d:"M12 4l-6 6 6 6"}],
+  forward:   [{d:"M8 4l6 6-6 6"}],
+  up:        [{d:"M5 12l5-5 5 5"}],
+  down:      [{d:"M5 8l5 5 5-5"}],
+  close:     [{d:"M5 5l10 10M15 5L5 15"}],
+  check:     [{d:"M4 10l4 4 8-8"}],
+  plus:      [{d:"M10 4v12"},{d:"M4 10h12"}],
+  minus:     [{d:"M4 10h12"}],
+  plusRound: [{c:[10,10,7.5]},{d:"M10 6.5v7M6.5 10h7"}],
 
-  // --- the five navigation marks -------------------------------------------
-  map:       [{d:"M2.8 6V2.8h3.2"},{d:"M10 2.8h3.2V6"},{d:"M13.2 10v3.2H10"},{d:"M6 13.2H2.8V10"},{c:[8,8,1.8]}],
-  compass:   [{c:[8,8,5.2]},{c:[8,8,1.3]},{d:"M9 7 11.6 4.4"},{d:"M7 9 5.6 10.4"}],
-  community: [{c:[4.4,5.2,2]},{c:[11.6,5.2,2]},{c:[8,11.2,2]}],
-  message:   [{d:"M6 3.6H3.2v8.8H6"},{d:"M10 3.6h2.8v8.8H10"},{d:"M6.4 6.8h3.2"},{d:"M6.4 9.2h3.2"}],
-  person:    [{c:[8,5.8,2.4]},{d:"M4.4 12.8v-2h7.2v2"}],
-  people:    [{c:[4.8,5.6,1.8]},{c:[11.2,5.6,1.8]},{d:"M2.8 12.8v-2h10.4v2"}],
+  // --- the five navigation marks, exactly as the artifact draws them -------
+  map:       [{c:[10,10,6.4]},{c:[10,10,1.6],fill:true}],
+  compass:   [{d:"M10 2v5M10 13v5M2 10h5M13 10h5M4.8 4.8l3.2 3.2M12 12l3.2 3.2M15.2 4.8L12 8M8 12l-3.2 3.2"}],
+  community: [{c:[7,7.5,2.5]},{c:[13.5,7.5,2.1]},{d:"M2.5 16.5c0-3 2-4.6 4.5-4.6s4.5 1.6 4.5 4.6"},{d:"M11.8 12c1.9.2 3.2 1.7 3.2 4.2"}],
+  message:   [{d:"M3 4.5h14v8H9l-3.5 3v-3H3z"}],
+  person:    [{c:[10,7,3.2]},{d:"M3.5 17c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"}],
+  people:    [{c:[7,7.5,2.5]},{c:[13.5,7.5,2.1]},{d:"M2.5 16.5c0-3 2-4.6 4.5-4.6s4.5 1.6 4.5 4.6"},{d:"M11.8 12c1.9.2 3.2 1.7 3.2 4.2"}],
+  profile:   [{c:[10,7,3.2]},{d:"M3.5 17c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"}],
 
-  // --- readings -------------------------------------------------------------
-  bell:      [{d:"M4.4 11.2V7.6a3.6 3.6 0 0 1 7.2 0v3.6"},{d:"M2.8 11.2h10.4"},{d:"M8 11.2v1.8"}],
-  search:    [{c:[7,7,4.2]},{d:"M10 10 13.2 13.2"}],
-  pin:       [{c:[8,5.8,2.4]},{d:"M8 12.8 4.4 9.2h7.2z"}],
-  clock:     [{c:[8,8,5.2]},{d:"M8 4.4V8h2.8"}],
-  calendar:  [{d:"M2.8 4.4h10.4v8.4H2.8z"},{d:"M2.8 7.2h10.4"},{d:"M5.6 2.8v2.8"},{d:"M10.4 2.8v2.8"}],
-  camera:    [{d:"M2.8 5.2h10.4v7.6H2.8z"},{c:[8,9,2.4]},{d:"M6 5.2V3.6h4v1.6"}],
-  star:      [{d:"M8 2.8 9.8 6.6l4 .6-2.9 2.8.7 4L8 12.1l-3.6 1.9.7-4-2.9-2.8 4-.6z"}],
-  heart:     [{d:"M8 12.8 3.6 8.4a2.8 2.8 0 0 1 4.4-3.4 2.8 2.8 0 0 1 4.4 3.4z"}],
-  comment:   [{d:"M2.8 3.6h10.4v6.8H7.2l-2.8 2.8v-2.8H2.8z"},{d:"M5.2 7h5.6"}],
-  share:     [{c:[11.6,4.4,1.8]},{c:[4.4,8,1.8]},{c:[11.6,11.6,1.8]},{d:"M6 7.2 10 5.2"},{d:"M6 8.8 10 10.8"}],
-  lock:      [{d:"M4.2 7.2h7.6v5.6H4.2z"},{d:"M5.8 7.2V5.6a2.2 2.2 0 0 1 4.4 0v1.6"},{d:"M8 9.2v1.6"}],
-  filter:    [{d:"M2.8 3.6h10.4L9.2 7.6v5.2H6.8V7.6z"}],
-  edit:      [{d:"M10 3.2 12.8 6 6 12.8H3.2V10z"}],
-  trash:     [{d:"M2.8 4.8h10.4"},{d:"M5.6 4.8V3.2h4.8v1.6"},{d:"M4.4 4.8v8h7.2v-8"},{d:"M6.8 7.2v3.2"},{d:"M9.2 7.2v3.2"}],
-  info:      [{c:[8,8,5.2]},{d:"M8 7.2v3.2"},{d:"M8 5.2v1"}],
-  warn:      [{d:"M8 3.2 13.2 12.8H2.8z"},{d:"M8 6.8v3"},{d:"M8 11.4v1"}],
-  send:      [{d:"M13.2 2.8 2.8 8l4.4 1.6 1.6 4.4z"}],
-  qr:        [{d:"M2.8 2.8h4.4v4.4H2.8z"},{d:"M8.8 2.8h4.4v4.4H8.8z"},{d:"M2.8 8.8h4.4v4.4H2.8z"},{d:"M8.8 8.8v2.4"},{d:"M11.6 13.2h1.6"}],
-  play:      [{d:"M5.6 3.6 12 8l-6.4 4.4z"}],
-  live:      [{c:[8,8,2.2]},{d:"M4.3 4.3a5.2 5.2 0 0 0 0 7.4"},{d:"M11.7 4.3a5.2 5.2 0 0 1 0 7.4"}],
-  home:      [{d:"M3.2 8 8 3.2l4.8 4.8"},{d:"M4.8 9.2v3.6h6.4V9.2"}],
-  bookmark:  [{d:"M4.4 3.2h7.2v9.6L8 10.4l-3.6 2.4z"}],
-  ticket:    [{d:"M2.8 5.2h10.4v2a1.4 1.4 0 0 0 0 2.8v2.8H2.8V10a1.4 1.4 0 0 0 0-2.8z"},{d:"M8.4 5.6v1.4"},{d:"M8.4 9.4v1.4"}],
-  tag:       [{d:"M2.8 2.8h5.6l4.8 4.8-5.6 5.6-4.8-4.8z"},{c:[5.2,5.2,1.1]}],
-  building:  [{d:"M3.2 12.8V3.2h6.4v9.6"},{d:"M9.6 6.8h3.2v6"},{d:"M5.2 5.6h2.4"},{d:"M5.2 8h2.4"},{d:"M5.2 10.4h2.4"}],
-  bed:       [{d:"M2.8 12.8V6.4"},{d:"M2.8 8.8h10.4v4"},{d:"M13.2 8.8a2.4 2.4 0 0 0-2.4-2.4H7.2v2.4"},{c:[4.8,6.8,1.2]}],
-  ring:      [{c:[8,8,5.2]},{c:[8,8,2.2]}],
-  flag:      [{d:"M4 12.8V3.2"},{d:"M4 3.6h7.6L9.6 6.4l2 2.8H4"}],
-  block:     [{c:[8,8,5.2]},{d:"M4.4 11.6 11.6 4.4"}],
-  shield:    [{d:"M8 3.2 12.8 4.8v3.6c0 2.8-2 4.4-4.8 5.2-2.8-.8-4.8-2.4-4.8-5.2V4.8z"}],
-  key:       [{c:[5.2,8,2.4]},{d:"M7.6 8h5.6"},{d:"M10.4 8v2.4"},{d:"M12.8 8v1.6"}],
-  card:      [{d:"M2.8 4.4h10.4v7.2H2.8z"},{d:"M2.8 7h10.4"},{d:"M4.8 9.2h2.4"}],
-  chart:     [{d:"M2.8 12.8h10.4"},{d:"M4.8 12.8V8.8"},{d:"M8 12.8V4.8"},{d:"M11.2 12.8V9.6"}],
-  list:      [{d:"M5.6 4.4h7.6"},{d:"M5.6 8h7.6"},{d:"M5.6 11.6h7.6"},{d:"M2.8 4.4h1"},{d:"M2.8 8h1"},{d:"M2.8 11.6h1"}],
-  grid:      [{d:"M2.8 2.8h4.4v4.4H2.8z"},{d:"M8.8 2.8h4.4v4.4H8.8z"},{d:"M2.8 8.8h4.4v4.4H2.8z"},{d:"M8.8 8.8h4.4v4.4H8.8z"}],
-  refresh:   [{d:"M13 8a5 5 0 1 1-1.6-3.7"},{d:"M13.2 3.2v3.2H10"}],
-  external:  [{d:"M7.2 3.2H3.2v9.6h9.6V8.8"},{d:"M9.6 3.2h3.6v3.6"},{d:"M13.2 3.2 8 8.4"}],
-  mail:      [{d:"M2.8 4.4h10.4v7.2H2.8z"},{d:"M2.8 4.4 8 9.6l5.2-5.2"}],
-  phone:     [{d:"M5.2 2.8h5.6v10.4H5.2z"},{d:"M7.2 11.2h1.6"}],
-  globe:     [{c:[8,8,5.2]},{d:"M2.8 8h10.4"},{d:"M8 2.8c1.6 1.8 2.4 3.6 2.4 5.2s-.8 3.4-2.4 5.2c-1.6-1.8-2.4-3.6-2.4-5.2s.8-3.4 2.4-5.2z"}],
-  upload:    [{d:"M8 11.6V3.2"},{d:"M4.8 6.4 8 3.2l3.2 3.2"},{d:"M2.8 12.8h10.4"}],
-  download:  [{d:"M8 3.2v8.4"},{d:"M4.8 8.4 8 11.6l3.2-3.2"},{d:"M2.8 12.8h10.4"}],
-  image:     [{d:"M2.8 3.6h10.4v8.8H2.8z"},{c:[5.6,6.4,1.2]},{d:"M3.2 11.6 6.8 8l2.4 2.4 2-2 2 2"}],
-  video:     [{d:"M2.8 4.8h7.2v6.4H2.8z"},{d:"M10 8 13.2 5.6v4.8z"}],
-  mic:       [{d:"M8 2.8a1.8 1.8 0 0 1 1.8 1.8v3.2a1.8 1.8 0 0 1-3.6 0V4.6A1.8 1.8 0 0 1 8 2.8z"},{d:"M4.8 7.6a3.2 3.2 0 0 0 6.4 0"},{d:"M8 10.8v2"}],
-  target:    [{c:[8,8,4.8]},{c:[8,8,1.6]},{d:"M8 2.8v2"},{d:"M8 11.2v2"},{d:"M2.8 8h2"},{d:"M11.2 8h2"}],
-  sliders:   [{d:"M2.8 5.6h10.4"},{d:"M2.8 10.4h10.4"},{c:[6,5.6,1.8]},{c:[10,10.4,1.8]}],
-  sort:      [{d:"M4.8 3.2v9.6"},{d:"M2.8 10.8 4.8 12.8l2-2"},{d:"M11.2 12.8V3.2"},{d:"M9.2 5.2 11.2 3.2l2 2"}],
-  more:      [{c:[3.6,8,1.1]},{c:[8,8,1.1]},{c:[12.4,8,1.1]}],
-  award:     [{c:[8,6,3.2]},{d:"M6 8.8 5.2 12.8 8 11.2l2.8 1.6-.8-4"}],
-  gift:      [{d:"M2.8 6.4h10.4v2.4H2.8z"},{d:"M4 8.8v4h8v-4"},{d:"M8 6.4v6.4"},{d:"M8 6.4 6 4.4"},{d:"M8 6.4 10 4.4"}],
-  clipboard: [{d:"M4.4 3.6h7.2v9.2H4.4z"},{d:"M6.4 3.6V2.8h3.2v.8"},{d:"M6.4 7h3.2"},{d:"M6.4 9.6h3.2"}],
-  eye:       [{d:"M2.8 8s2.2-3.6 5.2-3.6S13.2 8 13.2 8s-2.2 3.6-5.2 3.6S2.8 8 2.8 8z"},{c:[8,8,1.8]}],
-  eyeOff:    [{d:"M3.6 5.2C2.8 6.2 2.8 8 2.8 8s2.2 3.6 5.2 3.6c1 0 1.9-.4 2.6-.9"},{d:"M6.4 4.6A5 5 0 0 1 8 4.4c3 0 5.2 3.6 5.2 3.6a11 11 0 0 1-1.6 2"},{d:"M3.2 3.2 12.8 12.8"}],
-  settings:  [{c:[8,8,2.4]},{d:"M8 2.8v1.6"},{d:"M8 11.6v1.6"},{d:"M2.8 8h1.6"},{d:"M11.6 8h1.6"},{d:"M4.3 4.3 5.4 5.4"},{d:"M10.6 10.6 11.7 11.7"},{d:"M11.7 4.3 10.6 5.4"},{d:"M5.4 10.6 4.3 11.7"}]
+  // --- the camera and map controls the artifact defines --------------------
+  camera:    [{r:[2.5,6,15,10.5,1.6]},{d:"M7 6l1.3-2h3.4L13 6"},{c:[10,11.2,3.2]}],
+  flash:     [{d:"M11 2L4 12h5l-1 6 7-10h-5z"}],
+  flashOff:  [{d:"M11 2L6.5 9M4 12h5l-1 6 3.3-4.7M15 15L3 3"}],
+  flip:      [{d:"M4 7h9M13 7l-2.5-2.5M13 7l-2.5 2.5M16 13H7M7 13l2.5-2.5M7 13l2.5 2.5"}],
+  layers:    [{d:"M10 3l7 4-7 4-7-4 7-4z"},{d:"M3 11l7 4 7-4"}],
+  target:    [{c:[10,10,6]},{c:[10,10,1.4],fill:true},{d:"M10 2v2.4M10 15.6V18M2 10h2.4M15.6 10H18"}],
+  scan:      [{d:"M3 7V4h3M17 7V4h-3M3 13v3h3M17 13v3h-3"},{d:"M4 10h12"}],
+  qr:        [{r:[3,3,5,5,0]},{r:[12,3,5,5,0]},{r:[3,12,5,5,0]},{d:"M12 12h2v2h-2zM16 12h1v1h-1zM12 16h1v1h-1zM15 15h2v2h-2z"}],
+  pin:       [{d:"M10 2c-3.3 0-6 2.6-6 6 0 4.6 6 10 6 10s6-5.4 6-10c0-3.4-2.7-6-6-6z"},{c:[10,8,2],fill:true}],
+  reply:     [{d:"M8 5L3 10l5 5"},{d:"M3 10h8a5 5 0 0 1 5 5v1"}],
+  verified:  [{d:"M10 2l2 1.6 2.5-.4 1 2.3 2.3 1-.4 2.5 1.6 2-1.6 2 .4 2.5-2.3 1-1 2.3-2.5-.4L10 18l-2-1.6-2.5.4-1-2.3-2.3-1 .4-2.5L1 10l1.6-2-.4-2.5 2.3-1 1-2.3 2.5.4z"},{d:"M7 10l2 2 4-4"}],
+
+  // --- the rest of the artifact's table ------------------------------------
+  bell:      [{d:"M6 8a4 4 0 0 1 8 0c0 3 1 4 1 4H5s1-1 1-4z"},{d:"M8.5 15a1.5 1.5 0 0 0 3 0"}],
+  search:    [{c:[8.5,8.5,5]},{d:"M15.5 15.5L12 12"}],
+  star:      [{d:"M10 3l2.2 4.6 5 .6-3.7 3.5.9 5-4.4-2.4-4.4 2.4.9-5-3.7-3.5 5-.6z"}],
+  heart:     [{d:"M10 17S3 12.5 3 7.8A3.8 3.8 0 0 1 10 5.6 3.8 3.8 0 0 1 17 7.8C17 12.5 10 17 10 17z"}],
+  comment:   [{d:"M3 4h14v9H8l-4 3v-3H3z"}],
+  lock:      [{r:[4.5,9,11,8,1.5]},{d:"M7 9V6.5a3 3 0 0 1 6 0V9"}],
+  edit:      [{d:"M4 16l1-4 9-9 3 3-9 9-4 1z"}],
+  trash:     [{d:"M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10"}],
+
+  // --- marks this app needs that the artifact never had to draw, rebased
+  //     onto the same 20-unit grid so they read as one set -------------------
+  clock:     [{c:[10,10,6.5]},{d:"M10 5.5V10h3.5"}],
+  calendar:  [{d:"M3.5 5.5h13v10.5H3.5z"},{d:"M3.5 9h13"},{d:"M7 3.5v3.5"},{d:"M13 3.5v3.5"}],
+  share:     [{c:[14.5,5.5,2.25]},{c:[5.5,10,2.25]},{c:[14.5,14.5,2.25]},{d:"M7.5 9 12.5 6.5"},{d:"M7.5 11 12.5 13.5"}],
+  filter:    [{d:"M3.5 4.5h13L11.5 9.5v6.5H8.5V9.5z"}],
+  info:      [{c:[10,10,6.5]},{d:"M10 9v4"},{d:"M10 6.5v1.25"}],
+  warn:      [{d:"M10 4 16.5 16H3.5z"},{d:"M10 8.5v3.75"},{d:"M10 14.25v1.25"}],
+  send:      [{d:"M16.5 3.5 3.5 10l5.5 2 2 5.5z"}],
+  play:      [{d:"M7 4.5 15 10l-8 5.5z"}],
+  live:      [{c:[10,10,2.75]},{d:"M5.375 5.375a6.5 6.5 0 0 0 0 9.25"},{d:"M14.625 5.375a6.5 6.5 0 0 1 0 9.25"}],
+  home:      [{d:"M4 10 10 4l6 6"},{d:"M6 11.5v4.5h8V11.5"}],
+  bookmark:  [{d:"M5.5 4h9v12L10 13l-4.5 3z"}],
+  ticket:    [{d:"M3.5 6.5h13v2.5a1.75 1.75 0 0 0 0 3.5v3.5H3.5V12.5a1.75 1.75 0 0 0 0-3.5z"},{d:"M10.5 7v1.75"},{d:"M10.5 11.75v1.75"}],
+  tag:       [{d:"M3.5 3.5h7l6 6-7 7-6-6z"},{c:[6.5,6.5,1.375]}],
+  building:  [{d:"M4 16V4h8v12"},{d:"M12 8.5h4v7.5"},{d:"M6.5 7h3"},{d:"M6.5 10h3"},{d:"M6.5 13h3"}],
+  bed:       [{d:"M3.5 16V8"},{d:"M3.5 11h13v5"},{d:"M16.5 11a3 3 0 0 0-3-3H9v3"},{c:[6,8.5,1.5]}],
+  ring:      [{c:[10,10,6.5]},{c:[10,10,2.75]}],
+  flag:      [{d:"M5 16V4"},{d:"M5 4.5h9.5L12 8l2.5 3.5H5"}],
+  block:     [{c:[10,10,6.5]},{d:"M5.5 14.5 14.5 5.5"}],
+  shield:    [{d:"M10 4 16 6v4.5c0 3.5-2.5 5.5-6 6.5-3.5-1-6-3-6-6.5V6z"}],
+  key:       [{c:[6.5,10,3]},{d:"M9.5 10h7"},{d:"M13 10v3"},{d:"M16 10v2"}],
+  card:      [{d:"M3.5 5.5h13v9H3.5z"},{d:"M3.5 8.75h13"},{d:"M6 11.5h3"}],
+  chart:     [{d:"M3.5 16h13"},{d:"M6 16V11"},{d:"M10 16V6"},{d:"M14 16V12"}],
+  list:      [{d:"M7 5.5h9.5"},{d:"M7 10h9.5"},{d:"M7 14.5h9.5"},{d:"M3.5 5.5h1.25"},{d:"M3.5 10h1.25"},{d:"M3.5 14.5h1.25"}],
+  grid:      [{d:"M3.5 3.5h5.5v5.5H3.5z"},{d:"M11 3.5h5.5v5.5H11z"},{d:"M3.5 11h5.5v5.5H3.5z"},{d:"M11 11h5.5v5.5H11z"}],
+  refresh:   [{d:"M16.25 10a6.25 6.25 0 1 1-2-4.625"},{d:"M16.5 4v4H12.5"}],
+  external:  [{d:"M9 4H4v12h12V11"},{d:"M12 4h4.5v4.5"},{d:"M16.5 4 10 10.5"}],
+  mail:      [{d:"M3.5 5.5h13v9H3.5z"},{d:"M3.5 5.5 10 12l6.5-6.5"}],
+  phone:     [{d:"M6.5 3.5h7v13H6.5z"},{d:"M9 14h2"}],
+  globe:     [{c:[10,10,6.5]},{d:"M3.5 10h13"},{d:"M10 3.5c2 2.25 3 4.5 3 6.5s-1 4.25-3 6.5c-2-2.25-3-4.5-3-6.5s1-4.25 3-6.5z"}],
+  upload:    [{d:"M10 14.5V4"},{d:"M6 8 10 4l4 4"},{d:"M3.5 16h13"}],
+  download:  [{d:"M10 4v10.5"},{d:"M6 10.5 10 14.5l4-4"},{d:"M3.5 16h13"}],
+  image:     [{d:"M3.5 4.5h13v11H3.5z"},{c:[7,8,1.5]},{d:"M4 14.5 8.5 10l3 3 2.5-2.5 2.5 2.5"}],
+  video:     [{d:"M3.5 6h9v8H3.5z"},{d:"M12.5 10 16.5 7v6z"}],
+  mic:       [{d:"M10 3.5a2.25 2.25 0 0 1 2.25 2.25v4a2.25 2.25 0 0 1-4.5 0V5.75A2.25 2.25 0 0 1 10 3.5z"},{d:"M6 9.5a4 4 0 0 0 8 0"},{d:"M10 13.5v2.5"}],
+  sliders:   [{d:"M3.5 7h13"},{d:"M3.5 13h13"},{c:[7.5,7,2.25]},{c:[12.5,13,2.25]}],
+  sort:      [{d:"M6 4v12"},{d:"M3.5 13.5 6 16l2.5-2.5"},{d:"M14 16V4"},{d:"M11.5 6.5 14 4l2.5 2.5"}],
+  more:      [{c:[4.5,10,1.375]},{c:[10,10,1.375]},{c:[15.5,10,1.375]}],
+  award:     [{c:[10,7.5,4]},{d:"M7.5 11 6.5 16 10 14l3.5 2-1-5"}],
+  gift:      [{d:"M3.5 8h13v3H3.5z"},{d:"M5 11v5h10v-5"},{d:"M10 8v8"},{d:"M10 8 7.5 5.5"},{d:"M10 8 12.5 5.5"}],
+  clipboard: [{d:"M5.5 4.5h9v11.5H5.5z"},{d:"M8 4.5V3.5h4v1"},{d:"M8 8.75h4"},{d:"M8 12h4"}],
+  eye:       [{d:"M3.5 10s2.75-4.5 6.5-4.5S16.5 10 16.5 10s-2.75 4.5-6.5 4.5S3.5 10 3.5 10z"},{c:[10,10,2.25]}],
+  eyeOff:    [{d:"M4.5 6.5C3.5 7.75 3.5 10 3.5 10s2.75 4.5 6.5 4.5c1.25 0 2.375-0.5 3.25-1.125"},{d:"M8 5.75A6.25 6.25 0 0 1 10 5.5c3.75 0 6.5 4.5 6.5 4.5a13.75 13.75 0 0 1-2 2.5"},{d:"M4 4 16 16"}],
+  settings:  [{c:[10,10,3]},{d:"M10 3.5v2"},{d:"M10 14.5v2"},{d:"M3.5 10h2"},{d:"M14.5 10h2"},{d:"M5.375 5.375 6.75 6.75"},{d:"M13.25 13.25 14.625 14.625"},{d:"M14.625 5.375 13.25 6.75"},{d:"M6.75 13.25 5.375 14.625"}],
 };
 
-export function Glyph({name,size=16,colour=INK.readoutSoft,weight=1.5}){
+export function Glyph({name,size=16,colour=INK.readoutSoft,weight=1.6}){
   const parts=GLYPHS[name];
   if(!parts) return null;
+  // The artifact's own SVG header, reproduced: a 20-unit box, no fill, 1.6
+  // stroke, round caps and joins. Every number in the table above is written in
+  // those units, so nothing here is allowed to rescale them.
   return(
-    <Svg width={size} height={size} viewBox="0 0 16 16">
-      {parts.map((p,i)=>p.c
-        ? <Circle key={i} cx={p.c[0]} cy={p.c[1]} r={p.c[2]} fill="none" stroke={colour} strokeWidth={weight}/>
-        : <Path key={i} d={p.d} fill="none" stroke={colour} strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round"/>
-      )}
+    <Svg width={size} height={size} viewBox="0 0 20 20">
+      {parts.map((p,i)=>{
+        if(p.r) return <Rect key={i} x={p.r[0]} y={p.r[1]} width={p.r[2]} height={p.r[3]} rx={p.r[4]}
+                             fill="none" stroke={colour} strokeWidth={weight}/>;
+        if(p.c) return <Circle key={i} cx={p.c[0]} cy={p.c[1]} r={p.c[2]}
+                              fill={p.fill?colour:"none"} stroke={p.fill?"none":colour} strokeWidth={weight}/>;
+        return <Path key={i} d={p.d} fill="none" stroke={colour} strokeWidth={weight}
+                     strokeLinecap="round" strokeLinejoin="round"/>;
+      })}
     </Svg>
   );
 }
@@ -608,7 +607,11 @@ export function ScreenTitle({eyebrow,title,meta,right}){
 // Filters, categories, tags, toggles. Selection steps a surface and strengthens
 // an edge; it never fills with a state ink, because being selected is not a
 // state a place is in. `tone` adds a 6px state dot for chips that DO carry one.
-export function Chip({label,selected,tone,onPress,glyph,disabled,style,accessibilityLabel}){
+// `labelStyle` exists for one caller: chrome drawn OVER the camera viewfinder,
+// where the artifact inverts the whole chip -- paper-tinted glass at rest,
+// YELLOW when selected, with ink type on it. Every other chip in the app takes
+// the kit's own selected treatment and must not pass this.
+export function Chip({label,selected,tone,onPress,glyph,disabled,style,labelStyle,accessibilityLabel}){
   const Wrap=onPress?Pressable:View;
   return(
     <Wrap
@@ -626,7 +629,7 @@ export function Chip({label,selected,tone,onPress,glyph,disabled,style,accessibi
     >
       {tone ? <View style={[kit.chipDot,{backgroundColor:INK[tone]||INK.exists}]}/> : null}
       {glyph ? <Glyph name={glyph} size={13} colour={selected?INK.readout:INK.readoutFaint}/> : null}
-      <Text style={[kit.chipText,selected&&kit.chipTextSelected,disabled&&kit.chipTextDisabled]} numberOfLines={1}>{label}</Text>
+      <Text style={[kit.chipText,selected&&kit.chipTextSelected,disabled&&kit.chipTextDisabled,labelStyle]} numberOfLines={1}>{label}</Text>
     </Wrap>
   );
 }

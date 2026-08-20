@@ -32,6 +32,7 @@ import {
   Dial,
   Glyph,
   MONO,
+  MONO_MEDIUM,
   ProgressRing,
   Readout,
   Reticle,
@@ -104,12 +105,16 @@ import {
 // back here when they are opened with nothing attached, which is the honest
 // behaviour for "capture first, decide after" -- the chip is a way IN to the
 // branch, not a claim that a Moment can exist without a picture.
+// `glyph` and `primary` are the artifact's, not decoration: .branch-chip draws
+// a 52px bordered disc with a mark in it and its label underneath, and
+// .branch-chip.primary fills that disc with ink -- one branch is the obvious
+// one and the other four are beside it.
 export const CAPTURE_BRANCHES=[
-  {key:"moment",label:"Moment",route:"/moments/create",spoken:"Post a Moment"},
-  {key:"memory",label:"Memory",route:"/memories/create",spoken:"Keep a Memory"},
-  {key:"checkin",label:"Check in",route:"/checkins/create",spoken:"Check in somewhere"},
-  {key:"scan",label:"Scan",route:"/scan",spoken:"Scan or type a code"},
-  {key:"review",label:"Review",view:"review",spoken:"Write a review"}
+  {key:"moment",label:"Moment",route:"/moments/create",spoken:"Post a Moment",glyph:"camera",primary:true},
+  {key:"memory",label:"Memory",route:"/memories/create",spoken:"Keep a Memory",glyph:"bookmark"},
+  {key:"checkin",label:"Check in",route:"/checkins/create",spoken:"Check in somewhere",glyph:"pin"},
+  {key:"scan",label:"Scan",route:"/scan",spoken:"Scan or type a code",glyph:"scan"},
+  {key:"review",label:"Review",view:"review",spoken:"Write a review",glyph:"star"}
 ];
 
 // ---------------------------------------------------------------------------
@@ -119,6 +124,21 @@ export const CAPTURE_BRANCHES=[
 // is a front-camera-only trick and not a stop on this cycle). One chip cycles
 // them in that order, which is the order every phone camera uses.
 export const FLASH_CYCLE=["off","auto","on"];
+
+// THE GLASS THE VIEWFINDER'S CHROME IS DRAWN ON.
+//
+// The artifact tints its viewfinder chrome with the PAPER colour at low alpha
+// rather than with a dark -- rgba(231,232,225,.14) fills, rgba(231,232,225,.4)
+// and .35 edges -- so a control over the picture reads as frosted paper laid on
+// it, the same trick the pins use over the map. Named here because six styles
+// below need the same two values and a fourth spelling of them is how they
+// drift apart.
+// @contrast-backdrop INK.ink
+//   -- what these tints are drawn over. The artifact's .viewfinder is
+//   background:var(--ink), and a live camera feed is darker still more often
+//   than not, so ink is the honest and the conservative reading.
+const VF_GLASS="rgba(231,232,225,0.14)";
+const VF_GLASS_EDGE="rgba(231,232,225,0.4)";
 
 const FLASH_LABEL={off:"FLASH OFF",auto:"FLASH AUTO",on:"FLASH ON"};
 const FLASH_SPOKEN={off:"off",auto:"automatic",on:"on"};
@@ -799,6 +819,7 @@ export default function CameraCapture({onNavigate,onBranch,overlay,presetTargetT
             label={FLASH_LABEL[flash]}
             selected={flash!=="off"}
             style={[styles.faceChip,flash!=="off" && styles.faceChipOn]}
+            labelStyle={[styles.faceChipLabel,flash!=="off" && styles.faceChipOnLabel]}
             accessibilityLabel={`Flash is ${FLASH_SPOKEN[flash]}. Tap to set the flash to ${FLASH_SPOKEN[nextFlash(flash)]}.`}
             onPress={()=>setFlash(nextFlash(flash))}
           />
@@ -808,6 +829,7 @@ export default function CameraCapture({onNavigate,onBranch,overlay,presetTargetT
               label={`${stop}×`}
               selected={zoom===stop}
               style={[styles.faceChip,zoom===stop && styles.faceChipOn]}
+              labelStyle={[styles.faceChipLabel,zoom===stop && styles.faceChipOnLabel]}
               accessibilityLabel={`Zoom to ${stop} times`}
               onPress={()=>setZoom(stop)}
             />
@@ -910,15 +932,30 @@ export default function CameraCapture({onNavigate,onBranch,overlay,presetTargetT
           THE FIVE BRANCHES, below the viewfinder and always visible. One tap
           each, from the list every surface shares.
         */}
+        {/* .capture-branches / .branch-chip / .branch-ic / .branch-lb,
+            transcribed. A 52px disc on card stock with a 2px ink edge and the
+            hard offset shadow, its mark inside, its name in 8.5px mono below.
+            The Moment branch is .primary -- an ink-filled disc with a paper
+            mark. This was five outline text pills, which is the kit's default
+            chip and not what the artifact draws here. */}
         <View style={styles.branchRow}>
           {CAPTURE_BRANCHES.map((branch)=>(
-            <Chip
+            <Pressable
               key={branch.key}
-              label={branch.label}
               style={styles.branchChip}
+              accessibilityRole="button"
               accessibilityLabel={branch.spoken}
               onPress={()=>openBranch(branch)}
-            />
+            >
+              <View style={[styles.branchDisc,branch.primary && styles.branchDiscPrimary]}>
+                <Glyph
+                  name={branch.glyph}
+                  size={20}
+                  colour={branch.primary ? INK.paper : INK.ink}
+                />
+              </View>
+              <Text style={styles.branchLabel} numberOfLines={1}>{branch.label}</Text>
+            </Pressable>
           ))}
         </View>
 
@@ -1003,14 +1040,22 @@ const styles=StyleSheet.create({
   readoutRow:{
     position:"absolute",left:16,right:16,flexDirection:"row",gap:8,alignItems:"center"
   },
-  // The artifact's "PHOTO · HOLD FOR VIDEO" pill: solid ink, paper mono inside,
-  // sitting on the dark feed. Solid rather than translucent for the same reason
-  // as the code flag below -- a rgba ground is invisible to the contrast gate.
+  // .vf-mode, transcribed:
+  //
+  //   font-family:mono; font-size:10px; letter-spacing:.12em; uppercase;
+  //   color:var(--paper); background:rgba(231,232,225,.14);
+  //   padding:5px 10px; border-radius:99px;
+  //
+  // PAPER-TINTED GLASS, not solid ink. This was solid for a while with a note
+  // saying a rgba ground is invisible to the contrast gate -- which was true,
+  // and the answer was to teach the gate the viewfinder's known backdrop
+  // (VIEWFINDER_BACKDROP in scripts/verify-contrast.cjs), not to redraw the
+  // design so the gate could read it.
   readoutChip:{
     color:INK.paper,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
-    textTransform:"uppercase",letterSpacing:1,
-    backgroundColor:INK.ink,
-    borderWidth:SHAPE.border,borderColor:INK.ink,borderRadius:SHAPE.radius.pill,
+    textTransform:"uppercase",letterSpacing:1.2,
+    backgroundColor:VF_GLASS,
+    borderWidth:1,borderColor:VF_GLASS_EDGE,borderRadius:SHAPE.radius.pill,
     paddingHorizontal:10,paddingVertical:5,overflow:"hidden"
   },
   // Recording. Pink is the ink for "this is live right now", and pink takes INK
@@ -1056,12 +1101,25 @@ const styles=StyleSheet.create({
     position:"absolute",left:0,right:0,bottom:12,
     flexDirection:"row",justifyContent:"center",flexWrap:"wrap",gap:6,paddingHorizontal:12
   },
-  // 44, not the kit's 32: this is a one-handed control over a live image.
-  faceChip:{minHeight:44,backgroundColor:"rgba(11,14,18,0.68)"},
-  // Selection is a step UP a surface, never a state ink -- the kit's rule 5.
-  // Over a live image that step has to be made in the smoked glass itself,
-  // because the kit's panelRaised would go opaque over the picture.
-  faceChipOn:{backgroundColor:"rgba(30,37,46,0.86)"},
+  // .vf-zoom button / .vf-zoom button.active, transcribed:
+  //
+  //   { color:var(--paper); background:rgba(231,232,225,.14);
+  //     border:1px solid rgba(231,232,225,.35); border-radius:99px; }
+  //   .active { background:var(--ink-yellow); color:var(--ink); font-weight:700 }
+  //
+  // These two lines used to read rgba(11,14,18,.68) and rgba(30,37,46,.86) --
+  // the ground and raised surfaces of the near-black build this replaced,
+  // surviving as literals in a file the palette gate skips because it is mostly
+  // camera feed. They rendered as dark blobs over the picture.
+  //
+  // 44 tall, not the kit's 32: this is a one-handed control over a live image.
+  faceChip:{minHeight:44,backgroundColor:VF_GLASS,borderWidth:1,borderColor:VF_GLASS_EDGE},
+  faceChipLabel:{color:INK.paper},
+  // The one place selection is a state ink rather than an ink fill: over a
+  // photograph the kit's ink-on-paper inversion has no paper to invert to, so
+  // the artifact reaches for yellow -- the ink nothing else on this face uses.
+  faceChipOn:{backgroundColor:INK.yellow,borderColor:INK.yellow},
+  faceChipOnLabel:{color:INK.ink,fontFamily:MONO_MEDIUM},
 
   // The well is what makes the shutter read as a lens rather than a button:
   // the aperture rings and progress ring are centred on the same point.
@@ -1117,10 +1175,27 @@ const styles=StyleSheet.create({
     width:56,height:44,alignItems:"center",justifyContent:"center"
   },
 
+  //   .capture-branches { display:flex; gap:8px; padding:14px 16px }
+  //   .branch-chip { column, align centre, gap 6, width 76 }
+  //   .branch-ic   { 52px disc, --card, 2px --ink, --shadow-hard-sm }
+  //   .branch-chip.primary .branch-ic { background:--ink; color:--paper }
+  //   .branch-lb   { mono 8.5px, .05em, uppercase, --ink }
   branchRow:{
-    flexDirection:"row",flexWrap:"wrap",justifyContent:"center",gap:6,paddingHorizontal:12,paddingBottom:8
+    flexDirection:"row",justifyContent:"center",gap:8,paddingHorizontal:16,paddingVertical:14
   },
-  branchChip:{minHeight:44},
+  branchChip:{width:64,alignItems:"center",gap:6},
+  branchDisc:{
+    width:52,height:52,borderRadius:26,
+    backgroundColor:INK.card,
+    borderWidth:SHAPE.borderStrong,borderColor:INK.ink,
+    alignItems:"center",justifyContent:"center",
+    ...SHAPE.shadow.hardSm
+  },
+  branchDiscPrimary:{backgroundColor:INK.ink},
+  branchLabel:{
+    fontFamily:MONO,fontSize:8.5,letterSpacing:0.43,
+    textTransform:"uppercase",textAlign:"center",color:INK.ink
+  },
 
   controls:{
     flexDirection:"row",

@@ -9,6 +9,7 @@ import HappeningSegments from "../components/HappeningSegments";
 import {loadPlaceRatings} from "../utils/reviews";
 import {reviewTargetType,CARD_KINDS} from "../utils/placeCards";
 import {
+  markerForActivity,
   markerForBusiness,
   markerForProperty,
   markerForClub,
@@ -145,6 +146,7 @@ export default function Discover(){
       latitude:row.latitude,
       longitude:row.longitude,
       image:row.image_url || null,
+      marker:markerForActivity({kind:row.item_type}),
       route:row.deep_link
     }));
 
@@ -158,6 +160,11 @@ export default function Discover(){
       latitude:row.latitude,
       longitude:row.longitude,
       image:row.image_url || null,
+      // NO STOCK PHOTOGRAPH, so a listing with no picture of its own falls back
+      // to the mark its map pin wears. Without this the card renders an empty
+      // bracketed well -- measured on /discover, an event with no image_url
+      // drew a blank frame the height of a photograph.
+      marker:markerForActivity({kind:"event"}),
       target:{type:"event",id:row.id},
       route:`/events/${row.id}`
     }));
@@ -184,6 +191,7 @@ export default function Discover(){
       ends_at:row.ends_at,
       latitude:row.latitude,
       longitude:row.longitude,
+      marker:markerForActivity({kind:"linkup"}),
       route:`/linkups/${row.id}`
     }));
 

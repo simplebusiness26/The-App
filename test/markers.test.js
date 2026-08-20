@@ -19,12 +19,13 @@ const {
   UNCLASSIFIED
 }=require("../utils/taxonomy");
 
-const {INK}=require("../utils/tokens");
+const {INK,FONT}=require("../utils/tokens");
 
 const {
   MARKER_STATES,
   glyphNames,
   glyphPrimitives,
+  markerForActivity,
   markerForBusiness,
   markerForClub,
   markerForProperty
@@ -185,6 +186,23 @@ describe("the pin renders",()=>{
     return (0xff000000+parseInt(hex.slice(1),16))>>>0;
   }
 
+  // react-native-svg's Text puts its content in children on this renderer,
+  // and in a `content` prop on others. Read whichever is there.
+  function flatText(node){
+    if(node.props?.content!=null) return node.props.content;
+    const out=[];
+    (function walk(n){
+      if(n==null) return;
+      if(Array.isArray(n)){n.forEach(walk);return;}
+      if(typeof n==="string"){out.push(n);return;}
+      if(typeof n==="object"){
+        if(n.props?.content!=null) out.push(n.props.content);
+        walk(n.children);
+      }
+    })(node.children);
+    return out.join("");
+  }
+
   function nodes(node,type,found=[]){
     if(!node || typeof node!=="object") return found;
     if(Array.isArray(node)){
@@ -245,28 +263,40 @@ describe("the pin renders",()=>{
     await act(async()=>{tree.unmount();});
   });
 
-  it("draws every glyph primitive",async()=>{
+  // THE PIN FACE IS A LETTER, NOT A DRAWING.
+  //
+  // This used to assert the opposite -- that the pin drew every path of its
+  // category glyph. That guarantee described the build before the winning
+  // artifact was transcribed. renderMap() in
+  // runs/.../rounds/ui/blend-dewith-mengto-pins/artifact.html puts one mono
+  // capital on the disc, so that is what is asserted now: the right letter,
+  // in the right ink, centred, and no category paths left behind it.
+  it("draws its type letter on the disc, in the glyph ink",async()=>{
     const marker=markerForBusiness(business("food_and_drink","pub"));
-    const primitives=glyphPrimitives(marker.glyph);
+    expect(marker.letter).toBe("B");
+
     const tree=await render(marker);
     const json=tree.toJSON();
 
-    const paths=nodes(json,"RNSVGPath");
-    expect(paths.map((node)=>node.props.d)).toEqual(
-      primitives.filter((item)=>item.path).map((item)=>item.path)
-    );
-    for(const path of paths){
-      expect(path.props.stroke.payload).toBe(argb(marker.glyphInk));
-    }
+    const texts=nodes(json,"RNSVGText");
+    expect(texts).toHaveLength(1);
+    expect(flatText(texts[0])).toBe("B");
+    expect(texts[0].props.fill.payload).toBe(argb(marker.glyphInk));
+    expect(texts[0].props.font.textAnchor).toBe("middle");
+    expect(texts[0].props.font.fontFamily).toBe(FONT.mono);
 
-    // The glyph sits in its own 16-unit space and is translated to the centre
-    // of the 34-unit pin. If that translate is ever dropped the glyph draws in
-    // the top-left corner and still renders, so nothing else would catch it.
-    // The last two components of the affine matrix are the translate.
-    const glyphGroup=nodes(json,"RNSVGGroup").find((node)=>node.props.matrix);
-    expect(glyphGroup.props.matrix.slice(4)).toEqual([9,9]);
+    // No category drawing behind it. If the old primitives ever come back the
+    // pin has two faces at once, which renders as a smudge.
+    expect(nodes(json,"RNSVGPath")).toHaveLength(0);
 
     await act(async()=>{tree.unmount();});
+  });
+
+  it("gives each kind of place its own letter",async()=>{
+    expect(markerForProperty().letter).toBe("P");
+    expect(markerForClub().letter).toBe("C");
+    expect(markerForActivity({kind:"event"}).letter).toBe("E");
+    expect(markerForActivity({kind:"linkup"}).letter).toBe("K");
   });
 
   it("dashes the border of an unclaimed place and solidifies a claimed one",async()=>{

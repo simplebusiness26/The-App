@@ -6,7 +6,7 @@ import FeedCard,{listingRoute} from "../components/FeedCard";
 import Explorers from "./explorers";
 import Leaderboards from "./leaderboards";
 import {CREATE_HUB_CLEARANCE} from "../components/CreateHub";
-import {INK,TYPE} from "../utils/tokens";
+import {INK,TYPE,SHAPE} from "../utils/tokens";
 import {Action,Empty,MONO,Notice,Screen,ScreenTitle,Segmented} from "../components/instrument";
 
 // The Community tab's container. FINAL_PRODUCT_CONTRACT.md's architecture
@@ -86,7 +86,7 @@ export default function Community(){
 }
 
 const communityStyles=StyleSheet.create({
-  selector:{borderBottomWidth:1,borderBottomColor:INK.hairline,paddingBottom:2},
+  selector:{borderBottomWidth:SHAPE.border,borderBottomColor:INK.hairline,paddingBottom:2},
   segmentPane:{flex:1},
   segmentPaneHidden:{display:"none"}
 });

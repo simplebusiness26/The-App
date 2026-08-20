@@ -16,7 +16,7 @@
 // override appears anywhere.
 
 import {classificationLabel,glyphForClassification,UNCLASSIFIED} from "./taxonomy";
-import {INK,HEAT_RAMP} from "./tokens";
+import {INK,SHAPE,HEAT_RAMP} from "./tokens";
 import {BASE_WEIGHT,MAX_WEIGHT} from "./heatmap";
 import {ACTIVITY_STATE_SENTENCE} from "./liveActivity";
 
@@ -179,7 +179,7 @@ export function glyphPrimitives(name){
 // design system has for "something is scheduled here". The palette has three
 // inks; the product describes four event states. Words carry the difference the
 // colour cannot, which is the accessibility floor's position anyway.
-function buildMarker({glyph,state,typeSentence,claimed,stateSentence,hosting}){
+function buildMarker({glyph,letter,state,typeSentence,claimed,stateSentence,hosting}){
   const fill=claimed ? MARKER_STATE_INK[state] : INK.card;
   // WHICH GLYPH INK, TRANSCRIBED FROM THE ARTIFACT.
   //
@@ -198,6 +198,24 @@ function buildMarker({glyph,state,typeSentence,claimed,stateSentence,hosting}){
 
   return {
     glyph,
+    // THE PIN CARRIES A LETTER, NOT A PICTURE.
+    //
+    // The artifact draws its pin face as one mono capital sized to the disc:
+    //
+    //   var PIN_GLYPH = {business:'B', property:'P', club:'C', event:'E', place:'L'};
+    //   '<span class="mono" style="font-size:12px;letter-spacing:0">'+PIN_GLYPH[p.type]+'</span>'
+    //
+    // -- runs/.../rounds/ui/blend-dewith-mengto-pins/artifact.html, renderMap().
+    //
+    // This map used to draw a category picture instead: a cup for a cafe, a
+    // leaf for a gym, a bag for a shop. That is more information per pin, and
+    // it is not the design that won. A letter is legible at 34px in a way a
+    // six-subpath drawing is not, it says the one thing the map legend is
+    // about (what KIND of listing this is), and category detail is on the
+    // place page one tap away. `glyph` is kept alongside because cards,
+    // rows and the Discover well still draw the category mark at sizes where
+    // it reads -- it is only the pin face that is typographic.
+    letter,
     state,
     fill,
     glyphInk,
@@ -250,6 +268,7 @@ export function markerForBusiness(business){
 
   return buildMarker({
     glyph:glyphForClassification(category,type),
+    letter:"B",
     state:MARKER_STATES.EXISTS,
     // classificationLabel falls back to the category when the type is
     // unclassified, so a food and drink place reads as "Food and drink." rather
@@ -267,6 +286,7 @@ export function markerForBusiness(business){
 export function markerForProperty(){
   return buildMarker({
     glyph:"home",
+    letter:"P",
     state:MARKER_STATES.EXISTS,
     typeSentence:`${PROPERTY_TYPE_LABEL}.`,
     claimed:true
@@ -278,6 +298,7 @@ export function markerForProperty(){
 export function markerForClub(){
   return buildMarker({
     glyph:"people",
+    letter:"C",
     state:MARKER_STATES.SCHEDULED,
     typeSentence:`${CLUB_TYPE_LABEL}.`,
     claimed:true
@@ -327,6 +348,7 @@ const MEMORY_GLYPHS={
 export function markerForActivity(activity){
   return buildMarker({
     glyph:ACTIVITY_GLYPHS[activity?.kind] || "ring",
+    letter:ACTIVITY_LETTER[activity?.kind] || "E",
     state:MARKER_STATES.SCHEDULED,
     typeSentence:`${ACTIVITY_TYPE_LABEL[activity?.kind] || "Activity"}.`,
     claimed:true,
@@ -345,6 +367,17 @@ const ACTIVITY_GLYPHS={
   activity:"people"
 };
 
+// The artifact's table names five kinds; this app has more things on its map
+// than the artifact's demo did, so the two it never had to draw get the letter
+// their own noun starts with -- K for a Link-up (L is taken by a public place),
+// and E for an event, which is the artifact's own choice.
+const ACTIVITY_LETTER={
+  linkup:"K",
+  checkin:"H",   // an explorer HERE now
+  event:"E",
+  activity:"C"
+};
+
 const ACTIVITY_TYPE_LABEL={
   linkup:LINKUP_TYPE_LABEL,
   checkin:"Explorer here now",
@@ -355,6 +388,7 @@ const ACTIVITY_TYPE_LABEL={
 export function markerForMemory(memory){
   return buildMarker({
     glyph:MEMORY_GLYPHS[memory?.target_type] || "ring",
+    letter:"M",
     state:MARKER_STATES.EXISTS,
     typeSentence:`${MEMORY_TYPE_LABEL}.`,
     claimed:true
@@ -377,6 +411,7 @@ export const MOMENT_TYPE_LABEL="Moment";
 export function markerForMoment(){
   return buildMarker({
     glyph:"star",
+    letter:"O",
     state:MARKER_STATES.SCHEDULED,
     typeSentence:`${MOMENT_TYPE_LABEL}.`,
     stateSentence:"Somebody posted from here.",
@@ -483,8 +518,8 @@ export function clusterAppearance(count){
 //
 // The count is a symbol layer because there is nothing else to put a number
 // into on a style layer. "Noto Sans Bold" is the face the map's own style
-// bundles -- see assets/map/instrument-dark.json -- so it is the one face that
-// is certain to be there; the app's own mono is not on the tile server.
+// bundles -- see assets/map/riso-paper.json -- so it is the one face that is
+// certain to be there; the app's own mono is not on the tile server.
 export function clusterPaint(){
   const look=clusterAppearance(0);
 
@@ -494,7 +529,10 @@ export function clusterPaint(){
     circle:{
       "circle-color":look.fill,
       "circle-stroke-color":look.border,
-      "circle-stroke-width":1,
+      // The artifact's pin edge is 2px (var(--bw2)), and a group of pins is
+      // still a pin. This was 1: a hairline read as a halo on the dark build
+      // and reads as nothing at all on paper.
+      "circle-stroke-width":SHAPE.borderStrong,
       "circle-radius":["interpolate",["linear"],["get","point_count"],2,19,40,30]
     },
     // The number on it. Size is never the only carrier of meaning.
@@ -511,20 +549,36 @@ export function clusterPaint(){
     lone:{
       "circle-color":["get","fill"],
       "circle-stroke-color":["get","border"],
-      "circle-stroke-width":1,
+      "circle-stroke-width":SHAPE.borderStrong,
       "circle-radius":9
-    }
+    },
+    // The type letter on a lone pin, so the GL map says the same thing the
+    // React pin says. It is carried on the feature (clusterFeature below) for
+    // the same reason the ink is: a style layer reads properties, it does not
+    // know what a listing type is.
+    loneLabel:{
+      "text-field":["get","letter"],
+      "text-font":["Noto Sans Bold"],
+      "text-size":11,
+      "text-allow-overlap":true
+    },
+    loneLabelPaint:{"text-color":["get","glyphInk"]}
   };
 }
 
 // A place, as a feature the clustering source can eat. The marker descriptor is
-// already worked out by this file; this only flattens the two values a style
-// layer can read back out of a feature.
+// already worked out by this file; this only flattens the values a style layer
+// can read back out of a feature.
 export function clusterFeature(place){
   const marker=place?.card?.marker || place?.marker || {};
   return{
     type:"Feature",
-    properties:{fill:marker.fill || INK.panel,border:marker.border || INK.hairlineStrong},
+    properties:{
+      fill:marker.fill || INK.panel,
+      border:marker.border || INK.hairlineStrong,
+      letter:marker.letter || "L",
+      glyphInk:marker.glyphInk || INK.ink
+    },
     geometry:{type:"Point",coordinates:[Number(place.longitude),Number(place.latitude)]}
   };
 }
