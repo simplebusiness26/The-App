@@ -85,7 +85,9 @@ const LONE_TIMES=/>\s*×\s*<|["'`]\s*×\s*["'`]/;
 // being explicitly removed -- so it is allowed.
 const HARD_BORDER=/border(?:Top|Right|Bottom|Left)?Width\s*:\s*(?!0\s*[,}\n])\d/;
 
-// Radius comes from SHAPE.radius -- 6 controls, 10 cards, 14 sheets, 999 pills.
+// Radius comes from SHAPE.radius -- 9 controls, 14 cards, 20 sheets, 999 pills
+// (the artifact's --r-ctl / --r-card / --r-sheet / --r-pill), plus `stop`, the
+// one shape it draws off that ladder.
 // A hand-typed number is the old card shape surviving a recolour.
 const HARD_RADIUS=/borderRadius\s*:\s*(\d+)/g;
 const ALLOWED_RADIUS=new Set([0,1,2,3,4]); // hairlines, ticks, tiny dots
@@ -247,7 +249,7 @@ const RULE_TEXT={
   emoji:"Emoji. Use <Glyph name=\"…\"/> — there are 66 icons; check GLYPH_NAMES.",
   "glyph-char":"A typographic character standing in for an icon. Use <Glyph/>.",
   border:"A typed border width. Use SHAPE.border (1.5) or SHAPE.borderStrong (2).",
-  radius:"A hand-typed radius. Use SHAPE.radius — 6 / 10 / 14 / 999.",
+  radius:"A hand-typed radius. Use SHAPE.radius — 9 / 14 / 20 / 999.",
 
   clearance:"A scrolling screen with no CREATE_HUB_CLEARANCE in its bottom padding.",
   "style-sheet":"A style referenced from a sheet that does not define it. React Native resolves it to nothing, silently."

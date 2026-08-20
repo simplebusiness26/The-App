@@ -26,7 +26,6 @@ import {useHeaderClearance} from "./Header";
 import {TAB_BAR_HEIGHT} from "./TabBar";
 import {INK,TYPE,SHAPE} from "../utils/tokens";
 import {
-  Aperture,
   Chip,
   CornerFrame,
   Dial,
@@ -910,24 +909,83 @@ export default function CameraCapture({onNavigate,onBranch,overlay,presetTargetT
             />
           </Animated.View>
         </Animated.View>
+
+        {/* .vf-bottom, transcribed: the shutter lives IN the viewfinder, 14
+            from its bottom edge, with its two companions 34 either side. It
+            used to sit on the paper console below the picture, which left the
+            bottom 45% of the screen as an empty sheet with a button on it and
+            put the one control you use most furthest from the thing it acts
+            on. The .vf-chip discs are the artifact's too -- 32px of the same
+            frosted paper glass the readouts are drawn on. */}
+        <View style={styles.vfBottom} pointerEvents="box-none">
+          <Pressable
+            style={styles.vfChip}
+            accessibilityRole="button"
+            accessibilityLabel="Type a QR code by hand"
+            hitSlop={8}
+            onPress={()=>navigate("/scan")}
+          >
+            <Glyph name="qr" size={15} colour={INK.paper}/>
+          </Pressable>
+
+          {/*
+            ONE BUTTON. onPressIn/onPressOut rather than onPress and onLongPress:
+            React Native fires onPress on release AS WELL as onLongPress on some
+            platforms, so a hold would leave a stray photograph behind every
+            recording. utils/shutter.js decides which of the two happened.
+
+            .shutter { 70px, 3px solid --paper, transparent }
+            .shutter::before { inset:5px, --paper, round }
+            .shutter.recording::before { --ink-blue, radius 10, inset 16 }
+
+            The ProgressRing stays: it answers "how long have I got?" against
+            the real 15s ceiling in utils/shutter.js, which the artifact's
+            static mock never had to. The Aperture blades are gone -- they were
+            a drawing of a lens where the artifact draws a ring.
+          */}
+          <View style={styles.shutterWell}>
+            <ProgressRing size={78} stroke={2} progress={recording ? holdProgress : 0} colour={INK.pink}/>
+            <Pressable
+              style={[styles.shutter,taking && styles.shutterBusy]}
+              accessibilityRole="button"
+              accessibilityLabel="Press for a photo, hold to record a video"
+              disabled={taking}
+              onPressIn={()=>{shutter.current.pressIn();startHoldClock();}}
+              onPressOut={()=>{shutter.current.pressOut();stopHoldClock();}}
+            >
+              <View style={[styles.shutterInner,recording && styles.shutterInnerRecording]}/>
+            </Pressable>
+          </View>
+
+          <Pressable
+            style={styles.vfChip}
+            accessibilityRole="button"
+            accessibilityLabel="Switch between the front and back camera"
+            hitSlop={8}
+            onPress={()=>setFacing((current)=>current==="back" ? "front" : "back")}
+          >
+            <Glyph name="flip" size={15} colour={INK.paper}/>
+          </Pressable>
+        </View>
+
+        {/* .tray-chevron -- bottom right of the viewfinder, not a row of its
+            own on the console below. */}
+        <Pressable
+          style={styles.trayChevron}
+          accessibilityRole="button"
+          accessibilityState={{expanded:trayOpen}}
+          accessibilityLabel={trayOpen ? "Close the precision controls" : "Open the precision controls"}
+          hitSlop={8}
+          onPress={()=>setTrayOpen((open)=>!open)}
+        >
+          <Glyph name={trayOpen ? "down" : "up"} size={14} colour={INK.paper}/>
+        </Pressable>
       </View>
 
       {/* ------------------------------------------------------------------
           THE CONSOLE, below the viewfinder.
           ------------------------------------------------------------------ */}
       <View style={[styles.console,{paddingBottom:bottomClearance}]}>
-        <View style={styles.chevronRow}>
-          <Pressable
-            style={styles.chevron}
-            accessibilityRole="button"
-            accessibilityState={{expanded:trayOpen}}
-            accessibilityLabel={trayOpen ? "Close the precision controls" : "Open the precision controls"}
-            onPress={()=>setTrayOpen((open)=>!open)}
-          >
-            <Glyph name={trayOpen ? "down" : "up"} size={16} colour={INK.readoutSoft}/>
-          </Pressable>
-        </View>
-
         {/*
           THE FIVE BRANCHES, below the viewfinder and always visible. One tap
           each, from the list every surface shares.
@@ -957,52 +1015,6 @@ export default function CameraCapture({onNavigate,onBranch,overlay,presetTargetT
               <Text style={styles.branchLabel} numberOfLines={1}>{branch.label}</Text>
             </Pressable>
           ))}
-        </View>
-
-        <View style={styles.controls}>
-          <Pressable
-            style={styles.sideButton}
-            accessibilityRole="button"
-            accessibilityLabel="Type a QR code by hand"
-            onPress={()=>navigate("/scan")}
-          >
-            <Text style={styles.sideText}>Type a code</Text>
-          </Pressable>
-
-          {/*
-            ONE BUTTON. onPressIn/onPressOut rather than onPress and onLongPress:
-            React Native fires onPress on release AS WELL as onLongPress on some
-            platforms, so a hold would leave a stray photograph behind every
-            recording. utils/shutter.js decides which of the two happened.
-          */}
-          {/*
-            The shutter, as an aperture. Rings close as a recording runs and the
-            progress ring reports how much of the real 15s ceiling is spent -- the
-            question the old bare circle never answered.
-          */}
-          <View style={styles.shutterWell}>
-            <Aperture size={118} open={recording ? 1-holdProgress*0.55 : 1} colour={INK.hairlineStrong}/>
-            <ProgressRing size={92} stroke={3} progress={recording ? holdProgress : 0} colour={INK.scheduled}/>
-            <Pressable
-              style={[styles.shutter,taking && styles.shutterBusy,recording && styles.shutterRecording]}
-              accessibilityRole="button"
-              accessibilityLabel="Press for a photo, hold to record a video"
-              disabled={taking}
-              onPressIn={()=>{shutter.current.pressIn();startHoldClock();}}
-              onPressOut={()=>{shutter.current.pressOut();stopHoldClock();}}
-            >
-              <View style={[styles.shutterInner,recording && styles.shutterInnerRecording]}/>
-            </Pressable>
-          </View>
-
-          <Pressable
-            style={styles.sideButton}
-            accessibilityRole="button"
-            accessibilityLabel="Switch between the front and back camera"
-            onPress={()=>setFacing((current)=>current==="back" ? "front" : "back")}
-          >
-            <Text style={styles.sideText}>Flip</Text>
-          </Pressable>
         </View>
 
         {Platform.OS==="web" && (
@@ -1097,8 +1109,11 @@ const styles=StyleSheet.create({
   // The immediate rung, over the bottom of the feed: flash, then the four zoom
   // presets. Chips rather than a dial, because a preset is a tap and the dial
   // in the tray is the drag.
+  //   .vf-zoom { position:absolute; bottom:104px; centred; gap:6 }
+  // 104 clears the shutter, which is now in the viewfinder where the artifact
+  // puts it.
   faceRow:{
-    position:"absolute",left:0,right:0,bottom:12,
+    position:"absolute",left:0,right:0,bottom:104,
     flexDirection:"row",justifyContent:"center",flexWrap:"wrap",gap:6,paddingHorizontal:12
   },
   // .vf-zoom button / .vf-zoom button.active, transcribed:
@@ -1123,7 +1138,8 @@ const styles=StyleSheet.create({
 
   // The well is what makes the shutter read as a lens rather than a button:
   // the aperture rings and progress ring are centred on the same point.
-  shutterWell:{width:118,height:118,alignItems:"center",justifyContent:"center"},
+  // Sized to the ProgressRing, which is the widest thing centred on the shutter.
+  shutterWell:{width:78,height:78,alignItems:"center",justifyContent:"center"},
   hintWrap:{position:"absolute",left:16,right:16,alignItems:"center"},
   // Quiet. The readouts above already say what the instrument is set to, so
   // this is a one-line instruction, not a banner competing with them.
@@ -1169,11 +1185,6 @@ const styles=StyleSheet.create({
   precisionTrayBody:{position:"absolute",left:0,right:0,bottom:0,paddingHorizontal:14,paddingBottom:8},
   dialRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,paddingVertical:6},
 
-  chevronRow:{alignItems:"center"},
-  // One small control at rest, and still a 44px target.
-  chevron:{
-    width:56,height:44,alignItems:"center",justifyContent:"center"
-  },
 
   //   .capture-branches { display:flex; gap:8px; padding:14px 16px }
   //   .branch-chip { column, align centre, gap 6, width 76 }
@@ -1197,37 +1208,38 @@ const styles=StyleSheet.create({
     textTransform:"uppercase",textAlign:"center",color:INK.ink
   },
 
-  controls:{
-    flexDirection:"row",
-    alignItems:"center",
-    justifyContent:"space-between",
-    paddingHorizontal:24,
-    paddingBottom:16
+  //   .vf-bottom { position:absolute; bottom:14; centred; gap:34 }
+  vfBottom:{
+    position:"absolute",left:0,right:0,bottom:14,
+    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:34
   },
-  // Side controls are panel chips, not shouted labels -- the shutter is the one
-  // thing on this face that should draw the eye.
-  sideButton:{
-    minWidth:88,minHeight:44,alignItems:"center",justifyContent:"center",
-    backgroundColor:INK.panelRaised,
-    borderWidth:SHAPE.border,borderColor:INK.hairline,
-    borderRadius:SHAPE.radius.control,paddingHorizontal:10
+  //   .vf-chip { 32px disc, rgba(paper,.14), 1px rgba(paper,.4), paper mark }
+  // hitSlop takes the 32px disc past the 44px floor without redrawing it
+  // bigger than the artifact draws it.
+  vfChip:{
+    width:32,height:32,borderRadius:16,
+    backgroundColor:VF_GLASS,borderWidth:1,borderColor:VF_GLASS_EDGE,
+    alignItems:"center",justifyContent:"center"
   },
-  sideText:{
-    color:INK.readoutSoft,fontFamily:MONO,fontSize:TYPE.data.sizes.sm,
-    textTransform:"uppercase",letterSpacing:1
+  //   .tray-chevron { bottom:14; right:14; 34px disc, same glass }
+  trayChevron:{
+    position:"absolute",bottom:14,right:14,width:34,height:34,borderRadius:17,
+    backgroundColor:VF_GLASS,borderWidth:1,borderColor:VF_GLASS_EDGE,
+    alignItems:"center",justifyContent:"center",zIndex:6
   },
+  //   .shutter { width:70; height:70; border:3px solid var(--paper);
+  //              background:transparent }
+  //   .shutter::before { inset:5px; border-radius:50%; background:var(--paper) }
+  //
+  // PAPER, not ink: this ring is drawn over the photograph, where the palette
+  // inverts. It was ink on the console below, which is where it used to live.
   shutter:{
-    width:74,
-    height:74,
-    borderRadius:37,
-    // THE ONE THICK RING IN THE APP, AND IT IS NOT AN EDGE.
-    // SHAPE.border is 1 because a border is a hairline etched into the housing.
-    // This is not a border round a panel -- it is the shutter itself, the
-    // drawn ring of a physical control, sitting inside the Aperture's blades
-    // and under the ProgressRing that fills as a recording runs. A 1px shutter
-    // would read as a circle somebody forgot to finish.
-    borderWidth:4,
-    borderColor:INK.readout,
+    width:70,
+    height:70,
+    borderRadius:35,
+    borderWidth:3,
+    borderColor:INK.paper,
+    backgroundColor:"transparent",
     alignItems:"center",
     justifyContent:"center"
   },
@@ -1237,9 +1249,14 @@ const styles=StyleSheet.create({
   // the manager's colour elsewhere and never appears on the map -- this is a
   // viewfinder, not the map, and "recording" is the one other place a red that
   // means "this is live and being kept" is worth more than consistency.
-  shutterRecording:{borderColor:INK.dispute},
-  shutterInner:{width:56,height:56,borderRadius:28,backgroundColor:INK.readout},
-  shutterInnerRecording:{width:30,height:30,borderRadius:SHAPE.radius.control,backgroundColor:INK.dispute},
+  // inset:5px inside a 70px box with a 3px border leaves 54.
+  shutterInner:{width:54,height:54,borderRadius:27,backgroundColor:INK.paper},
+  //   .shutter.recording::before { background:var(--ink-blue); border-radius:10;
+  //                                 inset:16 }  -- 70 - 6 - 32 = 32.
+  // Blue, which is the artifact's own choice here and reads as "this is being
+  // kept" rather than as an alarm. The square is the stop shape everybody
+  // already knows without a legend.
+  shutterInnerRecording:{width:32,height:32,borderRadius:SHAPE.radius.stop,backgroundColor:INK.blue},
   videoPreview:{alignItems:"center",justifyContent:"center"},
   videoPreviewText:{color:INK.readout,fontWeight:"700",fontSize:16},
 
