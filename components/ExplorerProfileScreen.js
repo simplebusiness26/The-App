@@ -425,8 +425,12 @@ export default function ExplorerProfileScreen({profileId,ownProfile=false,belowI
 
         {isOwner && (
           <View style={styles.ownerActions}>
-            <Action kind="secondary" glyph="edit" label="Edit profile" onPress={()=>router.push("/profile/edit")} style={styles.ownerAction}/>
-            <Action kind="primary" glyph="camera" label="New Moment" onPress={()=>router.push("/camera")} style={styles.ownerAction}/>
+            {/* `compact` because these are two buttons sharing one row: at 412
+                the full padding left "Edit profile" rendering as "EDIT PROFI…".
+                Compact narrows the padding and the type, never the 44px
+                target. */}
+            <Action compact kind="secondary" glyph="edit" label="Edit profile" onPress={()=>router.push("/profile/edit")} style={styles.ownerAction}/>
+            <Action compact kind="primary" glyph="camera" label="New Moment" onPress={()=>router.push("/camera")} style={styles.ownerAction}/>
           </View>
         )}
       </Panel>

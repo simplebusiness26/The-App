@@ -593,10 +593,17 @@ export function ScreenTitle({eyebrow,title,meta,right}){
           screenshot, invisible to every test in the repo. A screen's lead
           sentence is prose; prose wraps. */}
       {meta ? <Text style={kit.titleMeta}>{meta}</Text> : null}
-      <View style={kit.titleRule}>
-        <TickScale width={72} height={9} count={9} majorEvery={4} colour={INK.hairlineStrong}/>
-        <View style={kit.titleRuleLine}/>
-      </View>
+      {/* A PLAIN RULE. THE GRADUATIONS BELONG TO THE DIALS.
+
+          This carried 72px of tick marks before the plain line -- graduations
+          under the title of every screen in the app. The winning entry's own
+          thesis is the opposite: "the calm three-ink print language stays the
+          floor EVERYWHERE, while the camera and the map -- the app's two
+          genuinely technical surfaces -- gain tick-mark dials, focus reticles
+          and layer trays". Ticks on a settings page are the instrument idea
+          leaking out of the two places it was won for. The artifact draws
+          .divider here: one hairline in --hair. */}
+      <View style={kit.titleRule}/>
     </View>
   );
 }
@@ -1112,8 +1119,8 @@ const kit=StyleSheet.create({
     flex:1,color:INK.readout,fontFamily:FONT.display,fontSize:TYPE.display.sizes.lg,letterSpacing:-0.5
   },
   titleMeta:{color:INK.readoutSoft,fontFamily:FONT.body,fontSize:TYPE.body.sizes.md,marginTop:5,lineHeight:TYPE.body.sizes.md*1.5},
-  titleRule:{flexDirection:"row",alignItems:"flex-end",marginTop:12,marginBottom:4},
-  titleRuleLine:{flex:1,height:1,backgroundColor:INK.hair,marginBottom:0},
+  //   .divider { height:var(--bw); background:var(--hair) }
+  titleRule:{height:SHAPE.border,backgroundColor:INK.hair,marginTop:12,marginBottom:4},
 
   // A PILL, AND SELECTION FILLS WITH INK.
   // The artifact's .chip is a pill with an ink border on card, and .chip.active
